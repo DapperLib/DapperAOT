@@ -1,0 +1,1 @@
+ADO.NET tools in the style of Dapper, but: all at build time

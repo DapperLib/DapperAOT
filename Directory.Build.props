@@ -1,0 +1,9 @@
+<Project>
+	<PropertyGroup>
+		<SignAssembly>True</SignAssembly>
+		<DelaySign>False</DelaySign>
+		<AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)DapperAOT.snk</AssemblyOriginatorKeyFile>
+		<LangVersion>9</LangVersion>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+</Project>
