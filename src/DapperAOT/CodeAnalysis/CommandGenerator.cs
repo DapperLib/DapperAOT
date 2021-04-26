@@ -1,5 +1,4 @@
-﻿using Dapper;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
@@ -10,10 +9,12 @@ using System.Text;
 namespace DapperAOT.CodeAnalysis
 {
     /// <summary>
-    /// Parses the source for methods annotated with <see cref="CommandAttribute"/>, generating an appropriate implementation.
+    /// Parses the source for methods annotated with <c>Dapper.CommandAttribute</c>, generating an appropriate implementation.
     /// </summary>
     [Generator]
-    public sealed class CommandGenerator : ILoggingSourceGenerator
+#pragma warning disable CS0618 // Type or member is obsolete
+    public sealed class CommandGenerator : ISourceGenerator, ILoggingAnalyzer
+#pragma warning restore CS0618 // Type or member is obsolete
     {
         sealed class CommandSyntaxReceiver : ISyntaxReceiver
         {
@@ -47,7 +48,7 @@ namespace DapperAOT.CodeAnalysis
         }
 
         private event Action<string>? Log;
-        event Action<string> ILoggingSourceGenerator.Log
+        event Action<string> ILoggingAnalyzer.Log
         {
             add => Log += value;
             remove => Log -= value;
@@ -81,8 +82,7 @@ namespace DapperAOT.CodeAnalysis
             context.AddSource("DapperAOT.generated.cs", sb.ToString());
 
             static bool IsCommandAttribute(INamedTypeSymbol type)
-                => type?.Name == nameof(CommandAttribute) &&
-                type.ContainingNamespace?.Name == "Dapper";
+                => type?.Name == "CommandAttribute" && type.ContainingNamespace?.Name == "Dapper";
         }
 
         void ISourceGenerator.Initialize(GeneratorInitializationContext context)

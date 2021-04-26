@@ -15,9 +15,8 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="3.8.0" Pack="false" PrivateAssets="all" />
 
 		<None Include="$(OutputPath)/$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-	</ItemGroup>
 
-	<ItemGroup>
-	  <ProjectReference Include="..\Dapper.Core\Dapper.Core.csproj" />
+		<!-- kinda hoping we can make this add a project reference to the consumer, but: we'll see -->
+		<!--<ProjectReference Include="..\Dapper.Core\Dapper.Core.csproj" />-->
 	</ItemGroup>
 </Project>

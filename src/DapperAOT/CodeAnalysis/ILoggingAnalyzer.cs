@@ -9,7 +9,7 @@ namespace DapperAOT.CodeAnalysis
     /// </summary>
     [Obsolete("Not intended for public usage.")]
     [Browsable(false), EditorBrowsable(EditorBrowsableState.Never)]
-    public interface ILoggingSourceGenerator : ISourceGenerator
+    public interface ILoggingAnalyzer
     {
         /// <summary>
         /// Provide log feedback.

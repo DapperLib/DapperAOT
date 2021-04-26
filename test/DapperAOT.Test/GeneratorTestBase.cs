@@ -29,16 +29,16 @@ namespace DapperAOT.Test
 
         // input from https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#unit-testing-of-generators
 
-        protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics) Execute<T>(string source) where T : ISourceGenerator, new()
+        protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics) Execute<T>(string source) where T : class, ISourceGenerator, new()
         {
             // Create the 'input' compilation that the generator will act on
             Compilation inputCompilation = CreateCompilation(source);
 
             // directly create an instance of the generator
             // (Note: in the compiler this is loaded from an assembly, and created via reflection at runtime)
-            T generator = new T();
+            T generator = new();
 #pragma warning disable CS0618 // Type or member is obsolete
-            if (_log is not null && generator is ILoggingSourceGenerator logging)
+            if (_log is not null && generator is ILoggingAnalyzer logging)
             {
                 logging.Log += s => Log(s);
             }
