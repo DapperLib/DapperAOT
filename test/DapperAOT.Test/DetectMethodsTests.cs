@@ -24,8 +24,8 @@ class Foo {
     public partial int ShouldIgnoreThis_NoAttribute();
 
     [Command]
-    public partial int NeedToExcludeThisLater();
-    public partial int NeedToExcludeThisLater() => 42;
+    public partial int ShouldIgnoreThis_HasImplementation();
+    public partial int ShouldIgnoreThis_HasImplementation() => 42;
 }
 ");
             Assert.Empty(result.Diagnostics);

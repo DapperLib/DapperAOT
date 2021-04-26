@@ -58,24 +58,26 @@ namespace DapperAOT.CodeAnalysis
         {
             if (context.SyntaxReceiver is not CommandSyntaxReceiver rec || rec.IsEmpty) return;
             var sb = new StringBuilder();
-            foreach (var method in rec)
+            foreach (var syntaxNode in rec)
             {
                 try
                 {
-                    var symbol = context.Compilation.GetSemanticModel(method.SyntaxTree).GetDeclaredSymbol(method);
-                    if (symbol is null) continue; // couldn't find it!
+                    if (context.Compilation.GetSemanticModel(syntaxNode.SyntaxTree).GetDeclaredSymbol(syntaxNode) is not IMethodSymbol method)
+                        continue; // couldn't find it, or wasn't a method
 
-                    var ca = symbol.GetAttributes().SingleOrDefault(x => IsCommandAttribute(x.AttributeClass));
+                    if (method.PartialImplementationPart is not null) continue; // already has an implementation
+
+                    var ca = method.GetAttributes().SingleOrDefault(x => IsCommandAttribute(x.AttributeClass));
                     if (ca is null) continue; // lacking [Command]
 
-                    Log?.Invoke($"Detected candidate: '{symbol.Name}'");
-                    sb.Append("// ").Append(symbol.Name).AppendLine();
+                    Log?.Invoke($"Detected candidate: '{method.Name}'");
+                    sb.Append("// ").Append(method.Name).AppendLine();
                 }
                 catch (Exception ex)
                 {
-                    Log?.Invoke($"Error processing '{method.Identifier}': '{ex.Message}'");
+                    Log?.Invoke($"Error processing '{syntaxNode.Identifier}': '{ex.Message}'");
                     // TODO: declare a formal diagnostic for this
-                    var err = Diagnostic.Create("DAP001", "Dapper", ex.Message, DiagnosticSeverity.Warning, DiagnosticSeverity.Warning, true, 4, location: method.GetLocation());
+                    var err = Diagnostic.Create("DAP001", "Dapper", ex.Message, DiagnosticSeverity.Warning, DiagnosticSeverity.Warning, true, 4, location: syntaxNode.GetLocation());
                     context.ReportDiagnostic(err);
                 }
             }
