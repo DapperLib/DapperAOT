@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 
 namespace DapperAOT.CodeAnalysis
@@ -97,9 +98,6 @@ namespace DapperAOT.CodeAnalysis
                 context.AddSource("DapperAOT.generated.cs", generated);
             }   
 
-            static bool IsCommandAttribute(INamedTypeSymbol type)
-                => type?.Name == "CommandAttribute" && type.ContainingNamespace?.Name == "Dapper";
-
             static string GetNamespace(INamedTypeSymbol? type)
             {
                 static bool IsRoot([NotNullWhen(false)] INamespaceSymbol? ns)
@@ -124,19 +122,39 @@ namespace DapperAOT.CodeAnalysis
             }
             static string GetTypeName(INamedTypeSymbol? type)
             {
-                var parent = type?.ContainingType;
-                if (parent is null) return type?.Name ?? "";
+                if (type is null) return "";
+                var parent = type.ContainingType;
+                if (parent is null && !IsGeneric(type)) return type.Name ?? "";
                 var sb = new StringBuilder();
-                WriteAncestry(parent, sb);
-                sb.Append(type?.Name);
+                WriteAncestry(type, sb, false);
                 return sb.ToString();
 
-                static void WriteAncestry(INamedTypeSymbol? parent, StringBuilder sb)
+                static bool IsGeneric(INamedTypeSymbol type)
+                    => type.IsGenericType && !type.TypeArguments.IsDefaultOrEmpty;
+
+                static void WriteType(INamedTypeSymbol type, StringBuilder sb)
                 {
-                    if (parent is not null)
+                    sb.Append(type.Name);
+                    if (IsGeneric(type))
                     {
-                        WriteAncestry(parent.ContainingType, sb);
-                        sb.Append(parent.Name).Append('.');
+                        sb.Append('<');
+                        bool first = true;
+                        foreach (var t in type.TypeArguments)
+                        {
+                            if (!first) sb.Append(", ");
+                            first = false;
+                            sb.Append(t.Name);
+                        }
+                        sb.Append('>');
+                    }
+                }
+                static void WriteAncestry(INamedTypeSymbol? type, StringBuilder sb, bool withSuffix)
+                {
+                    if (type is not null)
+                    {
+                        WriteAncestry(type.ContainingType, sb, true);
+                        WriteType(type, sb);
+                        if (withSuffix) sb.Append('.');
                     }
                 }
             }
@@ -211,6 +229,14 @@ namespace DapperAOT.CodeAnalysis
 
         private void WriteMethod(IMethodSymbol method, StringBuilder sb, int indent)
         {
+            var attribs = method.GetAttributes();
+            var text = TryGetCommandText(attribs);
+            if (text is null)
+            {
+                Log?.Invoke($"No command-text resolved for '{method.Name}'");
+                return;
+            }
+
             StringBuilder NewLine()
                 => sb.AppendLine().Append('\t', indent);
 
@@ -235,7 +261,7 @@ namespace DapperAOT.CodeAnalysis
             NewLine().Append('{');
             indent++;
 
-            NewLine().Append("// TODO");
+            NewLine().Append($"/* TODO; SQL is '{text}' */"); // this is just temp, not worried about escaping text
 
             indent--;
             NewLine().Append('}');
@@ -244,5 +270,73 @@ namespace DapperAOT.CodeAnalysis
 
         void ISourceGenerator.Initialize(GeneratorInitializationContext context)
             => context.RegisterForSyntaxNotifications(static () => new CommandSyntaxReceiver());
+
+        string? TryGetCommandText(ImmutableArray<AttributeData> attributes)
+        {
+            foreach (var attrib in attributes)
+            {
+                if (IsCommandAttribute(attrib.AttributeClass))
+                {
+                    if (TryGetAttributeValue<string>(attrib, "CommandText", out var commandText))
+                        return commandText;
+
+                    break; // only expect one of these, so: give up
+                }
+            }
+            return default;
+        }
+
+        internal bool TryGetAttributeValue<T>(AttributeData? attrib, string name, [NotNullWhen(true)] out T? value)
+        {
+            if (attrib is not null)
+            {
+                Log?.Invoke($"Looking for {name} on {attrib.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}");
+                Log?.Invoke($"Attribute has {attrib.NamedArguments.Length} named arguments, {attrib.ConstructorArguments.Length} args for {attrib.AttributeConstructor?.Parameters.Length} .ctor parameters");
+
+                // check named values first, since they take precedence semantically
+                foreach (var na in attrib.NamedArguments)
+                {
+                    if (string.Equals(na.Key, name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (na.Value.Value is T typedNamedArgValue)
+                        {
+                            value = typedNamedArgValue;
+                            return true;
+                        }
+                        break;
+                    }
+                }
+
+
+                // check parameter values second
+                var ctor = attrib.AttributeConstructor;
+                var index = FindParameterIndex(ctor, "CommandText");
+                if (index >= 0 && index < attrib.ConstructorArguments.Length && attrib.ConstructorArguments[index].Value is T typedCtorValue)
+                {
+                    value = typedCtorValue;
+                    return true;
+                }
+
+                static int FindParameterIndex(IMethodSymbol? method, string name)
+                {
+                    if (method is not null)
+                    {
+                        int index = 0;
+                        foreach (var p in method.Parameters)
+                        {
+                            if (string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
+                                return index;
+                            index++;
+                        }
+                    }
+                    return -1;
+                }
+            }
+            value = default;
+            return false;
+        }
+
+        internal static bool IsCommandAttribute(INamedTypeSymbol? type)
+            => type?.Name == "CommandAttribute" && type.ContainingNamespace?.Name == "Dapper";
     }
 }

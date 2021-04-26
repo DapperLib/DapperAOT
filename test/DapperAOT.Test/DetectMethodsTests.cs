@@ -31,7 +31,7 @@ class Foo {
 
 namespace X.Y.Z
 {
-    partial class A
+    partial class A<TRandom>
     {
         partial class B
         {
@@ -42,7 +42,7 @@ namespace X.Y.Z
 }
 namespace X.Y.Z
 {
-    partial class A
+    partial class A<TRandom>
     {
         partial class B
         {
