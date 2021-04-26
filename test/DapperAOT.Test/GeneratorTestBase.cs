@@ -3,7 +3,9 @@ using DapperAOT.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
+using System;
 using System.Collections.Immutable;
+using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Xunit.Abstractions;
@@ -44,6 +46,21 @@ namespace DapperAOT.Test
             }
 #pragma warning restore CS0618 // Type or member is obsolete
 
+            if (_log is not null)
+            {
+                foreach (var tree in inputCompilation.SyntaxTrees)
+                {
+                    var d = inputCompilation.GetSemanticModel(tree).GetDiagnostics();
+                    if (!d.IsDefaultOrEmpty)
+                    {
+                        foreach (var err in d)
+                        {
+                            Log(err.ToString());
+                        }
+                    }
+                }
+            }
+
             // Create the driver that will control the generation, passing in our generator
             GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
 
@@ -61,6 +78,8 @@ namespace DapperAOT.Test
                syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source) },
                references: new[] {
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
+                   MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
+                   MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(CommandAttribute).Assembly.Location)
                },
                options: new CSharpCompilationOptions(OutputKind.ConsoleApplication));

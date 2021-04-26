@@ -17,16 +17,16 @@ namespace DapperAOT.Test
             var result = Execute<CommandGenerator>(@"
 using Dapper;
 using System.Data;
-class Foo {
-    partial void ShouldIgnoreThis_NoAccessibility(DbConnection connection, string region);
+partial class Foo {
+    partial void ShouldIgnoreThis_NoAccessibility(string region);
     [Command(""select * from Customers where Region = @region"")]
     public partial int ShouldDetectThis(DbConnection connection, string region);
 
-    public partial int ShouldIgnoreThis_NoAttribute(DbConnection connection, string region);
+    public partial int ShouldIgnoreThis_NoAttribute(string region);
 
     [Command]
-    public partial int ShouldIgnoreThis_HasImplementation(DbConnection connection, string region);
-    public partial int ShouldIgnoreThis_HasImplementation(DbConnection connection, string region) => 42;
+    public partial int ShouldIgnoreThis_HasImplementation(string region);
+    public partial int ShouldIgnoreThis_HasImplementation(string region) => 42;
 }
 
 namespace X.Y.Z
@@ -36,7 +36,7 @@ namespace X.Y.Z
         partial class B
         {
             [Command(""select * from Customers where Region = @region"")]
-            public partial int ShouldDetectThisInB(DbConnection connection, string region);
+            public partial int ShouldDetectThisInB(string region);
         }
     }
 }
@@ -47,7 +47,7 @@ namespace X.Y.Z
         partial class B
         {
            [Command(""select * from Customers where Region = @region"")]
-            public partial int ShouldAlsoDetectThisInB(DbConnection connection, string region);
+            public partial int ShouldAlsoDetectThisInB(string region);
         }
     }
 }
