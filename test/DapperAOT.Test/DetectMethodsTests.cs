@@ -17,10 +17,11 @@ namespace DapperAOT.Test
             var result = Execute<CommandGenerator>(@"
 using Dapper;
 using System.Data;
+using System.Data.Common;
 partial class Foo {
     partial void ShouldIgnoreThis_NoAccessibility(string region);
-    [Command(""select * from Customers where Region = @region"")]
-    public partial int ShouldDetectThis(DbConnection connection, string region);
+    [Command(""select * from Customers where Region = @region"", CommandType = CommandType.Text)]
+    public partial int? ShouldDetectThis(DbConnection connection, string region);
 
     public partial int ShouldIgnoreThis_NoAttribute(string region);
 

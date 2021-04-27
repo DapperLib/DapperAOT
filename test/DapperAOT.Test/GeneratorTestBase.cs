@@ -5,8 +5,10 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Immutable;
+using System.ComponentModel;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Reflection;
 using Xunit.Abstractions;
 
@@ -46,16 +48,25 @@ namespace DapperAOT.Test
             }
 #pragma warning restore CS0618 // Type or member is obsolete
 
-            if (_log is not null)
+            ImmutableArray<Diagnostic> diagnostics;
+            if (_log is not null) // useful for finding problems in the input
             {
                 foreach (var tree in inputCompilation.SyntaxTrees)
                 {
-                    var d = inputCompilation.GetSemanticModel(tree).GetDiagnostics();
-                    if (!d.IsDefaultOrEmpty)
+                    diagnostics = inputCompilation.GetSemanticModel(tree).GetDiagnostics();
+                    if (!diagnostics.IsDefaultOrEmpty)
                     {
-                        foreach (var err in d)
+                        int count = diagnostics.Count(d => d.Id != "CS8795");
+                        if (count > 0)
                         {
-                            Log(err.ToString());
+                            Log($"Input code has {count} diagnostics from '{tree.FilePath}':");
+                            foreach (var d in diagnostics)
+                            {
+                                if (d.Id != "CS8795") // partial without implementation; we know - that's what we're here to fix
+                                {
+                                    Log(d.ToString());
+                                }
+                            }
                         }
                     }
                 }
@@ -66,7 +77,33 @@ namespace DapperAOT.Test
 
             // Run the generation pass
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)
-            driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
+            driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out diagnostics);
+
+            if (_log is not null)
+            {
+                if (!diagnostics.IsDefaultOrEmpty)
+                {
+                    Log($"Generator produced {diagnostics.Length} diagnostics:");
+                    foreach (var d in diagnostics)
+                    {
+                        Log(d.ToString());
+                    }
+                }
+
+                foreach (var tree in outputCompilation.SyntaxTrees)
+                {
+                    var tmp = outputCompilation.GetSemanticModel(tree).GetDiagnostics();
+                    if (!tmp.IsDefaultOrEmpty)
+                    {
+                        Log($"Output code has {tmp.Length} diagnostics from '{tree.FilePath}':");
+                        foreach (var d in tmp)
+                        {
+                            Log(d.ToString());
+                        }
+                    }
+                }
+
+            }
 
             // Or we can look at the results directly:
             GeneratorDriverRunResult runResult = driver.GetRunResult();
@@ -75,11 +112,12 @@ namespace DapperAOT.Test
         }
         protected static Compilation CreateCompilation(string source)
            => CSharpCompilation.Create("compilation",
-               syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source) },
+               syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source).WithFilePath("input.cs") },
                references: new[] {
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
                    MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
                    MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(Component).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(CommandAttribute).Assembly.Location)
                },
                options: new CSharpCompilationOptions(OutputKind.ConsoleApplication));

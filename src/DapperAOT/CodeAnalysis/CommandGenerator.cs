@@ -1,13 +1,15 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using DapperAOT.Internal;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Text;
+using System.Threading;
 
 namespace DapperAOT.CodeAnalysis
 {
@@ -165,20 +167,16 @@ namespace DapperAOT.CodeAnalysis
         private string Generate(List<(string Namespace, string TypeName, IMethodSymbol Method)> candidates)
         {
 
-            var sb = new StringBuilder();
-            int indent = 0;
-            StringBuilder NewLine()
-                => sb.AppendLine().Append('\t', indent);
-
+            var sb = CodeWriter.Create().Append("#nullable enable").NewLine();
+            
             foreach (var nsGrp in candidates.GroupBy(x => x.Namespace))
             {
+                var materializers = new Dictionary<ITypeSymbol, string>();
                 Log?.Invoke($"Namespace '{nsGrp.Key}' has {nsGrp.Count()} candidate(s) in {nsGrp.Select(x => x.TypeName).Distinct().Count()} type(s)");
 
                 if (!string.IsNullOrWhiteSpace(nsGrp.Key))
                 {
-                    NewLine().Append("namespace ").Append(nsGrp.Key);
-                    NewLine().Append('{');
-                    indent++;
+                    sb.NewLine().Append("namespace ").Append(nsGrp.Key).Indent();
                 }
 
                 foreach (var typeGrp in nsGrp.GroupBy(x => x.TypeName))
@@ -188,59 +186,95 @@ namespace DapperAOT.CodeAnalysis
                     int ix;
                     while ((ix = span.IndexOf('.')) > 0)
                     {
-                        NewLine().Append("partial class ").Append(span.Slice(0, ix));
-                        NewLine().Append('{');
-                        indent++;
+                        sb.NewLine().Append("partial class ").Append(span.Slice(0, ix)).Indent();
                         typeCount++;
                         span = span.Slice(ix + 1);
                     }
-                    NewLine().Append("partial class ").Append(span);
-                    NewLine().Append('{');
-                    indent++;
+                    sb.NewLine().Append("partial class ").Append(span).Indent();
                     typeCount++;
 
                     bool firstMethod = true;
                     foreach (var candidate in typeGrp)
                     {
-                        if (!firstMethod)
-                        {
-                            NewLine();
-                        }
+                        if (!firstMethod) sb.NewLine();
                         firstMethod = false;
-                        WriteMethod(candidate.Method, sb, indent);
+                        WriteMethod(candidate.Method, sb, materializers);
                     }
 
                     while (typeCount > 0)
                     {
-                        indent--;
+                        sb.Outdent();
                         typeCount--;
-                        NewLine().Append('}');
                     }
                 }
 
                 if (!string.IsNullOrWhiteSpace(nsGrp.Key))
                 {
-                    indent--;
-                    NewLine().Append('}');
+                    sb.Outdent();
                 }
             }
             return sb.ToString();
         }
 
-        private void WriteMethod(IMethodSymbol method, StringBuilder sb, int indent)
+        private void WriteMethod(IMethodSymbol method, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers)
         {
             var attribs = method.GetAttributes();
-            var text = TryGetCommandText(attribs);
+            var text = TryGetCommandText(attribs, out var commandType);
             if (text is null)
             {
                 Log?.Invoke($"No command-text resolved for '{method.Name}'");
                 return;
             }
 
-            StringBuilder NewLine()
-                => sb.AppendLine().Append('\t', indent);
+            string? connection = null, transaction = null;
+            ITypeSymbol? connectionType = null, transactionType = null;
+            foreach (var p in method.Parameters)
+            {
+                if (p.Type.IsReferenceType)
+                {
+                    if (p.Type.IsExact("System", "Data", "IDbConnection") || p.Type.IsKindOf("System", "Data", "Common", "DbConnection"))
+                    {
+                        if (connection is not null)
+                        {
+                            Log?.Invoke($"Multiple connection accessors found for '{method.Name}'");
+                            return;
+                        }
+                        connection = p.Name;
+                        connectionType = p.Type;
+                    }
+                    if (p.Type.IsExact("System", "Data", "IDbTransaction") || p.Type.IsKindOf("System", "Data", "Common", "DbTransaction"))
+                    {
+                        if (transaction is not null)
+                        {
+                            Log?.Invoke($"Multiple transaction accessors found for '{method.Name}'");
+                            return;
+                        }
+                        transaction = p.Name;
+                        transactionType = p.Type;
+                    }
+                }
+            }
+            if (connection is null && transaction is not null)
+            {
+                connection = transaction + "." + nameof(IDbTransaction.Connection);
+                connectionType = ((IPropertySymbol)transactionType!.GetMembers(nameof(IDbTransaction.Connection)).Single()).Type;
+            }
 
-            NewLine().Append(method.DeclaredAccessibility switch
+            if (connection is not null)
+            {
+                WriteMethodViaAdoDotNet(method, sb, materializers, connection, connectionType!, transaction, transactionType!, text, commandType);
+            }
+            // TODO: other APIs here
+            else
+            {
+                Log?.Invoke($"No connection accessors found for '{method.Name}'");
+                return;
+            }
+
+        }
+        void WriteMethodViaAdoDotNet(IMethodSymbol method, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string text, CommandType commandType)
+        {
+            sb.NewLine().Append(method.DeclaredAccessibility switch
             {
                 Accessibility.Public => "public",
                 Accessibility.Internal => "internal",
@@ -249,50 +283,107 @@ namespace DapperAOT.CodeAnalysis
                 Accessibility.Protected => "public",
                 Accessibility.ProtectedOrInternal => "protected internal",
                 _ => method.DeclaredAccessibility.ToString(), // expect this to cause an error, that's OK
-            }).Append(' ').Append(method.ReturnType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)).Append(' ').Append(method.Name).Append("(");
+            }).Append(" partial ").Append(method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append(
+                method.ReturnType.IsReferenceType && method.ReturnNullableAnnotation == NullableAnnotation.Annotated ? "? " : " ").Append(method.Name).Append("(");
             bool first = true;
+            Log?.Invoke(TypeMetadata.Get(method).ToString());
             foreach (var p in method.Parameters)
             {
                 if (!first) sb.Append(", ");
                 first = false;
-                sb.Append(p.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+                sb.Append(p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append(p.NullableAnnotation == NullableAnnotation.Annotated ? "? " : " ").Append(p.Name);
+
+                //Log?.Invoke($"{p.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} => {TypeMetadata.Get(p)}");
             }
             sb.Append(")");
-            NewLine().Append('{');
-            indent++;
+            sb.Indent();
 
-            NewLine().Append($"/* TODO; SQL is '{text}' */"); // this is just temp, not worried about escaping text
+            // variable declarations
+            const string LocalPrefix = "__dap__";
+            var cmdType = GetMethodReturnType(connectionType, nameof(IDbConnection.CreateCommand));
+            var readerType = GetMethodReturnType(cmdType, nameof(IDbCommand.ExecuteReader));
+            sb.NewLine().Append(cmdType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append("? ").Append(LocalPrefix).Append("command = null;");
+            sb.NewLine().Append(readerType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append("? ").Append(LocalPrefix).Append("reader = null;");
+            sb.NewLine().Append("bool ").Append(LocalPrefix).Append("close = false;");
+            sb.NewLine().Append("int[]? ").Append(LocalPrefix).Append("fieldNumbers = null;");
+            sb.NewLine().Append("try");
+            sb.Indent();
+            // functional code
+            sb.NewLine().Append("throw new global::System.NotImplementedException();");
+            sb.Outdent();
+            sb.NewLine().Append("finally");
+            // cleanup code
+            sb.Indent();
+            sb.NewLine().Append("if (").Append(LocalPrefix).Append("fieldNumbers is not null) global::System.Buffers.ArrayPool<int>.Shared.Return(").Append(LocalPrefix).Append("fieldNumbers);");
+            sb.NewLine().Append(LocalPrefix).Append("reader?.Dispose();");
+            sb.NewLine().Append("if (").Append(LocalPrefix).Append("command is not null)");
+            sb.Indent();
+            sb.NewLine().Append(LocalPrefix).Append("command.Connection = default;");
+            sb.NewLine().Append(LocalPrefix).Append("command = global::System.Threading.Interlocked.Exchange(ref __dapper__Command_14142, ").Append(LocalPrefix).Append("command);");
+            sb.NewLine().Append(LocalPrefix).Append("command?.Dispose();");
+            sb.Outdent();
+            sb.NewLine().Append("if (").Append(LocalPrefix).Append("close) ").Append(connection).Append("?.Close();");
+            sb.Outdent();
 
-            indent--;
-            NewLine().Append('}');
-                
+            //sb.NewLine().Append($"/* TODO; SQL is '{text}' */"); // this is just temp, not worried about escaping text
+
+            sb.Outdent();
+
+            static ITypeSymbol? GetMethodReturnType(ITypeSymbol? type, string name)
+            {
+                if (type is null) return null;
+                ITypeSymbol? known = null;
+                // if there are multiple with this name, we're fine - as long as the return type agrees
+                foreach (ISymbol member in type.GetMembers(name))
+                {
+                    if (member is IMethodSymbol method)
+                    {
+                        if (known is null)
+                        {
+                            known = method.ReturnType;
+                        }
+                        else if (!SymbolEqualityComparer.Default.Equals(known, method.ReturnType))
+                        {
+                            return null!;
+                        }
+                    }
+                }
+                return known;
+            }
         }
 
         void ISourceGenerator.Initialize(GeneratorInitializationContext context)
             => context.RegisterForSyntaxNotifications(static () => new CommandSyntaxReceiver());
 
-        string? TryGetCommandText(ImmutableArray<AttributeData> attributes)
+        static string? TryGetCommandText(ImmutableArray<AttributeData> attributes, out CommandType commandType)
         {
             foreach (var attrib in attributes)
             {
                 if (IsCommandAttribute(attrib.AttributeClass))
                 {
                     if (TryGetAttributeValue<string>(attrib, "CommandText", out var commandText))
+                    {
+                        if (TryGetAttributeValue<int>(attrib, "CommandType", out var rawValue))
+                        {
+                            commandType = (CommandType)rawValue;
+                        }
+                        else
+                        {
+                            commandType = commandText.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure;
+                        }
                         return commandText;
-
+                    }
                     break; // only expect one of these, so: give up
                 }
             }
+            commandType = default;
             return default;
         }
 
-        internal bool TryGetAttributeValue<T>(AttributeData? attrib, string name, [NotNullWhen(true)] out T? value)
+        internal static bool TryGetAttributeValue<T>(AttributeData? attrib, string name, [NotNullWhen(true)] out T? value)
         {
             if (attrib is not null)
             {
-                Log?.Invoke($"Looking for {name} on {attrib.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}");
-                Log?.Invoke($"Attribute has {attrib.NamedArguments.Length} named arguments, {attrib.ConstructorArguments.Length} args for {attrib.AttributeConstructor?.Parameters.Length} .ctor parameters");
-
                 // check named values first, since they take precedence semantically
                 foreach (var na in attrib.NamedArguments)
                 {
@@ -336,7 +427,7 @@ namespace DapperAOT.CodeAnalysis
             return false;
         }
 
-        internal static bool IsCommandAttribute(INamedTypeSymbol? type)
-            => type?.Name == "CommandAttribute" && type.ContainingNamespace?.Name == "Dapper";
+        internal static bool IsCommandAttribute(ITypeSymbol? type)
+            => type.IsExact("Dapper", "CommandAttribute");
     }
 }
