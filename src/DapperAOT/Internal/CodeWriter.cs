@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Text;
 using System.Threading;
 
@@ -22,6 +23,12 @@ namespace DapperAOT.Internal
             sb.Append(value);
             return this;
         }
+
+        public CodeWriter AppendVerbatimLiteral(string? value)
+        {
+            if (value is null) return Append("null");
+            return Append("@\"").Append(value.Replace("\"", "\"\"")).Append("\"");
+        }
         public CodeWriter Append(char value)
         {
             sb.Append(value);
@@ -33,11 +40,18 @@ namespace DapperAOT.Internal
             return this;
         }
 
+        internal CodeWriter Append(int value)
+        {
+            sb.Append(value.ToString(CultureInfo.InvariantCulture));
+            return this;
+        }
+
         public CodeWriter NewLine()
         {
             sb.AppendLine().Append('\t', _indent);
             return this;
         }
+
         public CodeWriter Indent(bool withScope = true)
         {
             if (withScope) NewLine().Append("{");
@@ -50,6 +64,22 @@ namespace DapperAOT.Internal
             if (withScope) NewLine().Append("}");
             return this;
         }
+
+        public CodeWriter DisableWarning(string warning)
+        {
+            sb.AppendLine().Append("#pragma warning disable ").Append(warning);
+            return this;
+        }
+
+        public CodeWriter RestoreWarning(string warning)
+        {
+            sb.AppendLine().Append("#pragma warning restore ").Append(warning);
+            return this;
+        }
+        public CodeWriter DisableObsolete()
+            => DisableWarning("CS0618");
+        public CodeWriter EnableObsolete()
+            => RestoreWarning("CS0618");
 
 
         [Obsolete("You probably mean " + nameof(ToStringRecycle))]

@@ -3,12 +3,15 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
+using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace DapperAOT.CodeAnalysis
@@ -98,7 +101,7 @@ namespace DapperAOT.CodeAnalysis
                 });
                 var generated = Generate(candidates);
                 context.AddSource("DapperAOT.generated.cs", generated);
-            }   
+            }
 
             static string GetNamespace(INamedTypeSymbol? type)
             {
@@ -168,7 +171,7 @@ namespace DapperAOT.CodeAnalysis
         {
 
             var sb = CodeWriter.Create().Append("#nullable enable").NewLine();
-            
+
             foreach (var nsGrp in candidates.GroupBy(x => x.Namespace))
             {
                 var materializers = new Dictionary<ITypeSymbol, string>();
@@ -230,10 +233,11 @@ namespace DapperAOT.CodeAnalysis
             ITypeSymbol? connectionType = null, transactionType = null;
             foreach (var p in method.Parameters)
             {
-                if (p.Type.IsReferenceType)
+                var type = GetHandledType(p.Type);
+                switch (type)
                 {
-                    if (p.Type.IsExact("System", "Data", "IDbConnection") || p.Type.IsKindOf("System", "Data", "Common", "DbConnection"))
-                    {
+                    case HandledType.Connection:
+
                         if (connection is not null)
                         {
                             Log?.Invoke($"Multiple connection accessors found for '{method.Name}'");
@@ -241,9 +245,8 @@ namespace DapperAOT.CodeAnalysis
                         }
                         connection = p.Name;
                         connectionType = p.Type;
-                    }
-                    if (p.Type.IsExact("System", "Data", "IDbTransaction") || p.Type.IsKindOf("System", "Data", "Common", "DbTransaction"))
-                    {
+                        break;
+                    case HandledType.Transaction:
                         if (transaction is not null)
                         {
                             Log?.Invoke($"Multiple transaction accessors found for '{method.Name}'");
@@ -251,7 +254,7 @@ namespace DapperAOT.CodeAnalysis
                         }
                         transaction = p.Name;
                         transactionType = p.Type;
-                    }
+                        break;
                 }
             }
             if (connection is null && transaction is not null)
@@ -270,10 +273,107 @@ namespace DapperAOT.CodeAnalysis
                 Log?.Invoke($"No connection accessors found for '{method.Name}'");
                 return;
             }
-
         }
-        void WriteMethodViaAdoDotNet(IMethodSymbol method, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string text, CommandType commandType)
+
+        private enum HandledType
         {
+            None,
+            Connection,
+            Transaction,
+        }
+        static HandledType GetHandledType(ITypeSymbol type)
+        {
+            if (type.IsReferenceType)
+            {
+                if (type.IsExact("System", "Data", "IDbConnection") || type.IsKindOf("System", "Data", "Common", "DbConnection"))
+                    return HandledType.Connection;
+                if (type.IsExact("System", "Data", "IDbTransaction") || type.IsKindOf("System", "Data", "Common", "DbTransaction"))
+                    return HandledType.Transaction;
+            }
+            return HandledType.None;
+        }
+
+        static string? GetLocation(IMethodSymbol method, out string? identifier)
+        {
+            var locations = method.Locations;
+            if (!locations.IsDefaultOrEmpty)
+            {
+                foreach (var loc in locations)
+                {
+                    if (loc.IsInSource)
+                    {
+                        var sp = loc.GetLineSpan();
+                        var line = sp.StartLinePosition.Line.ToString(CultureInfo.InvariantCulture);
+                        identifier = Regex.Replace(sp.Path + "_" + method.Name + "_" + line, @"[^a-zA-Z0-9_]", "_");
+                        return method.ContainingType.Name + "." + method.Name + ", " + sp.Path + " #" + line;
+                    }
+                }
+            }
+            identifier = null;
+            return null;
+        }
+
+        static DbType? GetDbType(IParameterSymbol parameter, out int? size)
+        {
+            size = default;
+            var type = parameter.Type;
+            DbType? dbType = type.SpecialType switch
+            {
+                SpecialType.System_UInt16 => DbType.UInt16,
+                SpecialType.System_Int16 => DbType.Int16,
+                SpecialType.System_Int32 => DbType.Int32,
+                SpecialType.System_UInt32 => DbType.UInt32,
+                SpecialType.System_Int64 => DbType.Int64,
+                SpecialType.System_UInt64 => DbType.UInt64,
+                SpecialType.System_Single => DbType.Single,
+                SpecialType.System_Double => DbType.Double,
+                SpecialType.System_Boolean => DbType.Boolean,
+                SpecialType.System_Byte => DbType.Byte,
+                SpecialType.System_SByte => DbType.SByte,
+                SpecialType.System_DateTime => DbType.DateTime,
+                SpecialType.System_String => DbType.String,
+                _ => default(DbType?),
+            };
+            if (dbType is null)
+            {
+                if (type.IsExact("System", "DateTimeOffset"))
+                    dbType = DbType.DateTimeOffset;
+                else if (type.IsExact("System", "Guid"))
+                    dbType = DbType.Guid;
+            }
+
+            if (dbType == DbType.String)
+            {
+                size = -1;
+            }
+            return default;
+        }
+        void WriteMethodViaAdoDotNet(IMethodSymbol method, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType)
+        {
+            const string LocalPrefix = "__dapper__";
+
+            var cmdType = GetMethodReturnType(connectionType, nameof(IDbConnection.CreateCommand));
+            var readerType = GetMethodReturnType(cmdType, nameof(IDbCommand.ExecuteReader));
+
+            if (cmdType is null)
+            {
+                Log?.Invoke($"Unable to resolve command-type for '{method.Name}'");
+                return;
+            }
+            if (readerType is null)
+            {
+                Log?.Invoke($"Unable to resolve reader-type for '{method.Name}'");
+                return;
+            }
+
+            var location = GetLocation(method, out string? identifier);
+            var commandField = identifier is null ? null : ("s_" + LocalPrefix + "command_" + identifier);
+
+            if (commandField is not null)
+            {
+                sb.NewLine().NewLine().Append("private static ").Append(cmdType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append("? ").Append(commandField).Append(";");
+            }
+
             sb.NewLine().Append(method.DeclaredAccessibility switch
             {
                 Accessibility.Public => "public",
@@ -299,16 +399,82 @@ namespace DapperAOT.CodeAnalysis
             sb.Indent();
 
             // variable declarations
-            const string LocalPrefix = "__dap__";
-            var cmdType = GetMethodReturnType(connectionType, nameof(IDbConnection.CreateCommand));
-            var readerType = GetMethodReturnType(cmdType, nameof(IDbCommand.ExecuteReader));
-            sb.NewLine().Append(cmdType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append("? ").Append(LocalPrefix).Append("command = null;");
+            sb.NewLine().Append(cmdType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append("? ").Append(LocalPrefix).Append("command = null;");
             sb.NewLine().Append(readerType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append("? ").Append(LocalPrefix).Append("reader = null;");
             sb.NewLine().Append("bool ").Append(LocalPrefix).Append("close = false;");
             sb.NewLine().Append("int[]? ").Append(LocalPrefix).Append("fieldNumbers = null;");
             sb.NewLine().Append("try");
             sb.Indent();
             // functional code
+            sb.NewLine().Append("if (").Append(connection).Append(".State == global::System.Data.ConnectionState.Closed)").Indent();
+            sb.NewLine().Append(connection).Append(".Open();");
+            sb.NewLine().Append(LocalPrefix).Append("close = true;").Outdent();
+
+            if (commandField is not null)
+            {
+                sb.NewLine().Append("if ((").Append(LocalPrefix).Append("command = global::System.Threading.Interlocked.Exchange(ref ").Append(commandField).Append(", null)) is null)");
+            }
+
+            // normally this is for the "if", but the extra scope is useful either way
+            sb.Indent();
+            sb.NewLine().Append(LocalPrefix).Append("command = ").Append(connection).Append(".CreateCommand();");
+            sb.NewLine().Append(LocalPrefix).Append("command.CommandType = global::System.Data.CommandType.").Append(commandType.ToString()).Append(";");
+
+            // check for special properties, bound by signature
+            {
+                var props = cmdType.GetMembers("BindByName");
+                if (props.Length == 1 && props[1] is IPropertySymbol prop && prop.Type.SpecialType == SpecialType.System_Boolean)
+                {
+                    sb.NewLine().Append(LocalPrefix).Append("command.BindByName = true;");
+                }
+            }
+            {
+                var props = cmdType.GetMembers("InitialLONGFetchSize");
+                if (props.Length == 1 && props[1] is IPropertySymbol prop && prop.Type.SpecialType == SpecialType.System_Int32)
+                {
+                    sb.NewLine().Append(LocalPrefix).Append("command.InitialLONGFetchSize = -1;");
+                }
+            }
+
+            if (location is not null)
+            {
+                commandText = "/* " + location + " */ " + commandText;
+            }
+
+            sb.NewLine().Append(LocalPrefix).Append("command.CommandText = ").AppendVerbatimLiteral(commandText).Append(";");
+            int index = 0;
+            foreach (var p in method.Parameters)
+            {
+                if (GetHandledType(p.Type) != HandledType.None) continue;
+                sb.NewLine().NewLine();
+                if (index == 0) sb.Append("var ");
+                sb.Append(LocalPrefix).Append("p = ").Append(LocalPrefix).Append("command").Append(".CreateParameter();");
+                sb.NewLine().Append(LocalPrefix).Append("p.ParameterName = ").AppendVerbatimLiteral(p.Name).Append(";");
+                var type = GetDbType(p, out var size);
+                if (type is not null)
+                {
+                    sb.NewLine().Append(LocalPrefix).Append("p.DbType = global::System.Data.DbType").Append(type.ToString()).Append(";");
+                }
+                if (size is not null)
+                {
+                    sb.NewLine().Append(LocalPrefix).Append("p.Size = ").Append(size.GetValueOrDefault()).Append(";");
+                }
+
+                sb.NewLine().Append(LocalPrefix).Append("command.Parameters.Add(").Append(LocalPrefix).Append("p);");
+            }
+            sb.Outdent();
+            if (commandField is not null)
+            {
+                sb.NewLine().Append("else").Indent().NewLine().Append(LocalPrefix).Append("command.Connection = ").Append(connection).Append(";").Outdent();
+            }
+
+            index = 0;
+            foreach (var p in method.Parameters)
+            {
+                if (GetHandledType(p.Type) != HandledType.None) continue;
+                sb.DisableObsolete().NewLine().Append(LocalPrefix).Append("command.Parameters[").Append(index++).Append("].Value = global::Dapper.Internal.InternalUtilities.AsValue(").Append(p.Name).Append(");").EnableObsolete();
+            }
+
             sb.NewLine().Append("throw new global::System.NotImplementedException();");
             sb.Outdent();
             sb.NewLine().Append("finally");
@@ -318,8 +484,11 @@ namespace DapperAOT.CodeAnalysis
             sb.NewLine().Append(LocalPrefix).Append("reader?.Dispose();");
             sb.NewLine().Append("if (").Append(LocalPrefix).Append("command is not null)");
             sb.Indent();
-            sb.NewLine().Append(LocalPrefix).Append("command.Connection = default;");
-            sb.NewLine().Append(LocalPrefix).Append("command = global::System.Threading.Interlocked.Exchange(ref __dapper__Command_14142, ").Append(LocalPrefix).Append("command);");
+            if (commandField is not null)
+            {
+                sb.NewLine().Append(LocalPrefix).Append("command.Connection = default;");
+                sb.NewLine().Append(LocalPrefix).Append("command = global::System.Threading.Interlocked.Exchange(ref ").Append(commandField).Append(", ").Append(LocalPrefix).Append("command);");
+            }
             sb.NewLine().Append(LocalPrefix).Append("command?.Dispose();");
             sb.Outdent();
             sb.NewLine().Append("if (").Append(LocalPrefix).Append("close) ").Append(connection).Append("?.Close();");
