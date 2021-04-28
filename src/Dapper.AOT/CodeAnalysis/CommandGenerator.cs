@@ -486,8 +486,15 @@ namespace Dapper.CodeAnalysis
             // Log?.Invoke(TypeMetadata.Get(method).ToString());
             foreach (var p in method.Parameters)
             {
-                if (!first) sb.Append(", ");
-                first = false;
+                if (first)
+                {
+                    if (method.IsExtensionMethod) sb.Append("this ");
+                    first = false;
+                }
+                else
+                {
+                    sb.Append(", ");
+                }
                 sb.Append(p.Type).Append(p.NullableAnnotation == NullableAnnotation.Annotated ? "? " : " ").Append(p.Name);
 
                 //Log?.Invoke($"{p.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} => {TypeMetadata.Get(p)}");
