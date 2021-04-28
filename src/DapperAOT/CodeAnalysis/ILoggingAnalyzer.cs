@@ -1,5 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
-using System;
+﻿using System;
 using System.ComponentModel;
 
 namespace DapperAOT.CodeAnalysis

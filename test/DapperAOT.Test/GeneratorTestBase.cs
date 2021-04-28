@@ -3,10 +3,10 @@ using DapperAOT.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
-using System;
 using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Data.Common;
+using System.Data.SqlClient;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
@@ -14,7 +14,7 @@ using Xunit.Abstractions;
 
 namespace DapperAOT.Test
 {
-    public abstract class GeneratorTestBase
+    public abstract partial class GeneratorTestBase
     {
         private readonly ITestOutputHelper? _log;
         protected GeneratorTestBase(ITestOutputHelper? log)
@@ -48,36 +48,14 @@ namespace DapperAOT.Test
             }
 #pragma warning restore CS0618 // Type or member is obsolete
 
-            ImmutableArray<Diagnostic> diagnostics;
-            if (_log is not null) // useful for finding problems in the input
-            {
-                foreach (var tree in inputCompilation.SyntaxTrees)
-                {
-                    diagnostics = inputCompilation.GetSemanticModel(tree).GetDiagnostics();
-                    if (!diagnostics.IsDefaultOrEmpty)
-                    {
-                        int count = diagnostics.Count(d => d.Id != "CS8795");
-                        if (count > 0)
-                        {
-                            Log($"Input code has {count} diagnostics from '{tree.FilePath}':");
-                            foreach (var d in diagnostics)
-                            {
-                                if (d.Id != "CS8795") // partial without implementation; we know - that's what we're here to fix
-                                {
-                                    Log(d.ToString());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
+            ShowDiagnostics("Input code", inputCompilation, "CS8795", "CS1701");
+            
             // Create the driver that will control the generation, passing in our generator
             GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
 
             // Run the generation pass
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)
-            driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out diagnostics);
+            driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
 
             if (_log is not null)
             {
@@ -90,19 +68,7 @@ namespace DapperAOT.Test
                     }
                 }
 
-                foreach (var tree in outputCompilation.SyntaxTrees)
-                {
-                    var tmp = outputCompilation.GetSemanticModel(tree).GetDiagnostics();
-                    if (!tmp.IsDefaultOrEmpty)
-                    {
-                        Log($"Output code has {tmp.Length} diagnostics from '{tree.FilePath}':");
-                        foreach (var d in tmp)
-                        {
-                            Log(d.ToString());
-                        }
-                    }
-                }
-
+                ShowDiagnostics("Output code", outputCompilation, "CS1701");
             }
 
             // Or we can look at the results directly:
@@ -110,6 +76,33 @@ namespace DapperAOT.Test
 
             return (outputCompilation, runResult, diagnostics);
         }
+
+        void ShowDiagnostics(string caption, Compilation compilation, params string[] ignore)
+        {
+            if (_log is not null) // useful for finding problems in the input
+            {
+                foreach (var tree in compilation.SyntaxTrees)
+                {
+                    var diagnostics = compilation.GetSemanticModel(tree).GetDiagnostics();
+                    if (!diagnostics.IsDefaultOrEmpty)
+                    {
+                        int count = diagnostics.Count(d => !ignore.Contains(d.Id));
+                        if (count > 0)
+                        {
+                            Log($"{caption} has {count} diagnostics from '{tree.FilePath}':");
+                            foreach (var d in diagnostics)
+                            {
+                                if (!ignore.Contains(d.Id)) // partial without implementation; we know - that's what we're here to fix
+                                {
+                                    Log(d.ToString());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         protected static Compilation CreateCompilation(string source)
            => CSharpCompilation.Create("compilation",
                syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source).WithFilePath("input.cs") },
@@ -117,8 +110,10 @@ namespace DapperAOT.Test
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
                    MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
                    MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(SqlConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Component).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(CommandAttribute).Assembly.Location)
+                   MetadataReference.CreateFromFile(typeof(CommandAttribute).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
                },
                options: new CSharpCompilationOptions(OutputKind.ConsoleApplication));
     }

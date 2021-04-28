@@ -17,6 +17,7 @@ namespace DapperAOT.Test
             var result = Execute<CommandGenerator>(@"
 using Dapper;
 using System.Data;
+using System.Data.SqlClient;
 using System.Data.Common;
 partial class Foo {
     partial void ShouldIgnoreThis_NoAccessibility(string region);
@@ -37,9 +38,10 @@ namespace X.Y.Z
         partial class B
         {
             [Command(""select * from Customers where Region = @region"")]
-            public partial int ShouldDetectThisInB(string region);
+            public partial Customer ShouldDetectThisInB(string region, SqlConnection c);
         }
     }
+    class Customer {}
 }
 namespace X.Y.Z
 {

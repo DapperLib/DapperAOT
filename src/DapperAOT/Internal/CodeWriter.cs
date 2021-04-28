@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis;
+using System;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -17,12 +18,16 @@ namespace DapperAOT.Internal
             _indent = 0;
             return this;
         }
-        private readonly StringBuilder sb = new StringBuilder();
+        private readonly StringBuilder sb = new();
         public CodeWriter Append(string? value)
         {
             sb.Append(value);
             return this;
         }
+
+        public CodeWriter Append(ITypeSymbol? value)
+            => Append(value?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+
 
         public CodeWriter AppendVerbatimLiteral(string? value)
         {
@@ -78,7 +83,7 @@ namespace DapperAOT.Internal
         }
         public CodeWriter DisableObsolete()
             => DisableWarning("CS0618");
-        public CodeWriter EnableObsolete()
+        public CodeWriter RestoreObsolete()
             => RestoreWarning("CS0618");
 
 
