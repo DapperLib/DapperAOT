@@ -668,8 +668,8 @@ namespace DapperAOT.CodeAnalysis
             }
 
             // check for special properties, bound by signature
-            bool needBBN = TrySetProperty(sb, cmdType, "BindByName", SpecialType.System_Boolean, target, "true");
-            bool needILFS = TrySetProperty(sb, cmdType, "InitialLONGFetchSize", SpecialType.System_Int32, target, "-1");
+            bool needBBN = !TrySetProperty(sb, cmdType, "BindByName", SpecialType.System_Boolean, target, "true");
+            bool needILFS = !TrySetProperty(sb, cmdType, "InitialLONGFetchSize", SpecialType.System_Int32, target, "-1");
 
             if ((needBBN | needILFS) && (cmdType.TypeKind == TypeKind.Interface || cmdType.IsAbstract))
             {
