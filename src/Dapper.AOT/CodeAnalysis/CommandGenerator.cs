@@ -615,7 +615,8 @@ namespace Dapper.CodeAnalysis
             {
                 if (GetHandledType(p.Type) != HandledType.None) continue;
                 sb.NewLine().NewLine();
-                if (index == 0) sb.Append("var p = ").Append("command").Append(".CreateParameter();");
+                if (index == 0) sb.Append("var ");
+                sb.Append("p = ").Append("command").Append(".CreateParameter();");
                 sb.NewLine().Append("p.ParameterName = ").AppendVerbatimLiteral(p.Name).Append(";")
                     .NewLine().Append("p.Direction = global::System.Data.ParameterDirection.Input;");
                 var type = GetDbType(p, out var size);

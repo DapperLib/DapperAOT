@@ -5,7 +5,7 @@
 		<SignAssembly>False</SignAssembly>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Dapper.AOT" Version="0.0.5" PrivateAssets="all" IncludeAssets="runtime;build;native;contentfiles;analyzers;buildtransitive" />
+		<PackageReference Include="Dapper.AOT" Version="0.0.6" PrivateAssets="all" IncludeAssets="runtime;build;native;contentfiles;analyzers;buildtransitive" />
 		<PackageReference Include="Dapper" Version="2.0.78" />
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="2.1.2" />
 		<PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
