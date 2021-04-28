@@ -50,6 +50,15 @@ Here:
 - we can think about a range of new features that previously would have been too complicated to insert into the middle of the IL
 - we even have the future flexibility to consider alternative APIs, such as [Woodstar](https://github.com/dotnet/datalab)
 
+Don't worry; we still intend to allow ad-hoc SQL usage when needed (flexible search, for example); this could just be (TBD):
+
+``` c#
+[Command]
+public static partial Customer GetCustomer(DbConnection connection, [Command] string sql, int id);
+```
+
+So we're still fixing the parameters formally, but the SQL can be scenario-specific and controlled by your code.
+
 ---
 
 Current status:
@@ -66,6 +75,7 @@ Todo:
 - better build-time configuration
 - better run-time configuration
 - transactions
+- ad-hoc SQL
 - ambient/implied access to connections
 - documentation and examples
 - CI, myget
