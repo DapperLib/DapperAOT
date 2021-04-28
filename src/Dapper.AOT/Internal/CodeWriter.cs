@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Text;
 using System.Threading;
 
-namespace DapperAOT.Internal
+namespace Dapper.Internal
 {
     internal sealed class CodeWriter
     {

@@ -1,4 +1,4 @@
-﻿using DapperAOT.Internal;
+﻿using Dapper.Internal;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -12,7 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace DapperAOT.CodeAnalysis
+namespace Dapper.CodeAnalysis
 {
     /// <summary>
     /// Parses the source for methods annotated with <c>Dapper.CommandAttribute</c>, generating an appropriate implementation.
@@ -100,7 +100,7 @@ namespace DapperAOT.CodeAnalysis
                 var generated = Generate(candidates, context);
                 if (!string.IsNullOrWhiteSpace(generated))
                 {
-                    context.AddSource("DapperAOT.generated.cs", generated);
+                    context.AddSource("Dapper.generated.cs", generated);
                 }
             }
 

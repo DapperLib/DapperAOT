@@ -1,5 +1,4 @@
-﻿using Dapper;
-using DapperAOT.CodeAnalysis;
+﻿using Dapper.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
@@ -14,7 +13,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Xunit.Abstractions;
 
-namespace DapperAOT.Test
+namespace Dapper.AOT.Test
 {
     public abstract partial class GeneratorTestBase
     {

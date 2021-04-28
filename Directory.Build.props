@@ -2,8 +2,11 @@
 	<PropertyGroup>
 		<SignAssembly>True</SignAssembly>
 		<DelaySign>False</DelaySign>
-		<AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)DapperAOT.snk</AssemblyOriginatorKeyFile>
+		<Description>Build time (AOT) tools for Dapper</Description>
+		<AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Dapper.AOT.snk</AssemblyOriginatorKeyFile>
 		<LangVersion>9</LangVersion>
 		<Nullable>enable</Nullable>
+		<RootNamespace>Dapper</RootNamespace>
+		<Version>0.0.1</Version>
 	</PropertyGroup>
 </Project>

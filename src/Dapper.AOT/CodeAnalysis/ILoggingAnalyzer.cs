@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 
-namespace DapperAOT.CodeAnalysis
+namespace Dapper.CodeAnalysis
 {
     /// <summary>
     /// Provides additional debug/test logging capabilities for source generators; not intended for public use - can change at any time.

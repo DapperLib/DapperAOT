@@ -3,7 +3,7 @@
 //using System.Collections.Concurrent;
 //using System.Diagnostics.CodeAnalysis;
 
-//namespace DapperAOT.Internal
+//namespace Dapper.Internal
 //{
 //    internal readonly struct TypeMetadata
 //    {

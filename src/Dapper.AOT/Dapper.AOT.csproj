@@ -4,7 +4,6 @@
 		<TargetFramework>netcoreapp3.1</TargetFramework>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
-		<Description>Build time tools for Dapper</Description>
 		<NoPackageAnalysis>true</NoPackageAnalysis>
 		<DevelopmentDependency>true</DevelopmentDependency>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -16,7 +15,7 @@
 
 		<None Include="$(OutputPath)/$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 
-		<!-- kinda hoping we can make this add a project reference to the consumer, but: we'll see -->
-		<!--<ProjectReference Include="..\Dapper.Core\Dapper.Core.csproj" />-->
+		<!-- kinda hoping we can make this add a project reference to the consumer, but: we'll see (the lib itself doesn't need it) -->
+		<ProjectReference Include="..\Dapper.Core\Dapper.Core.csproj" />
 	</ItemGroup>
 </Project>

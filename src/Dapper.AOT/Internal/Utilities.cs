@@ -2,7 +2,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace DapperAOT.Internal
+namespace Dapper.Internal
 {
     internal static class Utilities
     {

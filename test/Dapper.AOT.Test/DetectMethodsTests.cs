@@ -1,8 +1,8 @@
-﻿using DapperAOT.CodeAnalysis;
+﻿using Dapper.CodeAnalysis;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace DapperAOT.Test
+namespace Dapper.AOT.Test
 {
     public partial class DetectMethodsTests : GeneratorTestBase
     {
