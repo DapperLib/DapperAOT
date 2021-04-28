@@ -39,10 +39,10 @@ namespace X.Y.Z
         partial class B
         {
             [Command(""select * from Customers where Region = @region"")]
-            public partial Customer ViaDapper(string region, SqlConnection c);
+            public virtual partial Customer ViaDapper(string region, SqlConnection c);
 
             [Command(""select * from Customers where Region = @region"")]
-            public partial Customer ViaOracle(string region, OracleConnection c);
+            public new static partial Customer ViaOracle(string region, OracleConnection c);
         }
     }
     class Customer {}
