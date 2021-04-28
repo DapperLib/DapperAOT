@@ -671,7 +671,7 @@ namespace DapperAOT.CodeAnalysis
             bool needBBN = TrySetProperty(sb, cmdType, "BindByName", SpecialType.System_Boolean, target, "true");
             bool needILFS = TrySetProperty(sb, cmdType, "InitialLONGFetchSize", SpecialType.System_Int32, target, "-1");
 
-            if (needBBN | needILFS && cmdType.TypeKind == TypeKind.Interface || cmdType.IsAbstract)
+            if ((needBBN | needILFS) && (cmdType.TypeKind == TypeKind.Interface || cmdType.IsAbstract))
             {
                 int typedIndex = 0;
                 TestForKnownCommand(sb, cmdType, target, context, "Oracle.DataAccess.Client.OracleCommand", ref typedIndex);
