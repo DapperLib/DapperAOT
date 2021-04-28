@@ -509,7 +509,7 @@ namespace DapperAOT.CodeAnalysis
 
             sb.NewLine().Append(LocalPrefix).Append("reader = ").Append(LocalPrefix).Append("command.ExecuteReader(").Append(LocalPrefix).Append("close ? (")
                 .Append(LocalPrefix).Append("behavior | global::System.Data.CommandBehavior.CloseConnection").Append(") : ").Append(LocalPrefix).Append("behavior);");
-            sb.NewLine().Append(LocalPrefix).Append("close = false; // via flags");
+            sb.NewLine().Append(LocalPrefix).Append("close = false; // performed via CommandBehavior");
             sb.NewLine();
             sb.NewLine().Append(itemType).Append(" ").Append(LocalPrefix).Append("result;");
             sb.NewLine().Append("if (").Append(LocalPrefix).Append("reader.HasRows && ").Append(LocalPrefix).Append("reader.Read())").Indent();
@@ -567,23 +567,9 @@ namespace DapperAOT.CodeAnalysis
             sb.NewLine().NewLine().Append("static ").Append(cmdType).Append(" ").Append(LocalPrefix).Append("CreateCommand(").Append(connectionType)
                 .Append(" connection)").Indent();
             sb.NewLine().Append("var command = connection.CreateCommand();");
+            AddProviderSpecificSettings(sb, cmdType, "command", context);
             sb.NewLine().Append("command.CommandType = global::System.Data.CommandType.").Append(commandType.ToString()).Append(";");
 
-            // check for special properties, bound by signature
-            {
-                var props = cmdType.GetMembers("BindByName");
-                if (props.Length == 1 && props[1] is IPropertySymbol prop && prop.Type.SpecialType == SpecialType.System_Boolean)
-                {
-                    sb.NewLine().Append("command.BindByName = true;");
-                }
-            }
-            {
-                var props = cmdType.GetMembers("InitialLONGFetchSize");
-                if (props.Length == 1 && props[1] is IPropertySymbol prop && prop.Type.SpecialType == SpecialType.System_Int32)
-                {
-                    sb.NewLine().Append("command.InitialLONGFetchSize = -1;");
-                }
-            }
 
             if (commandType == CommandType.Text && location is not null)
             {
@@ -598,7 +584,8 @@ namespace DapperAOT.CodeAnalysis
                 if (GetHandledType(p.Type) != HandledType.None) continue;
                 sb.NewLine().NewLine();
                 if (index == 0) sb.Append("var p = ").Append("command").Append(".CreateParameter();");
-                sb.NewLine().Append("p.ParameterName = ").AppendVerbatimLiteral(p.Name).Append(";");
+                sb.NewLine().Append("p.ParameterName = ").AppendVerbatimLiteral(p.Name).Append(";")
+                    .NewLine().Append("p.Direction = global::System.Data.ParameterDirection.Input;");
                 var type = GetDbType(p, out var size);
                 if (type is not null)
                 {
@@ -638,6 +625,59 @@ namespace DapperAOT.CodeAnalysis
             }
         }
 
+
+        static void AddProviderSpecificSettings(CodeWriter sb, ITypeSymbol cmdType, string target, in GeneratorExecutionContext context)
+        {
+            static void TestForKnownCommand(CodeWriter sb, ITypeSymbol cmdType, string target, in GeneratorExecutionContext context, string fullyQualifiedName, ref int index)
+            {
+                var foundType = context.Compilation.GetTypeByMetadataName(fullyQualifiedName);
+                if (foundType is not null)
+                {
+                    if (!SymbolEqualityComparer.Default.Equals(cmdType, foundType))
+                    {
+                        // perform a type test
+                        var length = sb.Length; // so we can rollback if we fail to find things that *should* be there
+                        sb.NewLine();
+                        if (index != 0) sb.Append("else ");
+                        sb.Append("if (").Append(target).Append(" is ").Append(foundType).Append(" typed").Append(index).Append(")").Indent();
+                        var typedTarget = "typed" + index.ToString(CultureInfo.InvariantCulture);
+                        bool bbn = TrySetProperty(sb, foundType, "BindByName", SpecialType.System_Boolean, typedTarget, "true");
+                        bool ilfs = TrySetProperty(sb, foundType, "InitialLONGFetchSize", SpecialType.System_Int32, typedTarget, "-1");
+                        sb.Outdent();
+                        if (bbn | ilfs)
+                        {
+                            index++;
+                        }
+                        else
+                        {   // revert
+                            sb.Length = length;
+                        }
+                    }
+                }
+            }
+
+            static bool TrySetProperty(CodeWriter sb, ITypeSymbol cmdType, string propertyName, SpecialType expectedType, string target, string value)
+            {
+                var props = cmdType.GetMembers(propertyName);
+                if (props.Length == 1 && props[0] is IPropertySymbol prop && prop.Type.SpecialType == expectedType)
+                {
+                    sb.NewLine().Append(target).Append('.').Append(propertyName).Append(" = ").Append(value).Append(';');
+                    return true;
+                }
+                return false;
+            }
+
+            // check for special properties, bound by signature
+            bool needBBN = TrySetProperty(sb, cmdType, "BindByName", SpecialType.System_Boolean, target, "true");
+            bool needILFS = TrySetProperty(sb, cmdType, "InitialLONGFetchSize", SpecialType.System_Int32, target, "-1");
+
+            if (needBBN | needILFS && cmdType.TypeKind == TypeKind.Interface || cmdType.IsAbstract)
+            {
+                int typedIndex = 0;
+                TestForKnownCommand(sb, cmdType, target, context, "Oracle.DataAccess.Client.OracleCommand", ref typedIndex);
+                TestForKnownCommand(sb, cmdType, target, context, "Oracle.ManagedDataAccess.Client.OracleCommand", ref typedIndex);
+            }
+        }
         void ISourceGenerator.Initialize(GeneratorInitializationContext context)
             => context.RegisterForSyntaxNotifications(static () => new CommandSyntaxReceiver());
 

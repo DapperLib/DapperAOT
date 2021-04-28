@@ -3,6 +3,7 @@ using DapperAOT.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
+using Oracle.ManagedDataAccess.Client;
 using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Data.Common;
@@ -48,7 +49,7 @@ namespace DapperAOT.Test
             }
 #pragma warning restore CS0618 // Type or member is obsolete
 
-            ShowDiagnostics("Input code", inputCompilation, "CS8795", "CS1701");
+            ShowDiagnostics("Input code", inputCompilation, "CS8795", "CS1701", "CS1702");
             
             // Create the driver that will control the generation, passing in our generator
             GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
@@ -68,7 +69,7 @@ namespace DapperAOT.Test
                     }
                 }
 
-                ShowDiagnostics("Output code", outputCompilation, "CS1701");
+                ShowDiagnostics("Output code", outputCompilation, "CS1701", "CS1702");
             }
 
             // Or we can look at the results directly:
@@ -109,8 +110,11 @@ namespace DapperAOT.Test
                references: new[] {
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
                    MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
+                   MetadataReference.CreateFromFile(Assembly.Load("System.Data").Location),
+                   MetadataReference.CreateFromFile(Assembly.Load("netstandard").Location),
                    MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(SqlConnection).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(OracleConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Component).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(CommandAttribute).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),

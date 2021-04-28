@@ -19,6 +19,13 @@ namespace DapperAOT.Internal
             return this;
         }
         private readonly StringBuilder sb = new();
+
+        public int Length
+        {
+            get => sb.Length;
+            set => sb.Length = value;
+        }
+
         public CodeWriter Append(string? value)
         {
             sb.Append(value);

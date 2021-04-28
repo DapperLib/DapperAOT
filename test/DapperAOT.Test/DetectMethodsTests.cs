@@ -18,6 +18,7 @@ namespace DapperAOT.Test
 using Dapper;
 using System.Data;
 using System.Data.SqlClient;
+using Oracle.ManagedDataAccess.Client;
 using System.Data.Common;
 partial class Foo {
     partial void ShouldIgnoreThis_NoAccessibility(string region);
@@ -38,7 +39,10 @@ namespace X.Y.Z
         partial class B
         {
             [Command(""select * from Customers where Region = @region"")]
-            public partial Customer ShouldDetectThisInB(string region, SqlConnection c);
+            public partial Customer ViaDapper(string region, SqlConnection c);
+
+            [Command(""select * from Customers where Region = @region"")]
+            public partial Customer ViaOracle(string region, OracleConnection c);
         }
     }
     class Customer {}
