@@ -629,6 +629,7 @@ namespace Dapper.CodeAnalysis
                 }
 
                 sb.NewLine().Append("args.Add(").Append("p);");
+                index++;
             }
             sb.NewLine().NewLine().Append("return command;");
             sb.Outdent();

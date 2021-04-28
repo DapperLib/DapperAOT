@@ -20,6 +20,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{9A846B95-9
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapper.AOT.Test", "test\Dapper.AOT.Test\Dapper.AOT.Test.csproj", "{9BEAB9A3-95BF-42E4-A02B-98276523DC03}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UsageBenchmark", "test\UsageBenchmark\UsageBenchmark.csproj", "{354C1B97-5292-4FFA-87B2-49F67DE1F1A9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,10 @@ Global
 		{9BEAB9A3-95BF-42E4-A02B-98276523DC03}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9BEAB9A3-95BF-42E4-A02B-98276523DC03}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9BEAB9A3-95BF-42E4-A02B-98276523DC03}.Release|Any CPU.Build.0 = Release|Any CPU
+		{354C1B97-5292-4FFA-87B2-49F67DE1F1A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{354C1B97-5292-4FFA-87B2-49F67DE1F1A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{354C1B97-5292-4FFA-87B2-49F67DE1F1A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{354C1B97-5292-4FFA-87B2-49F67DE1F1A9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -46,6 +52,7 @@ Global
 		{1F5016F0-BB8C-4C3C-8ADA-77F07C7A24BA} = {FE215D4B-811B-47BB-9F05-6382DD1C6729}
 		{8EB6AB8D-B2F7-4A67-AA5F-C9C545B06EEF} = {FE215D4B-811B-47BB-9F05-6382DD1C6729}
 		{9BEAB9A3-95BF-42E4-A02B-98276523DC03} = {9A846B95-90CE-4335-9043-48C5B8EA4FB8}
+		{354C1B97-5292-4FFA-87B2-49F67DE1F1A9} = {9A846B95-90CE-4335-9043-48C5B8EA4FB8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A89CDAFA-494F-4168-9648-1138BA738D43}
