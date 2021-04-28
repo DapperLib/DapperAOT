@@ -7,7 +7,8 @@ For example:
 
 ``` c#
 int id = ...
-var customer = connection.QuerySingleOrDefault<Customer>("select * from Customers where Id = @id", new { id });
+var customer = connection.QuerySingleOrDefault<Customer>(
+    "select * from Customers where Id = @id", new { id });
 ```
 
 This works, but: there are problems:
@@ -76,7 +77,7 @@ Todo:
 - better run-time configuration
 - transactions
 - ad-hoc SQL
-- ambient/implied access to connections
+- ambient/implied access to connections (for example, from a `.Connection` on the current instance)
 - documentation and examples
 - CI, myget
 - license, etc
