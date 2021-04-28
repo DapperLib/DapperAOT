@@ -7,6 +7,6 @@
 		<LangVersion>9</LangVersion>
 		<Nullable>enable</Nullable>
 		<RootNamespace>Dapper</RootNamespace>
-		<Version>0.0.1</Version>
+		<Version>0.0.3</Version>
 	</PropertyGroup>
 </Project>

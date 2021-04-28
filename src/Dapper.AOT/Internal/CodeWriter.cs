@@ -48,7 +48,20 @@ namespace Dapper.Internal
         }
         internal CodeWriter Append(ReadOnlySpan<char> value)
         {
-            sb.Append(value);
+            if (!value.IsEmpty)
+            {
+#if NETSTANDARD2_0
+                unsafe
+                {
+                    fixed (char* ptr = value)
+                    {
+                        sb.Append(ptr, value.Length);
+                    }
+                }
+#else
+                sb.Append(value);
+#endif
+            }
             return this;
         }
 

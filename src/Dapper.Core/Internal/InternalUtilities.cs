@@ -1,7 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Data;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace Dapper.Internal
@@ -38,12 +37,6 @@ namespace Dapper.Internal
 
         private static readonly int[] s_One = new int[1];
 
-        [DoesNotReturn]
-#pragma warning disable CS8763 // A method marked [DoesNotReturn] should not return.
-        public static void ThrowMultiple()
-        {
-            s_One.Single();
-        }
-#pragma warning restore CS8763 // A method marked [DoesNotReturn] should not return.
+        public static void ThrowMultiple() => s_One.Single();
     }
 }

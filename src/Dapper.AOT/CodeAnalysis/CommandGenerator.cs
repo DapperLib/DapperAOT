@@ -63,7 +63,7 @@ namespace Dapper.CodeAnalysis
         void ISourceGenerator.Execute(GeneratorExecutionContext context)
         {
             if (context.SyntaxReceiver is not CommandSyntaxReceiver rec || rec.IsEmpty) return;
-            List<(string Namespace, string TypeName, IMethodSymbol Method)>? candidates = null;
+            List<(string Namespace, string TypeName, IMethodSymbol Method, MethodDeclarationSyntax Syntax)>? candidates = null;
             foreach (var syntaxNode in rec)
             {
                 try
@@ -79,7 +79,7 @@ namespace Dapper.CodeAnalysis
                     if (ca is null) continue; // lacking [Command]
 
                     Log?.Invoke($"Detected candidate: '{method.Name}'");
-                    (candidates ??= new()).Add((GetNamespace(method.ContainingType), GetTypeName(method.ContainingType), method));
+                    (candidates ??= new()).Add((GetNamespace(method.ContainingType), GetTypeName(method.ContainingType), method, syntaxNode));
                 }
                 catch (Exception ex)
                 {
@@ -166,9 +166,11 @@ namespace Dapper.CodeAnalysis
             }
         }
 
+#pragma warning disable IDE0079 // unnecessary suppression - is framework dependent
         [SuppressMessage("Style", "IDE0042:Deconstruct variable declaration", Justification = "Clarity")]
         [SuppressMessage("Style", "IDE0057:Use range operator", Justification = "Clarity")]
-        private string Generate(List<(string Namespace, string TypeName, IMethodSymbol Method)> candidates, in GeneratorExecutionContext context)
+#pragma warning restore IDE0079
+        private string Generate(List<(string Namespace, string TypeName, IMethodSymbol Method, MethodDeclarationSyntax Syntax)> candidates, in GeneratorExecutionContext context)
         {
 
             var sb = CodeWriter.Create().Append("#nullable enable").NewLine();
@@ -186,7 +188,7 @@ namespace Dapper.CodeAnalysis
                 foreach (var typeGrp in nsGrp.GroupBy(x => x.TypeName))
                 {
                     int typeCount = 0;
-                    ReadOnlySpan<char> span = typeGrp.Key;
+                    ReadOnlySpan<char> span = typeGrp.Key.AsSpan();
                     int ix;
                     while ((ix = span.IndexOf('.')) > 0)
                     {
@@ -202,7 +204,7 @@ namespace Dapper.CodeAnalysis
                     {
                         if (!firstMethod) sb.NewLine();
                         firstMethod = false;
-                        WriteMethod(candidate.Method, sb, materializers, context);
+                        WriteMethod(candidate.Method, candidate.Syntax, sb, materializers, context);
                     }
 
                     while (typeCount > 0)
@@ -220,7 +222,7 @@ namespace Dapper.CodeAnalysis
             return sb.ToString();
         }
 
-        private void WriteMethod(IMethodSymbol method, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, in GeneratorExecutionContext context)
+        private void WriteMethod(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, in GeneratorExecutionContext context)
         {
             var attribs = method.GetAttributes();
             var text = TryGetCommandText(attribs, out var commandType);
@@ -266,7 +268,7 @@ namespace Dapper.CodeAnalysis
 
             if (connection is not null)
             {
-                WriteMethodViaAdoDotNet(method, sb, materializers, connection, connectionType!, transaction, transactionType!, text, commandType, context);
+                WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionType!, transaction, transactionType!, text, commandType, context);
             }
             // TODO: other APIs here
             else
@@ -405,7 +407,7 @@ namespace Dapper.CodeAnalysis
             }
             return cardinality;
         }
-        void WriteMethodViaAdoDotNet(IMethodSymbol method, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType, in GeneratorExecutionContext context)
+        void WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType, in GeneratorExecutionContext context)
         {
             const string LocalPrefix = "__dapper__";
 
@@ -448,7 +450,14 @@ namespace Dapper.CodeAnalysis
                 Accessibility.Protected => "public",
                 Accessibility.ProtectedOrInternal => "protected internal",
                 _ => method.DeclaredAccessibility.ToString(), // expect this to cause an error, that's OK
-            }).Append(" partial ").Append(method.ReturnType).Append(
+            });
+            if (syntax.Modifiers.Any(SyntaxKind.NewKeyword)) sb.Append(" new"); // can't find this on method!
+            if (method.IsStatic) sb.Append(" static");
+            if (method.IsOverride) sb.Append(" override");
+            if (method.IsVirtual) sb.Append(" virtual");
+            if (method.IsSealed) sb.Append(" sealed");
+
+            sb.Append(" partial ").Append(method.ReturnType).Append(
                 method.ReturnType.IsReferenceType && method.ReturnNullableAnnotation == NullableAnnotation.Annotated ? "? " : " ").Append(method.Name).Append("(");
             bool first = true;
             // Log?.Invoke(TypeMetadata.Get(method).ToString());
