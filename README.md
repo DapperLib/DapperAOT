@@ -92,3 +92,9 @@ But... it works!
 |      DapperMicrosoftData | 79.78 us | 1.051 us | 0.983 us | 0.3662 |     - |     - |   3.41 KB |
 |    SonOfDapperSystemData | 76.57 us | 0.955 us | 0.746 us | 0.1221 |     - |     - |   1.95 KB |
 | SonOfDapperMicrosoftData | 77.73 us | 0.554 us | 0.518 us | 0.1221 |     - |     - |   1.95 KB |
+
+Dapper is already fast in the mode being tested here, so we're not looking for a speed boost; but:
+
+- we can build on this model to help improve other scenarios where Dapper isn't quite as good
+- we're reducing allocations, mostly by re-using the command instances
+- and we want to look at a build-time generated materializer too, which may crank things further
