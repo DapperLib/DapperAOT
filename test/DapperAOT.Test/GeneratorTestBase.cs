@@ -11,6 +11,7 @@ using System.Data.SqlClient;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Xunit.Abstractions;
 
 namespace DapperAOT.Test
@@ -34,10 +35,12 @@ namespace DapperAOT.Test
 
         // input from https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#unit-testing-of-generators
 
-        protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics) Execute<T>(string source) where T : class, ISourceGenerator, new()
+        protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics) Execute<T>(string source,
+            [CallerMemberName] string? name = null) where T : class, ISourceGenerator, new()
         {
             // Create the 'input' compilation that the generator will act on
-            Compilation inputCompilation = CreateCompilation(source);
+            if (string.IsNullOrWhiteSpace(name)) name = "compilation";
+            Compilation inputCompilation = CreateCompilation(source, name);
 
             // directly create an instance of the generator
             // (Note: in the compiler this is loaded from an assembly, and created via reflection at runtime)
@@ -104,8 +107,8 @@ namespace DapperAOT.Test
             }
         }
 
-        protected static Compilation CreateCompilation(string source)
-           => CSharpCompilation.Create("compilation",
+        protected static Compilation CreateCompilation(string source, string name)
+           => CSharpCompilation.Create(name,
                syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source).WithFilePath("input.cs") },
                references: new[] {
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
