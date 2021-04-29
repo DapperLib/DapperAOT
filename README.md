@@ -6,9 +6,12 @@ For years now, Dapper helped by providing a great low-friction way of talking to
 For example:
 
 ``` c#
+public static Customer GetCustomer(DbConnection connection, int id)
+    => connection.QuerySingleOrDefault<Customer>(
+        "select * from Customers where Id = @id", new { id });
+    
 int id = ...
-var customer = connection.QuerySingleOrDefault<Customer>(
-    "select * from Customers where Id = @id", new { id });
+var customer = GetCustomer(connection, id);
 ```
 
 This works, but: there are problems:
@@ -32,7 +35,7 @@ C# 9 offers new `partial` method support for use with Roslyn generators, allowin
 [Command("select * from Customers where Id = @id")]
 public static partial Customer GetCustomer(DbConnection connection, int id);
 
-var id = ...
+int id = ...
 var customer = GetCustomer(connection, id);
 ```
 
