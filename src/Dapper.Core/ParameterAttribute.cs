@@ -1,23 +1,19 @@
 ﻿using System;
-using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 
 namespace Dapper
 {
 	/// <summary>
-	/// The value should be obtained from the query return value.
-	/// </summary>
-	[ImmutableObject(true)]
-	[AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
-	public sealed class ReturnValueAttribute : Attribute { }
-
-	/// <summary>
 	/// Allows fine-grained control over how parameters are defined
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.ReturnValue | AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
 	public sealed class ParameterAttribute : Attribute
 	{
+		/// <summary>
+		/// See <see cref="DbParameter.Direction"/>
+		/// </summary>
+		public ParameterDirection Direction { get; set; }
 		/// <summary>
 		/// See <see cref="DbParameter.ParameterName"/>
 		/// </summary>
