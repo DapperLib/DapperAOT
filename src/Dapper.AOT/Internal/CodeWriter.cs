@@ -13,22 +13,40 @@ namespace Dapper.Internal
             => Interlocked.Exchange(ref s_Spare, null) ?? new CodeWriter();
 
         private int _indent;
-        public CodeWriter Clear() {
-            sb.Clear();
+        private bool _isLineEmpty = true;
+        public CodeWriter Clear()
+        {
+            _sb.Clear();
             _indent = 0;
+            _isLineEmpty = true;
             return this;
         }
-        private readonly StringBuilder sb = new();
+        private readonly StringBuilder _sb = new();
 
         public int Length
         {
-            get => sb.Length;
-            set => sb.Length = value;
+            get => _sb.Length;
+            set => _sb.Length = value;
         }
+        private StringBuilder Core
+		{
+            get
+            {
+                if (_isLineEmpty)
+                {
+                    _sb.Append('\t', _indent);
+                    _isLineEmpty = false;
+                }
+                return _sb;
+            }
+		}
 
         public CodeWriter Append(string? value)
         {
-            sb.Append(value);
+            if (!string.IsNullOrEmpty(value))
+            {
+                Core.Append(value);
+            }
             return this;
         }
 
@@ -43,7 +61,7 @@ namespace Dapper.Internal
         }
         public CodeWriter Append(char value)
         {
-            sb.Append(value);
+            Core.Append(value);
             return this;
         }
         internal CodeWriter Append(ReadOnlySpan<char> value)
@@ -55,7 +73,7 @@ namespace Dapper.Internal
                 {
                     fixed (char* ptr = value)
                     {
-                        sb.Append(ptr, value.Length);
+                        Core.Append(ptr, value.Length);
                     }
                 }
 #else
@@ -67,13 +85,14 @@ namespace Dapper.Internal
 
         internal CodeWriter Append(int value)
         {
-            sb.Append(value.ToString(CultureInfo.InvariantCulture));
+            Core.Append(value.ToString(CultureInfo.InvariantCulture));
             return this;
         }
 
         public CodeWriter NewLine()
         {
-            sb.AppendLine().Append('\t', _indent);
+            _sb.AppendLine();
+            _isLineEmpty = true;
             return this;
         }
 
@@ -92,13 +111,15 @@ namespace Dapper.Internal
 
         public CodeWriter DisableWarning(string warning)
         {
-            sb.AppendLine().Append("#pragma warning disable ").Append(warning);
+            NewLine();
+            _sb.Append("#pragma warning disable ").Append(warning);
             return this;
         }
 
         public CodeWriter RestoreWarning(string warning)
         {
-            sb.AppendLine().Append("#pragma warning restore ").Append(warning);
+            NewLine();
+            _sb.AppendLine().Append("#pragma warning restore ").Append(warning);
             return this;
         }
         public CodeWriter DisableObsolete()
@@ -111,10 +132,10 @@ namespace Dapper.Internal
 #pragma warning disable CS0809 // Obsolete member overrides non-obsolete member
         public override string ToString()
 #pragma warning restore CS0809 // Obsolete member overrides non-obsolete member
-            => sb.ToString();
+            => _sb.ToString();
         public string ToStringRecycle()
         {
-            var s = sb.ToString();
+            var s = _sb.ToString();
             Clear();
             Interlocked.Exchange(ref s_Spare, this);
             return s;

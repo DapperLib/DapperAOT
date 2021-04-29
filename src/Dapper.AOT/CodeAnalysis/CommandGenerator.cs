@@ -580,7 +580,7 @@ namespace Dapper.CodeAnalysis
                     sb.Append("default!;");
                     break;
             }
-            sb.Outdent().NewLine().Append("while (").Append(LocalPrefix).Append("reader.NextResult()) {} // consumes TDS to check for exceptions");
+            sb.Outdent().NewLine().Append("while (").Append(LocalPrefix).Append("reader.NextResult()) { } // consumes TDS to check for exceptions");
             sb.NewLine().Append("return ").Append(LocalPrefix).Append("result;");
             sb.Outdent();
             sb.NewLine().Append("finally");

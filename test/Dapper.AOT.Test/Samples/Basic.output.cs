@@ -14,9 +14,9 @@
 #region Designer generated code
 partial class Foo
 {
-	
+
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Basic_input_cs_ShouldDetectThis_11;
-	
+
 	public partial int? ShouldDetectThis(global::System.Data.Common.DbConnection connection, string region)
 	{
 		global::System.Data.Common.DbCommand? __dapper__command = null;
@@ -39,12 +39,13 @@ partial class Foo
 			}
 #pragma warning disable CS0618
 			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
+
 #pragma warning restore CS0618
-			
+
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
-			
+
 			int? __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
@@ -54,7 +55,7 @@ partial class Foo
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) {} // consumes TDS to check for exceptions
+			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -68,7 +69,7 @@ partial class Foo
 			}
 			if (__dapper__close) connection?.Close();
 		}
-		
+
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -80,13 +81,13 @@ partial class Foo
 			command.CommandType = global::System.Data.CommandType.Text;
 			command.CommandText = @"/* Foo.ShouldDetectThis, Samples\Basic.input.cs #11 */ select * from Customers where Region = @region";
 			var args = command.Parameters;
-			
+
 			var p = command.CreateParameter();
 			p.ParameterName = @"region";
 			p.Direction = global::System.Data.ParameterDirection.Input;
 			p.Size = -1;
 			args.Add(p);
-			
+
 			return command;
 		}
 	}
@@ -97,9 +98,9 @@ namespace X.Y.Z
 	{
 		partial class B
 		{
-			
+
 			private static global::System.Data.SqlClient.SqlCommand? s___dapper__command_Samples_Basic_input_cs_ViaDapper_32;
-			
+
 			public virtual partial global::X.Y.Z.Customer ViaDapper(string region, global::System.Data.SqlClient.SqlConnection c)
 			{
 				global::System.Data.SqlClient.SqlCommand? __dapper__command = null;
@@ -122,12 +123,13 @@ namespace X.Y.Z
 					}
 #pragma warning disable CS0618
 					__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
+
 #pragma warning restore CS0618
-					
+
 					const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 					__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 					__dapper__close = false; // performed via CommandBehavior
-					
+
 					global::X.Y.Z.Customer __dapper__result;
 					if (__dapper__reader.HasRows && __dapper__reader.Read())
 					{
@@ -137,7 +139,7 @@ namespace X.Y.Z
 					{
 						__dapper__result = default!;
 					}
-					while (__dapper__reader.NextResult()) {} // consumes TDS to check for exceptions
+					while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
 					return __dapper__result;
 				}
 				finally
@@ -151,27 +153,27 @@ namespace X.Y.Z
 					}
 					if (__dapper__close) c?.Close();
 				}
-				
+
 				static global::System.Data.SqlClient.SqlCommand __dapper__CreateCommand(global::System.Data.SqlClient.SqlConnection connection)
 				{
 					var command = connection.CreateCommand();
 					command.CommandType = global::System.Data.CommandType.Text;
 					command.CommandText = @"/* B.ViaDapper, Samples\Basic.input.cs #32 */ select * from Customers where Region = @region";
 					var args = command.Parameters;
-					
+
 					var p = command.CreateParameter();
 					p.ParameterName = @"region";
 					p.Direction = global::System.Data.ParameterDirection.Input;
 					p.Size = -1;
 					args.Add(p);
-					
+
 					return command;
 				}
 			}
-			
-			
+
+
 			private static global::Oracle.ManagedDataAccess.Client.OracleCommand? s___dapper__command_Samples_Basic_input_cs_ViaOracle_35;
-			
+
 			public new static partial global::X.Y.Z.Customer ViaOracle(string region, global::Oracle.ManagedDataAccess.Client.OracleConnection c)
 			{
 				global::Oracle.ManagedDataAccess.Client.OracleCommand? __dapper__command = null;
@@ -194,12 +196,13 @@ namespace X.Y.Z
 					}
 #pragma warning disable CS0618
 					__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
+
 #pragma warning restore CS0618
-					
+
 					const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 					__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 					__dapper__close = false; // performed via CommandBehavior
-					
+
 					global::X.Y.Z.Customer __dapper__result;
 					if (__dapper__reader.HasRows && __dapper__reader.Read())
 					{
@@ -209,7 +212,7 @@ namespace X.Y.Z
 					{
 						__dapper__result = default!;
 					}
-					while (__dapper__reader.NextResult()) {} // consumes TDS to check for exceptions
+					while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
 					return __dapper__result;
 				}
 				finally
@@ -223,7 +226,7 @@ namespace X.Y.Z
 					}
 					if (__dapper__close) c?.Close();
 				}
-				
+
 				static global::Oracle.ManagedDataAccess.Client.OracleCommand __dapper__CreateCommand(global::Oracle.ManagedDataAccess.Client.OracleConnection connection)
 				{
 					var command = connection.CreateCommand();
@@ -232,17 +235,17 @@ namespace X.Y.Z
 					command.CommandType = global::System.Data.CommandType.Text;
 					command.CommandText = @"/* B.ViaOracle, Samples\Basic.input.cs #35 */ select * from Customers where Region = @region";
 					var args = command.Parameters;
-					
+
 					var p = command.CreateParameter();
 					p.ParameterName = @"region";
 					p.Direction = global::System.Data.ParameterDirection.Input;
 					p.Size = -1;
 					args.Add(p);
-					
+
 					return command;
 				}
 			}
-			
+
 		}
 	}
 }
