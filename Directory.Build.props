@@ -7,6 +7,14 @@
 		<LangVersion>9</LangVersion>
 		<Nullable>enable</Nullable>
 		<RootNamespace>Dapper</RootNamespace>
-		<Version>0.0.6</Version>
+		<Version>0.0.7</Version>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<PackageIcon>Dapper.png</PackageIcon>
 	</PropertyGroup>
+	<ItemGroup>
+		<None Include="../../Dapper.png">
+			<Pack>True</Pack>
+			<PackagePath></PackagePath>
+		</None>
+	</ItemGroup>
 </Project>
