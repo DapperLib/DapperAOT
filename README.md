@@ -85,6 +85,7 @@ Todo:
 - documentation and examples
 - CI, myget
 - pooled awaitables (either using the new .NET 6 bits, or `PooledAwait`)
+- should we support [SQL via a query registry](https://twitter.com/ICooper/status/1387743162584731654)? if so, how? (so the `[Command]` just knows about a token)
 - probably lots of other things
 
 But... it works!
