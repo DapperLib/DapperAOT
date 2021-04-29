@@ -61,6 +61,11 @@ namespace Dapper.CodeAnalysis
             remove => Log -= value;
         }
 
+        /// <summary>
+        /// The name of the file to generate
+        /// </summary>
+        public string DefaultOutputFileName { get; set; } = "Dapper.generated.cs";
+
         void ISourceGenerator.Execute(GeneratorExecutionContext context)
         {
             if (context.SyntaxReceiver is not CommandSyntaxReceiver rec || rec.IsEmpty) return;
@@ -101,7 +106,7 @@ namespace Dapper.CodeAnalysis
                 var generated = Generate(candidates, context);
                 if (!string.IsNullOrWhiteSpace(generated))
                 {
-                    context.AddSource("Dapper.generated.cs", generated);
+                    context.AddSource(DefaultOutputFileName, generated);
                 }
             }
 

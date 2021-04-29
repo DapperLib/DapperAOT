@@ -22,11 +22,12 @@ namespace Dapper.AOT.Test
         [Theory, MemberData(nameof(GetFiles))]
         public void Run(string path)
         {
-            var source = File.ReadAllText(path);
-            var resultPath = Regex.Replace(path, @"\.input\.cs$", ".output.cs", RegexOptions.IgnoreCase);
-            var expected = File.Exists(resultPath) ? File.ReadAllText(resultPath) : "";
+            var intputPath = File.ReadAllText(path);
+            var outputPath = Regex.Replace(path, @"\.input\.cs$", ".output.cs", RegexOptions.IgnoreCase);
+            var expected = File.Exists(outputPath) ? File.ReadAllText(outputPath) : "";
             var sb = new StringBuilder();
-            var result = Execute<CommandGenerator>(source, sb, fileName: path);
+            var result = Execute<CommandGenerator>(intputPath, sb, fileName: path,
+                initializer: g => g.DefaultOutputFileName = Path.GetFileName(outputPath));
             Assert.Single(result.Result.GeneratedTrees);
             var generated = Assert.Single(Assert.Single(result.Result.Results).GeneratedSources);
 

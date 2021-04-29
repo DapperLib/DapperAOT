@@ -35,7 +35,9 @@ namespace Dapper.AOT.Test
         protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics) Execute<T>(string source,
             StringBuilder? diagnosticsTo = null,
             [CallerMemberName] string? name = null,
-            string? fileName = null) where T : class, ISourceGenerator, new()
+            string? fileName = null,
+            Action<T>? initializer = null
+            ) where T : class, ISourceGenerator, new()
         {
             void Output(string message)
             {
@@ -53,6 +55,7 @@ namespace Dapper.AOT.Test
             // directly create an instance of the generator
             // (Note: in the compiler this is loaded from an assembly, and created via reflection at runtime)
             T generator = new();
+            initializer?.Invoke(generator);
 #pragma warning disable CS0618 // Type or member is obsolete
             if (_log is not null && generator is ILoggingAnalyzer logging)
             {
@@ -68,6 +71,11 @@ namespace Dapper.AOT.Test
             // Run the generation pass
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)
             driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
+            var runResult = driver.GetRunResult();
+            foreach (var result in runResult.Results)
+            {
+                if (result.Exception is not null) throw result.Exception;
+            }
 
             var dn = Normalize(diagnostics, Array.Empty<string>());
             if (dn.Any())
@@ -80,10 +88,6 @@ namespace Dapper.AOT.Test
             }
 
             ShowDiagnostics("Output code", outputCompilation, diagnosticsTo, "CS1701", "CS1702");
-
-            // Or we can look at the results directly:
-            GeneratorDriverRunResult runResult = driver.GetRunResult();
-
             return (outputCompilation, runResult, diagnostics);
         }
 
