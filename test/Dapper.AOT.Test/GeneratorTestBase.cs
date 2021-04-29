@@ -56,12 +56,6 @@ namespace Dapper.AOT.Test
             // (Note: in the compiler this is loaded from an assembly, and created via reflection at runtime)
             T generator = new();
             initializer?.Invoke(generator);
-#pragma warning disable CS0618 // Type or member is obsolete
-            if (_log is not null && generator is ILoggingAnalyzer logging)
-            {
-                logging.Log += s => Log(s);
-            }
-#pragma warning restore CS0618 // Type or member is obsolete
 
             ShowDiagnostics("Input code", inputCompilation, diagnosticsTo, "CS8795", "CS1701", "CS1702");
             

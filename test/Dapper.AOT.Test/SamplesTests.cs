@@ -7,6 +7,7 @@ using Xunit.Abstractions;
 using System.Linq;
 using System;
 using System.Text.RegularExpressions;
+using System.Runtime.CompilerServices;
 
 namespace Dapper.AOT.Test
 {
@@ -26,15 +27,34 @@ namespace Dapper.AOT.Test
             var outputPath = Regex.Replace(path, @"\.input\.cs$", ".output.cs", RegexOptions.IgnoreCase);
             var expected = File.Exists(outputPath) ? File.ReadAllText(outputPath) : "";
             var sb = new StringBuilder();
-            var result = Execute<CommandGenerator>(intputPath, sb, fileName: path,
-                initializer: g => g.DefaultOutputFileName = Path.GetFileName(outputPath));
+            var result = Execute<CommandGenerator>(intputPath, sb, fileName: path, initializer: g =>
+            {
+                g.DefaultOutputFileName = Path.GetFileName(outputPath);
+                g.ReportVersion = false;
+                g.Log += s => Log(s);
+            });
             Assert.Single(result.Result.GeneratedTrees);
             var generated = Assert.Single(Assert.Single(result.Result.Results).GeneratedSources);
 
             string? code = generated.SourceText?.ToString();
             Log(code);
             sb.AppendLine().AppendLine(code);
-            Assert.Equal(expected.Trim(), sb.ToString().Trim(), ignoreLineEndingDifferences: true, ignoreWhiteSpaceDifferences: true);
+
+            var actual = sb.ToString();
+            try // automatically overwrite test output, for git tracking
+            {
+                if (GetOriginCodeLocation() is string originFile
+                    && Path.GetDirectoryName(originFile) is string originFolder)
+                {
+                    outputPath = Path.Combine(originFolder, outputPath);
+                    File.WriteAllText(outputPath, actual);
+                    
+                }
+            } catch { }
+
+            Assert.Equal(expected.Trim(), actual.Trim(), ignoreLineEndingDifferences: true, ignoreWhiteSpaceDifferences: true);
         }
+
+        static string? GetOriginCodeLocation([CallerFilePath] string? path = null) => path;
     }
 }
