@@ -198,6 +198,7 @@ namespace Dapper.CodeAnalysis
                 .NewLine().Append("//------------------------------------------------------------------------------")
                 .NewLine().Append("#region Designer generated code");
 
+            int totalWritten = 0;
             foreach (var nsGrp in candidates.GroupBy(x => x.Namespace))
             {
                 var materializers = new Dictionary<ITypeSymbol, string>();
@@ -227,7 +228,8 @@ namespace Dapper.CodeAnalysis
                     {
                         if (!firstMethod) sb.NewLine();
                         firstMethod = false;
-                        WriteMethod(candidate.Method, candidate.Syntax, sb, materializers, context);
+                        if (WriteMethod(candidate.Method, candidate.Syntax, sb, materializers, context))
+                            totalWritten++;
                     }
 
                     while (typeCount > 0)
@@ -242,17 +244,20 @@ namespace Dapper.CodeAnalysis
                     sb.Outdent();
                 }
             }
-            return sb.NewLine().Append("#endregion").ToString();
+
+            if (totalWritten == 0) sb.Length = 0;
+            else sb.NewLine().Append("#endregion");
+            return sb.ToStringRecycle();
         }
 
-        private void WriteMethod(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, in GeneratorExecutionContext context)
+        private bool WriteMethod(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, in GeneratorExecutionContext context)
         {
             var attribs = method.GetAttributes();
             var text = TryGetCommandText(attribs, out var commandType);
             if (text is null)
             {
                 Log?.Invoke($"No command-text resolved for '{method.Name}'");
-                return;
+                return false;
             }
 
             string? connection = null, transaction = null;
@@ -267,7 +272,7 @@ namespace Dapper.CodeAnalysis
                         if (connection is not null)
                         {
                             Log?.Invoke($"Multiple connection accessors found for '{method.Name}'");
-                            return;
+                            return false;
                         }
                         connection = p.Name;
                         connectionType = p.Type;
@@ -276,7 +281,7 @@ namespace Dapper.CodeAnalysis
                         if (transaction is not null)
                         {
                             Log?.Invoke($"Multiple transaction accessors found for '{method.Name}'");
-                            return;
+                            return false;
                         }
                         transaction = p.Name;
                         transactionType = p.Type;
@@ -291,13 +296,13 @@ namespace Dapper.CodeAnalysis
 
             if (connection is not null)
             {
-                WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionType!, transaction, transactionType!, text, commandType, context);
+                return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionType!, transaction, transactionType!, text, commandType, context);
             }
             // TODO: other APIs here
             else
             {
                 Log?.Invoke($"No connection accessors found for '{method.Name}'");
-                return;
+                return false;
             }
         }
 
@@ -430,7 +435,7 @@ namespace Dapper.CodeAnalysis
             }
             return cardinality;
         }
-        void WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType, in GeneratorExecutionContext context)
+        bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType, in GeneratorExecutionContext context)
         {
             const string LocalPrefix = "__dapper__";
 
@@ -444,12 +449,12 @@ namespace Dapper.CodeAnalysis
             if (cmdType is null)
             {
                 Log?.Invoke($"Unable to resolve command-type for '{method.Name}'");
-                return;
+                return false;
             }
             if (readerType is null)
             {
                 Log?.Invoke($"Unable to resolve reader-type for '{method.Name}'");
-                return;
+                return false;
             }
 
             var location = GetLocation(method, out string? identifier);
@@ -642,6 +647,7 @@ namespace Dapper.CodeAnalysis
             sb.NewLine().NewLine().Append("return command;");
             sb.Outdent();
             sb.Outdent();
+            return true;
 
             static ITypeSymbol? GetMethodReturnType(ITypeSymbol? type, string name)
             {

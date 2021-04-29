@@ -1,8 +1,9 @@
 ﻿using Dapper.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Text;
 using Oracle.ManagedDataAccess.Client;
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Data.Common;
@@ -11,6 +12,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using Xunit.Abstractions;
 
 namespace Dapper.AOT.Test
@@ -28,18 +30,25 @@ namespace Dapper.AOT.Test
             return message;
         }
 
-        [return: NotNullIfNotNull("message")]
-        protected string? Log(SourceText? message)
-            => Log(message?.ToString());
-
         // input from https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#unit-testing-of-generators
 
         protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics) Execute<T>(string source,
-            [CallerMemberName] string? name = null) where T : class, ISourceGenerator, new()
+            StringBuilder? diagnosticsTo = null,
+            [CallerMemberName] string? name = null,
+            string? fileName = null) where T : class, ISourceGenerator, new()
         {
+            void Output(string message)
+            {
+                if (!string.IsNullOrWhiteSpace(message))
+                {
+                    _log?.WriteLine(message);
+                    diagnosticsTo?.Append("// ").AppendLine(message);
+                }
+            }
             // Create the 'input' compilation that the generator will act on
             if (string.IsNullOrWhiteSpace(name)) name = "compilation";
-            Compilation inputCompilation = CreateCompilation(source, name);
+            if (string.IsNullOrWhiteSpace(fileName)) fileName = "input.cs";
+            Compilation inputCompilation = CreateCompilation(source, name, fileName);
 
             // directly create an instance of the generator
             // (Note: in the compiler this is loaded from an assembly, and created via reflection at runtime)
@@ -51,7 +60,7 @@ namespace Dapper.AOT.Test
             }
 #pragma warning restore CS0618 // Type or member is obsolete
 
-            ShowDiagnostics("Input code", inputCompilation, "CS8795", "CS1701", "CS1702");
+            ShowDiagnostics("Input code", inputCompilation, diagnosticsTo, "CS8795", "CS1701", "CS1702");
             
             // Create the driver that will control the generation, passing in our generator
             GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
@@ -60,19 +69,17 @@ namespace Dapper.AOT.Test
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)
             driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
 
-            if (_log is not null)
+            var dn = Normalize(diagnostics, Array.Empty<string>());
+            if (dn.Any())
             {
-                if (!diagnostics.IsDefaultOrEmpty)
+                Output($"Generator produced {dn.Count} diagnostics:");
+                foreach (var d in dn)
                 {
-                    Log($"Generator produced {diagnostics.Length} diagnostics:");
-                    foreach (var d in diagnostics)
-                    {
-                        Log(d.ToString());
-                    }
+                    Output(d);
                 }
-
-                ShowDiagnostics("Output code", outputCompilation, "CS1701", "CS1702");
             }
+
+            ShowDiagnostics("Output code", outputCompilation, diagnosticsTo, "CS1701", "CS1702");
 
             // Or we can look at the results directly:
             GeneratorDriverRunResult runResult = driver.GetRunResult();
@@ -80,35 +87,43 @@ namespace Dapper.AOT.Test
             return (outputCompilation, runResult, diagnostics);
         }
 
-        void ShowDiagnostics(string caption, Compilation compilation, params string[] ignore)
+        void ShowDiagnostics(string caption, Compilation compilation, StringBuilder? diagnosticsTo, params string[] ignore)
         {
-            if (_log is not null) // useful for finding problems in the input
+            if (_log is null && diagnosticsTo is null) return; // nothing useful to do!
+            void Output(string message)
             {
-                foreach (var tree in compilation.SyntaxTrees)
+                if (!string.IsNullOrWhiteSpace(message))
                 {
-                    var diagnostics = compilation.GetSemanticModel(tree).GetDiagnostics();
-                    if (!diagnostics.IsDefaultOrEmpty)
+                    _log?.WriteLine(message);
+                    diagnosticsTo?.Append("// ").AppendLine(message);
+                }
+            }
+            foreach (var tree in compilation.SyntaxTrees)
+            {
+                var diagnostics = Normalize(compilation.GetSemanticModel(tree).GetDiagnostics(), ignore);
+                
+                if (diagnostics.Any())
+                {
+                    Output($"{caption} has {diagnostics.Count} diagnostics from '{tree.FilePath}':");
+                    foreach (var d in diagnostics)
                     {
-                        int count = diagnostics.Count(d => !ignore.Contains(d.Id));
-                        if (count > 0)
-                        {
-                            Log($"{caption} has {count} diagnostics from '{tree.FilePath}':");
-                            foreach (var d in diagnostics)
-                            {
-                                if (!ignore.Contains(d.Id)) // partial without implementation; we know - that's what we're here to fix
-                                {
-                                    Log(d.ToString());
-                                }
-                            }
-                        }
+                        Output(d);
                     }
                 }
             }
         }
 
-        protected static Compilation CreateCompilation(string source, string name)
+        static List<string> Normalize(ImmutableArray<Diagnostic> diagnostics, string[] ignore) => (
+            from d in diagnostics
+            where !ignore.Contains(d.Id)
+            let loc = d.Location
+            let msg = d.ToString()
+            orderby loc.SourceTree?.FilePath, loc.SourceSpan.Start, d.Id, msg
+            select msg).ToList();
+
+        protected static Compilation CreateCompilation(string source, string name, string fileName)
            => CSharpCompilation.Create(name,
-               syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source).WithFilePath("input.cs") },
+               syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source).WithFilePath(fileName) },
                references: new[] {
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
                    MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),

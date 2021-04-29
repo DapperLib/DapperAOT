@@ -3,6 +3,12 @@
 		<TargetFrameworks>netcoreapp3.1;net5.0</TargetFrameworks>
 		<NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
 	</PropertyGroup>
+	<ItemGroup>
+	  <Compile Remove="Samples\*.cs" />
+		
+      <!--<Compile Include="Samples\*.cs" CopyToOutputDirectory="PreserveNewest" />-->
+      <None Include="Samples\*.cs" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Dapper" Version="2.0.78" />
