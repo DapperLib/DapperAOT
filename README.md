@@ -41,7 +41,8 @@ var customer = GetCustomer(connection, id);
 
 Here:
 
-- everything gets generated at build; no runtime reflection/ref-emit code (eventually; incomplete)
+- everything gets generated at build; no runtime reflection/ref-emit code (eventually; very incomplete!)
+  - which also means it is AOT and linker friendly
 - our parameters are expressed naturally *as parameters* - no additional object allocations
 - we can even make `ref` / `out` etc work as expected (which is currently quite painful via vanilla Dapper)
 - it is designed to *naturally* allow command re-use, reducing allocations considerably
