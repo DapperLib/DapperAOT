@@ -71,19 +71,18 @@ Todo:
 
 - formal analyzer diagnostics
 - materializer (currently using Dapper's materializer)
-- async
-- lists/sequences (multi-row)
-- non-queries
+- async including cancellation
+- lists/sequences (multi-row; `IEnumerable<T>`, `IAsyncEnumerable<T>`, `List<T>`, etc)
+- non-queries (`void`, `Task`, `ValueTask`)
 - scalars
-- `out`/`ref` args
+- `out`/`ref` args (TBD: what about `async`)
 - better build-time configuration
 - better run-time configuration
 - transactions
-- ad-hoc SQL
+- ad-hoc SQL support
 - ambient/implied access to connections (for example, from a `.Connection` on the current instance)
 - documentation and examples
 - CI, myget
-- license, etc
 - probably lots of other things
 
 But... it works!
