@@ -83,6 +83,7 @@ Todo:
 - ambient/implied access to connections (for example, from a `.Connection` on the current instance)
 - documentation and examples
 - CI, myget
+- pooled awaitables (either using the new .NET 6 bits, or `PooledAwait`)
 - probably lots of other things
 
 But... it works!
