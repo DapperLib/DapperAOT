@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Data.Common;
 
 namespace Dapper
 {
@@ -45,9 +46,12 @@ namespace Dapper
         /// </summary>
         SingleOrDefault = 2,
         /// <summary>
-        /// Exactly one rowis allowed and returned
+        /// Exactly one row is allowed and returned
         /// </summary>
         Single = 3,
-        
+        /// <summary>
+        /// A single cell is expected; execution should use the <see cref="DbCommand.ExecuteScalar"/> API
+        /// </summary>
+        Scalar = 4,
     }
 }
