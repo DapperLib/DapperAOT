@@ -81,6 +81,7 @@ Todo:
 - better run-time configuration
 - transactions
 - ad-hoc SQL support
+- feature injection (profiling, cross-cutting concerns, etc)
 - ambient/implied access to connections (for example, from a `.Connection` on the current instance)
 - documentation and examples
 - CI, myget
