@@ -93,8 +93,8 @@ But... it works!
 |------------------------- |---------:|---------:|---------:|-------:|------:|------:|----------:|
 |         DapperSystemData | 75.82 us | 0.615 us | 0.545 us | 0.3662 |     - |     - |    3.2 KB |
 |      DapperMicrosoftData | 79.78 us | 1.051 us | 0.983 us | 0.3662 |     - |     - |   3.41 KB |
-|    SonOfDapperSystemData | 76.57 us | 0.955 us | 0.746 us | 0.1221 |     - |     - |   1.95 KB |
-| SonOfDapperMicrosoftData | 77.73 us | 0.554 us | 0.518 us | 0.1221 |     - |     - |   1.95 KB |
+|      DapperAOTSystemData | 76.57 us | 0.955 us | 0.746 us | 0.1221 |     - |     - |   1.95 KB |
+|   DapperAOTMicrosoftData | 77.73 us | 0.554 us | 0.518 us | 0.1221 |     - |     - |   1.95 KB |
 
 Dapper is already fast in the mode being tested here, so we're not looking for a speed boost; but:
 

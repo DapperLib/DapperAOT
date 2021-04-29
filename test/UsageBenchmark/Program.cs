@@ -62,11 +62,11 @@ namespace UsageBenchmark
             => _msData.QueryFirstOrDefault<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region });
 
         [Benchmark]
-        public Customer SonOfDapperSystemData()
+        public Customer DapperAOTSystemData()
             => DapperAOT.GetCustomer(_systemData!, Id, Region);
 
         [Benchmark]
-        public Customer SonOfDapperMicrosoftData()
+        public Customer DapperAOTMicrosoftData()
             => DapperAOT.GetCustomer(_msData!, Id, Region);
     }
 
