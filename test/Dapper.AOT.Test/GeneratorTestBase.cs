@@ -133,6 +133,10 @@ namespace Dapper.AOT.Test
                    MetadataReference.CreateFromFile(typeof(Component).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(CommandAttribute).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(ImmutableList<int>).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(ImmutableArray<int>).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(IAsyncEnumerable<int>).Assembly.Location),
                },
                options: new CSharpCompilationOptions(OutputKind.ConsoleApplication));
     }

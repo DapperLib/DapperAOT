@@ -4,10 +4,10 @@
 		<NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
 	</PropertyGroup>
 	<ItemGroup>
-	  <Compile Remove="Samples\*.cs" />
-		
-      <!--<Compile Include="Samples\*.cs" CopyToOutputDirectory="PreserveNewest" />-->
-      <None Include="Samples\*.cs" CopyToOutputDirectory="PreserveNewest" />
+		<Compile Remove="Samples/**/*.input.cs" />
+		<Compile Remove="Samples/**/*.output.cs" />
+		<None Include="Samples/**/*.input.cs" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="Samples/**/*.output.cs" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -27,5 +27,9 @@
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
 		<ProjectReference Include="..\..\src\Dapper.Core\Dapper.Core.csproj" />
 		<ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Samples\Sync\" />
 	</ItemGroup>
 </Project>

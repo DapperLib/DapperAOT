@@ -16,7 +16,7 @@ namespace Dapper.AOT.Test
         public SamplesTests(ITestOutputHelper log) : base(log) { }
 
         public static IEnumerable<object[]> GetFiles() =>
-            from path in Directory.GetFiles("Samples", "*.cs")
+            from path in Directory.GetFiles("Samples", "*.cs", SearchOption.AllDirectories)
             where path.EndsWith(".input.cs", StringComparison.OrdinalIgnoreCase)
             select new object[] { path };
 
