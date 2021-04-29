@@ -7,7 +7,7 @@
 		<LangVersion>9</LangVersion>
 		<Nullable>enable</Nullable>
 		<RootNamespace>Dapper</RootNamespace>
-		<Version>0.0.7</Version>
+		<Version>0.0.8</Version>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 		<PackageIcon>Dapper.png</PackageIcon>
 	</PropertyGroup>
