@@ -28,8 +28,4 @@
 		<ProjectReference Include="..\..\src\Dapper.Core\Dapper.Core.csproj" />
 		<ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
 	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Samples\Sync\" />
-	</ItemGroup>
 </Project>
