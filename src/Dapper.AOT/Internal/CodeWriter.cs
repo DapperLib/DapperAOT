@@ -119,7 +119,7 @@ namespace Dapper.Internal
         public CodeWriter RestoreWarning(string warning)
         {
             NewLine();
-            _sb.AppendLine().Append("#pragma warning restore ").Append(warning);
+            _sb.Append("#pragma warning restore ").Append(warning);
             return this;
         }
         public CodeWriter DisableObsolete()

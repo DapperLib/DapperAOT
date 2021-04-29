@@ -39,7 +39,6 @@ partial class Foo
 			}
 #pragma warning disable CS0618
 			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
-
 #pragma warning restore CS0618
 
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
@@ -123,7 +122,6 @@ namespace X.Y.Z
 					}
 #pragma warning disable CS0618
 					__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
-
 #pragma warning restore CS0618
 
 					const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
@@ -196,7 +194,6 @@ namespace X.Y.Z
 					}
 #pragma warning disable CS0618
 					__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
-
 #pragma warning restore CS0618
 
 					const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
