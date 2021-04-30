@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -196,7 +197,7 @@ namespace Dapper.Internal
                 }
                 return false;
 			}
-            
+
             static QueryFlags GetSingleRowFlags(IMethodSymbol method)
 			{
                 const QueryFlags SingleRow = QueryFlags.IsQuery | QueryFlags.IsSingle;
@@ -223,6 +224,19 @@ namespace Dapper.Internal
             }
         }
 
+        public static bool IsEnumeratorCancellationToken(this IParameterSymbol parameter)
+        {
+            if (parameter.Type.IsExact("System", "Threading", "CancellationToken"))
+            {
+                foreach (var attrib in parameter.GetAttributes())
+                {
+                    if (attrib.AttributeClass.IsExact("System", "Runtime", "CompilerServices", "EnumeratorCancellationAttribute"))
+                        return true;
+                }
+            }
+            return false;
+        }
+
         public static bool HasBasicAsyncMethod(this ITypeSymbol type, string methodName, [NotNullWhen(true)] out ITypeSymbol? returnType)
 		{
             // looking by shape
@@ -246,6 +260,9 @@ namespace Dapper.Internal
             => (value & flag) != 0;
         public static bool IsAsync(this QueryFlags value)
             => (value & QueryFlags.IsAsync) != 0;
+
+        public static bool AllowUnsafe(this in GeneratorExecutionContext context)
+            => context.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
 
 
         [Flags]

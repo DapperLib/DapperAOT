@@ -11,8 +11,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using static Dapper.Internal.Utilities;
 
 namespace Dapper.CodeAnalysis
@@ -425,12 +428,97 @@ namespace Dapper.CodeAnalysis
 				sb.NewLine().Append("[").Append(found).Append("]");
 			}
 		}
+
+		static bool WriteMethodHeader(CodeWriter sb, IMethodSymbol method, MethodDeclarationSyntax syntax, QueryFlags flags, bool asInnerIteratorImpl, in GeneratorExecutionContext context)
+		{
+			AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, method);
+			
+			bool needsCancellationToken = !asInnerIteratorImpl && flags.IsAsync() && flags.Has(QueryFlags.IsIterator);
+			if (needsCancellationToken)
+			{
+				// for async iterators, we need to know whether there is a CT on the method
+				// (if there is, we can ensure it is an enumerator cancellation, but if there
+				// isn't, we'll need to add a wrapper method)
+			
+				foreach (var p in method.Parameters)
+				{
+					if (GetHandledType(p.Type) == HandledType.CancellationToken)
+					{
+						needsCancellationToken = false;
+						break;
+					}
+				}
+			}
+
+			if (context.AllowUnsafe()) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, method);
+
+			if (asInnerIteratorImpl)
+			{
+				sb.NewLine().Append("static async ");
+			}
+			else
+			{
+				sb.NewLine().Append(method.DeclaredAccessibility switch
+				{
+					Accessibility.Public => "public",
+					Accessibility.Internal => "internal",
+					Accessibility.Private => "private",
+					Accessibility.ProtectedAndInternal => "private protected",
+					Accessibility.Protected => "public",
+					Accessibility.ProtectedOrInternal => "protected internal",
+					_ => method.DeclaredAccessibility.ToString(), // expect this to cause an error, that's OK
+				});
+
+				if (syntax.Modifiers.Any(SyntaxKind.NewKeyword)) sb.Append(" new"); // can't find this on method!
+				if (method.IsStatic) sb.Append(" static");
+				if (method.IsOverride) sb.Append(" override");
+				if (method.IsVirtual) sb.Append(" virtual");
+				if (method.IsSealed) sb.Append(" sealed");
+				if (flags.IsAsync() && !needsCancellationToken) sb.Append(" async");
+
+				sb.Append(" partial ");
+			}
+
+			sb.Append(method.ReturnType).Append(
+				method.ReturnType.IsReferenceType && method.ReturnNullableAnnotation == NullableAnnotation.Annotated ? "? " : " ")
+				.Append(asInnerIteratorImpl ? LocalPrefix : "").Append(method.Name).Append("(");
+
+			bool first = true;
+			foreach (var p in method.Parameters)
+			{
+				if (first)
+				{
+					if (method.IsExtensionMethod && !asInnerIteratorImpl) sb.Append("this ");
+					first = false;
+				}
+				else
+				{
+					sb.Append(", ");
+				}
+				if (GetHandledType(p.Type) == HandledType.CancellationToken)
+				{
+					if (flags.IsAsync() && flags.Has(QueryFlags.IsIterator) && !p.IsEnumeratorCancellationToken())
+					{
+						// we can add it
+						sb.Append("[global::System.Runtime.CompilerServices.EnumeratorCancellationAttribute] ");
+					}
+				}
+				sb.Append(p.Type).Append(p.NullableAnnotation == NullableAnnotation.Annotated ? "? " : " ").Append(p.Name);
+				
+			}
+			if (asInnerIteratorImpl)
+			{
+				if (!first) sb.Append(", ");
+				sb.Append("[global::System.Runtime.CompilerServices.EnumeratorCancellationAttribute] global::System.Threading.CancellationToken ").Append(LocalPrefix).Append("cancellation");
+			}
+			sb.Append(")");
+			return needsCancellationToken;
+		}
+
+		const string LocalPrefix = "__dapper__";
+
 		bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType, in GeneratorExecutionContext context, string cancellationToken)
 		{
-			const string LocalPrefix = "__dapper__";
-
-			bool allowUnsafe = context.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
-
 			var cmdType = GetMethodReturnType(connectionType, nameof(IDbConnection.CreateCommand));
 			if (cmdType is null)
 			{
@@ -456,47 +544,25 @@ namespace Dapper.CodeAnalysis
 			{
 				sb.NewLine().NewLine().Append("private static ").Append(cmdType).Append("? ").Append(commandField).Append(";").NewLine();
 			}
-
-			AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, method);
-			if (allowUnsafe) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, method);
-			sb.NewLine().Append(method.DeclaredAccessibility switch
-			{
-				Accessibility.Public => "public",
-				Accessibility.Internal => "internal",
-				Accessibility.Private => "private",
-				Accessibility.ProtectedAndInternal => "private protected",
-				Accessibility.Protected => "public",
-				Accessibility.ProtectedOrInternal => "protected internal",
-				_ => method.DeclaredAccessibility.ToString(), // expect this to cause an error, that's OK
-			});
-			if (syntax.Modifiers.Any(SyntaxKind.NewKeyword)) sb.Append(" new"); // can't find this on method!
-			if (method.IsStatic) sb.Append(" static");
-			if (method.IsOverride) sb.Append(" override");
-			if (method.IsVirtual) sb.Append(" virtual");
-			if (method.IsSealed) sb.Append(" sealed");
-			if (flags.IsAsync()) sb.Append(" async");
-
-			sb.Append(" partial ").Append(method.ReturnType).Append(
-				method.ReturnType.IsReferenceType && method.ReturnNullableAnnotation == NullableAnnotation.Annotated ? "? " : " ").Append(method.Name).Append("(");
-			bool first = true;
-			// Log?.Invoke(TypeMetadata.Get(method).ToString());
-			foreach (var p in method.Parameters)
-			{
-				if (first)
-				{
-					if (method.IsExtensionMethod) sb.Append("this ");
-					first = false;
-				}
-				else
-				{
-					sb.Append(", ");
-				}
-				sb.Append(p.Type).Append(p.NullableAnnotation == NullableAnnotation.Annotated ? "? " : " ").Append(p.Name);
-
-				//Log?.Invoke($"{p.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} => {TypeMetadata.Get(p)}");
-			}
-			sb.Append(")");
+			bool needsInnerImpl = WriteMethodHeader(sb, method, syntax, flags, false, context);
 			sb.Indent();
+
+			if (needsInnerImpl)
+			{
+				sb.NewLine().Append("return ").Append(LocalPrefix).Append(method.Name).Append("(");
+				bool first = true;
+				foreach (var p in method.Parameters)
+				{
+					if (!first) sb.Append(", ");
+					first = false;
+					sb.Append(p.Name);
+				}
+				// and include a dummy CT
+				if (!first) sb.Append(", global::System.Threading.CancellationToken.None);");
+				sb.NewLine();
+				WriteMethodHeader(sb, method, syntax, flags, true, context);
+				sb.Indent();
+			}
 
 			// variable declarations
 			sb.NewLine().Append("// locals");
@@ -631,10 +697,15 @@ namespace Dapper.CodeAnalysis
 			}
 			sb.Outdent();
 
+			if (needsInnerImpl)
+			{
+				sb.Outdent();
+			}
+
 			// command initialization
 			sb.NewLine().NewLine().Append("// command factory for ").Append(method.Name);
 			AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, method);
-			if (allowUnsafe) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, null);
+			if (context.AllowUnsafe()) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, null);
 			sb.NewLine().Append("static ").Append(cmdType).Append(" ").Append(LocalPrefix).Append("CreateCommand(").Append(connectionType)
 				.Append(" connection)").Indent();
 			sb.NewLine().Append("var command = connection.CreateCommand();");

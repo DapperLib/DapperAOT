@@ -1,5 +1,3 @@
-// Output code has 1 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Sequence.output.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Sequence.output.cs(111,93): warning CS8425: Async-iterator 'Test.SequenceWithCancellationAsync(DbConnection, int, string, CancellationToken)' has one or more parameters of type 'CancellationToken' but none of them is decorated with the 'EnumeratorCancellation' attribute, so the cancellation token parameter from the generated 'IAsyncEnumerable<>.GetAsyncEnumerator' will be unconsumed
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -17,65 +15,71 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Sequence_input_cs_SequenceAsync_8;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public async partial global::System.Collections.Generic.IAsyncEnumerable<global::SomeType> SequenceAsync(global::System.Data.Common.DbConnection connection, int id, string name)
+	public partial global::System.Collections.Generic.IAsyncEnumerable<global::SomeType> SequenceAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
-		// locals
-		global::System.Data.Common.DbCommand? __dapper__command = null;
-		global::System.Data.Common.DbDataReader? __dapper__reader = null;
-		bool __dapper__close = false;
-		try
+		return __dapper__SequenceAsync(connection, id, name, global::System.Threading.CancellationToken.None);
+
+		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		static async global::System.Collections.Generic.IAsyncEnumerable<global::SomeType> __dapper__SequenceAsync(global::System.Data.Common.DbConnection connection, int id, string name, [global::System.Runtime.CompilerServices.EnumeratorCancellationAttribute] global::System.Threading.CancellationToken __dapper__cancellation)
 		{
-			// prepare connection
-			if (connection!.State == global::System.Data.ConnectionState.Closed)
+			// locals
+			global::System.Data.Common.DbCommand? __dapper__command = null;
+			global::System.Data.Common.DbDataReader? __dapper__reader = null;
+			bool __dapper__close = false;
+			try
 			{
-				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
-				__dapper__close = true;
-			}
+				// prepare connection
+				if (connection!.State == global::System.Data.ConnectionState.Closed)
+				{
+					await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+					__dapper__close = true;
+				}
 
-			// prepare command (excluding parameter values)
-			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Sequence_input_cs_SequenceAsync_8, null)) is null)
-			{
-				__dapper__command = __dapper__CreateCommand(connection!);
-			}
-			else
-			{
-				__dapper__command.Connection = connection;
-			}
+				// prepare command (excluding parameter values)
+				if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Sequence_input_cs_SequenceAsync_8, null)) is null)
+				{
+					__dapper__command = __dapper__CreateCommand(connection!);
+				}
+				else
+				{
+					__dapper__command.Connection = connection;
+				}
 
-			// assign parameter values
+				// assign parameter values
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+				__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+				__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute reader
-			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
-			__dapper__close = false; // performed via CommandBehavior
+				// execute reader
+				const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
+				__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				__dapper__close = false; // performed via CommandBehavior
 
-			// process multiple rows
-			if (__dapper__reader.HasRows)
-			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
-				while (await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
+				// process multiple rows
+				if (__dapper__reader.HasRows)
 				{
-					yield return __dapper__parser(__dapper__reader);
+					var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+					while (await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
+					{
+						yield return __dapper__parser(__dapper__reader);
+					}
 				}
+				// consume additional results (ensures errors from the server are observed)
+				while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 			}
-			// consume additional results (ensures errors from the server are observed)
-			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
-		}
-		finally
-		{
-			// cleanup
-			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
-			if (__dapper__command is not null)
+			finally
 			{
-				__dapper__command.Connection = default;
-				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Sequence_input_cs_SequenceAsync_8, __dapper__command);
-				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
+				// cleanup
+				if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
+				if (__dapper__command is not null)
+				{
+					__dapper__command.Connection = default;
+					__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Sequence_input_cs_SequenceAsync_8, __dapper__command);
+					if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
+				}
+				if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 			}
-			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 		}
 
 		// command factory for SequenceAsync
@@ -111,7 +115,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Sequence_input_cs_SequenceWithCancellationAsync_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public async partial global::System.Collections.Generic.IAsyncEnumerable<global::SomeType> SequenceWithCancellationAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
+	public async partial global::System.Collections.Generic.IAsyncEnumerable<global::SomeType> SequenceWithCancellationAsync(global::System.Data.Common.DbConnection connection, int id, string name, [global::System.Runtime.CompilerServices.EnumeratorCancellationAttribute] global::System.Threading.CancellationToken cancellation)
 	{
 		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
