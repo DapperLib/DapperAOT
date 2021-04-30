@@ -11,7 +11,7 @@
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(17,21): error CS0161: 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)': not all code paths return a value
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(17,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)'
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(101,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(201,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(202,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -60,7 +60,7 @@ partial class Test
 			__dapper__command.Parameters[2].Value = global::Dapper.Internal.InternalUtilities.AsValue(output);
 #pragma warning restore CS0618
 
-			// execute
+			// execute non-query
 			__dapper__command.ExecuteNonQuery();
 		}
 		finally
@@ -145,11 +145,12 @@ partial class Test
 			__dapper__command.Parameters[2].Value = global::Dapper.Internal.InternalUtilities.AsValue(output);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			int __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
@@ -159,7 +160,7 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -246,7 +247,7 @@ partial class Test
 			__dapper__command.Parameters[4].Value = global::Dapper.Internal.InternalUtilities.AsValue(recordsAffected);
 #pragma warning restore CS0618
 
-			// execute
+			// execute non-query
 			__dapper__command.ExecuteNonQuery();
 		}
 		finally
@@ -338,7 +339,7 @@ partial class Test
 			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(value);
 #pragma warning restore CS0618
 
-			// execute
+			// execute non-query
 			__dapper__command.ExecuteNonQuery();
 		}
 		finally

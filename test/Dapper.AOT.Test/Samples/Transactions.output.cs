@@ -45,7 +45,7 @@ partial class Test
 				__dapper__command.Connection = connection;
 			}
 
-			// execute
+			// execute non-query
 			__dapper__command.ExecuteNonQuery();
 		}
 		finally
@@ -106,7 +106,7 @@ partial class Test
 				__dapper__command.Connection = connection;
 			}
 
-			// execute
+			// execute non-query
 			__dapper__command.ExecuteNonQuery();
 		}
 		finally
@@ -167,7 +167,7 @@ partial class Test
 				__dapper__command.Connection = connection;
 			}
 
-			// execute
+			// execute non-query
 			__dapper__command.ExecuteNonQuery();
 		}
 		finally
@@ -223,7 +223,7 @@ partial class Test
 				__dapper__command.Connection = transaction?.Connection;
 			}
 
-			// execute
+			// execute non-query
 			__dapper__command.ExecuteNonQuery();
 		}
 		finally
@@ -284,7 +284,7 @@ partial class Test
 				__dapper__command.Connection = connection ?? transaction?.Connection;
 			}
 
-			// execute
+			// execute non-query
 			__dapper__command.ExecuteNonQuery();
 		}
 		finally

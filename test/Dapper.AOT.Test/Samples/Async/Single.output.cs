@@ -46,13 +46,14 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			global::SomeType __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 			{
 				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
 			}
@@ -60,7 +61,7 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -140,13 +141,14 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			global::SomeType __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 			{
 				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
 			}
@@ -154,7 +156,7 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -234,13 +236,14 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, cancellation).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			global::SomeType __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(cancellation).ConfigureAwait(false))
 			{
 				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
 			}
@@ -248,7 +251,7 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (await __dapper__reader.NextResultAsync(cancellation).ConfigureAwait(false)) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -328,13 +331,14 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, cancellation).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			global::SomeType __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(cancellation).ConfigureAwait(false))
 			{
 				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
 			}
@@ -342,7 +346,7 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (await __dapper__reader.NextResultAsync(cancellation).ConfigureAwait(false)) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally

@@ -45,7 +45,7 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute non-query
 			__dapper__command.ExecuteNonQuery();
 		}
 		finally

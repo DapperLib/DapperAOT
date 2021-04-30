@@ -1,12 +1,10 @@
-// Output code has 8 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(437,33): error CS1026: ) expected
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(537,33): error CS1026: ) expected
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(593,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(597,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(610,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(624,3): error CS1524: Expected catch or finally
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(624,4): error CS1513: } expected
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(624,4): error CS1513: } expected
+// Output code has 6 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs':
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(599,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(603,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(616,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(629,3): error CS1524: Expected catch or finally
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(629,4): error CS1513: } expected
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(629,4): error CS1513: } expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -55,11 +53,12 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
@@ -69,7 +68,7 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -149,11 +148,12 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			int __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
@@ -163,7 +163,7 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -243,11 +243,12 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
@@ -260,7 +261,7 @@ partial class Test
 #pragma warning restore CS0618
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -340,11 +341,12 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
@@ -354,7 +356,7 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -434,17 +436,18 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
 				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
 #pragma warning disable CS0618
-				if (__dapper__reader.Read() global::Dapper.Internal.InternalUtilities.ThrowMultiple();
+				if (__dapper__reader.Read()) global::Dapper.Internal.InternalUtilities.ThrowMultiple();
 #pragma warning restore CS0618
 			}
 			else
@@ -454,7 +457,7 @@ partial class Test
 #pragma warning restore CS0618
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -534,24 +537,25 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
+			// process single row
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
 				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
 #pragma warning disable CS0618
-				if (__dapper__reader.Read() global::Dapper.Internal.InternalUtilities.ThrowMultiple();
+				if (__dapper__reader.Read()) global::Dapper.Internal.InternalUtilities.ThrowMultiple();
 #pragma warning restore CS0618
 			}
 			else
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
 			return __dapper__result;
 		}
 		finally
@@ -630,6 +634,5 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
-			// execute
 		}
 		#endregion

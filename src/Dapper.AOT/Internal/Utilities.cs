@@ -244,6 +244,8 @@ namespace Dapper.Internal
 
         public static bool Has(this QueryFlags value, QueryFlags flag)
             => (value & flag) != 0;
+        public static bool IsAsync(this QueryFlags value)
+            => (value & QueryFlags.IsAsync) != 0;
 
 
         [Flags]
