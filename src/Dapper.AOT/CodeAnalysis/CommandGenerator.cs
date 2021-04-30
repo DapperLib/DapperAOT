@@ -6,19 +6,24 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
+using System.Data.Common;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using static Dapper.Internal.Utilities;
 
 namespace Dapper.CodeAnalysis
 {
-    /// <summary>
-    /// Parses the source for methods annotated with <c>Dapper.CommandAttribute</c>, generating an appropriate implementation.
-    /// </summary>
-    [Generator]
+	/// <summary>
+	/// Parses the source for methods annotated with <c>Dapper.CommandAttribute</c>, generating an appropriate implementation.
+	/// </summary>
+	[Generator]
     public sealed class CommandGenerator : ISourceGenerator
     {
         sealed class CommandSyntaxReceiver : ISyntaxReceiver
@@ -266,7 +271,7 @@ namespace Dapper.CodeAnalysis
                 return false;
             }
 
-            string? connection = null, transaction = null;
+            string? connection = null, transaction = null, cancellationToken = null;
             ITypeSymbol? connectionType = null, transactionType = null;
             foreach (var p in method.Parameters)
             {
@@ -292,17 +297,37 @@ namespace Dapper.CodeAnalysis
                         transaction = p.Name;
                         transactionType = p.Type;
                         break;
+                    case HandledType.CancellationToken:
+                        if (cancellationToken is not null)
+						{
+                            Log?.Invoke($"Multiple cancellation tokens found for '{method.Name}'");
+                            return false;
+                        }
+                        cancellationToken = p.Name;
+                        break;
                 }
             }
-            if (connection is null && transaction is not null)
-            {
-                connection = transaction + "." + nameof(IDbTransaction.Connection);
-                connectionType = ((IPropertySymbol)transactionType!.GetMembers(nameof(IDbTransaction.Connection)).Single()).Type;
+            if (transaction is not null)
+			{
+                if (connection is null)
+                {
+                    connection = transaction + "?." + nameof(IDbTransaction.Connection);
+                    connectionType = ((IPropertySymbol)transactionType!.GetMembers(nameof(IDbTransaction.Connection)).Single()).Type;
+                }
+                else
+				{
+                    connection = connection + " ?? " + transaction + "?." + nameof(IDbTransaction.Connection);
+                }
             }
+            if (cancellationToken is null)
+			{
+                cancellationToken = "global::System.Threading.CancellationToken.None";
+            }
+            
 
             if (connection is not null)
             {
-                return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionType!, transaction, transactionType!, text, commandType, context);
+                return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionType!, transaction, transactionType!, text, commandType, context, cancellationToken);
             }
             // TODO: other APIs here
             else
@@ -317,15 +342,24 @@ namespace Dapper.CodeAnalysis
             None,
             Connection,
             Transaction,
+            CancellationToken,
         }
         static HandledType GetHandledType(ITypeSymbol type)
         {
-            if (type.IsReferenceType)
+            if (type is INamedTypeSymbol named && named.Arity == 0)
             {
-                if (type.IsExact("System", "Data", "IDbConnection") || type.IsKindOf("System", "Data", "Common", "DbConnection"))
-                    return HandledType.Connection;
-                if (type.IsExact("System", "Data", "IDbTransaction") || type.IsKindOf("System", "Data", "Common", "DbTransaction"))
-                    return HandledType.Transaction;
+                if (type.IsReferenceType)
+                {
+                    if (type.IsExact("System", "Data", "IDbConnection") || type.IsKindOf("System", "Data", "Common", "DbConnection"))
+                        return HandledType.Connection;
+                    if (type.IsExact("System", "Data", "IDbTransaction") || type.IsKindOf("System", "Data", "Common", "DbTransaction"))
+                        return HandledType.Transaction;
+                }
+                else
+                {
+                    if (type.IsExact("System", "Threading", "CancellationToken"))
+                        return HandledType.CancellationToken;
+                }
             }
             return HandledType.None;
         }
@@ -386,81 +420,36 @@ namespace Dapper.CodeAnalysis
             return default;
         }
 
-        enum Cardinality
-        {
-            None,
-            FirstOrDefault,
-            First,
-            SingleOrDefault,
-            Single,
-            Multiple,
+        static void AddIfMissing(CodeWriter sb, string attribute, in GeneratorExecutionContext context, IMethodSymbol? method)
+		{
+            var found = context.Compilation.GetTypeByMetadataName(attribute);
+            if (found is not null && (method is null || !method.IsDefined(found)))
+			{
+                sb.NewLine().Append("[").Append(found).Append("]");
+            }
         }
-        static Cardinality GetCardinality(IMethodSymbol method, out ITypeSymbol? itemType)
-        {
-            var type = method.ReturnType;
-            if (type.SpecialType == SpecialType.System_Void)
-            {
-                itemType = null;
-                return Cardinality.None;
-            }
-
-            if (type is INamedTypeSymbol named && !named.IsGenericType)
-            {
-                if (type.IsExact("System", "Threading", "Tasks", "Task") || type.IsExact("System", "Threading", "Tasks", "ValueTask"))
-                {
-                    itemType = null;
-                    return Cardinality.None;
-                }
-            }
-
-            Cardinality cardinality = method.ReturnNullableAnnotation switch
-            {
-                NullableAnnotation.NotAnnotated => Cardinality.First,
-                _ => Cardinality.FirstOrDefault,
-            };
-            itemType = type;
-
-            // check for consumer-based override
-            foreach (var attrib in method.GetAttributes())
-            {
-                if (attrib.AttributeClass.IsExact("Dapper", "SingleRowAttribute"))
-                {
-                    if (attrib.TryGetAttributeValue("Kind", out int kind))
-                    {
-                        cardinality = kind switch
-                        {
-                            0 => Cardinality.FirstOrDefault,
-                            1 => Cardinality.First,
-                            2 => Cardinality.SingleOrDefault,
-                            3 => Cardinality.Single,
-                            _ => cardinality, // unknown or automatic
-                        };
-                    }
-                    break; // only one
-                }
-            }
-            return cardinality;
-        }
-        bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType, in GeneratorExecutionContext context)
+        bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType, in GeneratorExecutionContext context, string cancellationToken)
         {
             const string LocalPrefix = "__dapper__";
 
             bool allowUnsafe = context.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
-            var skipLocalsInit = allowUnsafe ? context.Compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.SkipLocalsInitAttribute") : null;
+
             var cmdType = GetMethodReturnType(connectionType, nameof(IDbConnection.CreateCommand));
-            var readerType = GetMethodReturnType(cmdType, nameof(IDbCommand.ExecuteReader));
-
-            var cardinality = GetCardinality(method, out var itemType);
-
             if (cmdType is null)
             {
                 Log?.Invoke($"Unable to resolve command-type for '{method.Name}'");
                 return false;
             }
-            if (readerType is null)
+            (var flags, var itemType, var itemNullability) = CategorizeQuery(method);
+            ITypeSymbol? readerType = null;
+            if (flags.Has(QueryFlags.IsQuery))
             {
-                Log?.Invoke($"Unable to resolve reader-type for '{method.Name}'");
-                return false;
+                readerType = GetMethodReturnType(cmdType, nameof(IDbCommand.ExecuteReader));
+                if (readerType is null)
+                {
+                    Log?.Invoke($"Unable to resolve reader-type for '{method.Name}'");
+                    return false;
+                }
             }
 
             var location = GetLocation(method, out string? identifier);
@@ -471,10 +460,8 @@ namespace Dapper.CodeAnalysis
                 sb.NewLine().NewLine().Append("private static ").Append(cmdType).Append("? ").Append(commandField).Append(";").NewLine();
             }
 
-            if (skipLocalsInit is not null && !method.IsDefined(skipLocalsInit))
-            {
-                sb.NewLine().Append("[").Append(skipLocalsInit).Append("]");
-            }
+            AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, method);
+            if (allowUnsafe) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, method);
             sb.NewLine().Append(method.DeclaredAccessibility switch
             {
                 Accessibility.Public => "public",
@@ -490,6 +477,7 @@ namespace Dapper.CodeAnalysis
             if (method.IsOverride) sb.Append(" override");
             if (method.IsVirtual) sb.Append(" virtual");
             if (method.IsSealed) sb.Append(" sealed");
+            if (flags.Has(QueryFlags.IsAsync)) sb.Append(" async");
 
             sb.Append(" partial ").Append(method.ReturnType).Append(
                 method.ReturnType.IsReferenceType && method.ReturnNullableAnnotation == NullableAnnotation.Annotated ? "? " : " ").Append(method.Name).Append("(");
@@ -514,8 +502,9 @@ namespace Dapper.CodeAnalysis
             sb.Indent();
 
             // variable declarations
+            sb.NewLine().Append("// locals");
             sb.NewLine().Append(cmdType).Append("? ").Append(LocalPrefix).Append("command = null;");
-            sb.NewLine().Append(readerType).Append("? ").Append(LocalPrefix).Append("reader = null;");
+            if (readerType is not null) sb.NewLine().Append(readerType).Append("? ").Append(LocalPrefix).Append("reader = null;");
             sb.NewLine().Append("bool ").Append(LocalPrefix).Append("close = false;");
             bool useFieldNumbers = false; // TODO: come back
             if (useFieldNumbers)
@@ -524,11 +513,22 @@ namespace Dapper.CodeAnalysis
             }
             sb.NewLine().Append("try");
             sb.Indent();
-            // functional code
+
+            // prepare connection
+            sb.NewLine().Append("// prepare connection");
             sb.NewLine().Append("if (").Append(connection).Append(".State == global::System.Data.ConnectionState.Closed)").Indent();
-            sb.NewLine().Append(connection).Append(".Open();");
+            if (flags.Has(QueryFlags.IsAsync))
+            {
+                sb.NewLine().Append("await ").Append(connection).Append(".OpenAsync(").Append(cancellationToken).Append(").ConfigureAwait(false);");
+            }
+            else
+            {
+                sb.NewLine().Append(connection).Append(".Open();");
+            }
             sb.NewLine().Append(LocalPrefix).Append("close = true;").Outdent();
 
+            // prepare command (excluding parameter values)
+            sb.NewLine().NewLine().Append("// prepare command (excluding parameter values)");
             if (commandField is not null)
             {
                 sb.NewLine().Append("if ((").Append(LocalPrefix).Append("command = global::System.Threading.Interlocked.Exchange(ref ").Append(commandField).Append(", null)) is null)");
@@ -540,63 +540,67 @@ namespace Dapper.CodeAnalysis
                 sb.Outdent().NewLine().Append("else").Indent().NewLine().Append(LocalPrefix).Append("command.Connection = ").Append(connection).Append(";").Outdent();
             }
 
+            // assign parameter values
             int index = 0;
             foreach (var p in method.Parameters)
             {
                 if (GetHandledType(p.Type) != HandledType.None) continue;
-                sb.DisableObsolete().NewLine().Append(LocalPrefix).Append("command.Parameters[").Append(index++).Append("].Value = global::Dapper.Internal.InternalUtilities.AsValue(").Append(p.Name).Append(");").RestoreObsolete();
+                if (index == 0)
+                {
+                    sb.NewLine().NewLine().Append("// assign parameter values");
+                    sb.DisableObsolete();
+                }
+                sb.NewLine().Append(LocalPrefix).Append("command.Parameters[").Append(index++).Append("].Value = global::Dapper.Internal.InternalUtilities.AsValue(").Append(p.Name).Append(");");
             }
+            if (index != 0) sb.RestoreObsolete();
 
-            sb.NewLine().NewLine().Append("const global::System.Data.CommandBehavior ").Append(LocalPrefix).Append("behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult");
-            switch (cardinality)
+            // execute
+            sb.NewLine().NewLine().Append("// execute");
+            if (flags.Has(QueryFlags.IsQuery) && itemType is not null)
             {
-                case Cardinality.First:
-                case Cardinality.FirstOrDefault:
-                    sb.Append(" | global::System.Data.CommandBehavior.SingleRow");
-                    break;
+                if (flags.Has(QueryFlags.IsSingle))
+                {
+                    ExecuteReaderSingle(sb, flags, itemType);
+                }
+                else
+                {
+                    // TODO: other query kinds
+                    Log?.Invoke($"Query not supported: {flags} via '{method.Name}'");
+                    return false;
+                }
             }
-            sb.Append(";");
-
-            sb.NewLine().Append(LocalPrefix).Append("reader = ").Append(LocalPrefix).Append("command.ExecuteReader(").Append(LocalPrefix).Append("close ? (")
-                .Append(LocalPrefix).Append("behavior | global::System.Data.CommandBehavior.CloseConnection").Append(") : ").Append(LocalPrefix).Append("behavior);");
-            sb.NewLine().Append(LocalPrefix).Append("close = false; // performed via CommandBehavior");
-            sb.NewLine();
-            sb.NewLine().Append(itemType).Append(" ").Append(LocalPrefix).Append("result;");
-            sb.NewLine().Append("if (").Append(LocalPrefix).Append("reader.HasRows && ").Append(LocalPrefix).Append("reader.Read())").Indent();
-
-            sb.NewLine().Append(LocalPrefix).Append("result = global::Dapper.SqlMapper.GetRowParser<").Append(itemType).Append(">(")
-                .Append(LocalPrefix).Append("reader).Invoke(").Append(LocalPrefix).Append("reader);");
-
-            switch (cardinality)
+            else if (flags.Has(QueryFlags.IsScalar) && itemType is not null)
             {
-                case Cardinality.Single:
-                case Cardinality.SingleOrDefault:
-                    sb.DisableObsolete().NewLine().Append("if (").Append(LocalPrefix).Append("reader.Read() global::Dapper.Internal.InternalUtilities.ThrowMultiple();").RestoreObsolete();
-                    break;
+                // TODO: scalars
+                Log?.Invoke($"Scalar not supported: {flags} via '{method.Name}'");
+                return false;
             }
-            sb.Outdent().NewLine().Append("else").Indent();
-            sb.NewLine().Append(LocalPrefix).Append("result = ");
-            switch (cardinality)
+            else
             {
-                case Cardinality.First:
-                case Cardinality.Single:
-                    sb.Append("global::System.Linq.Enumerable.").Append(cardinality.ToString()).Append("(global::System.Array.Empty<").Append(itemType).Append(">());");
-                    break;
-                default:
-                    sb.Append("default!;");
-                    break;
+                // non-query
+                ExecuteNonQuery(sb, flags, cancellationToken);
             }
-            sb.Outdent().NewLine().Append("while (").Append(LocalPrefix).Append("reader.NextResult()) { } // consumes TDS to check for exceptions");
-            sb.NewLine().Append("return ").Append(LocalPrefix).Append("result;");
+
             sb.Outdent();
             sb.NewLine().Append("finally");
             // cleanup code
             sb.Indent();
+            sb.NewLine().Append("// cleanup");
             if (useFieldNumbers)
             {
                 sb.NewLine().Append("if (").Append(LocalPrefix).Append("fieldNumbers is not null) global::System.Buffers.ArrayPool<int>.Shared.Return(").Append(LocalPrefix).Append("fieldNumbers);");
             }
-            sb.NewLine().Append(LocalPrefix).Append("reader?.Dispose();");
+            if (readerType is not null)
+            {
+                if (flags.Has(QueryFlags.IsAsync) && readerType.HasDisposeAsync())
+                {
+                    sb.NewLine().Append("if (").Append(LocalPrefix).Append("reader is not null) ").Append("await ").Append(LocalPrefix).Append("reader.DisposeAsync().ConfigureAwait(false);");
+                }
+                else
+                {
+                    sb.NewLine().Append(LocalPrefix).Append("reader?.Dispose();");
+                }
+            }
             sb.NewLine().Append("if (").Append(LocalPrefix).Append("command is not null)");
             sb.Indent();
             if (commandField is not null)
@@ -604,17 +608,33 @@ namespace Dapper.CodeAnalysis
                 sb.NewLine().Append(LocalPrefix).Append("command.Connection = default;");
                 sb.NewLine().Append(LocalPrefix).Append("command = global::System.Threading.Interlocked.Exchange(ref ").Append(commandField).Append(", ").Append(LocalPrefix).Append("command);");
             }
-            sb.NewLine().Append(LocalPrefix).Append("command?.Dispose();");
+            if (flags.Has(QueryFlags.IsAsync) && cmdType.HasDisposeAsync())
+            {
+                sb.NewLine().Append("if (").Append(LocalPrefix).Append("command is not null) ").Append("await ").Append(LocalPrefix).Append("command.DisposeAsync().ConfigureAwait(false);");
+            }
+            else
+            {
+                sb.NewLine().Append(LocalPrefix).Append("command?.Dispose();");
+            }
             sb.Outdent();
-            sb.NewLine().Append("if (").Append(LocalPrefix).Append("close) ").Append(connection).Append("?.Close();");
+
+            if (flags.Has(QueryFlags.IsAsync) && connectionType.HasBasicAsyncMethod("CloseAsync", out var awaitableType))
+            {
+                sb.NewLine().Append("if (").Append(LocalPrefix).Append("close) await (").Append(connection).Append("?.CloseAsync() ?? ")
+                    .Append(awaitableType.IsValueType ? "default" : "global::System.Threading.Tasks.Task.CompletedTask")
+                    .Append(").ConfigureAwait(false);");
+            }
+            else
+            {
+                sb.NewLine().Append("if (").Append(LocalPrefix).Append("close) ").Append(connection).Append("?.Close();");
+            }
             sb.Outdent();
 
             // command initialization
-            if (skipLocalsInit is not null)
-            {
-                sb.NewLine().Append("[").Append(skipLocalsInit).Append("]");
-            }
-            sb.NewLine().NewLine().Append("static ").Append(cmdType).Append(" ").Append(LocalPrefix).Append("CreateCommand(").Append(connectionType)
+            sb.NewLine().NewLine().Append("// command factory for ").Append(method.Name);
+            AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, method);
+            if (allowUnsafe) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, null);
+            sb.NewLine().Append("static ").Append(cmdType).Append(" ").Append(LocalPrefix).Append("CreateCommand(").Append(connectionType)
                 .Append(" connection)").Indent();
             sb.NewLine().Append("var command = connection.CreateCommand();");
             AddProviderSpecificSettings(sb, cmdType, "command", context);
@@ -675,6 +695,54 @@ namespace Dapper.CodeAnalysis
                     }
                 }
                 return known;
+            }
+
+            static void ExecuteReaderSingle(CodeWriter sb, QueryFlags flags, ITypeSymbol itemType)
+			{
+                sb.NewLine().NewLine().Append("const global::System.Data.CommandBehavior ").Append(LocalPrefix).Append("behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult");
+                if (!flags.Has(QueryFlags.DemandAtMostOneRow))
+                {   // if we don't need to check for a second row, can optimize
+                    sb.Append(" | global::System.Data.CommandBehavior.SingleRow");
+                }
+                sb.Append(";");
+
+                sb.NewLine().Append(LocalPrefix).Append("reader = ").Append(LocalPrefix).Append("command.ExecuteReader(").Append(LocalPrefix).Append("close ? (")
+                    .Append(LocalPrefix).Append("behavior | global::System.Data.CommandBehavior.CloseConnection").Append(") : ").Append(LocalPrefix).Append("behavior);");
+                sb.NewLine().Append(LocalPrefix).Append("close = false; // performed via CommandBehavior");
+                sb.NewLine();
+                sb.NewLine().Append(itemType).Append(" ").Append(LocalPrefix).Append("result;");
+                sb.NewLine().Append("if (").Append(LocalPrefix).Append("reader.HasRows && ").Append(LocalPrefix).Append("reader.Read())").Indent();
+
+                sb.NewLine().Append(LocalPrefix).Append("result = global::Dapper.SqlMapper.GetRowParser<").Append(itemType).Append(">(")
+                    .Append(LocalPrefix).Append("reader).Invoke(").Append(LocalPrefix).Append("reader);");
+
+                if (flags.Has(QueryFlags.DemandAtMostOneRow))
+                {
+                    sb.DisableObsolete().NewLine().Append("if (").Append(LocalPrefix).Append("reader.Read() global::Dapper.Internal.InternalUtilities.ThrowMultiple();").RestoreObsolete();
+                }
+                sb.Outdent().NewLine().Append("else").Indent();
+                if (flags.Has(QueryFlags.DemandAtLeastOneRow))
+                {
+                    sb.DisableObsolete().NewLine().Append("global::Dapper.Internal.InternalUtilities.ThrowNone();").RestoreObsolete();
+                }
+                sb.NewLine().Append(LocalPrefix).Append("result = default!;");
+                sb.Outdent().NewLine().Append("while (").Append(LocalPrefix).Append("reader.NextResult()) { } // consumes TDS to check for exceptions");
+                sb.NewLine().Append("return ").Append(LocalPrefix).Append("result;");
+            }
+
+            static void ExecuteNonQuery(CodeWriter sb, QueryFlags flags, string cancellationToken)
+			{
+                sb.NewLine();
+                if (flags.Has(QueryFlags.IsAsync))
+                {
+                    
+                    sb.Append("await ").Append(LocalPrefix).Append("command.ExecuteNonQueryAsync(").Append(cancellationToken).Append(").ConfigureAwait(false);");
+                    // .Append(").ConfigureAwait(false);");
+                }
+                else
+                {
+                    sb.Append(LocalPrefix).Append("command.ExecuteNonQuery();");
+                }
             }
         }
 

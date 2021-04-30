@@ -42,6 +42,7 @@ namespace Dapper.Internal
         private static readonly int[] s_One = new int[1];
 
         public static void ThrowMultiple() => s_One.Single();
+        public static void ThrowNone() => Array.Empty<int>().Single();
 #pragma warning restore CS1591
     }
 }

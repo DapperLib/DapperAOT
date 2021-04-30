@@ -50,7 +50,11 @@ namespace Dapper.AOT.Test
                     File.WriteAllText(outputPath, actual);
                     
                 }
-            } catch { }
+            }
+            catch (Exception ex)
+            {
+                Log(ex.Message);
+            }
 
             Assert.Equal(expected.Trim(), actual.Trim(), ignoreLineEndingDifferences: true, ignoreWhiteSpaceDifferences: true);
         }

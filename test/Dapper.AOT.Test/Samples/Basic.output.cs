@@ -17,18 +17,23 @@ partial class Foo
 
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Basic_input_cs_ShouldDetectThis_11;
 
+	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	public partial int? ShouldDetectThis(global::System.Data.Common.DbConnection connection, string region)
 	{
+		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
 		try
 		{
+			// prepare connection
 			if (connection.State == global::System.Data.ConnectionState.Closed)
 			{
 				connection.Open();
 				__dapper__close = true;
 			}
+
+			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Basic_input_cs_ShouldDetectThis_11, null)) is null)
 			{
 				__dapper__command = __dapper__CreateCommand(connection);
@@ -37,9 +42,13 @@ partial class Foo
 			{
 				__dapper__command.Connection = connection;
 			}
+
+			// assign parameter values
 #pragma warning disable CS0618
 			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
 #pragma warning restore CS0618
+
+			// execute
 
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
@@ -59,6 +68,7 @@ partial class Foo
 		}
 		finally
 		{
+			// cleanup
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -69,6 +79,8 @@ partial class Foo
 			if (__dapper__close) connection?.Close();
 		}
 
+		// command factory for ShouldDetectThis
+		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -100,18 +112,23 @@ namespace X.Y.Z
 
 			private static global::System.Data.SqlClient.SqlCommand? s___dapper__command_Samples_Basic_input_cs_ViaDapper_32;
 
+			[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 			public virtual partial global::X.Y.Z.Customer ViaDapper(string region, global::System.Data.SqlClient.SqlConnection c)
 			{
+				// locals
 				global::System.Data.SqlClient.SqlCommand? __dapper__command = null;
 				global::System.Data.SqlClient.SqlDataReader? __dapper__reader = null;
 				bool __dapper__close = false;
 				try
 				{
+					// prepare connection
 					if (c.State == global::System.Data.ConnectionState.Closed)
 					{
 						c.Open();
 						__dapper__close = true;
 					}
+
+					// prepare command (excluding parameter values)
 					if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Basic_input_cs_ViaDapper_32, null)) is null)
 					{
 						__dapper__command = __dapper__CreateCommand(c);
@@ -120,9 +137,13 @@ namespace X.Y.Z
 					{
 						__dapper__command.Connection = c;
 					}
+
+					// assign parameter values
 #pragma warning disable CS0618
 					__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
 #pragma warning restore CS0618
+
+					// execute
 
 					const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 					__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
@@ -142,6 +163,7 @@ namespace X.Y.Z
 				}
 				finally
 				{
+					// cleanup
 					__dapper__reader?.Dispose();
 					if (__dapper__command is not null)
 					{
@@ -152,6 +174,8 @@ namespace X.Y.Z
 					if (__dapper__close) c?.Close();
 				}
 
+				// command factory for ViaDapper
+				[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 				static global::System.Data.SqlClient.SqlCommand __dapper__CreateCommand(global::System.Data.SqlClient.SqlConnection connection)
 				{
 					var command = connection.CreateCommand();
@@ -172,18 +196,23 @@ namespace X.Y.Z
 
 			private static global::Oracle.ManagedDataAccess.Client.OracleCommand? s___dapper__command_Samples_Basic_input_cs_ViaOracle_35;
 
+			[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 			public new static partial global::X.Y.Z.Customer ViaOracle(string region, global::Oracle.ManagedDataAccess.Client.OracleConnection c)
 			{
+				// locals
 				global::Oracle.ManagedDataAccess.Client.OracleCommand? __dapper__command = null;
 				global::Oracle.ManagedDataAccess.Client.OracleDataReader? __dapper__reader = null;
 				bool __dapper__close = false;
 				try
 				{
+					// prepare connection
 					if (c.State == global::System.Data.ConnectionState.Closed)
 					{
 						c.Open();
 						__dapper__close = true;
 					}
+
+					// prepare command (excluding parameter values)
 					if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Basic_input_cs_ViaOracle_35, null)) is null)
 					{
 						__dapper__command = __dapper__CreateCommand(c);
@@ -192,9 +221,13 @@ namespace X.Y.Z
 					{
 						__dapper__command.Connection = c;
 					}
+
+					// assign parameter values
 #pragma warning disable CS0618
 					__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
 #pragma warning restore CS0618
+
+					// execute
 
 					const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 					__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
@@ -214,6 +247,7 @@ namespace X.Y.Z
 				}
 				finally
 				{
+					// cleanup
 					__dapper__reader?.Dispose();
 					if (__dapper__command is not null)
 					{
@@ -224,6 +258,8 @@ namespace X.Y.Z
 					if (__dapper__close) c?.Close();
 				}
 
+				// command factory for ViaOracle
+				[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 				static global::Oracle.ManagedDataAccess.Client.OracleCommand __dapper__CreateCommand(global::Oracle.ManagedDataAccess.Client.OracleConnection connection)
 				{
 					var command = connection.CreateCommand();
