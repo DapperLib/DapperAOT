@@ -549,6 +549,7 @@ namespace Dapper.CodeAnalysis
 
 			if (needsInnerImpl)
 			{
+				sb.NewLine().Append("// use wrapper method to add support for enumerator cancellation");
 				sb.NewLine().Append("return ").Append(LocalPrefix).Append(method.Name).Append("(");
 				bool first = true;
 				foreach (var p in method.Parameters)
@@ -562,6 +563,7 @@ namespace Dapper.CodeAnalysis
 				sb.NewLine();
 				WriteMethodHeader(sb, method, syntax, flags, true, context);
 				sb.Indent();
+				cancellationToken = LocalPrefix + "cancellation";
 			}
 
 			// variable declarations

@@ -17,6 +17,7 @@ partial class Test
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	public partial global::System.Collections.Generic.IAsyncEnumerable<global::SomeType> SequenceAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
+		// use wrapper method to add support for enumerator cancellation
 		return __dapper__SequenceAsync(connection, id, name, global::System.Threading.CancellationToken.None);
 
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -31,7 +32,7 @@ partial class Test
 				// prepare connection
 				if (connection!.State == global::System.Data.ConnectionState.Closed)
 				{
-					await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+					await connection!.OpenAsync(__dapper__cancellation).ConfigureAwait(false);
 					__dapper__close = true;
 				}
 
@@ -53,20 +54,20 @@ partial class Test
 
 				// execute reader
 				const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-				__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, __dapper__cancellation).ConfigureAwait(false);
 				__dapper__close = false; // performed via CommandBehavior
 
 				// process multiple rows
 				if (__dapper__reader.HasRows)
 				{
 					var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
-					while (await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
+					while (await __dapper__reader.ReadAsync(__dapper__cancellation).ConfigureAwait(false))
 					{
 						yield return __dapper__parser(__dapper__reader);
 					}
 				}
 				// consume additional results (ensures errors from the server are observed)
-				while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
+				while (await __dapper__reader.NextResultAsync(__dapper__cancellation).ConfigureAwait(false)) { }
 			}
 			finally
 			{
