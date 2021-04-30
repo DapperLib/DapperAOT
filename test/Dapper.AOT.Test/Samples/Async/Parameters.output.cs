@@ -29,16 +29,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				await connection.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_ReturnViaReturnAsync_19, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -89,27 +89,28 @@ partial class Test
 	}
 
 
-	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_ReturnViaOutAsync_28;
+	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_RecordsAffectedViaReturnAsync_23;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public async partial global::System.Threading.Tasks.ValueTask ReturnViaOutAsync(global::System.Data.Common.DbConnection connection, global::Test.BarParams parameters)
+	public async partial global::System.Threading.Tasks.ValueTask<int> RecordsAffectedViaReturnAsync(global::System.Data.Common.DbConnection connection, global::Test.FooParams parameters)
 	{
 		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
+		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				await connection.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
-			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_ReturnViaOutAsync_28, null)) is null)
+			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_RecordsAffectedViaReturnAsync_23, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -122,21 +123,36 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute
-			await __dapper__command.ExecuteNonQueryAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
+			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__close = false; // performed via CommandBehavior
+
+			int __dapper__result;
+			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			{
+				__dapper__result = global::Dapper.SqlMapper.GetRowParser<int>(__dapper__reader).Invoke(__dapper__reader);
+			}
+			else
+			{
+				__dapper__result = default!;
+			}
+			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
+			return __dapper__result;
 		}
 		finally
 		{
 			// cleanup
+			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 			if (__dapper__command is not null)
 			{
 				__dapper__command.Connection = default;
-				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_ReturnViaOutAsync_28, __dapper__command);
+				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_RecordsAffectedViaReturnAsync_23, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
 			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 		}
 
-		// command factory for ReturnViaOutAsync
+		// command factory for RecordsAffectedViaReturnAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
@@ -160,7 +176,78 @@ partial class Test
 	}
 
 
-	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_FineControlAsync_31;
+	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_ReturnAndRecordsAffectedViaOutAsync_35;
+
+	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	public async partial global::System.Threading.Tasks.ValueTask ReturnAndRecordsAffectedViaOutAsync(global::System.Data.Common.DbConnection connection, global::Test.BarParams parameters)
+	{
+		// locals
+		global::System.Data.Common.DbCommand? __dapper__command = null;
+		bool __dapper__close = false;
+		try
+		{
+			// prepare connection
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
+			{
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				__dapper__close = true;
+			}
+
+			// prepare command (excluding parameter values)
+			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_ReturnAndRecordsAffectedViaOutAsync_35, null)) is null)
+			{
+				__dapper__command = __dapper__CreateCommand(connection!);
+			}
+			else
+			{
+				__dapper__command.Connection = connection;
+			}
+
+			// assign parameter values
+#pragma warning disable CS0618
+			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(parameters);
+#pragma warning restore CS0618
+
+			// execute
+			await __dapper__command.ExecuteNonQueryAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+		}
+		finally
+		{
+			// cleanup
+			if (__dapper__command is not null)
+			{
+				__dapper__command.Connection = default;
+				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_ReturnAndRecordsAffectedViaOutAsync_35, __dapper__command);
+				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
+			}
+			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+		}
+
+		// command factory for ReturnAndRecordsAffectedViaOutAsync
+		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
+		{
+			var command = connection.CreateCommand();
+			if (command is global::Oracle.ManagedDataAccess.Client.OracleCommand typed0)
+			{
+				typed0.BindByName = true;
+				typed0.InitialLONGFetchSize = -1;
+			}
+			command.CommandType = global::System.Data.CommandType.StoredProcedure;
+			command.CommandText = @"sproc";
+			var args = command.Parameters;
+
+			var p = command.CreateParameter();
+			p.ParameterName = @"parameters";
+			p.Direction = global::System.Data.ParameterDirection.Input;
+			args.Add(p);
+
+			return command;
+		}
+	}
+
+
+	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_FineControlAsync_38;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	public async partial global::System.Threading.Tasks.ValueTask FineControlAsync(global::System.Data.Common.DbConnection connection, decimal value)
@@ -171,16 +258,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				await connection.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
-			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_FineControlAsync_31, null)) is null)
+			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_FineControlAsync_38, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -201,7 +288,7 @@ partial class Test
 			if (__dapper__command is not null)
 			{
 				__dapper__command.Connection = default;
-				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_FineControlAsync_31, __dapper__command);
+				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Parameters_input_cs_FineControlAsync_38, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
 			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);

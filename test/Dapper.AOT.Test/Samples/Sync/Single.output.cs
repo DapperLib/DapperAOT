@@ -33,16 +33,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_ImplicitComplex_6, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -127,16 +127,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_ImplicitScalar_9, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -221,16 +221,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_First_12, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -318,16 +318,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_FirstOrDefault_15, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -412,16 +412,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_Single_18, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -512,16 +512,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_SingleOrDefault_21, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -608,16 +608,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_Scalar_24, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{

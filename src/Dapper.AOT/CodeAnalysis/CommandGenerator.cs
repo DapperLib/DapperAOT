@@ -516,14 +516,14 @@ namespace Dapper.CodeAnalysis
 
             // prepare connection
             sb.NewLine().Append("// prepare connection");
-            sb.NewLine().Append("if (").Append(connection).Append(".State == global::System.Data.ConnectionState.Closed)").Indent();
+            sb.NewLine().Append("if (").Append(connection).Append("!.State == global::System.Data.ConnectionState.Closed)").Indent();
             if (flags.Has(QueryFlags.IsAsync))
             {
-                sb.NewLine().Append("await ").Append(connection).Append(".OpenAsync(").Append(cancellationToken).Append(").ConfigureAwait(false);");
+                sb.NewLine().Append("await ").Append(connection).Append("!.OpenAsync(").Append(cancellationToken).Append(").ConfigureAwait(false);");
             }
             else
             {
-                sb.NewLine().Append(connection).Append(".Open();");
+                sb.NewLine().Append(connection).Append("!.Open();");
             }
             sb.NewLine().Append(LocalPrefix).Append("close = true;").Outdent();
 
@@ -534,7 +534,7 @@ namespace Dapper.CodeAnalysis
                 sb.NewLine().Append("if ((").Append(LocalPrefix).Append("command = global::System.Threading.Interlocked.Exchange(ref ").Append(commandField).Append(", null)) is null)");
                 sb.Indent();
             }
-            sb.NewLine().Append(LocalPrefix).Append("command = ").Append(LocalPrefix).Append("CreateCommand(").Append(connection).Append(");");
+            sb.NewLine().Append(LocalPrefix).Append("command = ").Append(LocalPrefix).Append("CreateCommand(").Append(connection).Append("!);");
             if (commandField is not null)
             {
                 sb.Outdent().NewLine().Append("else").Indent().NewLine().Append(LocalPrefix).Append("command.Connection = ").Append(connection).Append(";").Outdent();

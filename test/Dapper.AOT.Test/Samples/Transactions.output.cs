@@ -1,13 +1,7 @@
-// Output code has 11 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(203,20): warning CS8602: Dereference of a possibly null reference.
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(205,17): warning CS8602: Dereference of a possibly null reference.
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(212,49): warning CS8604: Possible null reference argument for parameter 'connection' in 'DbCommand __dapper__CreateCommand(DbConnection connection)'.
+// Output code has 5 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs':
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(264,8): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'bool'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(264,34): warning CS8602: Dereference of a possibly null reference.
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(266,5): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(266,5): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(266,31): warning CS8602: Dereference of a possibly null reference.
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(273,49): warning CS8604: Possible null reference argument for parameter 'connection' in 'DbCommand __dapper__CreateCommand(DbConnection connection)'.
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(292,25): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.cs(292,25): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
 
@@ -35,16 +29,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Transactions_input_cs_Abstract_9, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -96,16 +90,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Transactions_input_cs_Interface_12, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -157,16 +151,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Transactions_input_cs_Concrete_15, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -213,16 +207,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (transaction?.Connection.State == global::System.Data.ConnectionState.Closed)
+			if (transaction?.Connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				transaction?.Connection.Open();
+				transaction?.Connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Transactions_input_cs_Transaction_18, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(transaction?.Connection);
+				__dapper__command = __dapper__CreateCommand(transaction?.Connection!);
 			}
 			else
 			{
@@ -274,16 +268,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection ?? transaction?.Connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection ?? transaction?.Connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection ?? transaction?.Connection.Open();
+				connection ?? transaction?.Connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Transactions_input_cs_OptionalTransaction_21, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection ?? transaction?.Connection);
+				__dapper__command = __dapper__CreateCommand(connection ?? transaction?.Connection!);
 			}
 			else
 			{

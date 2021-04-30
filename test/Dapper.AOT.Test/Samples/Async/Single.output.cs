@@ -24,16 +24,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				await connection.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Single_input_cs_TaskAsync_8, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -118,16 +118,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				await connection.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Single_input_cs_ValueTaskAsync_11, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -212,16 +212,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				await connection.OpenAsync(cancellation).ConfigureAwait(false);
+				await connection!.OpenAsync(cancellation).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Single_input_cs_TaskWithCancellationAsync_14, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -306,16 +306,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				await connection.OpenAsync(cancellation).ConfigureAwait(false);
+				await connection!.OpenAsync(cancellation).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Single_input_cs_ValueWithCancellationTaskAsync_17, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{

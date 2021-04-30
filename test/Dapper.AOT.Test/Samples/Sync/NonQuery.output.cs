@@ -23,16 +23,16 @@ partial class Test
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_NonQuery_input_cs_Void_6, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{

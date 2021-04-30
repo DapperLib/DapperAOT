@@ -27,16 +27,16 @@ partial class Foo
 		try
 		{
 			// prepare connection
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
 
 			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Basic_input_cs_ShouldDetectThis_11, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
@@ -121,16 +121,16 @@ namespace X.Y.Z
 				try
 				{
 					// prepare connection
-					if (c.State == global::System.Data.ConnectionState.Closed)
+					if (c!.State == global::System.Data.ConnectionState.Closed)
 					{
-						c.Open();
+						c!.Open();
 						__dapper__close = true;
 					}
 
 					// prepare command (excluding parameter values)
 					if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Basic_input_cs_ViaDapper_32, null)) is null)
 					{
-						__dapper__command = __dapper__CreateCommand(c);
+						__dapper__command = __dapper__CreateCommand(c!);
 					}
 					else
 					{
@@ -204,16 +204,16 @@ namespace X.Y.Z
 				try
 				{
 					// prepare connection
-					if (c.State == global::System.Data.ConnectionState.Closed)
+					if (c!.State == global::System.Data.ConnectionState.Closed)
 					{
-						c.Open();
+						c!.Open();
 						__dapper__close = true;
 					}
 
 					// prepare command (excluding parameter values)
 					if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Basic_input_cs_ViaOracle_35, null)) is null)
 					{
-						__dapper__command = __dapper__CreateCommand(c);
+						__dapper__command = __dapper__CreateCommand(c!);
 					}
 					else
 					{
