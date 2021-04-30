@@ -52,7 +52,6 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute
-
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
@@ -147,7 +146,6 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute
-
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
@@ -242,7 +240,6 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute
-
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior

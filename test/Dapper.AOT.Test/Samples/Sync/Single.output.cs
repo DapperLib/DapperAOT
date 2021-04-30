@@ -1,12 +1,12 @@
 // Output code has 8 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(442,33): error CS1026: ) expected
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(543,33): error CS1026: ) expected
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(599,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(603,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(616,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(630,3): error CS1524: Expected catch or finally
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(630,4): error CS1513: } expected
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(630,4): error CS1513: } expected
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(437,33): error CS1026: ) expected
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(537,33): error CS1026: ) expected
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(593,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(597,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(610,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(624,3): error CS1524: Expected catch or finally
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(624,4): error CS1513: } expected
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(624,4): error CS1513: } expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -56,7 +56,6 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute
-
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
@@ -151,7 +150,6 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute
-
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
@@ -246,7 +244,6 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute
-
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
@@ -344,7 +341,6 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute
-
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
@@ -439,7 +435,6 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute
-
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
@@ -540,7 +535,6 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute
-
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior

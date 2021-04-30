@@ -699,7 +699,7 @@ namespace Dapper.CodeAnalysis
 
             static void ExecuteReaderSingle(CodeWriter sb, QueryFlags flags, ITypeSymbol itemType)
 			{
-                sb.NewLine().NewLine().Append("const global::System.Data.CommandBehavior ").Append(LocalPrefix).Append("behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult");
+                sb.NewLine().Append("const global::System.Data.CommandBehavior ").Append(LocalPrefix).Append("behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult");
                 if (!flags.Has(QueryFlags.DemandAtMostOneRow))
                 {   // if we don't need to check for a second row, can optimize
                     sb.Append(" | global::System.Data.CommandBehavior.SingleRow");
