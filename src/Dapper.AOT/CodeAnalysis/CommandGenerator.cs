@@ -559,6 +559,10 @@ namespace Dapper.CodeAnalysis
 				{
 					ExecuteReaderSingle(sb, flags, itemType, cancellationToken);
 				}
+				else if (flags.Has(QueryFlags.IsIterator))
+				{
+					ExecuteReaderIterator(sb, flags, itemType, cancellationToken);
+				}
 				else
 				{
 					// TODO: other query kinds
@@ -723,12 +727,6 @@ namespace Dapper.CodeAnalysis
 			static void ExecuteReaderSingle(CodeWriter sb, QueryFlags flags, ITypeSymbol itemType, string cancellationToken)
 			{
 				WriteExecuteReader(sb, flags, cancellationToken);
-				
-				static CodeWriter InvokeReaderMethod(CodeWriter sb, QueryFlags flags, string name, string cancellationToken)
-					=> flags.IsAsync()
-						? sb.Append("await ").Append(LocalPrefix).Append("reader.").Append(name).Append("Async(").Append(cancellationToken)
-							.Append(").ConfigureAwait(false)")
-						: sb.Append(LocalPrefix).Append("reader.").Append(name).Append("()");
 
 				sb.NewLine().Append("// process single row");
 				sb.NewLine().Append(itemType).Append(" ").Append(LocalPrefix).Append("result;");
@@ -749,10 +747,36 @@ namespace Dapper.CodeAnalysis
 				{
 					sb.DisableObsolete().NewLine().Append("global::Dapper.Internal.InternalUtilities.ThrowNone();").RestoreObsolete();
 				}
-				sb.NewLine().Append(LocalPrefix).Append("result = default!;");
-				sb.Outdent().NewLine().Append("while (");
-				InvokeReaderMethod(sb, flags, nameof(DbDataReader.NextResult), cancellationToken).Append(") { } // consumes all results to check for exceptions");
+				sb.NewLine().Append(LocalPrefix).Append("result = default!;").Outdent();
+				ConsumeAdditionalResults(sb, flags, cancellationToken);
 				sb.NewLine().Append("return ").Append(LocalPrefix).Append("result;");
+			}
+
+			static void ConsumeAdditionalResults(CodeWriter sb, QueryFlags flags, string cancellationToken)
+			{
+				sb.NewLine().Append("// consume additional results (ensures errors from the server are observed)")
+					.NewLine().Append("while (");
+				InvokeReaderMethod(sb, flags, nameof(DbDataReader.NextResult), cancellationToken).Append(") { }");
+			}
+
+			static CodeWriter InvokeReaderMethod(CodeWriter sb, QueryFlags flags, string name, string cancellationToken)
+				=> flags.IsAsync()
+					? sb.Append("await ").Append(LocalPrefix).Append("reader.").Append(name).Append("Async(").Append(cancellationToken)
+						.Append(").ConfigureAwait(false)")
+					: sb.Append(LocalPrefix).Append("reader.").Append(name).Append("()");
+
+			static void ExecuteReaderIterator(CodeWriter sb, QueryFlags flags, ITypeSymbol itemType, string cancellationToken)
+			{
+				WriteExecuteReader(sb, flags, cancellationToken);
+
+				sb.NewLine().Append("// process multiple rows");
+				sb.NewLine().Append("if (").Append(LocalPrefix).Append("reader.HasRows)").Indent();
+				sb.NewLine().Append("var ").Append(LocalPrefix).Append("parser = global::Dapper.SqlMapper.GetRowParser<").Append(itemType).Append(">(")
+					.Append(LocalPrefix).Append("reader);");
+				sb.NewLine().Append("while (");
+				InvokeReaderMethod(sb, flags, nameof(DbDataReader.Read), cancellationToken).Append(")").Indent();
+				sb.NewLine().Append("yield return ").Append(LocalPrefix).Append("parser(").Append(LocalPrefix).Append("reader);").Outdent().Outdent();
+				ConsumeAdditionalResults(sb, flags, cancellationToken);
 			}
 
 			static void ExecuteNonQuery(CodeWriter sb, QueryFlags flags, string cancellationToken)

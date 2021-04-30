@@ -1,10 +1,10 @@
 // Output code has 6 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(599,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(603,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(616,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(629,3): error CS1524: Expected catch or finally
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(629,4): error CS1513: } expected
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(629,4): error CS1513: } expected
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(605,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(609,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(622,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(635,3): error CS1524: Expected catch or finally
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(635,4): error CS1513: } expected
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(635,4): error CS1513: } expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -68,7 +68,8 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
 		}
 		finally
@@ -163,7 +164,8 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
 		}
 		finally
@@ -261,7 +263,8 @@ partial class Test
 #pragma warning restore CS0618
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
 		}
 		finally
@@ -356,7 +359,8 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
 		}
 		finally
@@ -457,7 +461,8 @@ partial class Test
 #pragma warning restore CS0618
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
 		}
 		finally
@@ -555,7 +560,8 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
 		}
 		finally

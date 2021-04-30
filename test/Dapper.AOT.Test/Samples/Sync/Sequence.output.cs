@@ -1,5 +1,3 @@
-// Output code has 1 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Sequence.output.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Sequence.output.cs(57,11): error CS0266: Cannot implicitly convert type 'SomeType' to 'System.Collections.Generic.IEnumerable<SomeType>'. An explicit conversion exists (are you missing a cast?)
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -16,51 +14,58 @@ partial class Test
 
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Sequence_input_cs_Sequence_7;
 
+	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	public partial global::System.Collections.Generic.IEnumerable<global::SomeType> Sequence(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
+		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
 		try
 		{
-			if (connection.State == global::System.Data.ConnectionState.Closed)
+			// prepare connection
+			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection.Open();
+				connection!.Open();
 				__dapper__close = true;
 			}
+
+			// prepare command (excluding parameter values)
 			if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Sequence_input_cs_Sequence_7, null)) is null)
 			{
-				__dapper__command = __dapper__CreateCommand(connection);
+				__dapper__command = __dapper__CreateCommand(connection!);
 			}
 			else
 			{
 				__dapper__command.Connection = connection;
 			}
+
+			// assign parameter values
 #pragma warning disable CS0618
 			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-#pragma warning restore CS0618
-#pragma warning disable CS0618
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
+			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			global::SomeType __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			// process multiple rows
+			if (__dapper__reader.HasRows)
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
+				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				while (__dapper__reader.Read())
+				{
+					yield return __dapper__parser(__dapper__reader);
+				}
 			}
-			else
-			{
-				__dapper__result = default!;
-			}
-			while (__dapper__reader.NextResult()) { } // consumes TDS to check for exceptions
-			return __dapper__result;
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 		}
 		finally
 		{
+			// cleanup
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -71,6 +76,8 @@ partial class Test
 			if (__dapper__close) connection?.Close();
 		}
 
+		// command factory for Sequence
+		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();

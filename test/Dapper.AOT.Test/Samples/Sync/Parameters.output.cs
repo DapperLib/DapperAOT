@@ -11,7 +11,7 @@
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(17,21): error CS0161: 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)': not all code paths return a value
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(17,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)'
 // Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(101,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(202,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(203,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -160,7 +160,8 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
 		}
 		finally

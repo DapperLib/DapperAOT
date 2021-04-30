@@ -137,7 +137,8 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 			return __dapper__result;
 		}
 		finally

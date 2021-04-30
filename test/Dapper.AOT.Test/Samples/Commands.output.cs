@@ -66,7 +66,8 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
 		}
 		finally
@@ -161,7 +162,8 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
 		}
 		finally
@@ -256,7 +258,8 @@ partial class Test
 			{
 				__dapper__result = default!;
 			}
-			while (__dapper__reader.NextResult()) { } // consumes all results to check for exceptions
+			// consume additional results (ensures errors from the server are observed)
+			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
 		}
 		finally
