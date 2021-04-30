@@ -50,7 +50,7 @@ Here:
   - for example, invalid SQL, mismatched parameters, possibly even query hints
 - we don't have to compromise our `async` code by having it constantly jumping between generated stubs (non-`async`) and a hoisting helper
 - no complicated cache lookups based on the command/types/etc
-- the code can be optimized to take full advantage of the capabilies of the types it can see *during build*
+- the code can be optimized to take full advantage of the capabilities of the types it can see *during build*
 - the generated code is viewable, and the code-generation code is finally maintanable
 - we can think about a range of new features that previously would have been too complicated to insert into the middle of the IL
 - we even have the future flexibility to consider alternative APIs, such as [Woodstar](https://github.com/dotnet/datalab)
