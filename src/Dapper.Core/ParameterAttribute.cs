@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 
 namespace Dapper
 {
@@ -8,6 +9,7 @@ namespace Dapper
 	/// Allows fine-grained control over how parameters are defined
 	/// </summary>
 	[AttributeUsage(AttributeTargets.ReturnValue | AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+	[Conditional("DEBUG")]
 	public sealed class ParameterAttribute : Attribute
 	{
 		/// <summary>

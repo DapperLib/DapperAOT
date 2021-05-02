@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Data.Common;
+using System.Diagnostics;
 
 namespace Dapper
 {
@@ -8,7 +9,7 @@ namespace Dapper
     /// Allows fine-grained control over how single-row operations are handled
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
-    [ImmutableObject(true)]
+    [ImmutableObject(true), Conditional("DEBUG")]
     public sealed class SingleRowAttribute : Attribute
     {
         /// <summary>

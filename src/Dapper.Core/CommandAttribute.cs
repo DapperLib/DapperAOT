@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Diagnostics;
 
 namespace Dapper
 {
@@ -7,6 +8,7 @@ namespace Dapper
     /// Indicates that a method represents a command, or that a parameter is the command text
     /// </summary>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
+    [Conditional("DEBUG")]
     public sealed class CommandAttribute : Attribute
     {
         /// <summary>

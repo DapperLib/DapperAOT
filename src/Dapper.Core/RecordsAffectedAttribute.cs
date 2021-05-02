@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data.Common;
+using System.Diagnostics;
 
 namespace Dapper
 {
@@ -9,5 +10,6 @@ namespace Dapper
 	/// Note that this value is not reliable, and requires testing in your specific scenario and configuration; for example, it is impacted by <c>SET NOCOUNT ON</c>.
 	/// </summary>
 	[AttributeUsage(AttributeTargets.ReturnValue | AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+	[Conditional("DEBUG")]
 	public sealed class RecordsAffectedAttribute : Attribute { }
 }
