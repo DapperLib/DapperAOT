@@ -431,8 +431,6 @@ namespace Dapper.CodeAnalysis
 
 		static bool WriteMethodHeader(CodeWriter sb, IMethodSymbol method, MethodDeclarationSyntax syntax, QueryFlags flags, bool asInnerIteratorImpl, in GeneratorExecutionContext context)
 		{
-			AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, method);
-			
 			bool needsCancellationToken = !asInnerIteratorImpl && flags.IsAsync() && flags.Has(QueryFlags.IsIterator);
 			if (needsCancellationToken)
 			{
@@ -450,7 +448,21 @@ namespace Dapper.CodeAnalysis
 				}
 			}
 
+			AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, method);
 			if (context.AllowUnsafe()) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, method);
+			if (flags.IsAsync() && !flags.Has(QueryFlags.IsIterator) && method.ReturnType.IsValueType && method.ReturnType.IsExact(
+				"System", "Threading", "Tasks", "ValueTask"))
+			{
+				if (method.ReturnType is INamedTypeSymbol ntret && (ntret.Arity is 0 or 1)
+					&& context.Compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder") is INamedTypeSymbol builder
+					&& context.Compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.AsyncMethodBuilderAttribute") is INamedTypeSymbol aba
+					&& !method.IsDefined(aba))
+				{
+					sb.NewLine().Append("[").Append(aba).Append("(typeof(").Append(builder);
+					if (ntret.Arity == 1) sb.Append("<").Append(ntret.TypeArguments[0]).Append(">");
+					sb.NewLine().Append("))]");
+				}
+			}
 
 			if (asInnerIteratorImpl)
 			{

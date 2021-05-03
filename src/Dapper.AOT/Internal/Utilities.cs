@@ -114,7 +114,7 @@ namespace Dapper.Internal
             return false;
         }
 
-        public static (QueryFlags Flags, ITypeSymbol? ElementType, NullableAnnotation ElementNullable) CategorizeQuery(IMethodSymbol method)
+		public static (QueryFlags Flags, ITypeSymbol? ElementType, NullableAnnotation ElementNullable) CategorizeQuery(IMethodSymbol method)
 		{
             // detect void; non-query
             var retType = method.ReturnType;
@@ -180,6 +180,7 @@ namespace Dapper.Internal
 			}
             return (GetSingleRowFlags(method), retType, method.ReturnNullableAnnotation);
 
+            [SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "yet")]
             static bool IsCollectionType(ITypeSymbol type)
             => false; // not implemented yet; needs to detect arrays and anything obviously list type;
                       // maybe anything that : IEnumerable<T> **and** has a public Add(T) method is enough?
