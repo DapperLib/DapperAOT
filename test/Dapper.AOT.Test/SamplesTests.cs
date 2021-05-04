@@ -24,7 +24,11 @@ namespace Dapper.AOT.Test
         public void Run(string path)
         {
             var intputPath = File.ReadAllText(path);
+#if NET48   // lots of deltas
+            var outputPath = Regex.Replace(path, @"\.input\.cs$", ".output.netfx.cs", RegexOptions.IgnoreCase);
+#else
             var outputPath = Regex.Replace(path, @"\.input\.cs$", ".output.cs", RegexOptions.IgnoreCase);
+#endif
             var expected = File.Exists(outputPath) ? File.ReadAllText(outputPath) : "";
             var sb = new StringBuilder();
             var result = Execute<CommandGenerator>(intputPath, sb, fileName: path, initializer: g =>
@@ -48,7 +52,7 @@ namespace Dapper.AOT.Test
                 {
                     outputPath = Path.Combine(originFolder, outputPath);
                     File.WriteAllText(outputPath, actual);
-                    
+
                 }
             }
             catch (Exception ex)

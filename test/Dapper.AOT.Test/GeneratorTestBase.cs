@@ -1,5 +1,4 @@
-﻿using Dapper.CodeAnalysis;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Oracle.ManagedDataAccess.Client;
 using System;
@@ -7,23 +6,25 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Data.Common;
-using System.Data.SqlClient;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace Dapper.AOT.Test
 {
-    public abstract partial class GeneratorTestBase
+	public abstract partial class GeneratorTestBase
     {
         private readonly ITestOutputHelper? _log;
         protected GeneratorTestBase(ITestOutputHelper? log)
             => _log = log;
 
+#if !NET48
         [return: NotNullIfNotNull("message")]
+#endif
         protected string? Log(string? message)
         {
             if (message is not null) _log?.WriteLine(message);
@@ -50,7 +51,7 @@ namespace Dapper.AOT.Test
             // Create the 'input' compilation that the generator will act on
             if (string.IsNullOrWhiteSpace(name)) name = "compilation";
             if (string.IsNullOrWhiteSpace(fileName)) fileName = "input.cs";
-            Compilation inputCompilation = CreateCompilation(source, name, fileName);
+            Compilation inputCompilation = CreateCompilation(source, name!, fileName!);
 
             // directly create an instance of the generator
             // (Note: in the compiler this is loaded from an assembly, and created via reflection at runtime)
@@ -124,12 +125,16 @@ namespace Dapper.AOT.Test
                syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source).WithFilePath(fileName) },
                references: new[] {
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
+#if !NET48
                    MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
                    MetadataReference.CreateFromFile(Assembly.Load("System.Data").Location),
                    MetadataReference.CreateFromFile(Assembly.Load("netstandard").Location),
+#endif
                    MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(SqlConnection).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(System.Data.SqlClient.SqlConnection).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(OracleConnection).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(ValueTask<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Component).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(CommandAttribute).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),

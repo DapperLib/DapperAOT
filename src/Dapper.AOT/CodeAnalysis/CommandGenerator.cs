@@ -10,6 +10,7 @@ using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.ComTypes;
@@ -722,9 +723,6 @@ namespace Dapper.CodeAnalysis
 			if (context.AllowUnsafe()) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, null);
 			sb.NewLine().Append("static ").Append(cmdType).Append(" ").Append(LocalPrefix).Append("CreateCommand(").Append(connectionType)
 				.Append(" connection)").Indent();
-			sb.NewLine().Append("var command = connection.CreateCommand();");
-			AddProviderSpecificSettings(sb, cmdType, "command", context);
-			sb.NewLine().Append("command.CommandType = global::System.Data.CommandType.").Append(commandType.ToString()).Append(";");
 
 
 			if (commandType == CommandType.Text && location is not null)
@@ -732,7 +730,45 @@ namespace Dapper.CodeAnalysis
 				commandText = "/* " + location + " */ " + commandText;
 			}
 
-			sb.NewLine().Append("command.CommandText = ").AppendVerbatimLiteral(commandText).Append(";");
+			// check encryption; this can only be set in the constructor; need to resolve the special constructor
+			bool emitCreateCommand = true, setCommandText = true;
+			if (method.GetAttributes().SingleOrDefault(x => x.AttributeClass.IsExact("Dapper", "EncryptionAttribute"))
+				.TryGetAttributeValue("EncryptionKind", out int kind) && kind != 0)
+			{
+				foreach (var ctor in cmdType.GetMembers(".ctor"))
+				{
+					if (ctor is IMethodSymbol ctorMethod && ctorMethod.Arity == 0)
+					{
+						var p = ctorMethod.Parameters;
+						if (p.Length == 4
+							&& p[0].Type.SpecialType == SpecialType.System_String
+							&& SymbolEqualityComparer.Default.Equals(p[1].Type, connectionType)
+							&& p[2].Type.TypeKind == TypeKind.Class
+							&& p[3].Type.TypeKind == TypeKind.Enum
+							&& p[3].Type.Name == "SqlCommandColumnEncryptionSetting")
+						{
+							sb.NewLine().Append("var command = new ").Append(cmdType).Append(@"(").AppendVerbatimLiteral(commandText)
+								.Append(", connection, null!, ").AppendEnumLiteral(p[3].Type, kind).Append(");");
+							emitCreateCommand = setCommandText = false;
+							break;
+						}
+					}
+				}
+				if (emitCreateCommand)
+				{	// TODO: move to an analyzer output
+					sb.NewLine().Append("#error Unable to resolve constructor for encryption configuration");
+				}
+			}
+			if (emitCreateCommand)
+			{
+				sb.NewLine().Append("var command = connection.CreateCommand();");
+			}
+			AddProviderSpecificSettings(sb, cmdType, "command", context);
+			sb.NewLine().Append("command.CommandType = global::System.Data.CommandType.").Append(commandType.ToString()).Append(";");
+			if (setCommandText)
+			{
+				sb.NewLine().Append("command.CommandText = ").AppendVerbatimLiteral(commandText).Append(";");
+			}
 			index = 0;
 			sb.NewLine().Append("var args = command.Parameters;");
 			foreach (var p in method.Parameters)

@@ -53,7 +53,19 @@ namespace Dapper.Internal
         public CodeWriter Append(ITypeSymbol? value)
             => Append(value?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
 
+        public CodeWriter AppendEnumLiteral(ITypeSymbol enumType, int value)
+		{
+            foreach (var member in enumType.GetMembers())
+			{
+                if (member is IFieldSymbol field && field.IsStatic && field.HasConstantValue && field.ConstantValue is int test
+                    && test == value)
+				{
+                    return Append(enumType).Append(".").Append(field.Name);
+				}
+			}
+            return Append("(").Append(enumType).Append(")").Append(value).Append("); ");
 
+        }
         public CodeWriter AppendVerbatimLiteral(string? value)
         {
             if (value is null) return Append("null");
