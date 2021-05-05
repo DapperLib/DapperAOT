@@ -7,6 +7,7 @@
 	<ItemGroup>
 		<PackageReference Include="Dapper.AOT" Version="0.0.8" PrivateAssets="all" IncludeAssets="runtime;build;native;contentfiles;analyzers;buildtransitive" />
 		<PackageReference Include="Dapper" Version="2.0.78" />
+		<PackageReference Include="Ductus.FluentDocker" Version="2.10.6" />
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="2.1.2" />
 		<PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
 		<PackageReference Include="BenchmarkDotNet" Version="0.12.1" />

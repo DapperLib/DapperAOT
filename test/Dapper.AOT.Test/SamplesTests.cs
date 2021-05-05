@@ -23,7 +23,7 @@ namespace Dapper.AOT.Test
         [Theory, MemberData(nameof(GetFiles))]
         public void Run(string path)
         {
-            var intputPath = File.ReadAllText(path);
+            var inputPath = File.ReadAllText(path);
 #if NET48   // lots of deltas
             var outputPath = Regex.Replace(path, @"\.input\.cs$", ".output.netfx.cs", RegexOptions.IgnoreCase);
 #else
@@ -31,7 +31,7 @@ namespace Dapper.AOT.Test
 #endif
             var expected = File.Exists(outputPath) ? File.ReadAllText(outputPath) : "";
             var sb = new StringBuilder();
-            var result = Execute<CommandGenerator>(intputPath, sb, fileName: path, initializer: g =>
+            var result = Execute<CommandGenerator>(inputPath, sb, fileName: path, initializer: g =>
             {
                 g.DefaultOutputFileName = Path.GetFileName(outputPath);
                 g.ReportVersion = false;
@@ -47,8 +47,8 @@ namespace Dapper.AOT.Test
             var actual = sb.ToString();
             try // automatically overwrite test output, for git tracking
             {
-                if (GetOriginCodeLocation() is string originFile
-                    && Path.GetDirectoryName(originFile) is string originFolder)
+                if (GetOriginCodeLocation() is { } originFile
+                    && Path.GetDirectoryName(originFile) is { } originFolder)
                 {
                     outputPath = Path.Combine(originFolder, outputPath);
                     File.WriteAllText(outputPath, actual);
