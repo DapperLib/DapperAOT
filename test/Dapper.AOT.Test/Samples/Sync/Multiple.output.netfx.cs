@@ -12,6 +12,7 @@
 partial class Test
 {
 
+	// available inactive command for List (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_List_8;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -21,6 +22,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
 			// prepare connection
@@ -51,18 +53,22 @@ partial class Test
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			// process single row
-			global::System.Collections.Generic.List<global::SomeType> __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			// process multiple rows
+			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
+			if (__dapper__reader.HasRows)
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::System.Collections.Generic.List<global::SomeType>>(__dapper__reader).Invoke(__dapper__reader);
-			}
-			else
-			{
-				__dapper__result = default!;
+				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				while (__dapper__reader.Read())
+				{
+					__dapper__result.Add(__dapper__parser(__dapper__reader));
+				}
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
+
+			// TODO: post-process parameters
+
+			// return rowset
 			return __dapper__result;
 		}
 		finally
@@ -108,6 +114,7 @@ partial class Test
 	}
 
 
+	// available inactive command for Array (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_Array_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -160,6 +167,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -204,6 +214,7 @@ partial class Test
 	}
 
 
+	// available inactive command for IList (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_IList_14;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -213,6 +224,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
 			// prepare connection
@@ -243,18 +255,22 @@ partial class Test
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			// process single row
-			global::System.Collections.Generic.IList<global::SomeType> __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			// process multiple rows
+			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
+			if (__dapper__reader.HasRows)
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::System.Collections.Generic.IList<global::SomeType>>(__dapper__reader).Invoke(__dapper__reader);
-			}
-			else
-			{
-				__dapper__result = default!;
+				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				while (__dapper__reader.Read())
+				{
+					__dapper__result.Add(__dapper__parser(__dapper__reader));
+				}
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
+
+			// TODO: post-process parameters
+
+			// return rowset
 			return __dapper__result;
 		}
 		finally
@@ -300,6 +316,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ICollection (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_ICollection_17;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -309,6 +326,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
 			// prepare connection
@@ -339,18 +357,22 @@ partial class Test
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			// process single row
-			global::System.Collections.Generic.ICollection<global::SomeType> __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			// process multiple rows
+			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
+			if (__dapper__reader.HasRows)
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::System.Collections.Generic.ICollection<global::SomeType>>(__dapper__reader).Invoke(__dapper__reader);
-			}
-			else
-			{
-				__dapper__result = default!;
+				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				while (__dapper__reader.Read())
+				{
+					__dapper__result.Add(__dapper__parser(__dapper__reader));
+				}
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
+
+			// TODO: post-process parameters
+
+			// return rowset
 			return __dapper__result;
 		}
 		finally
@@ -396,6 +418,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ImmutableArray (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_ImmutableArray_20;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -405,6 +428,9 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+#pragma warning disable CS0618
+		global::Dapper.Internal.Collector<global::SomeType> __dapper__result = default;
+#pragma warning restore CS0618
 		try
 		{
 			// prepare connection
@@ -435,23 +461,27 @@ partial class Test
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			// process single row
-			global::System.Collections.Immutable.ImmutableArray<global::SomeType> __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			// process multiple rows
+			if (__dapper__reader.HasRows)
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::System.Collections.Immutable.ImmutableArray<global::SomeType>>(__dapper__reader).Invoke(__dapper__reader);
-			}
-			else
-			{
-				__dapper__result = default!;
+				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				while (__dapper__reader.Read())
+				{
+					__dapper__result.Add(__dapper__parser(__dapper__reader));
+				}
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
-			return __dapper__result;
+
+			// TODO: post-process parameters
+
+			// return rowset
+			return global::System.Collections.Immutable.ImmutableArray.Create<global::SomeType>(__dapper__result.GetBuffer(), 0, __dapper__result.Count);
 		}
 		finally
 		{
 			// cleanup
+			__dapper__result.Dispose();
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -492,6 +522,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ImmutableList (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_ImmutableList_23;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -501,6 +532,9 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+#pragma warning disable CS0618
+		global::Dapper.Internal.Collector<global::SomeType> __dapper__result = default;
+#pragma warning restore CS0618
 		try
 		{
 			// prepare connection
@@ -531,23 +565,32 @@ partial class Test
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			// process single row
-			global::System.Collections.Immutable.ImmutableList<global::SomeType> __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			// process multiple rows
+			if (__dapper__reader.HasRows)
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::System.Collections.Immutable.ImmutableList<global::SomeType>>(__dapper__reader).Invoke(__dapper__reader);
-			}
-			else
-			{
-				__dapper__result = default!;
+				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				while (__dapper__reader.Read())
+				{
+					__dapper__result.Add(__dapper__parser(__dapper__reader));
+				}
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
-			return __dapper__result;
+
+			// TODO: post-process parameters
+
+			// return rowset
+			switch (__dapper__result.Count)
+			{
+				case 0:return global::System.Collections.Immutable.ImmutableList<global::SomeType>.Empty;
+				case 1:return global::System.Collections.Immutable.ImmutableList.Create<global::SomeType>(__dapper__result[0]);
+				default:return global::System.Collections.Immutable.ImmutableList.CreateRange<global::SomeType>(__dapper__result.Segment);
+			}
 		}
 		finally
 		{
 			// cleanup
+			__dapper__result.Dispose();
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{

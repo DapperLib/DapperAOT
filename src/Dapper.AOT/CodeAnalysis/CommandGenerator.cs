@@ -351,14 +351,14 @@ namespace Dapper.CodeAnalysis
 			{
 				if (type.IsReferenceType)
 				{
-					if (type.IsExact("System", "Data", "IDbConnection") || type.IsKindOf("System", "Data", "Common", "DbConnection"))
+					if (type.IsExact("System", "Data", "IDbConnection", 0) || type.IsKindOf("System", "Data", "Common", "DbConnection", 0))
 						return HandledType.Connection;
-					if (type.IsExact("System", "Data", "IDbTransaction") || type.IsKindOf("System", "Data", "Common", "DbTransaction"))
+					if (type.IsExact("System", "Data", "IDbTransaction", 0) || type.IsKindOf("System", "Data", "Common", "DbTransaction", 0))
 						return HandledType.Transaction;
 				}
 				else
 				{
-					if (type.IsExact("System", "Threading", "CancellationToken"))
+					if (type.IsExact("System", "Threading", "CancellationToken", 0))
 						return HandledType.CancellationToken;
 				}
 			}
@@ -408,9 +408,9 @@ namespace Dapper.CodeAnalysis
 			};
 			if (dbType is null)
 			{
-				if (type.IsExact("System", "DateTimeOffset"))
+				if (type.IsExact("System", "DateTimeOffset", 0))
 					dbType = DbType.DateTimeOffset;
-				else if (type.IsExact("System", "Guid"))
+				else if (type.IsExact("System", "Guid", 0))
 					dbType = DbType.Guid;
 			}
 
@@ -451,10 +451,10 @@ namespace Dapper.CodeAnalysis
 
 			AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, method);
 			if (context.AllowUnsafe()) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, method);
-			if (flags.IsAsync() && !flags.Has(QueryFlags.IsIterator) && method.ReturnType.IsValueType && method.ReturnType.IsExact(
-				"System", "Threading", "Tasks", "ValueTask"))
+			if (flags.IsAsync() && !flags.Has(QueryFlags.IsIterator) && method.ReturnType.IsValueType)
 			{
 				if (method.ReturnType is INamedTypeSymbol ntret && (ntret.Arity is 0 or 1)
+					 && method.ReturnType.IsExact("System", "Threading", "Tasks", "ValueTask", ntret.Arity)
 					&& context.Compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder") is INamedTypeSymbol builder
 					&& context.Compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.AsyncMethodBuilderAttribute") is INamedTypeSymbol aba
 					&& !method.IsDefined(aba))
@@ -538,9 +538,9 @@ namespace Dapper.CodeAnalysis
 				Log?.Invoke($"Unable to resolve command-type for '{method.Name}'");
 				return false;
 			}
-			(var flags, var itemType, var itemNullability) = CategorizeQuery(method);
+			var category = CategorizeQuery(method, context);
 			ITypeSymbol? readerType = null;
-			if (flags.Has(QueryFlags.IsQuery))
+			if (category.Flags.Has(QueryFlags.IsQuery))
 			{
 				readerType = GetMethodReturnType(cmdType, nameof(IDbCommand.ExecuteReader));
 				if (readerType is null)
@@ -553,11 +553,13 @@ namespace Dapper.CodeAnalysis
 			var location = GetLocation(method, out string? identifier);
 			var commandField = identifier is null ? null : ("s_" + LocalPrefix + "command_" + identifier);
 
+			sb.NewLine();
 			if (commandField is not null)
 			{
-				sb.NewLine().NewLine().Append("private static ").Append(cmdType).Append("? ").Append(commandField).Append(";").NewLine();
+				sb.NewLine().Append("// available inactive command for ").Append(method.Name).Append(" (interlocked)")
+					.NewLine().Append("private static ").Append(cmdType).Append("? ").Append(commandField).Append(";").NewLine();
 			}
-			bool needsInnerImpl = WriteMethodHeader(sb, method, syntax, flags, false, context);
+			bool needsInnerImpl = WriteMethodHeader(sb, method, syntax, category.Flags, false, context);
 			sb.Indent();
 
 			if (needsInnerImpl)
@@ -574,7 +576,7 @@ namespace Dapper.CodeAnalysis
 				// and include a dummy CT
 				if (!first) sb.Append(", global::System.Threading.CancellationToken.None);");
 				sb.NewLine();
-				WriteMethodHeader(sb, method, syntax, flags, true, context);
+				WriteMethodHeader(sb, method, syntax, category.Flags, true, context);
 				sb.Indent();
 				cancellationToken = LocalPrefix + "cancellation";
 			}
@@ -589,13 +591,22 @@ namespace Dapper.CodeAnalysis
 			{
 				sb.NewLine().Append("int[]? ").Append(LocalPrefix).Append("fieldNumbers = null;");
 			}
+
+			if (category.NeedsListLocal())
+			{
+				if (category.UseCollector()) sb.DisableObsolete();
+				sb.NewLine().Append(category.ListType).Append(" ").Append(LocalPrefix).Append("result").Append(
+					category.UseCollector() ? " = default;" : ";");
+				if (category.UseCollector()) sb.RestoreObsolete();
+			}
+
 			sb.NewLine().Append("try");
 			sb.Indent();
 
 			// prepare connection
 			sb.NewLine().Append("// prepare connection");
 			sb.NewLine().Append("if (").Append(connection).Append("!.State == global::System.Data.ConnectionState.Closed)").Indent();
-			if (flags.IsAsync())
+			if (category.IsAsync())
 			{
 				sb.NewLine().Append("await ").Append(connection).Append("!.OpenAsync(").Append(cancellationToken).Append(").ConfigureAwait(false);");
 			}
@@ -633,34 +644,79 @@ namespace Dapper.CodeAnalysis
 			if (index != 0) sb.RestoreObsolete();
 			sb.NewLine();
 
-			// execute
-			if (flags.Has(QueryFlags.IsQuery) && itemType is not null)
+			if (category.Has(QueryFlags.IsQuery) && category.ItemType is not null)
 			{
-				if (flags.Has(QueryFlags.IsSingle))
+				if (category.Has(QueryFlags.IsSingle))
 				{
-					ExecuteReaderSingle(sb, flags, itemType, cancellationToken);
-				}
-				else if (flags.Has(QueryFlags.IsIterator))
-				{
-					ExecuteReaderIterator(sb, flags, itemType, cancellationToken);
+					ExecuteReaderSingle(sb, category.Flags, category.ItemType, cancellationToken);
 				}
 				else
 				{
-					// TODO: other query kinds
-					Log?.Invoke($"Query not supported: {flags} via '{method.Name}'");
-					return false;
+					ExecuteReaderMultiple(sb, category, cancellationToken);
 				}
 			}
-			else if (flags.Has(QueryFlags.IsScalar) && itemType is not null)
+			else if (category.Has(QueryFlags.IsScalar) && category.ItemType is not null)
 			{
 				// TODO: scalars
-				Log?.Invoke($"Scalar not supported: {flags} via '{method.Name}'");
+				Log?.Invoke($"Scalar not supported: {category.Flags} via '{method.Name}'");
 				return false;
 			}
 			else
 			{
 				// non-query
-				ExecuteNonQuery(sb, flags, cancellationToken);
+				ExecuteNonQuery(sb, category.Flags, cancellationToken);
+			}
+
+			// TODO: post-process parameters
+			sb.NewLine().NewLine().Append("// TODO: post-process parameters").NewLine();
+
+			if (category.NeedsListLocal())
+			{
+				sb.NewLine().Append("// return rowset");
+				switch (category.ListStrategy)
+				{
+					case ListStrategy.SimpleList:
+						sb.NewLine().Append("return ").Append(LocalPrefix).Append("result;");
+						break;
+					case ListStrategy.Array:
+						if (category.HasListMethod("ToArray"))
+						{
+							sb.NewLine().Append("return ").Append(LocalPrefix).Append("result.ToArray();");
+						}
+						else
+						{
+							sb.NewLine().Append("return ").Append(LocalPrefix).Append("result.Span.ToArray();");
+						}
+						break;
+					case ListStrategy.ImmutableArray:
+						if (category.HasListMethod("ToImmutableArray"))
+						{
+							sb.NewLine().Append("return ").Append(LocalPrefix).Append("result.ToImmutableArray();");
+						}
+						else
+						{
+							sb.NewLine().Append("return global::System.Collections.Immutable.ImmutableArray.Create<").Append(category.ItemType).Append(">(")
+							.Append(LocalPrefix).Append("result.GetBuffer(), 0, ").Append(LocalPrefix).Append("result.Count);");
+						}
+						break;
+					default:
+						if (category.HasListMethod("ToImmutableList"))
+						{
+							sb.NewLine().Append("return ").Append(LocalPrefix).Append("result.ToImmutableList();");
+						}
+						else
+						{
+							sb.NewLine().Append("switch (").Append(LocalPrefix).Append("result.Count)").Indent();
+							sb.NewLine().Append("case 0:").Indent(false).Append("return global::System.Collections.Immutable.ImmutableList<")
+								.Append(category.ItemType).Append(">.Empty;").Outdent(false);
+							sb.NewLine().Append("case 1:").Indent(false).Append("return global::System.Collections.Immutable.ImmutableList.Create<")
+								.Append(category.ItemType).Append(">(").Append(LocalPrefix).Append("result[0]").Append(");").Outdent(false);
+							sb.NewLine().Append("default:").Indent(false).Append("return global::System.Collections.Immutable.ImmutableList.CreateRange<")
+								.Append(category.ItemType).Append(">(").Append(LocalPrefix).Append("result.Segment").Append(");").Outdent(false);
+							sb.Outdent();
+						}
+						break;
+				}
 			}
 
 			sb.Outdent();
@@ -672,9 +728,13 @@ namespace Dapper.CodeAnalysis
 			{
 				sb.NewLine().Append("if (").Append(LocalPrefix).Append("fieldNumbers is not null) global::System.Buffers.ArrayPool<int>.Shared.Return(").Append(LocalPrefix).Append("fieldNumbers);");
 			}
+			if (category.UseCollector())
+			{
+				sb.NewLine().Append(LocalPrefix).Append("result.Dispose();");
+			}
 			if (readerType is not null)
 			{
-				if (flags.IsAsync() && readerType.HasDisposeAsync())
+				if (category.IsAsync() && readerType.HasDisposeAsync())
 				{
 					sb.NewLine().Append("if (").Append(LocalPrefix).Append("reader is not null) ").Append("await ").Append(LocalPrefix).Append("reader.DisposeAsync().ConfigureAwait(false);");
 				}
@@ -690,7 +750,7 @@ namespace Dapper.CodeAnalysis
 				sb.NewLine().Append(LocalPrefix).Append("command.Connection = default;");
 				sb.NewLine().Append(LocalPrefix).Append("command = global::System.Threading.Interlocked.Exchange(ref ").Append(commandField).Append(", ").Append(LocalPrefix).Append("command);");
 			}
-			if (flags.IsAsync() && cmdType.HasDisposeAsync())
+			if (category.IsAsync() && cmdType.HasDisposeAsync())
 			{
 				sb.NewLine().Append("if (").Append(LocalPrefix).Append("command is not null) ").Append("await ").Append(LocalPrefix).Append("command.DisposeAsync().ConfigureAwait(false);");
 			}
@@ -700,7 +760,7 @@ namespace Dapper.CodeAnalysis
 			}
 			sb.Outdent();
 
-			if (flags.IsAsync() && connectionType.HasBasicAsyncMethod("CloseAsync", out var awaitableType))
+			if (category.IsAsync() && connectionType.HasBasicAsyncMethod("CloseAsync", out var awaitableType))
 			{
 				sb.NewLine().Append("if (").Append(LocalPrefix).Append("close) await (").Append(connection).Append("?.CloseAsync() ?? ")
 					.Append(awaitableType.IsValueType ? "default" : "global::System.Threading.Tasks.Task.CompletedTask")
@@ -732,7 +792,7 @@ namespace Dapper.CodeAnalysis
 
 			// check encryption; this can only be set in the constructor; need to resolve the special constructor
 			bool emitCreateCommand = true, setCommandText = true;
-			if (method.GetAttributes().SingleOrDefault(x => x.AttributeClass.IsExact("Dapper", "EncryptionAttribute"))
+			if (method.GetAttributes().SingleOrDefault(x => x.AttributeClass.IsExact("Dapper", "EncryptionAttribute", 0))
 				.TryGetAttributeValue("EncryptionKind", out int kind) && kind != 0)
 			{
 				foreach (var ctor in cmdType.GetMembers(".ctor"))
@@ -743,7 +803,7 @@ namespace Dapper.CodeAnalysis
 						if (p.Length == 4
 							&& p[0].Type.SpecialType == SpecialType.System_String
 							&& SymbolEqualityComparer.Default.Equals(p[1].Type, connectionType)
-							&& p[2].Type.TypeKind == TypeKind.Class
+							&& p[2].Type.IsKindOf("System", "Data", "IDbTransaction", 0)
 							&& p[3].Type.TypeKind == TypeKind.Enum
 							&& p[3].Type.Name == "SqlCommandColumnEncryptionSetting")
 						{
@@ -886,18 +946,31 @@ namespace Dapper.CodeAnalysis
 						.Append(").ConfigureAwait(false)")
 					: sb.Append(LocalPrefix).Append("reader.").Append(name).Append("()");
 
-			static void ExecuteReaderIterator(CodeWriter sb, QueryFlags flags, ITypeSymbol itemType, string cancellationToken)
+			static void ExecuteReaderMultiple(CodeWriter sb, in QueryCategory category, string cancellationToken)
 			{
-				WriteExecuteReader(sb, flags, cancellationToken);
+				WriteExecuteReader(sb, category.Flags, cancellationToken);
 
 				sb.NewLine().Append("// process multiple rows");
+				if (category.NeedsListLocal() && !category.UseCollector())
+				{
+					sb.NewLine().Append(LocalPrefix).Append("result = new ").Append(category.ListType).Append("();");
+				}
 				sb.NewLine().Append("if (").Append(LocalPrefix).Append("reader.HasRows)").Indent();
-				sb.NewLine().Append("var ").Append(LocalPrefix).Append("parser = global::Dapper.SqlMapper.GetRowParser<").Append(itemType).Append(">(")
+				sb.NewLine().Append("var ").Append(LocalPrefix).Append("parser = global::Dapper.SqlMapper.GetRowParser<").Append(category.ItemType).Append(">(")
 					.Append(LocalPrefix).Append("reader);");
 				sb.NewLine().Append("while (");
-				InvokeReaderMethod(sb, flags, nameof(DbDataReader.Read), cancellationToken).Append(")").Indent();
-				sb.NewLine().Append("yield return ").Append(LocalPrefix).Append("parser(").Append(LocalPrefix).Append("reader);").Outdent().Outdent();
-				ConsumeAdditionalResults(sb, flags, cancellationToken);
+				InvokeReaderMethod(sb, category.Flags, nameof(DbDataReader.Read), cancellationToken).Append(")").Indent();
+				if (category.ListStrategy == ListStrategy.Yield)
+				{
+					sb.NewLine().Append("yield return ").Append(LocalPrefix).Append("parser(").Append(LocalPrefix).Append("reader);");
+				}
+				else
+                {
+					sb.NewLine().Append(LocalPrefix).Append("result.Add(").Append(LocalPrefix).Append("parser(").Append(LocalPrefix).Append("reader));");
+
+				}
+				sb.Outdent().Outdent();
+				ConsumeAdditionalResults(sb, category.Flags, cancellationToken);
 			}
 
 			static void ExecuteNonQuery(CodeWriter sb, QueryFlags flags, string cancellationToken)
@@ -915,7 +988,6 @@ namespace Dapper.CodeAnalysis
 				}
 			}
 		}
-
 
 		static void AddProviderSpecificSettings(CodeWriter sb, ITypeSymbol cmdType, string target, in GeneratorExecutionContext context)
 		{
@@ -998,6 +1070,6 @@ namespace Dapper.CodeAnalysis
 		}
 
 		internal static bool IsCommandAttribute(ITypeSymbol? type)
-			=> type.IsExact("Dapper", "CommandAttribute");
+			=> type.IsExact("Dapper", "CommandAttribute", 0);
 	}
 }

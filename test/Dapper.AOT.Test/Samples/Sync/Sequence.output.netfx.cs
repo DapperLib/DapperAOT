@@ -12,6 +12,7 @@
 partial class Test
 {
 
+	// available inactive command for Sequence (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Sequence_input_cs_Sequence_7;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -62,6 +63,9 @@ partial class Test
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{

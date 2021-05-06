@@ -8,10 +8,10 @@
 // Samples\Sync\Parameters.input.cs(17,22): error CS8795: Partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, ref string, out DateTime, out int, out int)' must have an implementation part because it has accessibility modifiers.
 // Samples\Sync\Parameters.input.cs(18,72): error CS1003: Syntax error, ',' expected
 // Output code has 4 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(17,21): error CS0161: 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)': not all code paths return a value
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(17,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(101,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(203,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(18,21): error CS0161: 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)': not all code paths return a value
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(18,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)'
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(106,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(212,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -26,6 +26,7 @@
 partial class Test
 {
 
+	// available inactive command for ReturnViaReturn (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Parameters_input_cs_ReturnViaReturn_9;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -62,6 +63,9 @@ partial class Test
 
 			// execute non-query
 			__dapper__command.ExecuteNonQuery();
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -110,6 +114,7 @@ partial class Test
 	}
 
 
+	// available inactive command for RecordsAffectedViaReturn (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Parameters_input_cs_RecordsAffectedViaReturn_13;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -163,6 +168,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -212,6 +220,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ReturnAndRecordsAffectedViaOut (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Parameters_input_cs_ReturnAndRecordsAffectedViaOut_16;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -250,6 +259,9 @@ partial class Test
 
 			// execute non-query
 			__dapper__command.ExecuteNonQuery();
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -308,6 +320,7 @@ partial class Test
 	}
 
 
+	// available inactive command for FineControl (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Parameters_input_cs_FineControl_21;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -342,6 +355,9 @@ partial class Test
 
 			// execute non-query
 			__dapper__command.ExecuteNonQuery();
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{

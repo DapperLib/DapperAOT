@@ -1,9 +1,9 @@
 // Output code has 5 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(264,8): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'bool'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(266,5): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(266,5): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(292,25): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(292,25): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(281,8): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'bool'
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(283,5): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(283,5): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(312,25): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(312,25): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -18,6 +18,7 @@
 partial class Test
 {
 
+	// available inactive command for Abstract (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Transactions_input_cs_Abstract_9;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -47,6 +48,9 @@ partial class Test
 
 			// execute non-query
 			__dapper__command.ExecuteNonQuery();
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -79,6 +83,7 @@ partial class Test
 	}
 
 
+	// available inactive command for Interface (interlocked)
 	private static global::System.Data.IDbCommand? s___dapper__command_Samples_Transactions_input_cs_Interface_12;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -108,6 +113,9 @@ partial class Test
 
 			// execute non-query
 			__dapper__command.ExecuteNonQuery();
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -140,6 +148,7 @@ partial class Test
 	}
 
 
+	// available inactive command for Concrete (interlocked)
 	private static global::System.Data.SqlClient.SqlCommand? s___dapper__command_Samples_Transactions_input_cs_Concrete_15;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -169,6 +178,9 @@ partial class Test
 
 			// execute non-query
 			__dapper__command.ExecuteNonQuery();
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -196,6 +208,7 @@ partial class Test
 	}
 
 
+	// available inactive command for Transaction (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Transactions_input_cs_Transaction_18;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -225,6 +238,9 @@ partial class Test
 
 			// execute non-query
 			__dapper__command.ExecuteNonQuery();
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -257,6 +273,7 @@ partial class Test
 	}
 
 
+	// available inactive command for OptionalTransaction (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Transactions_input_cs_OptionalTransaction_21;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -286,6 +303,9 @@ partial class Test
 
 			// execute non-query
 			__dapper__command.ExecuteNonQuery();
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{

@@ -12,6 +12,7 @@
 partial class Test
 {
 
+	// available inactive command for Void (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_NonQuery_input_cs_Void_6;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -47,6 +48,9 @@ partial class Test
 
 			// execute non-query
 			__dapper__command.ExecuteNonQuery();
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{

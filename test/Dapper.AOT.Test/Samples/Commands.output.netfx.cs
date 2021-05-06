@@ -17,6 +17,7 @@ partial class Test
 
 
 
+	// available inactive command for ImplicitCommandText (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Commands_input_cs_ImplicitCommandText_14;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -26,6 +27,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
 			// prepare connection
@@ -56,18 +58,22 @@ partial class Test
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			// process single row
-			global::System.Collections.Generic.List<global::SomeType> __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			// process multiple rows
+			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
+			if (__dapper__reader.HasRows)
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::System.Collections.Generic.List<global::SomeType>>(__dapper__reader).Invoke(__dapper__reader);
-			}
-			else
-			{
-				__dapper__result = default!;
+				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				while (__dapper__reader.Read())
+				{
+					__dapper__result.Add(__dapper__parser(__dapper__reader));
+				}
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
+
+			// TODO: post-process parameters
+
+			// return rowset
 			return __dapper__result;
 		}
 		finally
@@ -113,6 +119,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ImplicitStoredProcedure (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Commands_input_cs_ImplicitStoredProcedure_17;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -122,6 +129,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
 			// prepare connection
@@ -152,18 +160,22 @@ partial class Test
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			// process single row
-			global::System.Collections.Generic.List<global::SomeType> __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			// process multiple rows
+			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
+			if (__dapper__reader.HasRows)
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::System.Collections.Generic.List<global::SomeType>>(__dapper__reader).Invoke(__dapper__reader);
-			}
-			else
-			{
-				__dapper__result = default!;
+				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				while (__dapper__reader.Read())
+				{
+					__dapper__result.Add(__dapper__parser(__dapper__reader));
+				}
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
+
+			// TODO: post-process parameters
+
+			// return rowset
 			return __dapper__result;
 		}
 		finally
@@ -209,6 +221,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ExplicitStoredProcedure (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Commands_input_cs_ExplicitStoredProcedure_20;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -218,6 +231,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
 			// prepare connection
@@ -248,18 +262,22 @@ partial class Test
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			// process single row
-			global::System.Collections.Generic.List<global::SomeType> __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			// process multiple rows
+			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
+			if (__dapper__reader.HasRows)
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::System.Collections.Generic.List<global::SomeType>>(__dapper__reader).Invoke(__dapper__reader);
-			}
-			else
-			{
-				__dapper__result = default!;
+				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				while (__dapper__reader.Read())
+				{
+					__dapper__result.Add(__dapper__parser(__dapper__reader));
+				}
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
+
+			// TODO: post-process parameters
+
+			// return rowset
 			return __dapper__result;
 		}
 		finally

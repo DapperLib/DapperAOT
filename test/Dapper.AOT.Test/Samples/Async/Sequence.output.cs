@@ -12,6 +12,7 @@
 partial class Test
 {
 
+	// available inactive command for SequenceAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Sequence_input_cs_SequenceAsync_8;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -68,6 +69,9 @@ partial class Test
 				}
 				// consume additional results (ensures errors from the server are observed)
 				while (await __dapper__reader.NextResultAsync(__dapper__cancellation).ConfigureAwait(false)) { }
+
+				// TODO: post-process parameters
+
 			}
 			finally
 			{
@@ -113,6 +117,7 @@ partial class Test
 	}
 
 
+	// available inactive command for SequenceWithCancellationAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Sequence_input_cs_SequenceWithCancellationAsync_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -163,6 +168,9 @@ partial class Test
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (await __dapper__reader.NextResultAsync(cancellation).ConfigureAwait(false)) { }
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{

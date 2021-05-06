@@ -3,7 +3,7 @@
 // Output code has 1 diagnostics from 'Samples\Async\Parameters.input.cs':
 // Samples\Async\Parameters.input.cs(13,16): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
 // Output code has 1 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs(17,69): error CS0161: 'Test.ReturnViaReturnAsync(DbConnection, Test.FooParams)': not all code paths return a value
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs(18,69): error CS0161: 'Test.ReturnViaReturnAsync(DbConnection, Test.FooParams)': not all code paths return a value
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -18,6 +18,7 @@
 partial class Test
 {
 
+	// available inactive command for ReturnViaReturnAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_ReturnViaReturnAsync_19;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -52,6 +53,9 @@ partial class Test
 
 			// execute non-query
 			await __dapper__command.ExecuteNonQueryAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -89,6 +93,7 @@ partial class Test
 	}
 
 
+	// available inactive command for RecordsAffectedViaReturnAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_RecordsAffectedViaReturnAsync_23;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -140,6 +145,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -178,6 +186,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ReturnAndRecordsAffectedViaOutAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_ReturnAndRecordsAffectedViaOutAsync_35;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -212,6 +221,9 @@ partial class Test
 
 			// execute non-query
 			await __dapper__command.ExecuteNonQueryAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -249,6 +261,7 @@ partial class Test
 	}
 
 
+	// available inactive command for FineControlAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_FineControlAsync_38;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -283,6 +296,9 @@ partial class Test
 
 			// execute non-query
 			await __dapper__command.ExecuteNonQueryAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{

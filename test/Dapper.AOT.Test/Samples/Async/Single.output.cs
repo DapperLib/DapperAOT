@@ -12,6 +12,7 @@
 partial class Test
 {
 
+	// available inactive command for TaskAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Single_input_cs_TaskAsync_8;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -64,6 +65,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -108,6 +112,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ValueTaskAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Single_input_cs_ValueTaskAsync_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -160,6 +165,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -204,6 +212,7 @@ partial class Test
 	}
 
 
+	// available inactive command for TaskWithCancellationAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Single_input_cs_TaskWithCancellationAsync_14;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -256,6 +265,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (await __dapper__reader.NextResultAsync(cancellation).ConfigureAwait(false)) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -300,6 +312,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ValueWithCancellationTaskAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Single_input_cs_ValueWithCancellationTaskAsync_17;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -352,6 +365,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (await __dapper__reader.NextResultAsync(cancellation).ConfigureAwait(false)) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{

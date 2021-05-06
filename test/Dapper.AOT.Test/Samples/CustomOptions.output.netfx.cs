@@ -12,6 +12,7 @@
 partial class Test
 {
 
+	// available inactive command for WithEncryptionSystemSql (interlocked)
 	private static global::System.Data.SqlClient.SqlCommand? s___dapper__command_Samples_CustomOptions_input_cs_WithEncryptionSystemSql_8;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -64,6 +65,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -102,6 +106,7 @@ partial class Test
 	}
 
 
+	// available inactive command for WithEncryptionMicrosoftSql (interlocked)
 	private static global::Microsoft.Data.SqlClient.SqlCommand? s___dapper__command_Samples_CustomOptions_input_cs_WithEncryptionMicrosoftSql_12;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -154,6 +159,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{

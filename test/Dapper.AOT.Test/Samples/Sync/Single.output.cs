@@ -1,10 +1,10 @@
 // Output code has 6 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(605,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(609,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(622,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(635,3): error CS1524: Expected catch or finally
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(635,4): error CS1513: } expected
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(635,4): error CS1513: } expected
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(630,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(634,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(647,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(660,3): error CS1524: Expected catch or finally
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(660,4): error CS1513: } expected
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(660,4): error CS1513: } expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -19,6 +19,7 @@
 partial class Test
 {
 
+	// available inactive command for ImplicitComplex (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_ImplicitComplex_6;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -71,6 +72,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -115,6 +119,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ImplicitScalar (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_ImplicitScalar_9;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -167,6 +172,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -211,6 +219,7 @@ partial class Test
 	}
 
 
+	// available inactive command for First (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_First_12;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -266,6 +275,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -310,6 +322,7 @@ partial class Test
 	}
 
 
+	// available inactive command for FirstOrDefault (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_FirstOrDefault_15;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -362,6 +375,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -406,6 +422,7 @@ partial class Test
 	}
 
 
+	// available inactive command for Single (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_Single_18;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -464,6 +481,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -508,6 +528,7 @@ partial class Test
 	}
 
 
+	// available inactive command for SingleOrDefault (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_SingleOrDefault_21;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -563,6 +584,9 @@ partial class Test
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
 			return __dapper__result;
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -607,6 +631,7 @@ partial class Test
 	}
 
 
+	// available inactive command for Scalar (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_Scalar_24;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]

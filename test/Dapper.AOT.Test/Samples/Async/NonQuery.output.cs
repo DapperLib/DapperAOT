@@ -12,6 +12,7 @@
 partial class Test
 {
 
+	// available inactive command for TaskAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_NonQuery_input_cs_TaskAsync_8;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -47,6 +48,9 @@ partial class Test
 
 			// execute non-query
 			await __dapper__command.ExecuteNonQueryAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -90,6 +94,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ValueTaskAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_NonQuery_input_cs_ValueTaskAsync_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -125,6 +130,9 @@ partial class Test
 
 			// execute non-query
 			await __dapper__command.ExecuteNonQueryAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -168,6 +176,7 @@ partial class Test
 	}
 
 
+	// available inactive command for TaskWithCancellationAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_NonQuery_input_cs_TaskWithCancellationAsync_14;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -203,6 +212,9 @@ partial class Test
 
 			// execute non-query
 			await __dapper__command.ExecuteNonQueryAsync(cancellation).ConfigureAwait(false);
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{
@@ -246,6 +258,7 @@ partial class Test
 	}
 
 
+	// available inactive command for ValueWithCancellationTaskAsync (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_NonQuery_input_cs_ValueWithCancellationTaskAsync_17;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -281,6 +294,9 @@ partial class Test
 
 			// execute non-query
 			await __dapper__command.ExecuteNonQueryAsync(cancellation).ConfigureAwait(false);
+
+			// TODO: post-process parameters
+
 		}
 		finally
 		{

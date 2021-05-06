@@ -1,6 +1,8 @@
 // Output code has 2 diagnostics from 'Samples\Basic.input.cs':
 // Samples\Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
 // Samples\Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
+// Output code has 1 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Basic.output.netfx.cs':
+// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Basic.output.netfx.cs(61,23): error CS1061: 'int?' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'int?' could be found (are you missing a using directive or an assembly reference?)
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -15,6 +17,7 @@
 partial class Foo
 {
 
+	// available inactive command for ShouldDetectThis (interlocked)
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Basic_input_cs_ShouldDetectThis_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -24,6 +27,7 @@ partial class Foo
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int? __dapper__result;
 		try
 		{
 			// prepare connection
@@ -53,18 +57,22 @@ partial class Foo
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			// process single row
-			int? __dapper__result;
-			if (__dapper__reader.HasRows && __dapper__reader.Read())
+			// process multiple rows
+			__dapper__result = new int?();
+			if (__dapper__reader.HasRows)
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<int?>(__dapper__reader).Invoke(__dapper__reader);
-			}
-			else
-			{
-				__dapper__result = default!;
+				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<int>(__dapper__reader);
+				while (__dapper__reader.Read())
+				{
+					__dapper__result.Add(__dapper__parser(__dapper__reader));
+				}
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
+
+			// TODO: post-process parameters
+
+			// return rowset
 			return __dapper__result;
 		}
 		finally
@@ -111,6 +119,7 @@ namespace X.Y.Z
 		partial class B
 		{
 
+			// available inactive command for ViaDapper (interlocked)
 			private static global::System.Data.SqlClient.SqlCommand? s___dapper__command_Samples_Basic_input_cs_ViaDapper_32;
 
 			[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -162,6 +171,9 @@ namespace X.Y.Z
 					// consume additional results (ensures errors from the server are observed)
 					while (__dapper__reader.NextResult()) { }
 					return __dapper__result;
+
+					// TODO: post-process parameters
+
 				}
 				finally
 				{
@@ -196,6 +208,7 @@ namespace X.Y.Z
 			}
 
 
+			// available inactive command for ViaOracle (interlocked)
 			private static global::Oracle.ManagedDataAccess.Client.OracleCommand? s___dapper__command_Samples_Basic_input_cs_ViaOracle_35;
 
 			[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -247,6 +260,9 @@ namespace X.Y.Z
 					// consume additional results (ensures errors from the server are observed)
 					while (__dapper__reader.NextResult()) { }
 					return __dapper__result;
+
+					// TODO: post-process parameters
+
 				}
 				finally
 				{
