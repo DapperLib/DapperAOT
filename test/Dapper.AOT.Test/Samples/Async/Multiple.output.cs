@@ -1,12 +1,3 @@
-// Output code has 8 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.cs(71,11): error CS0029: Cannot implicitly convert type 'System.Collections.Generic.List<SomeType>' to 'System.Threading.Tasks.Task<System.Collections.Generic.List<SomeType>>'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.cs(173,11): error CS0029: Cannot implicitly convert type 'System.Collections.Generic.List<SomeType>' to 'System.Threading.Tasks.ValueTask<System.Collections.Generic.List<SomeType>>'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.cs(275,11): error CS0029: Cannot implicitly convert type 'System.Collections.Generic.List<SomeType>' to 'System.Threading.Tasks.Task<System.Collections.Generic.List<SomeType>>'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.cs(377,11): error CS0029: Cannot implicitly convert type 'System.Collections.Generic.List<SomeType>' to 'System.Threading.Tasks.ValueTask<System.Collections.Generic.List<SomeType>>'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.cs(579,11): error CS0029: Cannot implicitly convert type 'System.Collections.Generic.List<SomeType>' to 'System.Threading.Tasks.ValueTask<System.Collections.Generic.IList<SomeType>>'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.cs(681,11): error CS0029: Cannot implicitly convert type 'System.Collections.Generic.List<SomeType>' to 'System.Threading.Tasks.ValueTask<System.Collections.Generic.ICollection<SomeType>>'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.cs(784,11): error CS0029: Cannot implicitly convert type 'System.Collections.Immutable.ImmutableArray<SomeType>' to 'System.Threading.Tasks.ValueTask<System.Collections.Immutable.ImmutableArray<SomeType>>'
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.cs(888,11): error CS0029: Cannot implicitly convert type 'System.Collections.Immutable.ImmutableList<SomeType>' to 'System.Threading.Tasks.ValueTask<System.Collections.Immutable.ImmutableList<SomeType>>'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -25,7 +16,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_TaskAsync_10;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public partial global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<global::SomeType>> TaskAsync(global::System.Data.Common.DbConnection connection, int id, string name)
+	public async partial global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<global::SomeType>> TaskAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
@@ -37,7 +28,7 @@ partial class Test
 			// prepare connection
 			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection!.Open();
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
@@ -59,7 +50,7 @@ partial class Test
 
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
 			// process multiple rows
@@ -67,13 +58,13 @@ partial class Test
 			if (__dapper__reader.HasRows)
 			{
 				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
-				while (__dapper__reader.Read())
+				while (await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 				{
 					__dapper__result.Add(__dapper__parser(__dapper__reader));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
-			while (__dapper__reader.NextResult()) { }
+			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 
 			// TODO: post-process parameters
 
@@ -83,14 +74,14 @@ partial class Test
 		finally
 		{
 			// cleanup
-			__dapper__reader?.Dispose();
+			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 			if (__dapper__command is not null)
 			{
 				__dapper__command.Connection = default;
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Multiple_input_cs_TaskAsync_10, __dapper__command);
-				__dapper__command?.Dispose();
+				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) connection?.Close();
+			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 		}
 
 		// command factory for TaskAsync
@@ -127,7 +118,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ValueTaskAsync_13;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.List<global::SomeType>> ValueTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name)
+	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.List<global::SomeType>> ValueTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
@@ -139,7 +130,7 @@ partial class Test
 			// prepare connection
 			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection!.Open();
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
@@ -161,7 +152,7 @@ partial class Test
 
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
 			// process multiple rows
@@ -169,13 +160,13 @@ partial class Test
 			if (__dapper__reader.HasRows)
 			{
 				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
-				while (__dapper__reader.Read())
+				while (await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 				{
 					__dapper__result.Add(__dapper__parser(__dapper__reader));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
-			while (__dapper__reader.NextResult()) { }
+			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 
 			// TODO: post-process parameters
 
@@ -185,14 +176,14 @@ partial class Test
 		finally
 		{
 			// cleanup
-			__dapper__reader?.Dispose();
+			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 			if (__dapper__command is not null)
 			{
 				__dapper__command.Connection = default;
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Multiple_input_cs_ValueTaskAsync_13, __dapper__command);
-				__dapper__command?.Dispose();
+				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) connection?.Close();
+			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 		}
 
 		// command factory for ValueTaskAsync
@@ -229,7 +220,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_TaskWithCancellationAsync_16;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public partial global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<global::SomeType>> TaskWithCancellationAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
+	public async partial global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<global::SomeType>> TaskWithCancellationAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
 	{
 		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
@@ -241,7 +232,7 @@ partial class Test
 			// prepare connection
 			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection!.Open();
+				await connection!.OpenAsync(cancellation).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
@@ -263,7 +254,7 @@ partial class Test
 
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, cancellation).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
 			// process multiple rows
@@ -271,13 +262,13 @@ partial class Test
 			if (__dapper__reader.HasRows)
 			{
 				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
-				while (__dapper__reader.Read())
+				while (await __dapper__reader.ReadAsync(cancellation).ConfigureAwait(false))
 				{
 					__dapper__result.Add(__dapper__parser(__dapper__reader));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
-			while (__dapper__reader.NextResult()) { }
+			while (await __dapper__reader.NextResultAsync(cancellation).ConfigureAwait(false)) { }
 
 			// TODO: post-process parameters
 
@@ -287,14 +278,14 @@ partial class Test
 		finally
 		{
 			// cleanup
-			__dapper__reader?.Dispose();
+			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 			if (__dapper__command is not null)
 			{
 				__dapper__command.Connection = default;
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Multiple_input_cs_TaskWithCancellationAsync_16, __dapper__command);
-				__dapper__command?.Dispose();
+				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) connection?.Close();
+			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 		}
 
 		// command factory for TaskWithCancellationAsync
@@ -331,7 +322,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ValueWithCancellationTaskAsync_19;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.List<global::SomeType>> ValueWithCancellationTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
+	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.List<global::SomeType>> ValueWithCancellationTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
 	{
 		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
@@ -343,7 +334,7 @@ partial class Test
 			// prepare connection
 			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection!.Open();
+				await connection!.OpenAsync(cancellation).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
@@ -365,7 +356,7 @@ partial class Test
 
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, cancellation).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
 			// process multiple rows
@@ -373,13 +364,13 @@ partial class Test
 			if (__dapper__reader.HasRows)
 			{
 				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
-				while (__dapper__reader.Read())
+				while (await __dapper__reader.ReadAsync(cancellation).ConfigureAwait(false))
 				{
 					__dapper__result.Add(__dapper__parser(__dapper__reader));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
-			while (__dapper__reader.NextResult()) { }
+			while (await __dapper__reader.NextResultAsync(cancellation).ConfigureAwait(false)) { }
 
 			// TODO: post-process parameters
 
@@ -389,14 +380,14 @@ partial class Test
 		finally
 		{
 			// cleanup
-			__dapper__reader?.Dispose();
+			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 			if (__dapper__command is not null)
 			{
 				__dapper__command.Connection = default;
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Multiple_input_cs_ValueWithCancellationTaskAsync_19, __dapper__command);
-				__dapper__command?.Dispose();
+				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) connection?.Close();
+			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 		}
 
 		// command factory for ValueWithCancellationTaskAsync
@@ -533,7 +524,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_IListAsync_25;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.IList<global::SomeType>> IListAsync(global::System.Data.Common.DbConnection connection, int id, string name)
+	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.IList<global::SomeType>> IListAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
@@ -545,7 +536,7 @@ partial class Test
 			// prepare connection
 			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection!.Open();
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
@@ -567,7 +558,7 @@ partial class Test
 
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
 			// process multiple rows
@@ -575,13 +566,13 @@ partial class Test
 			if (__dapper__reader.HasRows)
 			{
 				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
-				while (__dapper__reader.Read())
+				while (await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 				{
 					__dapper__result.Add(__dapper__parser(__dapper__reader));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
-			while (__dapper__reader.NextResult()) { }
+			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 
 			// TODO: post-process parameters
 
@@ -591,14 +582,14 @@ partial class Test
 		finally
 		{
 			// cleanup
-			__dapper__reader?.Dispose();
+			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 			if (__dapper__command is not null)
 			{
 				__dapper__command.Connection = default;
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Multiple_input_cs_IListAsync_25, __dapper__command);
-				__dapper__command?.Dispose();
+				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) connection?.Close();
+			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 		}
 
 		// command factory for IListAsync
@@ -635,7 +626,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ICollectionAsync_28;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.ICollection<global::SomeType>> ICollectionAsync(global::System.Data.Common.DbConnection connection, int id, string name)
+	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.ICollection<global::SomeType>> ICollectionAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
@@ -647,7 +638,7 @@ partial class Test
 			// prepare connection
 			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection!.Open();
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
@@ -669,7 +660,7 @@ partial class Test
 
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
 			// process multiple rows
@@ -677,13 +668,13 @@ partial class Test
 			if (__dapper__reader.HasRows)
 			{
 				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
-				while (__dapper__reader.Read())
+				while (await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 				{
 					__dapper__result.Add(__dapper__parser(__dapper__reader));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
-			while (__dapper__reader.NextResult()) { }
+			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 
 			// TODO: post-process parameters
 
@@ -693,14 +684,14 @@ partial class Test
 		finally
 		{
 			// cleanup
-			__dapper__reader?.Dispose();
+			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 			if (__dapper__command is not null)
 			{
 				__dapper__command.Connection = default;
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Multiple_input_cs_ICollectionAsync_28, __dapper__command);
-				__dapper__command?.Dispose();
+				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) connection?.Close();
+			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 		}
 
 		// command factory for ICollectionAsync
@@ -737,7 +728,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ImmutableArrayAsync_31;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Immutable.ImmutableArray<global::SomeType>> ImmutableArrayAsync(global::System.Data.Common.DbConnection connection, int id, string name)
+	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Immutable.ImmutableArray<global::SomeType>> ImmutableArrayAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
@@ -751,7 +742,7 @@ partial class Test
 			// prepare connection
 			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection!.Open();
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
@@ -773,20 +764,20 @@ partial class Test
 
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
 			// process multiple rows
 			if (__dapper__reader.HasRows)
 			{
 				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
-				while (__dapper__reader.Read())
+				while (await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 				{
 					__dapper__result.Add(__dapper__parser(__dapper__reader));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
-			while (__dapper__reader.NextResult()) { }
+			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 
 			// TODO: post-process parameters
 
@@ -797,14 +788,14 @@ partial class Test
 		{
 			// cleanup
 			__dapper__result.Dispose();
-			__dapper__reader?.Dispose();
+			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 			if (__dapper__command is not null)
 			{
 				__dapper__command.Connection = default;
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Multiple_input_cs_ImmutableArrayAsync_31, __dapper__command);
-				__dapper__command?.Dispose();
+				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) connection?.Close();
+			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 		}
 
 		// command factory for ImmutableArrayAsync
@@ -841,7 +832,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ImmutableListAsync_34;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-	public partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Immutable.ImmutableList<global::SomeType>> ImmutableListAsync(global::System.Data.Common.DbConnection connection, int id, string name)
+	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Immutable.ImmutableList<global::SomeType>> ImmutableListAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
 		global::System.Data.Common.DbCommand? __dapper__command = null;
@@ -855,7 +846,7 @@ partial class Test
 			// prepare connection
 			if (connection!.State == global::System.Data.ConnectionState.Closed)
 			{
-				connection!.Open();
+				await connection!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 				__dapper__close = true;
 			}
 
@@ -877,20 +868,20 @@ partial class Test
 
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
-			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
+			__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 			__dapper__close = false; // performed via CommandBehavior
 
 			// process multiple rows
 			if (__dapper__reader.HasRows)
 			{
 				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
-				while (__dapper__reader.Read())
+				while (await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 				{
 					__dapper__result.Add(__dapper__parser(__dapper__reader));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
-			while (__dapper__reader.NextResult()) { }
+			while (await __dapper__reader.NextResultAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false)) { }
 
 			// TODO: post-process parameters
 
@@ -901,14 +892,14 @@ partial class Test
 		{
 			// cleanup
 			__dapper__result.Dispose();
-			__dapper__reader?.Dispose();
+			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 			if (__dapper__command is not null)
 			{
 				__dapper__command.Connection = default;
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Multiple_input_cs_ImmutableListAsync_34, __dapper__command);
-				__dapper__command?.Dispose();
+				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) connection?.Close();
+			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
 		}
 
 		// command factory for ImmutableListAsync

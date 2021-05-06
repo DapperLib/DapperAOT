@@ -270,7 +270,7 @@ namespace Dapper.Internal
                             // detect Task<List<SomeRow>>
                             if (IsCollectionType(t, context, out strategy, out listType) && t is INamedTypeSymbol nt && nt.Arity == 1)
 							{
-                                return new (QueryFlags.IsQuery, nt.TypeArguments[0], nt.TypeArgumentNullableAnnotations[0], strategy, listType);
+                                return new (QueryFlags.IsQuery | QueryFlags.IsAsync, nt.TypeArguments[0], nt.TypeArgumentNullableAnnotations[0], strategy, listType);
                             }
                             else // Task<SomeRow> (note: could be return value)
 							{
