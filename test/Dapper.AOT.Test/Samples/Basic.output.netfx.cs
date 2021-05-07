@@ -1,8 +1,8 @@
 // Output code has 2 diagnostics from 'Samples\Basic.input.cs':
 // Samples\Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
 // Samples\Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
-// Output code has 1 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Basic.output.netfx.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Basic.output.netfx.cs(61,23): error CS1061: 'int?' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'int?' could be found (are you missing a using directive or an assembly reference?)
+// Output code has 1 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Basic.output.netfx.cs':
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Basic.output.netfx.cs(61,23): error CS1061: 'int?' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'int?' could be found (are you missing a using directive or an assembly reference?)
 
 #nullable enable
 //------------------------------------------------------------------------------

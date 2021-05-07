@@ -10,7 +10,7 @@
         <PublishReadyToRun>true</PublishReadyToRun>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Dapper.Core" Version="0.0.12" />
+        <PackageReference Include="Dapper.AOT" Version="0.0.14" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" Version="2.0.78" />

@@ -1,10 +1,10 @@
-// Output code has 6 diagnostics from 'Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs':
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(630,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(634,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(647,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(660,3): error CS1524: Expected catch or finally
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(660,4): error CS1513: } expected
-// Dapper.AOT\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(660,4): error CS1513: } expected
+// Output code has 6 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs':
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(630,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(634,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(647,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(660,3): error CS1524: Expected catch or finally
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(660,4): error CS1513: } expected
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(660,4): error CS1513: } expected
 
 #nullable enable
 //------------------------------------------------------------------------------
