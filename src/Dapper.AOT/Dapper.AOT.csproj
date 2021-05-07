@@ -1,22 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>netstandard2.0</TargetFramework>
-		<GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">True</GeneratePackageOnBuild>
-		<IncludeBuildOutput>false</IncludeBuildOutput>
-		<NoPackageAnalysis>true</NoPackageAnalysis>
-		<DevelopmentDependency>true</DevelopmentDependency>
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<AllowUnsafeBlocks Condition="'$(TargetFramework)'=='netstandard2.0'">true</AllowUnsafeBlocks>
-	</PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">True</GeneratePackageOnBuild>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <NoPackageAnalysis>true</NoPackageAnalysis>
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <AllowUnsafeBlocks Condition="'$(TargetFramework)'=='netstandard2.0'">true</AllowUnsafeBlocks>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<!-- build time deps -->
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="3.9.0" Pack="false" PrivateAssets="all" />
+    <ItemGroup>
+        <!-- build time deps -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="3.9.0" Pack="false" PrivateAssets="all" />
 
-		<None Include="$(OutputPath)/$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        <None Include="$(OutputPath)/$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 
-		<!-- kinda hoping we can make this add a project reference to the consumer, but: we'll see (the lib itself doesn't need it) -->
-		<!--<ProjectReference Include="..\Dapper.Core\Dapper.Core.csproj" />-->
-	</ItemGroup>
+        <!-- kinda hoping we can make this add a project reference to the consumer, but: we'll see (the lib itself doesn't need it) -->
+        <!--<ProjectReference Include="..\Dapper.Core\Dapper.Core.csproj" />-->
+    </ItemGroup>
 </Project>

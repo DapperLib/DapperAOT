@@ -1,13 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<TargetFrameworks>net48;netstandard2.0;netcoreapp3.1</TargetFrameworks>
-		<RootNamespace>Dapper</RootNamespace>
-		<GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">True</GeneratePackageOnBuild>
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<WarningsAsErrors>true</WarningsAsErrors>
-	</PropertyGroup>
+    <PropertyGroup>
+        <TargetFrameworks>net48;netstandard2.0;netcoreapp3.1</TargetFrameworks>
+        <RootNamespace>Dapper</RootNamespace>
+        <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">True</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <WarningsAsErrors>true</WarningsAsErrors>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="System.Memory" Version="4.5.4" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'"/>
-	</ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="System.Memory" Version="4.5.4" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
+
+        <None Include="../Dapper.AOT/bin/Release/netstandard2.0/Dapper.AOT.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
+    </ItemGroup>
 </Project>

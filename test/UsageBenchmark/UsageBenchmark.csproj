@@ -1,15 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<OutputType>Exe</OutputType>
-		<TargetFramework>net5.0</TargetFramework>
-		<SignAssembly>False</SignAssembly>
-	</PropertyGroup>
-	<ItemGroup>
-		<PackageReference Include="Dapper.AOT" Version="0.0.8" PrivateAssets="all" IncludeAssets="runtime;build;native;contentfiles;analyzers;buildtransitive" />
-		<PackageReference Include="Dapper" Version="2.0.78" />
-		<PackageReference Include="Microsoft.Data.SqlClient" Version="2.1.2" />
-		<PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
-		<PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
-		<ProjectReference Include="..\..\src\Dapper.Core\Dapper.Core.csproj" />
-	</ItemGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net5.0</TargetFramework>
+        <SignAssembly>False</SignAssembly>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Dapper.Core" Version="0.0.12" />
+        <PackageReference Include="Dapper" Version="2.0.78" />
+        <PackageReference Include="Microsoft.Data.SqlClient" Version="2.1.2" />
+        <PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
+        <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
+    </ItemGroup>
 </Project>
