@@ -81,6 +81,28 @@ namespace Dapper
         public ReadOnlyCollection<DbColumn> GetSchema(IDbColumnSchemaGenerator reader)
             => reader.GetColumnSchema();
 
+
+        /// <summary>
+        /// Inspects all columns and resolves them into tokens that the handler understands
+        /// </summary>
+        public void IdentifyFieldTokens(IDbColumnSchemaGenerator reader, Span<int> tokens)
+            => IdentifyFieldTokens(reader.GetColumnSchema(), 0, tokens);
+
+        /// <summary>
+        /// Inspects all columns and resolves them into tokens that the handler understands
+        /// </summary>
+        public void IdentifyFieldTokens(IDataReader reader, Span<int> tokens)
+        {
+            if (reader is IDbColumnSchemaGenerator db)
+            {
+                IdentifyFieldTokens(db.GetColumnSchema(), 0, tokens);
+            }
+            else
+            {
+                IdentifyFieldTokensFallback(reader.GetSchemaTable(), 0, tokens);
+            }
+        }
+
         /// <summary>
         /// Inspects a range of columns (starting from <c>offset</c>) and resolves them into tokens that the handler understands
         /// </summary>
