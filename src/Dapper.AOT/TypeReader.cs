@@ -30,11 +30,18 @@ namespace Dapper
         /// <summary>
         /// Register a handler for the given type
         /// </summary>
-        public static void Register(TypeReader reader)
+        public static bool Register(TypeReader reader, bool overwrite = true)
         {
-            if (reader is not null)
+            if (reader is null) return false;
+
+            if (overwrite)
             {
                 s_KnownReaders[reader.Type] = reader;
+                return true;
+            }
+            else
+            {
+                return s_KnownReaders.TryAdd(reader.Type, reader);
             }
         }
 
