@@ -10,9 +10,10 @@ namespace Dapper.Internal
     /// </summary>
     [Browsable(false)]
     [EditorBrowsable(EditorBrowsableState.Never)]
-    [Obsolete("This type is not intended for public consumption. Please just don't, thanks.")]
+    [Obsolete(InternalUtilities.ObsoleteWarning)]
     public static class InternalUtilities
     {
+        internal const string ObsoleteWarning = "This type is not intended for public consumption, and can change without warning.";
 #pragma warning disable CS1591
         static readonly object[] s_BoxedInt32 = new object[] { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         static readonly object s_BoxedTrue = true, s_BoxedFalse = false;

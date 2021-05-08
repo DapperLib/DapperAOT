@@ -10,9 +10,9 @@
         <PublishReadyToRun>true</PublishReadyToRun>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Dapper.AOT" Version="0.0.14" />
-    </ItemGroup>
-    <ItemGroup>
+        <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+        <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
+
         <PackageReference Include="Dapper" Version="2.0.78" />
         <PackageReference Include="Microsoft.Data.SqlClient" Version="2.1.2" />
     </ItemGroup>

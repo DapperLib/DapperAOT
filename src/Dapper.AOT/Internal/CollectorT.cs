@@ -12,7 +12,7 @@ namespace Dapper.Internal
     /// </summary>
     [Browsable(false)]
     [EditorBrowsable(EditorBrowsableState.Never)]
-    [Obsolete("This type is not intended for public consumption. Please just don't, thanks.")]
+    [Obsolete(InternalUtilities.ObsoleteWarning)]
     public struct Collector<T> : IDisposable
     {
 #pragma warning disable CS1591

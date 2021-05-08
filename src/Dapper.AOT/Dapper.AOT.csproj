@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="System.Memory" Version="4.5.4" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
+        <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
 
         <None Include="../Dapper.AOT.Analyzers/bin/Release/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
     </ItemGroup>
