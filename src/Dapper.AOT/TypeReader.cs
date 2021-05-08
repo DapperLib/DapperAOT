@@ -70,6 +70,7 @@ namespace Dapper
         /// <summary>
         /// Gets the opaque schema object for this reader
         /// </summary>
+        /// <remarks>This API is intended for multi-row scenarios</remarks>
         public object GetSchema(IDataReader reader)
             => reader is IDbColumnSchemaGenerator db
                 ? db.GetColumnSchema()
@@ -78,43 +79,103 @@ namespace Dapper
         /// <summary>
         /// Gets the opaque schema object for this reader
         /// </summary>
+        /// <remarks>This API is intended for multi-row scenarios</remarks>
         public ReadOnlyCollection<DbColumn> GetSchema(IDbColumnSchemaGenerator reader)
             => reader.GetColumnSchema();
 
-
         /// <summary>
         /// Inspects all columns and resolves them into tokens that the handler understands
         /// </summary>
-        public void IdentifyFieldTokens(IDbColumnSchemaGenerator reader, Span<int> tokens)
-            => IdentifyFieldTokens(reader.GetColumnSchema(), 0, tokens);
-
-        /// <summary>
-        /// Inspects all columns and resolves them into tokens that the handler understands
-        /// </summary>
-        public void IdentifyFieldTokens(IDataReader reader, Span<int> tokens)
+        /// <remarks>This API is intended for single-row scenarios, to avoid having to build a schema object</remarks>
+        public void IdentifyFieldTokensFromData(IDataReader reader, Span<int> tokens, int offset = 0)
         {
-            if (reader is IDbColumnSchemaGenerator db)
+            if (reader is DbDataReader db)
             {
-                IdentifyFieldTokens(db.GetColumnSchema(), 0, tokens);
+                IdentifyFieldTokensFromData(db, tokens, offset);
             }
             else
             {
-                IdentifyFieldTokensFallback(reader.GetSchemaTable(), 0, tokens);
+                IdentifyFieldTokensFromDataFallback(reader, tokens, offset);
+            }
+        }
+
+        /// <summary>
+        /// Inspects all columns and resolves them into tokens that the handler understands
+        /// </summary>
+        /// <remarks>This API is intended for single-row scenarios, to avoid having to build a schema object</remarks>
+        public void IdentifyFieldTokensFromData(DbDataReader reader, Span<int> tokens, int offset = 0)
+        {
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                string name = reader.GetName(offset);
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    tokens[i] = NoField;
+                }
+                else
+                {
+                    // note: we might as well say "nullable" here; we could test .IsDbNull, but that would mean
+                    // we've called it *at least* once (in the "not null" case), and possibly twice (in the "null" case);
+                    // we should also prefer .IsDBNullAsync in the async case, so: just assume it could be null, and
+                    // everything is simpler *and* not any less efficient
+                    tokens[i] = GetColumnToken(name, reader.GetFieldType(offset), isNullable: true);
+                }
+                offset++;
+            }
+        }
+        private void IdentifyFieldTokensFromDataFallback(IDataReader reader, Span<int> tokens, int offset)
+        {
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                string name = reader.GetName(offset);
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    tokens[i] = NoField;
+                }
+                else
+                {
+                    tokens[i] = GetColumnToken(name, reader.GetFieldType(offset), reader.IsDBNull(offset));
+                }
+                offset++;
+            }
+        }
+
+        /// <summary>
+        /// Inspects all columns and resolves them into tokens that the handler understands
+        /// </summary>
+        /// <remarks>This API is intended for multi-row scenarios</remarks>
+        public void IdentifyFieldTokensFromSchema(IDbColumnSchemaGenerator reader, Span<int> tokens)
+            => IdentifyFieldTokensFromSchema(reader.GetColumnSchema(), 0, tokens);
+
+        /// <summary>
+        /// Inspects all columns and resolves them into tokens that the handler understands
+        /// </summary>
+        /// <remarks>This API is intended for multi-row scenarios</remarks>
+        public void IdentifyFieldTokensFromSchema(IDataReader reader, Span<int> tokens)
+        {
+            if (reader is IDbColumnSchemaGenerator db)
+            {
+                IdentifyFieldTokensFromSchema(db.GetColumnSchema(), 0, tokens);
+            }
+            else
+            {
+                IdentifyFieldTokensFromSchemaFallback(reader.GetSchemaTable(), 0, tokens);
             }
         }
 
         /// <summary>
         /// Inspects a range of columns (starting from <c>offset</c>) and resolves them into tokens that the handler understands
         /// </summary>
-        public void IdentifyFieldTokens(object schema, int offset, Span<int> tokens)
+        /// <remarks>This API is intended for multi-row scenarios</remarks>
+        public void IdentifyFieldTokensFromSchema(object schema, int offset, Span<int> tokens)
         {
             switch (schema)
             {
                 case ReadOnlyCollection<DbColumn> cols:
-                    IdentifyFieldTokens(cols, offset, tokens);
+                    IdentifyFieldTokensFromSchema(cols, offset, tokens);
                     break;
                 case DataTable table:
-                    IdentifyFieldTokensFallback(table, offset, tokens);
+                    IdentifyFieldTokensFromSchemaFallback(table, offset, tokens);
                     break;
                 default:
                     ThrowUnexpectedSchemaType();
@@ -123,7 +184,7 @@ namespace Dapper
             static void ThrowUnexpectedSchemaType() => throw new ArgumentException("Unexpected schema-type", nameof(schema));
         }
 
-        private void IdentifyFieldTokensFallback(DataTable schema, int offset, Span<int> tokens)
+        private void IdentifyFieldTokensFromSchemaFallback(DataTable schema, int offset, Span<int> tokens)
         {
             var dbColumns = schema.Rows; // each row in the schema table represents a column in the results
             var nameCol = schema.Columns["ColumnName"];
@@ -149,7 +210,8 @@ namespace Dapper
         /// <summary>
         /// Inspects a range of columns (starting from <c>offset</c>) and resolves them into tokens that the handler understands
         /// </summary>
-        public void IdentifyFieldTokens(ReadOnlyCollection<DbColumn> schema, int offset, Span<int> tokens)
+        /// <remarks>This API is intended for multi-row scenarios</remarks>
+        public void IdentifyFieldTokensFromSchema(ReadOnlyCollection<DbColumn> schema, int offset, Span<int> tokens)
         {
             for (int i = 0; i < tokens.Length; i++)
             {
