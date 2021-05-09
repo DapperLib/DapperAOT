@@ -97,11 +97,11 @@ namespace Dapper
         /// <summary>
         /// Read a row from the supplied reader, using the tokens previously nominated by the handler
         /// </summary>
-        public abstract object ReadObject(IDataReader reader, ReadOnlySpan<int> tokens);
+        public abstract object ReadObject(IDataReader reader, ReadOnlySpan<int> tokens, int offset = 0);
         /// <summary>
         /// Read a row from the supplied reader, using the tokens previously nominated by the handler
         /// </summary>
-        public abstract object ReadObject(DbDataReader reader, ReadOnlySpan<int> tokens);
+        public abstract object ReadObject(DbDataReader reader, ReadOnlySpan<int> tokens, int offset = 0);
         /// <summary>
         /// Read a row from the supplied reader, using the tokens previously nominated by the handler
         /// </summary>
