@@ -9,7 +9,7 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 
-[module: LegacyMaterializer(true)]
+// [module: LegacyMaterializer(true)]
 namespace UsageBenchmark
 {
     class Program
