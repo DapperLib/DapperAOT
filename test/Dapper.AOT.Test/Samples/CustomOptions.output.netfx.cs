@@ -1,3 +1,6 @@
+// Output code has 2 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\CustomOptions.output.netfx.cs':
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\CustomOptions.output.netfx.cs(59,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\CustomOptions.output.netfx.cs(155,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -22,6 +25,7 @@ partial class Test
 		global::System.Data.SqlClient.SqlCommand? __dapper__command = null;
 		global::System.Data.SqlClient.SqlDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -56,7 +60,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -72,6 +76,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -116,6 +121,7 @@ partial class Test
 		global::Microsoft.Data.SqlClient.SqlCommand? __dapper__command = null;
 		global::Microsoft.Data.SqlClient.SqlDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -150,7 +156,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -166,6 +172,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{

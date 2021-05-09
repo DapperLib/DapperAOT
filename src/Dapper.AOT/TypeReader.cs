@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Data;
@@ -13,6 +14,54 @@ namespace Dapper
     /// </summary>
     public abstract class TypeReader
     {
+        /// <summary>
+        /// Gets a right-sized buffer for the given size, liasing with the array-pool as necessary
+        /// </summary>she
+        public static ArraySegment<int> RentSegment(ref int[]? buffer, int length)
+        {
+            if (buffer is object)
+            {
+                if (buffer.Length <= length)
+                    return new ArraySegment<int>(buffer, 0, length);
+
+                // otherwise, existing buffer isn't big enough; return it
+                // and we'll get a bigger one in a moment
+                ArrayPool<int>.Shared.Return(buffer);
+            }
+            buffer = ArrayPool<int>.Shared.Rent(length);
+            return new ArraySegment<int>(buffer, 0, length);
+        }
+
+        /// <summary>
+        /// Gets a right-sized buffer for the given size, liasing with the array-pool as necessary
+        /// </summary>
+        public static Span<int> RentSpan(ref int[]? buffer, int length)
+        {
+            if (buffer is object)
+            {
+                if (buffer.Length <= length)
+                    return new Span<int>(buffer, 0, length);
+
+                // otherwise, existing buffer isn't big enough; return it
+                // and we'll get a bigger one in a moment
+                ArrayPool<int>.Shared.Return(buffer);
+            }
+            buffer = ArrayPool<int>.Shared.Rent(length);
+            return new Span<int>(buffer, 0, length);
+        }
+
+        /// <summary>
+        /// Return a buffer to the array-pool
+        /// </summary>
+        public static void Return(ref int[]? buffer)
+        {
+            if (buffer is not null)
+            {
+                ArrayPool<int>.Shared.Return(buffer);
+                buffer = null;
+            }
+        }
+
         private static readonly ConcurrentDictionary<Type, TypeReader> s_KnownReaders = new();
 
         /// <summary>
@@ -56,7 +105,7 @@ namespace Dapper
         /// <summary>
         /// Read a row from the supplied reader, using the tokens previously nominated by the handler
         /// </summary>
-        public abstract ValueTask<object> ReadObjectAsync(DbDataReader reader, ReadOnlySpan<int> tokens, CancellationToken cancellationToken);
+        public abstract ValueTask<object> ReadObjectAsync(DbDataReader reader, ArraySegment<int> tokens, CancellationToken cancellationToken);
         /// <summary>
         /// Gets the type associated with this handler
         /// </summary>
@@ -71,7 +120,7 @@ namespace Dapper
         /// Gets the opaque schema object for this reader
         /// </summary>
         /// <remarks>This API is intended for multi-row scenarios</remarks>
-        public object GetSchema(IDataReader reader)
+        public static object? GetSchema(IDataReader reader)
             => reader is IDbColumnSchemaGenerator db
                 ? db.GetColumnSchema()
                 : reader.GetSchemaTable();
@@ -80,30 +129,14 @@ namespace Dapper
         /// Gets the opaque schema object for this reader
         /// </summary>
         /// <remarks>This API is intended for multi-row scenarios</remarks>
-        public ReadOnlyCollection<DbColumn> GetSchema(IDbColumnSchemaGenerator reader)
+        public static ReadOnlyCollection<DbColumn> GetSchema(IDbColumnSchemaGenerator reader)
             => reader.GetColumnSchema();
 
         /// <summary>
         /// Inspects all columns and resolves them into tokens that the handler understands
         /// </summary>
         /// <remarks>This API is intended for single-row scenarios, to avoid having to build a schema object</remarks>
-        public void IdentifyFieldTokensFromData(IDataReader reader, Span<int> tokens, int offset = 0)
-        {
-            if (reader is DbDataReader db)
-            {
-                IdentifyFieldTokensFromData(db, tokens, offset);
-            }
-            else
-            {
-                IdentifyFieldTokensFromDataFallback(reader, tokens, offset);
-            }
-        }
-
-        /// <summary>
-        /// Inspects all columns and resolves them into tokens that the handler understands
-        /// </summary>
-        /// <remarks>This API is intended for single-row scenarios, to avoid having to build a schema object</remarks>
-        public void IdentifyFieldTokensFromData(DbDataReader reader, Span<int> tokens, int offset = 0)
+        internal void IdentifyFieldTokensFromData(DbDataReader reader, Span<int> tokens, int offset)
         {
             for (int i = 0; i < tokens.Length; i++)
             {
@@ -123,7 +156,7 @@ namespace Dapper
                 offset++;
             }
         }
-        private void IdentifyFieldTokensFromDataFallback(IDataReader reader, Span<int> tokens, int offset)
+        internal void IdentifyFieldTokensFromDataFallback(IDataReader reader, Span<int> tokens, int offset)
         {
             for (int i = 0; i < tokens.Length; i++)
             {
@@ -141,11 +174,16 @@ namespace Dapper
         }
 
         /// <summary>
+        /// The recommended upper-bound on stack-allocated tokens
+        /// </summary>
+        public const int MaxStackTokens = 32;
+
+        /// <summary>
         /// Inspects all columns and resolves them into tokens that the handler understands
         /// </summary>
         /// <remarks>This API is intended for multi-row scenarios</remarks>
         public void IdentifyFieldTokensFromSchema(IDbColumnSchemaGenerator reader, Span<int> tokens)
-            => IdentifyFieldTokensFromSchema(reader.GetColumnSchema(), 0, tokens);
+            => IdentifyFieldTokensFromSchema(reader.GetColumnSchema(), tokens);
 
         /// <summary>
         /// Inspects all columns and resolves them into tokens that the handler understands
@@ -155,11 +193,11 @@ namespace Dapper
         {
             if (reader is IDbColumnSchemaGenerator db)
             {
-                IdentifyFieldTokensFromSchema(db.GetColumnSchema(), 0, tokens);
+                IdentifyFieldTokensFromSchema(db.GetColumnSchema(), tokens);
             }
             else
             {
-                IdentifyFieldTokensFromSchemaFallback(reader.GetSchemaTable(), 0, tokens);
+                IdentifyFieldTokensFromSchemaFallback(reader.GetSchemaTable(), tokens, 0);
             }
         }
 
@@ -167,41 +205,43 @@ namespace Dapper
         /// Inspects a range of columns (starting from <c>offset</c>) and resolves them into tokens that the handler understands
         /// </summary>
         /// <remarks>This API is intended for multi-row scenarios</remarks>
-        public void IdentifyFieldTokensFromSchema(object schema, int offset, Span<int> tokens)
+        public void IdentifyFieldTokensFromSchema(object? schema, Span<int> tokens, int offset = 0)
         {
             switch (schema)
             {
                 case ReadOnlyCollection<DbColumn> cols:
-                    IdentifyFieldTokensFromSchema(cols, offset, tokens);
+                    IdentifyFieldTokensFromSchema(cols, tokens, offset);
                     break;
                 case DataTable table:
-                    IdentifyFieldTokensFromSchemaFallback(table, offset, tokens);
+                    IdentifyFieldTokensFromSchemaFallback(table, tokens, offset);
                     break;
                 default:
-                    ThrowUnexpectedSchemaType();
+                    ThrowUnexpectedSchemaType(schema);
                     break;
             }
-            static void ThrowUnexpectedSchemaType() => throw new ArgumentException("Unexpected schema-type", nameof(schema));
+            
         }
-
-        private void IdentifyFieldTokensFromSchemaFallback(DataTable schema, int offset, Span<int> tokens)
+        private static void ThrowUnexpectedSchemaType(object? schema)
+            => throw new ArgumentException($"Unexpected schema-type: '{schema?.GetType()?.Name ?? "(null)"}'", nameof(schema));
+        private void IdentifyFieldTokensFromSchemaFallback(DataTable? schema, Span<int> tokens, int offset)
         {
-            var dbColumns = schema.Rows; // each row in the schema table represents a column in the results
+            if (schema is null) ThrowUnexpectedSchemaType(schema);
+            var dbColumns = schema!.Rows; // each row in the schema table represents a column in the results
             var nameCol = schema.Columns["ColumnName"];
             var typeCol = schema.Columns["DataType"];
             var nullCol = schema.Columns["AllowDBNull"];
             for (int i = 0; i < tokens.Length; i++)
             {
                 var col = dbColumns[offset++];
-                string? name = col.IsNull(nameCol) ? null : (string)col[nameCol];
+                string? name = (nameCol is null || col.IsNull(nameCol)) ? null : (string)col[nameCol];
                 if (string.IsNullOrWhiteSpace(name))
                 {
                     tokens[i] = NoField;
                 }
                 else
                 {
-                    Type? type = col.IsNull(typeCol) ? null : (Type)col[typeCol];
-                    bool allowNull = col.IsNull(nullCol) || (bool)col[nullCol];
+                    Type? type = (typeCol is null || col.IsNull(typeCol)) ? null : (Type)col[typeCol];
+                    bool allowNull = (nullCol is null || col.IsNull(nullCol)) || (bool)col[nullCol];
                     tokens[i] = GetColumnToken(name!, type, allowNull);
                 }
             }
@@ -211,7 +251,7 @@ namespace Dapper
         /// Inspects a range of columns (starting from <c>offset</c>) and resolves them into tokens that the handler understands
         /// </summary>
         /// <remarks>This API is intended for multi-row scenarios</remarks>
-        public void IdentifyFieldTokensFromSchema(ReadOnlyCollection<DbColumn> schema, int offset, Span<int> tokens)
+        public void IdentifyFieldTokensFromSchema(ReadOnlyCollection<DbColumn> schema, Span<int> tokens, int offset = 0)
         {
             for (int i = 0; i < tokens.Length; i++)
             {

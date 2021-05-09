@@ -11,7 +11,7 @@
 // Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(18,21): error CS0161: 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)': not all code paths return a value
 // Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(18,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)'
 // Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(106,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(212,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.cs(214,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -124,6 +124,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -159,7 +160,7 @@ partial class Test
 			int __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<int>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<int>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -175,6 +176,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{

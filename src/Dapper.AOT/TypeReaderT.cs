@@ -19,7 +19,7 @@ namespace Dapper
         public sealed override object ReadObject(IDataReader reader, ReadOnlySpan<int> tokens)
             => reader is DbDataReader db ? Read(db, tokens)! : ReadFallback(reader, tokens)!;
         /// <inheritdoc />
-        public sealed override ValueTask<object> ReadObjectAsync(DbDataReader reader, ReadOnlySpan<int> tokens, CancellationToken cancellationToken)
+        public sealed override ValueTask<object> ReadObjectAsync(DbDataReader reader, ArraySegment<int> tokens, CancellationToken cancellationToken)
         {
             var pending = ReadAsync(reader, tokens, cancellationToken);
             return pending.IsCompletedSuccessfully ? new ValueTask<object>(result: pending.Result!) : Awaited(pending);
@@ -48,6 +48,39 @@ namespace Dapper
         /// <summary>
         /// Read a row from the supplied reader, using the tokens previously nominated by the handler
         /// </summary>
-        public abstract ValueTask<T> ReadAsync(DbDataReader reader, ReadOnlySpan<int> tokens, CancellationToken cancellationToken);
+        public abstract ValueTask<T> ReadAsync(DbDataReader reader, ArraySegment<int> tokens, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Read a single element from the source
+        /// </summary>
+        public T Read(DbDataReader reader, ref int[]? buffer)
+        {
+            Span<int> tokens = reader.FieldCount <= MaxStackTokens ? stackalloc int[reader.FieldCount] : RentSpan(ref buffer, reader.FieldCount);
+            IdentifyFieldTokensFromData(reader, tokens, 0);
+            return Read(reader, tokens);
+        }
+
+        /// <summary>
+        /// Read a single element from the source
+        /// </summary>
+        public T Read(IDataReader reader, ref int[]? buffer)
+            => reader is DbDataReader db ? Read(db, ref buffer) : ReadFallback(reader, ref buffer);
+
+        private T ReadFallback(IDataReader reader, ref int[]? buffer)
+        {
+            Span<int> tokens = reader.FieldCount <= MaxStackTokens ? stackalloc int[reader.FieldCount] : RentSpan(ref buffer, reader.FieldCount);
+            IdentifyFieldTokensFromDataFallback(reader, tokens, 0);
+            return ReadFallback(reader, tokens);
+        }
+
+        /// <summary>
+        /// Read a single element from the source
+        /// </summary>
+        public ValueTask<T> ReadAsync(DbDataReader reader, ref int[]? buffer, CancellationToken cancellationToken)
+        {
+            var tokens = RentSegment(ref buffer, reader.FieldCount);
+            IdentifyFieldTokensFromData(reader, tokens, 0);
+            return ReadAsync(reader, tokens, cancellationToken);
+        }
     }
 }

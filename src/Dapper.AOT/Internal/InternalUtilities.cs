@@ -42,8 +42,13 @@ namespace Dapper.Internal
 
         private static readonly int[] s_One = new int[1];
 
+#pragma warning disable IDE0079 // "unnecessary suppression" - CA1806 is framework dependent
+#pragma warning disable CA1806 // "LINQ can have side effects" - not here, it can't
         public static void ThrowMultiple() => s_One.Single();
         public static void ThrowNone() => Array.Empty<int>().Single();
+#pragma warning restore CA1806
+#pragma warning restore IDE0079
+
 #pragma warning restore CS1591
     }
 }

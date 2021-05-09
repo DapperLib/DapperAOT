@@ -1,10 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFrameworks>net48;netstandard2.0;netcoreapp3.1</TargetFrameworks>
+        <TargetFrameworks>net48;netstandard2.0;netcoreapp3.1;net6.0</TargetFrameworks>
         <RootNamespace>Dapper</RootNamespace>
-        <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">True</GeneratePackageOnBuild>
+        <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">true</GeneratePackageOnBuild>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <WarningsAsErrors>true</WarningsAsErrors>
+        <AllowUnsafeBlocks Condition="'$(TargetFramework)'=='net6.0'">true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>

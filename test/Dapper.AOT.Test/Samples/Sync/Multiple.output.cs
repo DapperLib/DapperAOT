@@ -22,6 +22,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
@@ -57,10 +58,12 @@ partial class Test
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -74,6 +77,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -124,6 +128,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -158,7 +163,7 @@ partial class Test
 			global::SomeType[] __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType[]>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<global::SomeType[]>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -174,6 +179,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -224,6 +230,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
@@ -259,10 +266,12 @@ partial class Test
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -276,6 +285,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -326,6 +336,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
@@ -361,10 +372,12 @@ partial class Test
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -378,6 +391,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -428,6 +442,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 #pragma warning disable CS0618
 		global::Dapper.Internal.Collector<global::SomeType> __dapper__result = default;
 #pragma warning restore CS0618
@@ -464,10 +479,12 @@ partial class Test
 			// process multiple rows
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -481,6 +498,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__result.Dispose();
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
@@ -532,6 +550,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 #pragma warning disable CS0618
 		global::Dapper.Internal.Collector<global::SomeType> __dapper__result = default;
 #pragma warning restore CS0618
@@ -568,10 +587,12 @@ partial class Test
 			// process multiple rows
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -585,6 +606,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__result.Dispose();
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)

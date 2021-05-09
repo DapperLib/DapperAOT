@@ -8,6 +8,7 @@ using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 
 namespace Dapper.Internal
 {
@@ -229,13 +230,51 @@ namespace Dapper.Internal
             return ListStrategy.SimpleList;
         }
 
+        public static bool TryGetNearest<T>(ISymbol symbol, string memberName, Func<INamedTypeSymbol, bool> predicate, out T? value)
+        {
+            static bool TryGetAttributeValue(ISymbol? symbol, string memberName, Func<INamedTypeSymbol, bool> predicate, out T? value)
+            {
+                if (symbol is not null)
+                {
+                    foreach (var attrib in symbol.GetAttributes())
+                    {
+                        var attribType = attrib?.AttributeClass;
+                        if (attribType is not null && predicate(attribType) && attrib.TryGetAttributeValue<T>(memberName, out value))
+                            return true;
+                    }
+                }
+                value = default;
+                return false;
+            }
+            var current = symbol;
+            while (current is object)
+            {
+                if (TryGetAttributeValue(current, memberName, predicate, out value))
+                    return true;
+                current = current.ContainingType;
+            }
+            if (TryGetAttributeValue(symbol?.ContainingModule, memberName, predicate, out value))
+                return true;
+            if (TryGetAttributeValue(symbol?.ContainingAssembly, memberName, predicate, out value))
+                return true;
+
+            value = default;
+            return false;
+        }
         public static QueryCategory CategorizeQuery(IMethodSymbol method, in GeneratorExecutionContext context)
 		{
+            QueryFlags globalFlags = default;
+            if (TryGetNearest<bool>(method, "UseLegacyMaterializer",
+                a => a.IsExact("Dapper", "LegacyMaterializerAttribute", 0), out bool useLegacyMaterializer) && useLegacyMaterializer)
+            {
+                globalFlags |= QueryFlags.UseLegacyMaterializer;
+            }
+
             // detect void; non-query
             var retType = method.ReturnType;
             if (retType.SpecialType == SpecialType.System_Void)
             {
-                return new (QueryFlags.None, null, NullableAnnotation.None, ListStrategy.None, retType);
+                return new (globalFlags, null, NullableAnnotation.None, ListStrategy.None, retType);
             }
 
             if (retType is INamedTypeSymbol named)
@@ -246,19 +285,19 @@ namespace Dapper.Internal
                         // detect non-typed Task/ValueTask; async non-query
                         if (named.IsExact("System", "Threading", "Tasks", "Task", 0) || named.IsExact("System", "Threading", "Tasks", "ValueTask", 0))
                         {
-                            return new (QueryFlags.IsAsync, null, NullableAnnotation.None, ListStrategy.None, retType);
+                            return new (globalFlags | QueryFlags.IsAsync, null, NullableAnnotation.None, ListStrategy.None, retType);
                         }
                         break;
                     case 1:
                         // detect non-async iterator queries
                         if (named.IsExact("System", "Collections", "Generic", "IEnumerable", 1) || named.IsExact("System", "Collections", "Generic", "IEnumerator", 1))
                         {
-                            return new (QueryFlags.IsQuery | QueryFlags.IsIterator, named.TypeArguments[0], named.TypeArgumentNullableAnnotations[0], ListStrategy.Yield, retType);
+                            return new (globalFlags | QueryFlags.IsQuery | QueryFlags.IsIterator, named.TypeArguments[0], named.TypeArgumentNullableAnnotations[0], ListStrategy.Yield, retType);
                         }
                         // detect async iterator queries
                         if (named.IsExact("System", "Collections", "Generic", "IAsyncEnumerable", 1) || named.IsExact("System", "Collections", "Generic", "IAsyncEnumerator", 1))
                         {
-                            return new (QueryFlags.IsQuery | QueryFlags.IsIterator | QueryFlags.IsAsync, named.TypeArguments[0], named.TypeArgumentNullableAnnotations[0], ListStrategy.Yield, retType);
+                            return new (globalFlags | QueryFlags.IsQuery | QueryFlags.IsIterator | QueryFlags.IsAsync, named.TypeArguments[0], named.TypeArgumentNullableAnnotations[0], ListStrategy.Yield, retType);
                         }
 
                         ListStrategy strategy;
@@ -270,22 +309,22 @@ namespace Dapper.Internal
                             // detect Task<List<SomeRow>>
                             if (IsCollectionType(t, context, out strategy, out listType) && t is INamedTypeSymbol nt && nt.Arity == 1)
 							{
-                                return new (QueryFlags.IsQuery | QueryFlags.IsAsync, nt.TypeArguments[0], nt.TypeArgumentNullableAnnotations[0], strategy, listType);
+                                return new (globalFlags | QueryFlags.IsQuery | QueryFlags.IsAsync, nt.TypeArguments[0], nt.TypeArgumentNullableAnnotations[0], strategy, listType);
                             }
                             else // Task<SomeRow> (note: could be return value)
 							{
                                 if (IsReturn(method.GetReturnTypeAttributes()))
                                 {
-                                    return new (QueryFlags.IsAsync, t, named.TypeArgumentNullableAnnotations[0], ListStrategy.None, retType);
+                                    return new (globalFlags | QueryFlags.IsAsync, t, named.TypeArgumentNullableAnnotations[0], ListStrategy.None, retType);
                                 }
-                                return new (GetSingleRowFlags(method) | QueryFlags.IsAsync, t, named.TypeArgumentNullableAnnotations[0], ListStrategy.None, retType);
+                                return new (globalFlags | GetSingleRowFlags(method) | QueryFlags.IsAsync, t, named.TypeArgumentNullableAnnotations[0], ListStrategy.None, retType);
                             }
                         }
 
                         // detect List<T> etc queries
                         if (IsCollectionType(named, context, out strategy, out listType))
 						{
-                            return new (QueryFlags.IsQuery, named.TypeArguments[0], named.TypeArgumentNullableAnnotations[0], strategy, listType);
+                            return new (globalFlags | QueryFlags.IsQuery, named.TypeArguments[0], named.TypeArgumentNullableAnnotations[0], strategy, listType);
                         }
                         break;
                 }
@@ -294,9 +333,9 @@ namespace Dapper.Internal
             // just plain T (note: could be return value)
             if (IsReturn(method.GetReturnTypeAttributes()))
 			{
-                return new (QueryFlags.None, method.ReturnType, method.ReturnNullableAnnotation, ListStrategy.None, retType);
+                return new (globalFlags | QueryFlags.None, method.ReturnType, method.ReturnNullableAnnotation, ListStrategy.None, retType);
             }
-            return new (GetSingleRowFlags(method), retType, method.ReturnNullableAnnotation, ListStrategy.None, retType);
+            return new (globalFlags | GetSingleRowFlags(method), retType, method.ReturnNullableAnnotation, ListStrategy.None, retType);
 
             
             static bool IsReturn(ImmutableArray<AttributeData> attributes)
@@ -351,24 +390,37 @@ namespace Dapper.Internal
             return false;
         }
 
-        public static bool HasBasicAsyncMethod(this ITypeSymbol type, string methodName, [NotNullWhen(true)] out ITypeSymbol? returnType)
+        public static bool HasBasicAsyncMethod(this ITypeSymbol type, string methodName, [NotNullWhen(true)] out ITypeSymbol? returnType, out bool cancellable)
 		{
             // looking by shape
             foreach (var member in type.GetMembers(methodName))
             {
-                if (member is IMethodSymbol method && method.Parameters.IsDefaultOrEmpty
+                if (member is IMethodSymbol method
                     && !method.IsStatic && method.Arity == 0)
                 {
                     returnType = method.ReturnType;
-                    return returnType.IsExact("System", "Threading", "Tasks", "ValueTask", 0)
-                        || returnType.IsExact("System", "Threading", "Tasks", "Task", 0);
+                    if (returnType.IsExact("System", "Threading", "Tasks", "ValueTask", 0)
+                        || returnType.IsExact("System", "Threading", "Tasks", "Task", 0))
+                    {
+                        if (method.Parameters.IsDefaultOrEmpty)
+                        {
+                            cancellable = false;
+                            return true;
+                        }
+                        else if (method.Parameters.Length == 1 && method.Parameters[0].Type.IsExact("System", "Threading", "CancellationToken", 0))
+                        {
+                            cancellable = true;
+                            return true;
+                        }
+                    }
                 }
             }
-            returnType = null;
+            cancellable = default;
+            returnType = default;
             return false;
         }
         public static bool HasDisposeAsync(this ITypeSymbol type)
-            => HasBasicAsyncMethod(type, nameof(IAsyncDisposable.DisposeAsync), out _);
+            => HasBasicAsyncMethod(type, nameof(IAsyncDisposable.DisposeAsync), out _, out var cancellable) && !cancellable;
 
         public static bool Has(this QueryFlags value, QueryFlags flag)
             => (value & flag) != 0;
@@ -390,6 +442,7 @@ namespace Dapper.Internal
             IsScalar = 1 << 4,
             DemandAtLeastOneRow = 1 << 5,
             DemandAtMostOneRow = 1 << 6,
+            UseLegacyMaterializer = 1 << 7,
         }
     }
 }

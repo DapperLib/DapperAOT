@@ -103,6 +103,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -136,7 +137,7 @@ partial class Test
 			int __dapper__result;
 			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<int>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = await global::Dapper.TypeReader.TryGetReader<int>()!.ReadAsync(__dapper__reader, ref __dapper__tokenBuffer, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
 			}
 			else
 			{
@@ -152,6 +153,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 			if (__dapper__command is not null)
 			{

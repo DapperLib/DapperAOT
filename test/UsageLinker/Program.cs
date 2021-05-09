@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using System;
 using System.Data.Common;
 
+[module:LegacyMaterializer(true)]
 namespace UsageLinker
 {
 	static class Program

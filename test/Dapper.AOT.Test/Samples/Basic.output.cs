@@ -2,7 +2,7 @@
 // Samples\Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
 // Samples\Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
 // Output code has 1 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Basic.output.cs':
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Basic.output.cs(61,23): error CS1061: 'int?' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'int?' could be found (are you missing a using directive or an assembly reference?)
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Basic.output.cs(64,23): error CS1061: 'int?' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'int?' could be found (are you missing a using directive or an assembly reference?)
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -27,6 +27,7 @@ partial class Foo
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		int? __dapper__result;
 		try
 		{
@@ -61,10 +62,12 @@ partial class Foo
 			__dapper__result = new int?();
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<int>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<int>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -78,6 +81,7 @@ partial class Foo
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -129,6 +133,7 @@ namespace X.Y.Z
 				global::System.Data.SqlClient.SqlCommand? __dapper__command = null;
 				global::System.Data.SqlClient.SqlDataReader? __dapper__reader = null;
 				bool __dapper__close = false;
+				int[]? __dapper__tokenBuffer = null;
 				try
 				{
 					// prepare connection
@@ -162,7 +167,7 @@ namespace X.Y.Z
 					global::X.Y.Z.Customer __dapper__result;
 					if (__dapper__reader.HasRows && __dapper__reader.Read())
 					{
-						__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::X.Y.Z.Customer>(__dapper__reader).Invoke(__dapper__reader);
+						__dapper__result = global::Dapper.TypeReader.TryGetReader<global::X.Y.Z.Customer>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 					}
 					else
 					{
@@ -178,6 +183,7 @@ namespace X.Y.Z
 				finally
 				{
 					// cleanup
+					global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 					__dapper__reader?.Dispose();
 					if (__dapper__command is not null)
 					{
@@ -218,6 +224,7 @@ namespace X.Y.Z
 				global::Oracle.ManagedDataAccess.Client.OracleCommand? __dapper__command = null;
 				global::Oracle.ManagedDataAccess.Client.OracleDataReader? __dapper__reader = null;
 				bool __dapper__close = false;
+				int[]? __dapper__tokenBuffer = null;
 				try
 				{
 					// prepare connection
@@ -251,7 +258,7 @@ namespace X.Y.Z
 					global::X.Y.Z.Customer __dapper__result;
 					if (__dapper__reader.HasRows && __dapper__reader.Read())
 					{
-						__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::X.Y.Z.Customer>(__dapper__reader).Invoke(__dapper__reader);
+						__dapper__result = global::Dapper.TypeReader.TryGetReader<global::X.Y.Z.Customer>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 					}
 					else
 					{
@@ -267,6 +274,7 @@ namespace X.Y.Z
 				finally
 				{
 					// cleanup
+					global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 					__dapper__reader?.Dispose();
 					if (__dapper__command is not null)
 					{

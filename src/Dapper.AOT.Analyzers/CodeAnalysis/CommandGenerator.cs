@@ -236,8 +236,15 @@ namespace Dapper.CodeAnalysis
                     {
                         if (!firstMethod) sb.NewLine();
                         firstMethod = false;
+                        var rollback = sb.Length;
                         if (WriteMethod(candidate.Method, candidate.Syntax, sb, materializers, context))
+                        {
                             totalWritten++;
+                        }
+                        else
+                        {   // revert in case of any partial writes
+                            sb.Length = rollback;
+                        }
                     }
 
                     while (typeCount > 0)
@@ -582,10 +589,10 @@ namespace Dapper.CodeAnalysis
             sb.NewLine().Append(cmdType).Append("? ").Append(LocalPrefix).Append("command = null;");
             if (readerType is not null) sb.NewLine().Append(readerType).Append("? ").Append(LocalPrefix).Append("reader = null;");
             sb.NewLine().Append("bool ").Append(LocalPrefix).Append("close = false;");
-            bool useFieldNumbers = false; // TODO: come back
-            if (useFieldNumbers)
+            bool useFieldTokens = category.Has(QueryFlags.IsQuery);
+            if (useFieldTokens)
             {
-                sb.NewLine().Append("int[]? ").Append(LocalPrefix).Append("fieldNumbers = null;");
+                sb.NewLine().Append("int[]? ").Append(LocalPrefix).Append("tokenBuffer = null;");
             }
 
             if (category.NeedsListLocal())
@@ -654,8 +661,7 @@ namespace Dapper.CodeAnalysis
             else if (category.Has(QueryFlags.IsScalar) && category.ItemType is not null)
             {
                 // TODO: scalars
-                Log?.Invoke($"Scalar not supported: {category.Flags} via '{method.Name}'");
-                return false;
+                sb.NewLine().Append("#error Scalar not implemented");
             }
             else
             {
@@ -720,9 +726,9 @@ namespace Dapper.CodeAnalysis
             // cleanup code
             sb.Indent();
             sb.NewLine().Append("// cleanup");
-            if (useFieldNumbers)
+            if (useFieldTokens)
             {
-                sb.NewLine().Append("if (").Append(LocalPrefix).Append("fieldNumbers is not null) global::System.Buffers.ArrayPool<int>.Shared.Return(").Append(LocalPrefix).Append("fieldNumbers);");
+                sb.NewLine().Append("global::Dapper.TypeReader.Return(ref ").Append(LocalPrefix).Append("tokenBuffer);");
             }
             if (category.UseCollector())
             {
@@ -756,7 +762,7 @@ namespace Dapper.CodeAnalysis
             }
             sb.Outdent();
 
-            if (category.IsAsync() && connectionType.HasBasicAsyncMethod("CloseAsync", out var awaitableType))
+            if (category.IsAsync() && connectionType.HasBasicAsyncMethod("CloseAsync", out var awaitableType, out bool cancellable) && !cancellable)
             {
                 sb.NewLine().Append("if (").Append(LocalPrefix).Append("close) await (").Append(connection).Append("?.CloseAsync() ?? ")
                     .Append(awaitableType.IsValueType ? "default" : "global::System.Threading.Tasks.Task.CompletedTask")
@@ -910,8 +916,21 @@ namespace Dapper.CodeAnalysis
                 sb.NewLine().Append("if (").Append(LocalPrefix).Append("reader.HasRows && ");
                 InvokeReaderMethod(sb, flags, nameof(DbDataReader.Read), cancellationToken).Append(")").Indent();
 
-                sb.NewLine().Append(LocalPrefix).Append("result = global::Dapper.SqlMapper.GetRowParser<").Append(itemType).Append(">(")
-                    .Append(LocalPrefix).Append("reader).Invoke(").Append(LocalPrefix).Append("reader);");
+                if (flags.Has(QueryFlags.UseLegacyMaterializer))
+                {
+                    sb.NewLine().Append(LocalPrefix).Append("result = global::Dapper.SqlMapper.GetRowParser<").Append(itemType).Append(">(")
+                        .Append(LocalPrefix).Append("reader).Invoke(").Append(LocalPrefix).Append("reader);");
+                }
+                else if (flags.IsAsync())
+                {
+                    sb.NewLine().Append(LocalPrefix).Append("result = await global::Dapper.TypeReader.TryGetReader<").Append(itemType).Append(">()!.ReadAsync(")
+    .Append(LocalPrefix).Append("reader, ref ").Append(LocalPrefix).Append("tokenBuffer, ").Append(cancellationToken).Append(").ConfigureAwait(false);");
+                }
+                else
+                {
+                    sb.NewLine().Append(LocalPrefix).Append("result = global::Dapper.TypeReader.TryGetReader<").Append(itemType).Append(">()!.Read(")
+    .Append(LocalPrefix).Append("reader, ref ").Append(LocalPrefix).Append("tokenBuffer);");
+                }
 
                 if (flags.Has(QueryFlags.DemandAtMostOneRow))
                 {
@@ -952,19 +971,54 @@ namespace Dapper.CodeAnalysis
                     sb.NewLine().Append(LocalPrefix).Append("result = new ").Append(category.ListType).Append("();");
                 }
                 sb.NewLine().Append("if (").Append(LocalPrefix).Append("reader.HasRows)").Indent();
-                sb.NewLine().Append("var ").Append(LocalPrefix).Append("parser = global::Dapper.SqlMapper.GetRowParser<").Append(category.ItemType).Append(">(")
-                    .Append(LocalPrefix).Append("reader);");
-                sb.NewLine().Append("while (");
-                InvokeReaderMethod(sb, category.Flags, nameof(DbDataReader.Read), cancellationToken).Append(")").Indent();
-                if (category.ListStrategy == ListStrategy.Yield)
+                if (category.Flags.Has(QueryFlags.UseLegacyMaterializer))
                 {
-                    sb.NewLine().Append("yield return ").Append(LocalPrefix).Append("parser(").Append(LocalPrefix).Append("reader);");
+                    sb.NewLine().Append("var ").Append(LocalPrefix).Append("parser = global::Dapper.SqlMapper.GetRowParser<").Append(category.ItemType).Append(">(")
+                    .Append(LocalPrefix).Append("reader);");
                 }
                 else
                 {
-                    sb.NewLine().Append(LocalPrefix).Append("result.Add(").Append(LocalPrefix).Append("parser(").Append(LocalPrefix).Append("reader));");
+                    sb.NewLine().Append("var ").Append(LocalPrefix).Append("parser = global::Dapper.TypeReader.TryGetReader<").Append(category.ItemType).Append(">()!;");
 
+                    if (category.IsAsync())
+                    {
+                        sb.NewLine().Append("var ").Append(LocalPrefix).Append("tokens = global::Dapper.TypeReader.RentSegment(ref ").Append(LocalPrefix).Append("tokenBuffer, ").Append(LocalPrefix).Append("reader.FieldCount);");
+                    }
+                    else
+                    {
+                        sb.NewLine().Append("global::System.Span<int> ").Append(LocalPrefix).Append("tokens = ").Append(LocalPrefix).Append("reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[")
+                            .Append(LocalPrefix).Append("reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref ").Append(LocalPrefix).Append("tokenBuffer, ").Append(LocalPrefix).Append("reader.FieldCount);");
+                    }
+                    sb.NewLine().Append(LocalPrefix).Append("parser.IdentifyFieldTokensFromSchema(").Append(LocalPrefix).Append("reader, ").Append(LocalPrefix).Append("tokens);");
                 }
+                sb.NewLine().Append("while (");
+                InvokeReaderMethod(sb, category.Flags, nameof(DbDataReader.Read), cancellationToken).Append(")").Indent();
+
+                // open the yield/Add line
+                if (category.ListStrategy == ListStrategy.Yield)
+                {
+                    sb.NewLine().Append("yield return ");
+                }
+                else
+                {
+                    sb.NewLine().Append(LocalPrefix).Append("result.Add(");
+                }
+                // materialize an item
+                if (category.Flags.Has(QueryFlags.UseLegacyMaterializer))
+                {
+                    sb.Append(LocalPrefix).Append("parser(").Append(LocalPrefix).Append("reader)");
+                }
+                else if (category.IsAsync())
+                {
+                    sb.Append("await ").Append(LocalPrefix).Append("parser.ReadAsync(").Append(LocalPrefix).Append("reader, ").Append(LocalPrefix).Append("tokens, ").Append(cancellationToken).Append(").ConfigureAwait(false)");
+                }
+                else
+                {
+                    sb.Append(LocalPrefix).Append("parser.Read(").Append(LocalPrefix).Append("reader, ").Append(LocalPrefix).Append("tokens)");
+                }
+                // close the yield/Add line
+                sb.Append(category.ListStrategy == ListStrategy.Yield ? ";" : ");");
+                
                 sb.Outdent().Outdent();
                 ConsumeAdditionalResults(sb, category.Flags, cancellationToken);
             }

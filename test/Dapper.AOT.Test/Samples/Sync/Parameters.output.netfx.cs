@@ -7,11 +7,12 @@
 // Samples\Sync\Parameters.input.cs(14,21): error CS8795: Partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, ref string, out DateTime)' must have an implementation part because it has accessibility modifiers.
 // Samples\Sync\Parameters.input.cs(17,22): error CS8795: Partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, ref string, out DateTime, out int, out int)' must have an implementation part because it has accessibility modifiers.
 // Samples\Sync\Parameters.input.cs(18,72): error CS1003: Syntax error, ',' expected
-// Output code has 4 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs':
+// Output code has 5 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs':
 // Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs(18,21): error CS0161: 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)': not all code paths return a value
 // Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs(18,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)'
 // Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs(106,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs(212,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs(148,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs(214,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -124,6 +125,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -159,7 +161,7 @@ partial class Test
 			int __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<int>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<int>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -175,6 +177,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{

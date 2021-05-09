@@ -1,3 +1,30 @@
+// Output code has 26 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs':
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(61,20): error CS0234: The type or namespace name 'Span<>' does not exist in the namespace 'System' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(61,123): error CS0518: Predefined type 'System.Span`1' is not defined or imported
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(61,169): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(62,5): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(65,27): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(165,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(269,20): error CS0234: The type or namespace name 'Span<>' does not exist in the namespace 'System' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(269,123): error CS0518: Predefined type 'System.Span`1' is not defined or imported
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(269,169): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(270,5): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(273,27): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(375,20): error CS0234: The type or namespace name 'Span<>' does not exist in the namespace 'System' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(375,123): error CS0518: Predefined type 'System.Span`1' is not defined or imported
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(375,169): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(376,5): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(379,27): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(482,20): error CS0234: The type or namespace name 'Span<>' does not exist in the namespace 'System' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(482,123): error CS0518: Predefined type 'System.Span`1' is not defined or imported
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(482,169): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(483,5): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(486,27): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(590,20): error CS0234: The type or namespace name 'Span<>' does not exist in the namespace 'System' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(590,123): error CS0518: Predefined type 'System.Span`1' is not defined or imported
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(590,169): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(591,5): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Multiple.output.netfx.cs(594,27): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -22,6 +49,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
@@ -57,10 +85,12 @@ partial class Test
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -74,6 +104,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -124,6 +155,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -158,7 +190,7 @@ partial class Test
 			global::SomeType[] __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType[]>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<global::SomeType[]>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -174,6 +206,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -224,6 +257,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
@@ -259,10 +293,12 @@ partial class Test
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -276,6 +312,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -326,6 +363,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		global::System.Collections.Generic.List<global::SomeType> __dapper__result;
 		try
 		{
@@ -361,10 +399,12 @@ partial class Test
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -378,6 +418,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -428,6 +469,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 #pragma warning disable CS0618
 		global::Dapper.Internal.Collector<global::SomeType> __dapper__result = default;
 #pragma warning restore CS0618
@@ -464,10 +506,12 @@ partial class Test
 			// process multiple rows
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -481,6 +525,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__result.Dispose();
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
@@ -532,6 +577,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 #pragma warning disable CS0618
 		global::Dapper.Internal.Collector<global::SomeType> __dapper__result = default;
 #pragma warning restore CS0618
@@ -568,10 +614,12 @@ partial class Test
 			// process multiple rows
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader);
+				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
+				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
 				while (__dapper__reader.Read())
 				{
-					__dapper__result.Add(__dapper__parser(__dapper__reader));
+					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -590,6 +638,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__result.Dispose();
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)

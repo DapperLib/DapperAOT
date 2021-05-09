@@ -1,10 +1,12 @@
-// Output code has 6 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs':
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(630,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(634,8): warning CS0219: The variable '__dapper__close' is assigned but its value is never used
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(647,25): error CS0103: The name '__dapper__CreateCommand' does not exist in the current context
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(660,3): error CS1524: Expected catch or finally
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(660,4): error CS1513: } expected
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(660,4): error CS1513: } expected
+// Output code has 8 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs':
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(59,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(161,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(263,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(368,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(470,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(578,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(642,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
+// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.netfx.cs(672,11): error CS1029: #error: 'Scalar not implemented'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -29,6 +31,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -63,7 +66,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -79,6 +82,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -129,6 +133,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -163,7 +168,7 @@ partial class Test
 			int __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<int>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<int>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -179,6 +184,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -229,6 +235,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -263,7 +270,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -282,6 +289,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -332,6 +340,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -366,7 +375,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -382,6 +391,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -432,6 +442,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -466,7 +477,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 #pragma warning disable CS0618
 				if (__dapper__reader.Read()) global::Dapper.Internal.InternalUtilities.ThrowMultiple();
 #pragma warning restore CS0618
@@ -488,6 +499,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -538,6 +550,7 @@ partial class Test
 		global::System.Data.Common.DbCommand? __dapper__command = null;
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
+		int[]? __dapper__tokenBuffer = null;
 		try
 		{
 			// prepare connection
@@ -572,7 +585,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.SqlMapper.GetRowParser<global::SomeType>(__dapper__reader).Invoke(__dapper__reader);
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
 #pragma warning disable CS0618
 				if (__dapper__reader.Read()) global::Dapper.Internal.InternalUtilities.ThrowMultiple();
 #pragma warning restore CS0618
@@ -591,6 +604,7 @@ partial class Test
 		finally
 		{
 			// cleanup
+			global::Dapper.TypeReader.Return(ref __dapper__tokenBuffer);
 			__dapper__reader?.Dispose();
 			if (__dapper__command is not null)
 			{
@@ -665,5 +679,50 @@ partial class Test
 			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
+			#error Scalar not implemented
+
+			// TODO: post-process parameters
+
 		}
-		#endregion
+		finally
+		{
+			// cleanup
+			if (__dapper__command is not null)
+			{
+				__dapper__command.Connection = default;
+				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_Scalar_24, __dapper__command);
+				__dapper__command?.Dispose();
+			}
+			if (__dapper__close) connection?.Close();
+		}
+
+		// command factory for Scalar
+		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
+		{
+			var command = connection.CreateCommand();
+			if (command is global::Oracle.ManagedDataAccess.Client.OracleCommand typed0)
+			{
+				typed0.BindByName = true;
+				typed0.InitialLONGFetchSize = -1;
+			}
+			command.CommandType = global::System.Data.CommandType.StoredProcedure;
+			command.CommandText = @"sproc";
+			var args = command.Parameters;
+
+			var p = command.CreateParameter();
+			p.ParameterName = @"id";
+			p.Direction = global::System.Data.ParameterDirection.Input;
+			args.Add(p);
+
+			p = command.CreateParameter();
+			p.ParameterName = @"name";
+			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.Size = -1;
+			args.Add(p);
+
+			return command;
+		}
+	}
+}
+#endregion

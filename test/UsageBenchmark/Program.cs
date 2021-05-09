@@ -5,6 +5,7 @@ using Dapper;
 using System;
 using System.Data.Common;
 
+[module: LegacyMaterializer(true)]
 namespace UsageBenchmark
 {
     class Program
