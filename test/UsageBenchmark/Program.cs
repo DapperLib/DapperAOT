@@ -1,12 +1,14 @@
 ﻿using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Running;
 using Dapper;
+using PooledAwait;
 using System;
+using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
-using System.Threading;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 // [module: LegacyMaterializer(true)]
@@ -18,8 +20,9 @@ namespace UsageBenchmark
             => BenchmarkRunner.Run(typeof(Program).Assembly);
     }
 
-    [SimpleJob(RuntimeMoniker.NetCoreApp50)]
+    //[SimpleJob(RuntimeMoniker.NetCoreApp50)]
     [MemoryDiagnoser]
+    [CategoriesColumn]
     public class DataAccess : IDisposable
     {
         private DbConnection? _msData, _systemData;
@@ -27,7 +30,6 @@ namespace UsageBenchmark
         [GlobalSetup]
         public void Connect()
         {
-            TypeReader.Register(new Customer.CustomerReader());
             const string cs = @"Data Source=.\SQLEXPRESS;Initial Catalog=master;Integrated Security=True";
             _msData = new Microsoft.Data.SqlClient.SqlConnection(cs);
             _msData.Open();
@@ -59,21 +61,119 @@ namespace UsageBenchmark
             _systemData?.Dispose();
         }
 
-        [Benchmark]
-        public Customer DapperSystemData()
-            => _systemData.QueryFirstOrDefault<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region });
+        [Category("Sync")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public void DapperSystemData()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = _systemData.QueryFirstOrDefault<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region });
+        }
 
-        [Benchmark]
-        public Customer DapperMicrosoftData()
-            => _msData.QueryFirstOrDefault<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region });
+        [Category("Sync")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public void DapperMicrosoftData()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = _msData.QueryFirstOrDefault<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region });
+        }
 
-        [Benchmark]
-        public Customer DapperAOTSystemData()
-            => DapperAOT.GetCustomer(_systemData!, Id, Region);
+        [Category("Sync")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public void DapperAOTSystemData()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = DapperAOT.GetCustomer(_systemData!, Id, Region);
+        }
 
-        [Benchmark]
-        public Customer DapperAOTMicrosoftData()
-            => DapperAOT.GetCustomer(_msData!, Id, Region);
+        [Category("Sync")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public void DapperAOTMicrosoftData()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = DapperAOT.GetCustomer(_msData!, Id, Region);
+        }
+
+
+        private const int OperationsPerInvoke = 1000;
+        [Category("Async")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public async Task DapperSystemData_Async()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = await _systemData.QueryFirstOrDefaultAsync<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region }).ConfigureAwait(false);
+        }
+
+        [Category("Async")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public async Task DapperMicrosoftData_Async()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = await _msData.QueryFirstOrDefaultAsync<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region }).ConfigureAwait(false);
+        }
+
+        [Category("Async")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public async Task DapperAOTSystemData_Task()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = await DapperAOT.GetCustomerTaskAsync(_systemData!, Id, Region).ConfigureAwait(false);
+        }
+
+        [Category("Async")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public async Task DapperAOTMicrosoftData_Task()
+        {
+            for (int i = 0; i < OperationsPerInvoke;i++)
+                _ = await DapperAOT.GetCustomerTaskAsync(_msData!, Id, Region).ConfigureAwait(false);
+        }
+
+        [Category("Async")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public async Task DapperAOTSystemData_ValueTask()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = await DapperAOT.GetCustomerValueTaskAsync(_systemData!, Id, Region).ConfigureAwait(false);
+        }
+
+        [Category("Async")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public async Task DapperAOTMicrosoftData_ValueTask()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = await DapperAOT.GetCustomerValueTaskAsync(_msData!, Id, Region).ConfigureAwait(false);
+        }
+
+        [Category("Async")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public async Task DapperAOTSystemData_PooledValueTask()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = await DapperAOT.GetCustomerPooledValueTaskAsync(_systemData!, Id, Region).ConfigureAwait(false);
+        }
+
+        [Category("Async")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public async Task DapperAOTMicrosoftData_PooledValueTask()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = await DapperAOT.GetCustomerPooledValueTaskAsync(_msData!, Id, Region).ConfigureAwait(false);
+        }
+
+        [Category("Async")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public async Task DapperAOTSystemData_PooledTask()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = await DapperAOT.GetCustomerPooledTaskAsync(_systemData!, Id, Region).ConfigureAwait(false);
+        }
+
+        [Category("Async")]
+        [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
+        public async Task DapperAOTMicrosoftData_PooledTask()
+        {
+            for (int i = 0; i < OperationsPerInvoke; i++)
+                _ = await DapperAOT.GetCustomerPooledTaskAsync(_msData!, Id, Region).ConfigureAwait(false);
+        }
     }
 
     public static partial class DapperAOT
@@ -81,6 +181,22 @@ namespace UsageBenchmark
         [Command(@"select * from DapperCustomers where Id=@id and Region=@region")]
         [SingleRow(SingleRowKind.FirstOrDefault)] // entirely optional; to influence what happens when zero/multiple rows returned
         public static partial Customer GetCustomer(DbConnection connection, int id, string region);
+
+        [Command(@"select * from DapperCustomers where Id=@id and Region=@region")]
+        [SingleRow(SingleRowKind.FirstOrDefault)] // entirely optional; to influence what happens when zero/multiple rows returned
+        public static partial Task<Customer> GetCustomerTaskAsync(DbConnection connection, int id, string region);
+
+        [Command(@"select * from DapperCustomers where Id=@id and Region=@region")]
+        [SingleRow(SingleRowKind.FirstOrDefault)] // entirely optional; to influence what happens when zero/multiple rows returned
+        public static partial ValueTask<Customer> GetCustomerValueTaskAsync(DbConnection connection, int id, string region);
+
+        [Command(@"select * from DapperCustomers where Id=@id and Region=@region")]
+        [SingleRow(SingleRowKind.FirstOrDefault)] // entirely optional; to influence what happens when zero/multiple rows returned
+        public static partial PooledTask<Customer> GetCustomerPooledTaskAsync(DbConnection connection, int id, string region);
+
+        [Command(@"select * from DapperCustomers where Id=@id and Region=@region")]
+        [SingleRow(SingleRowKind.FirstOrDefault)] // entirely optional; to influence what happens when zero/multiple rows returned
+        public static partial PooledValueTask<Customer> GetCustomerPooledValueTaskAsync(DbConnection connection, int id, string region);
     }
     public sealed class Customer
     {
@@ -90,8 +206,12 @@ namespace UsageBenchmark
         public string? Region { get; init; }
 
         //TODO generate this automatically
-        public sealed class CustomerReader : TypeReader<Customer>
+        internal sealed class CustomerReader : TypeReader<Customer>
         {
+            [ModuleInitializer]
+            internal static void Register() => Register(Instance);
+            private CustomerReader() { }
+            internal static CustomerReader Instance { get; } = new CustomerReader();
             protected override int GetColumnToken(string name, Type? type, bool isNullable)
             {
                 switch (name)
@@ -167,38 +287,6 @@ namespace UsageBenchmark
                     Region = Region
                 };
             }
-
-            public override async ValueTask<Customer> ReadAsync(DbDataReader reader, ArraySegment<int> tokens, CancellationToken cancellationToken)
-            {
-                int Id = default;
-                string? Name = default;
-                string? Region = default;
-
-                var end = tokens.Offset + tokens.Count;
-                var arr = tokens.Array!;
-                for (int offset = tokens.Offset; offset < end; offset++)
-                {
-                    switch (arr[offset])
-                    {
-                        case 0: Id = await reader.GetFieldValueAsync<int>(offset, cancellationToken).ConfigureAwait(false); break;
-                        case 1: Id = await reader.GetFieldValueAsync<int>(offset, cancellationToken).ConfigureAwait(false); break;
-                        case 2: Id = Convert.ToInt32(reader.GetValue(offset), CultureInfo.InvariantCulture); break;
-                        case 3: Name = await reader.GetFieldValueAsync<string>(offset, cancellationToken).ConfigureAwait(false); break;
-                        case 4: Name = await reader.IsDBNullAsync(offset, cancellationToken).ConfigureAwait(false) ? null : await reader.GetFieldValueAsync<string>(offset, cancellationToken).ConfigureAwait(false); break;
-                        case 5: Name = await reader.IsDBNullAsync(offset, cancellationToken).ConfigureAwait(false) ? null : Convert.ToString(reader.GetValue(offset), CultureInfo.InvariantCulture); break;
-                        case 6: Region = await reader.GetFieldValueAsync<string>(offset, cancellationToken).ConfigureAwait(false); break;
-                        case 7: Region = await reader.IsDBNullAsync(offset, cancellationToken).ConfigureAwait(false) ? null : await reader.GetFieldValueAsync<string>(offset, cancellationToken).ConfigureAwait(false); break;
-                        case 8: Region = await reader.IsDBNullAsync(offset, cancellationToken).ConfigureAwait(false) ? null : Convert.ToString(reader.GetValue(offset), CultureInfo.InvariantCulture); break;
-                    }
-                }
-                return new Customer
-                {
-                    Id = Id,
-                    Name = Name,
-                    Region = Region
-                };
-            }
         }
     }
-
 }

@@ -1,8 +1,6 @@
 // Output code has 2 diagnostics from 'Samples\Basic.input.cs':
 // Samples\Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
 // Samples\Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
-// Output code has 1 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Basic.output.cs':
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Basic.output.cs(64,23): error CS1061: 'int?' does not contain a definition for 'Add' and no accessible extension method 'Add' accepting a first argument of type 'int?' could be found (are you missing a using directive or an assembly reference?)
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -28,7 +26,6 @@ partial class Foo
 		global::System.Data.Common.DbDataReader? __dapper__reader = null;
 		bool __dapper__close = false;
 		int[]? __dapper__tokenBuffer = null;
-		int? __dapper__result;
 		try
 		{
 			// prepare connection
@@ -58,25 +55,22 @@ partial class Foo
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
 			__dapper__close = false; // performed via CommandBehavior
 
-			// process multiple rows
-			__dapper__result = new int?();
-			if (__dapper__reader.HasRows)
+			// process single row
+			int? __dapper__result;
+			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<int>()!;
-				global::System.Span<int> __dapper__tokens = __dapper__reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[__dapper__reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
-				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
-				while (__dapper__reader.Read())
-				{
-					__dapper__result.Add(__dapper__parser.Read(__dapper__reader, __dapper__tokens));
-				}
+				__dapper__result = global::Dapper.TypeReader.TryGetReader<int?>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
+			}
+			else
+			{
+				__dapper__result = default!;
 			}
 			// consume additional results (ensures errors from the server are observed)
 			while (__dapper__reader.NextResult()) { }
+			return __dapper__result;
 
 			// TODO: post-process parameters
 
-			// return rowset
-			return __dapper__result;
 		}
 		finally
 		{

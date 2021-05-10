@@ -227,7 +227,31 @@ namespace Dapper.Internal
                     return ListStrategy.ImmutableList;
                 }
             }
-            return ListStrategy.SimpleList;
+
+            ITypeSymbol? current = returnType;
+            while (current is not null)
+            {
+                foreach (var iType in current.Interfaces)
+                {
+                    if (iType.IsExact("System", "Collections", "Generic", "IEnumerable", 1))
+                    {
+                        // is IEnumerable<T>; is there also an Add(T) on this type?
+                        foreach (var member in current.GetMembers())
+                        {
+                            if (member is IMethodSymbol method && !method.IsStatic && method.Name == "Add"
+                                && method.Arity == 0)
+                            {
+                                var args = method.Parameters;
+                                if (args.Length == 1 && SymbolEqualityComparer.Default.Equals(args[0].Type, iType.TypeArguments[0]))
+                                    return ListStrategy.SimpleList;
+                            }
+                        }
+                    }
+                }
+                current = current.BaseType;
+            }
+
+            return ListStrategy.None;
         }
 
         public static bool TryGetNearest<T>(ISymbol symbol, string memberName, Func<INamedTypeSymbol, bool> predicate, out T? value)
@@ -261,6 +285,20 @@ namespace Dapper.Internal
             value = default;
             return false;
         }
+
+        public static bool IsDefined(this ITypeSymbol? symbol, string ns0, string ns1, string ns2, string name)
+        {
+            if (symbol is not null)
+            {
+                foreach (var attribute in symbol.GetAttributes())
+                {
+                    if (attribute.AttributeClass.IsExact(ns0, ns1, ns2, name, 0))
+                        return true;
+                }
+            }
+            return false;
+        }
+
         public static QueryCategory CategorizeQuery(IMethodSymbol method, in GeneratorExecutionContext context)
 		{
             QueryFlags globalFlags = default;
@@ -282,8 +320,9 @@ namespace Dapper.Internal
                 switch (named.Arity)
 				{
                     case 0:
-                        // detect non-typed Task/ValueTask; async non-query
-                        if (named.IsExact("System", "Threading", "Tasks", "Task", 0) || named.IsExact("System", "Threading", "Tasks", "ValueTask", 0))
+                        // detect non-typed Task/ValueTask/custom-awaitable; async non-query
+                        if (named.IsExact("System", "Threading", "Tasks", "Task", 0) || named.IsExact("System", "Threading", "Tasks", "ValueTask", 0)
+                            || named.IsDefined("System", "Runtime", "CompilerServices", "AsyncMethodBuilderAttribute"))
                         {
                             return new (globalFlags | QueryFlags.IsAsync, null, NullableAnnotation.None, ListStrategy.None, retType);
                         }
@@ -302,16 +341,17 @@ namespace Dapper.Internal
 
                         ListStrategy strategy;
                         ITypeSymbol listType;
-                        // detect Task<T>, which could be Task<SomeRow> or Task<List<SomeRow>> etc
-                        if (named.IsExact("System", "Threading", "Tasks", "Task", 1) || named.IsExact("System", "Threading", "Tasks", "ValueTask", 1))
+                        // detect Task<T>/ValueTask<T>/custom-awaitable<T>, which could be T=SomeRow or T=List<SomeRow> etc
+                        if (named.IsExact("System", "Threading", "Tasks", "Task", 1) || named.IsExact("System", "Threading", "Tasks", "ValueTask", 1)
+                            || named.IsDefined("System", "Runtime", "CompilerServices", "AsyncMethodBuilderAttribute"))
                         {
                             var t = named.TypeArguments[0];
-                            // detect Task<List<SomeRow>>
+                            // detect T = List<SomeRow>
                             if (IsCollectionType(t, context, out strategy, out listType) && t is INamedTypeSymbol nt && nt.Arity == 1)
 							{
                                 return new (globalFlags | QueryFlags.IsQuery | QueryFlags.IsAsync, nt.TypeArguments[0], nt.TypeArgumentNullableAnnotations[0], strategy, listType);
                             }
-                            else // Task<SomeRow> (note: could be return value)
+                            else // T = SomeRow (note: could be return value)
 							{
                                 if (IsReturn(method.GetReturnTypeAttributes()))
                                 {

@@ -12,7 +12,6 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
-
         <PackageReference Include="Microsoft.Data.SqlClient" Version="2.1.2" />
     </ItemGroup>
 </Project>

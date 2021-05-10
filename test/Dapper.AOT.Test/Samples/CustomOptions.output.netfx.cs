@@ -1,6 +1,3 @@
-// Output code has 2 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\CustomOptions.output.netfx.cs':
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\CustomOptions.output.netfx.cs(59,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\CustomOptions.output.netfx.cs(155,24): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
 
 #nullable enable
 //------------------------------------------------------------------------------

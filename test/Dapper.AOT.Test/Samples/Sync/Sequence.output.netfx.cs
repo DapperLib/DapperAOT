@@ -1,9 +1,3 @@
-// Output code has 5 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Sequence.output.netfx.cs':
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Sequence.output.netfx.cs(59,20): error CS0234: The type or namespace name 'Span<>' does not exist in the namespace 'System' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Sequence.output.netfx.cs(59,123): error CS0518: Predefined type 'System.Span`1' is not defined or imported
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Sequence.output.netfx.cs(59,169): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Sequence.output.netfx.cs(60,5): error CS0012: The type 'Span<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Sequence.output.netfx.cs(63,19): error CS0012: The type 'ReadOnlySpan<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
 
 #nullable enable
 //------------------------------------------------------------------------------

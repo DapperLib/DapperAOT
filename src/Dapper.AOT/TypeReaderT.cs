@@ -48,7 +48,8 @@ namespace Dapper
         /// <summary>
         /// Read a row from the supplied reader, using the tokens previously nominated by the handler
         /// </summary>
-        public abstract ValueTask<T> ReadAsync(DbDataReader reader, ArraySegment<int> tokens, CancellationToken cancellationToken);
+        public virtual ValueTask<T> ReadAsync(DbDataReader reader, ArraySegment<int> tokens, CancellationToken cancellationToken)
+            => new(Read(reader, tokens, tokens.Offset));
 
         /// <summary>
         /// Read a single element from the source

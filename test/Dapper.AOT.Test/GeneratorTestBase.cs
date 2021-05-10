@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Oracle.ManagedDataAccess.Client;
+using PooledAwait;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -142,6 +143,8 @@ namespace Dapper.AOT.Test
                    MetadataReference.CreateFromFile(typeof(ImmutableArray<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(IAsyncEnumerable<int>).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(PooledValueTask).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(Span<int>).Assembly.Location),
                },
                options: new CSharpCompilationOptions(OutputKind.ConsoleApplication));
     }

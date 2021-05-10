@@ -1,13 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <SignAssembly>False</SignAssembly>
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
         <PackageReference Include="Dapper" Version="2.0.78" />
+        <PackageReference Include="PooledAwait" Version="1.0.49" />
         <PackageReference Include="Microsoft.Data.SqlClient" Version="2.1.2" />
         <PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
         <PackageReference Include="BenchmarkDotNet" Version="0.12.1" />
