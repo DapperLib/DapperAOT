@@ -4,7 +4,6 @@ using BenchmarkDotNet.Running;
 using Dapper;
 using PooledAwait;
 using System;
-using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
@@ -61,7 +60,7 @@ namespace UsageBenchmark
             _systemData?.Dispose();
         }
 
-        [Category("Sync")]
+        [BenchmarkCategory("Sync", "SysData", "Dapper")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public void DapperSystemData()
         {
@@ -69,7 +68,7 @@ namespace UsageBenchmark
                 _ = _systemData.QueryFirstOrDefault<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region });
         }
 
-        [Category("Sync")]
+        [BenchmarkCategory("Sync", "MSData", "Dapper")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public void DapperMicrosoftData()
         {
@@ -77,7 +76,7 @@ namespace UsageBenchmark
                 _ = _msData.QueryFirstOrDefault<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region });
         }
 
-        [Category("Sync")]
+        [BenchmarkCategory("Sync", "SysData", "DapperAOT")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public void DapperAOTSystemData()
         {
@@ -85,7 +84,7 @@ namespace UsageBenchmark
                 _ = DapperAOT.GetCustomer(_systemData!, Id, Region);
         }
 
-        [Category("Sync")]
+        [BenchmarkCategory("Sync", "MSData", "DapperAOT")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public void DapperAOTMicrosoftData()
         {
@@ -95,7 +94,7 @@ namespace UsageBenchmark
 
 
         private const int OperationsPerInvoke = 1000;
-        [Category("Async")]
+        [BenchmarkCategory("Task", "SysData", "Dapper")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public async Task DapperSystemData_Async()
         {
@@ -103,7 +102,7 @@ namespace UsageBenchmark
                 _ = await _systemData.QueryFirstOrDefaultAsync<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region }).ConfigureAwait(false);
         }
 
-        [Category("Async")]
+        [BenchmarkCategory("Task", "MSData", "Dapper")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public async Task DapperMicrosoftData_Async()
         {
@@ -111,7 +110,7 @@ namespace UsageBenchmark
                 _ = await _msData.QueryFirstOrDefaultAsync<Customer>(@"select * from DapperCustomers where Id=@id and Region=@region", new { Id, Region }).ConfigureAwait(false);
         }
 
-        [Category("Async")]
+        [BenchmarkCategory("Task", "SysData", "DapperAOT")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public async Task DapperAOTSystemData_Task()
         {
@@ -119,7 +118,7 @@ namespace UsageBenchmark
                 _ = await DapperAOT.GetCustomerTaskAsync(_systemData!, Id, Region).ConfigureAwait(false);
         }
 
-        [Category("Async")]
+        [BenchmarkCategory("Task", "MSData", "DapperAOT")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public async Task DapperAOTMicrosoftData_Task()
         {
@@ -127,7 +126,7 @@ namespace UsageBenchmark
                 _ = await DapperAOT.GetCustomerTaskAsync(_msData!, Id, Region).ConfigureAwait(false);
         }
 
-        [Category("Async")]
+        [BenchmarkCategory("ValueTask", "SysData", "DapperAOT")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public async Task DapperAOTSystemData_ValueTask()
         {
@@ -135,7 +134,7 @@ namespace UsageBenchmark
                 _ = await DapperAOT.GetCustomerValueTaskAsync(_systemData!, Id, Region).ConfigureAwait(false);
         }
 
-        [Category("Async")]
+        [BenchmarkCategory("ValueTask", "MSData", "DapperAOT")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public async Task DapperAOTMicrosoftData_ValueTask()
         {
@@ -143,7 +142,7 @@ namespace UsageBenchmark
                 _ = await DapperAOT.GetCustomerValueTaskAsync(_msData!, Id, Region).ConfigureAwait(false);
         }
 
-        [Category("Async")]
+        [BenchmarkCategory("PooledValueTask", "SysData", "DapperAOT")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public async Task DapperAOTSystemData_PooledValueTask()
         {
@@ -151,7 +150,7 @@ namespace UsageBenchmark
                 _ = await DapperAOT.GetCustomerPooledValueTaskAsync(_systemData!, Id, Region).ConfigureAwait(false);
         }
 
-        [Category("Async")]
+        [BenchmarkCategory("PooledValueTask", "MSData", "DapperAOT")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public async Task DapperAOTMicrosoftData_PooledValueTask()
         {
@@ -159,7 +158,7 @@ namespace UsageBenchmark
                 _ = await DapperAOT.GetCustomerPooledValueTaskAsync(_msData!, Id, Region).ConfigureAwait(false);
         }
 
-        [Category("Async")]
+        [BenchmarkCategory("PooledTask", "SysData", "DapperAOT")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public async Task DapperAOTSystemData_PooledTask()
         {
@@ -167,7 +166,7 @@ namespace UsageBenchmark
                 _ = await DapperAOT.GetCustomerPooledTaskAsync(_systemData!, Id, Region).ConfigureAwait(false);
         }
 
-        [Category("Async")]
+        [BenchmarkCategory("PooledTask", "MSData", "DapperAOT")]
         [Benchmark(OperationsPerInvoke = OperationsPerInvoke)]
         public async Task DapperAOTMicrosoftData_PooledTask()
         {
