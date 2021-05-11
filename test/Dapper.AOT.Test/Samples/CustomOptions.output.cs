@@ -207,4 +207,24 @@ partial class Test
 		}
 	}
 }
+
+namespace Dapper.Internal.__dapper__Run_TypeReaders
+{
+	internal sealed class __dapper__CommandGenerator_TypeReader : global::Dapper.TypeReader<global::SomeType>
+	{
+		private __dapper__CommandGenerator_TypeReader() { }
+		internal static readonly __dapper__CommandGenerator_TypeReader Instance = new();
+
+		protected override int GetColumnToken(string name, global::System.Type? type, bool isNullable)
+		{
+			return NoField;
+		}
+
+		protected override global::SomeType ReadFallback(global::System.Data.IDataReader reader, global::System.ReadOnlySpan<int> tokens, int offset)
+		{
+			global::SomeType obj = new();
+			return obj;
+		}
+	}
+}
 #endregion

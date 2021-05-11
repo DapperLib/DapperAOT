@@ -303,4 +303,24 @@ namespace X.Y.Z
 		}
 	}
 }
+
+namespace Dapper.Internal.__dapper__Run_TypeReaders
+{
+	internal sealed class __dapper__CommandGenerator_TypeReader : global::Dapper.TypeReader<global::X.Y.Z.Customer>
+	{
+		private __dapper__CommandGenerator_TypeReader() { }
+		internal static readonly __dapper__CommandGenerator_TypeReader Instance = new();
+
+		protected override int GetColumnToken(string name, global::System.Type? type, bool isNullable)
+		{
+			return NoField;
+		}
+
+		protected override global::X.Y.Z.Customer ReadFallback(global::System.Data.IDataReader reader, global::System.ReadOnlySpan<int> tokens, int offset)
+		{
+			global::X.Y.Z.Customer obj = new();
+			return obj;
+		}
+	}
+}
 #endregion

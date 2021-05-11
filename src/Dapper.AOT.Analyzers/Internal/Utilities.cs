@@ -186,6 +186,21 @@ namespace Dapper.Internal
                 }
                 return false;
             }
+
+            [SuppressMessage("Style", "IDE0019:Use pattern matching", Justification = "The Nullable.GetUnderlyingType makes this awkward")]
+            internal void ConsiderGeneratingTypeReader(HashSet<INamedTypeSymbol> generateSerializersFor)
+            {
+                if (!Has(QueryFlags.IsQuery)) return; // no query? no generate
+                var type = ItemType as INamedTypeSymbol;
+                if (type is null) return;
+                if (type.IsExact("System", "Nullable", 1))
+                {   // think: Nullable.GetUnderlyingType
+                    type = type.TypeArguments[0] as INamedTypeSymbol;
+                    if (type is null) return;
+                }
+                if (type.SpecialType != SpecialType.None) return; // not our problem
+                generateSerializersFor.Add(type);
+            }
         }
 
         private static bool IsCollectionType(ITypeSymbol returnType, in GeneratorExecutionContext context, out ListStrategy strategy, out ITypeSymbol listType)

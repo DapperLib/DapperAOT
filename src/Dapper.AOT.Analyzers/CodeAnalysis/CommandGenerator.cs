@@ -207,6 +207,7 @@ namespace Dapper.CodeAnalysis
                 .NewLine().Append("#region Designer generated code");
 
             int totalWritten = 0;
+            HashSet<INamedTypeSymbol> generateSerializersFor = new(SymbolEqualityComparer.Default);
             foreach (var nsGrp in candidates.GroupBy(x => x.Namespace))
             {
                 var materializers = new Dictionary<ITypeSymbol, string>();
@@ -237,7 +238,7 @@ namespace Dapper.CodeAnalysis
                         if (!firstMethod) sb.NewLine();
                         firstMethod = false;
                         var rollback = sb.Length;
-                        if (WriteMethod(candidate.Method, candidate.Syntax, sb, materializers, context))
+                        if (WriteMethod(candidate.Method, candidate.Syntax, sb, materializers, context, generateSerializersFor))
                         {
                             totalWritten++;
                         }
@@ -260,12 +261,74 @@ namespace Dapper.CodeAnalysis
                 }
             }
 
+            if (generateSerializersFor.Count != 0)
+            {
+                sb.NewLine().NewLine().Append("namespace Dapper.Internal.").Append(LocalPrefix).Append(context.Compilation.AssemblyName).Append("_TypeReaders").Indent();
+                string lastName = "";
+                int nameCounter = 0;
+                foreach (var genType in generateSerializersFor.OrderBy(x => x.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)))
+                {
+                    // if we have multiple types with the same name, we'll need to disambiguate them in our code
+                    var name = genType.Name;
+                    string fullName;
+                    if (name == lastName)
+                    {
+                        nameCounter++;
+                        fullName = LocalPrefix + type.Name + "_TypeReader" + nameCounter.ToString(CultureInfo.InvariantCulture);
+                    }
+                    else
+                    {
+                        nameCounter = 0;
+                        lastName = name;
+                        fullName = LocalPrefix + type.Name + "_TypeReader";
+                    }
+                    sb.NewLine().Append("internal sealed class ").Append(fullName).Append(" : global::Dapper.TypeReader<").Append(genType).Append(">").Indent();
+                    sb.NewLine().Append("private ").Append(fullName).Append("() { }");
+                    sb.NewLine().Append("internal static readonly ").Append(fullName).Append(" Instance = new();");
+                    sb.NewLine().NewLine().Append("protected override int GetColumnToken(string name, global::System.Type? type, bool isNullable)").Indent();
+                    int token = 0;
+                    foreach (var member in genType.GetMembers())
+                    {
+                        if (member.IsStatic) continue;
+                        switch (member.Kind)
+                        {
+                            case SymbolKind.Property:
+                            case SymbolKind.Field:
+                                break;
+                            default:
+                                continue;
+                        }
+
+                        if (token == 0)
+                        {
+                            sb.NewLine().Append("switch (name)").Indent();
+                        }
+
+                        sb.NewLine().Append("case ").AppendVerbatimLiteral(member.Name).Append(":").Indent(false)
+                            .NewLine().Append("return ").Append(token++).Append(";");
+                        sb.Outdent(false);
+                    }
+                    if (token != 0) sb.Outdent(); // switch
+                    sb.NewLine().Append("return NoField;");
+                    sb.Outdent(); // GetColumnToken
+
+                    sb.NewLine().NewLine().Append("protected override ").Append(genType).Append(" ReadFallback(global::System.Data.IDataReader reader, global::System.ReadOnlySpan<int> tokens, int offset)").Indent();
+                    sb.NewLine().Append(genType).Append(" obj = new();");
+                    // TODO; the thing
+                    sb.NewLine().Append("return obj;");
+                    sb.Outdent(); // ReadFallback
+
+                    sb.Outdent(); // serializer type
+                }
+
+                sb.Outdent();
+            }
             if (totalWritten == 0) sb.Length = 0;
             else sb.NewLine().Append("#endregion");
             return sb.ToStringRecycle();
         }
 
-        private bool WriteMethod(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, in GeneratorExecutionContext context)
+        private bool WriteMethod(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, in GeneratorExecutionContext context, HashSet<INamedTypeSymbol> generateSerializersFor)
         {
             var attribs = method.GetAttributes();
             var text = TryGetCommandText(attribs, out var commandType);
@@ -331,7 +394,7 @@ namespace Dapper.CodeAnalysis
 
             if (connection is not null)
             {
-                return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionType!, transaction, transactionType!, text, commandType, context, cancellationToken);
+                return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionType!, transaction, transactionType!, text, commandType, context, cancellationToken, generateSerializersFor);
             }
             // TODO: other APIs here
             else
@@ -533,7 +596,7 @@ namespace Dapper.CodeAnalysis
 
         const string LocalPrefix = "__dapper__";
 
-        bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType, in GeneratorExecutionContext context, string cancellationToken)
+        bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType, in GeneratorExecutionContext context, string cancellationToken, HashSet<INamedTypeSymbol> generateSerializersFor)
         {
             var cmdType = GetMethodReturnType(connectionType, nameof(IDbConnection.CreateCommand));
             if (cmdType is null)
@@ -552,6 +615,8 @@ namespace Dapper.CodeAnalysis
                     return false;
                 }
             }
+
+            category.ConsiderGeneratingTypeReader(generateSerializersFor);
 
             var location = GetLocation(method, out string? identifier);
             var commandField = identifier is null ? null : ("s_" + LocalPrefix + "command_" + identifier);
