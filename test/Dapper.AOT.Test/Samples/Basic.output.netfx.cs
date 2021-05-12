@@ -97,7 +97,7 @@ partial class Foo
 				typed0.InitialLONGFetchSize = -1;
 			}
 			command.CommandType = global::System.Data.CommandType.Text;
-			command.CommandText = @"/* Foo.ShouldDetectThis, Samples\Basic.input.cs #11 */ select * from Customers where Region = @region";
+			command.CommandText = @"/* Foo.ShouldDetectThis, Samples/Basic.input.cs #11 */ select * from Customers where Region = @region";
 			var args = command.Parameters;
 
 			var p = command.CreateParameter();
@@ -194,7 +194,7 @@ namespace X.Y.Z
 				{
 					var command = connection.CreateCommand();
 					command.CommandType = global::System.Data.CommandType.Text;
-					command.CommandText = @"/* B.ViaDapper, Samples\Basic.input.cs #32 */ select * from Customers where Region = @region";
+					command.CommandText = @"/* B.ViaDapper, Samples/Basic.input.cs #32 */ select * from Customers where Region = @region";
 					var args = command.Parameters;
 
 					var p = command.CreateParameter();
@@ -287,7 +287,7 @@ namespace X.Y.Z
 					command.BindByName = true;
 					command.InitialLONGFetchSize = -1;
 					command.CommandType = global::System.Data.CommandType.Text;
-					command.CommandText = @"/* B.ViaOracle, Samples\Basic.input.cs #35 */ select * from Customers where Region = @region";
+					command.CommandText = @"/* B.ViaOracle, Samples/Basic.input.cs #35 */ select * from Customers where Region = @region";
 					var args = command.Parameters;
 
 					var p = command.CreateParameter();

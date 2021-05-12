@@ -104,7 +104,7 @@ partial class Test
 				typed0.InitialLONGFetchSize = -1;
 			}
 			command.CommandType = global::System.Data.CommandType.Text;
-			command.CommandText = @"/* Test.ImplicitCommandText, Samples\Commands.input.cs #14 */ this is CommandText";
+			command.CommandText = @"/* Test.ImplicitCommandText, Samples/Commands.input.cs #14 */ this is CommandText";
 			var args = command.Parameters;
 
 			var p = command.CreateParameter();

@@ -443,7 +443,7 @@ namespace Dapper.CodeAnalysis
                         var sp = loc.GetLineSpan();
                         var line = sp.StartLinePosition.Line.ToString(CultureInfo.InvariantCulture);
                         identifier = Regex.Replace(sp.Path + "_" + method.Name + "_" + line, @"[^a-zA-Z0-9_]", "_");
-                        return method.ContainingType.Name + "." + method.Name + ", " + sp.Path + " #" + line;
+                        return method.ContainingType.Name + "." + method.Name + ", " + sp.Path.Replace('\\','/') + " #" + line;
                     }
                 }
             }
