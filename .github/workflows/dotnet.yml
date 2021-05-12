@@ -32,6 +32,6 @@ jobs:
     - name: Pack
       run: dotnet pack src/Dapper.AOT/Dapper.AOT.csproj --no-build --verbosity normal -c Release
     - name: Push
-      run: dotnet nuget push src/Dapper.AOT/bin/Release/Dapper.AOT.${NBGV_SemVer2}.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key ${MYGETAPIKEY}
+      run: dotnet nuget push src/Dapper.AOT/bin/Release/Dapper.AOT.${NBGV_NuGetPackageVersion}.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key ${MYGETAPIKEY}
       env:
         MYGETAPIKEY: ${{ secrets.MYGETAPIKEY }}
