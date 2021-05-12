@@ -15,24 +15,32 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 0
+        fetch-depth: 0 # depth is needed for nbgv
     - uses: dotnet/nbgv@master
       with:
         setAllVars: true
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 6.0.x # note: 5.0 lacks msbuild for simple reproducible-builds
         include-prerelease: true
+
     - name: Restore dependencies
       run: dotnet restore Build.csproj
+
     - name: Build
       run: dotnet build Build.csproj --no-restore -c Release
+
     - name: Test
       run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net6.0
+
     - name: Pack
+      if: ${{ success() && !github.base_ref }}
       run: dotnet pack src/Dapper.AOT/Dapper.AOT.csproj --no-build --verbosity normal -c Release
-    - name: Push
+
+    - name: Push to MyGet
+      if: ${{ success() && !github.base_ref }}
       run: dotnet nuget push src/Dapper.AOT/bin/Release/Dapper.AOT.${NBGV_NuGetPackageVersion}.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key ${MYGETAPIKEY}
       env:
         MYGETAPIKEY: ${{ secrets.MYGETAPIKEY }}
