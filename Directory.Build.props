@@ -16,5 +16,7 @@
 			<Pack>True</Pack>
 			<PackagePath></PackagePath>
 		</None>
+        <PackageReference Include="Nerdbank.GitVersioning" Version="3.3.37" PrivateAssets="all" />
+        <PackageReference Include="DotNet.ReproducibleBuilds" Version="0.1.34" PrivateAssets="All" Pack="false" />
 	</ItemGroup>
 </Project>
