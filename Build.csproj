@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.Build.Traversal/2.0.24">
+  <ItemGroup>
+    <ProjectReference Include="src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
+    <ProjectReference Include="src/Dapper.AOT/Dapper.AOT.csproj" />
+    <ProjectReference Include="test/Dapper.AOT.Test/Dapper.AOT.Test.csproj" />
+  </ItemGroup>
+</Project>
