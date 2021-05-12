@@ -1,6 +1,6 @@
-// Output code has 2 diagnostics from 'Samples\Commands.input.cs':
-// Samples\Commands.input.cs(9,32): error CS8795: Partial method 'Test.AdHocCommandText(string, DbConnection, int, string)' must have an implementation part because it has accessibility modifiers.
-// Samples\Commands.input.cs(12,32): error CS8795: Partial method 'Test.AdHocStoredProcedure(string, DbConnection, int, string)' must have an implementation part because it has accessibility modifiers.
+// Output code has 2 diagnostics from 'Samples/Commands.input.cs':
+// Samples/Commands.input.cs(9,32): error CS8795: Partial method 'Test.AdHocCommandText(string, DbConnection, int, string)' must have an implementation part because it has accessibility modifiers.
+// Samples/Commands.input.cs(12,32): error CS8795: Partial method 'Test.AdHocStoredProcedure(string, DbConnection, int, string)' must have an implementation part because it has accessibility modifiers.
 
 #nullable enable
 //------------------------------------------------------------------------------

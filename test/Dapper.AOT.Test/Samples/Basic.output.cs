@@ -1,6 +1,6 @@
-// Output code has 2 diagnostics from 'Samples\Basic.input.cs':
-// Samples\Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
-// Samples\Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
+// Output code has 2 diagnostics from 'Samples/Basic.input.cs':
+// Samples/Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
+// Samples/Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
 
 #nullable enable
 //------------------------------------------------------------------------------

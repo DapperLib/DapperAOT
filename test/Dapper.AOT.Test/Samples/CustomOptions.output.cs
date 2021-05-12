@@ -1,5 +1,5 @@
-// Output code has 1 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\CustomOptions.output.cs':
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\CustomOptions.output.cs(90,11): error CS1029: #error: 'Unable to resolve constructor for encryption configuration'
+// Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(90,11): error CS1029: #error: 'Unable to resolve constructor for encryption configuration'
 
 #nullable enable
 //------------------------------------------------------------------------------

@@ -35,13 +35,15 @@ namespace Dapper.AOT.Test
             {
                 g.DefaultOutputFileName = Path.GetFileName(outputPath);
                 g.ReportVersion = false;
-                g.Log += s => Log(s);
+                g.Log += (severity, message) => Log($"{severity}: {message}");
             });
             Assert.Single(result.Result.GeneratedTrees);
             var generated = Assert.Single(Assert.Single(result.Result.Results).GeneratedSources);
 
             string? code = generated.SourceText?.ToString();
+#if DEBUG
             Log(code);
+#endif
             sb.AppendLine().AppendLine(code);
 
             var actual = sb.ToString();

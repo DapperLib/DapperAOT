@@ -57,7 +57,7 @@ namespace Dapper.CodeAnalysis
         /// <summary>
         /// Provide log feedback.
         /// </summary>
-        public event Action<string>? Log;
+        public event Action<DiagnosticSeverity, string>? Log;
 
         /// <summary>
         /// Indicate version in generated code.
@@ -87,12 +87,12 @@ namespace Dapper.CodeAnalysis
                     var ca = method.GetAttributes().SingleOrDefault(x => IsCommandAttribute(x.AttributeClass));
                     if (ca is null) continue; // lacking [Command]
 
-                    Log?.Invoke($"Detected candidate: '{method.Name}'");
+                    Log?.Invoke(DiagnosticSeverity.Info, $"Detected candidate: '{method.Name}'");
                     (candidates ??= new()).Add((GetNamespace(method.ContainingType), GetTypeName(method.ContainingType), method, syntaxNode));
                 }
                 catch (Exception ex)
                 {
-                    Log?.Invoke($"Error processing '{syntaxNode.Identifier}': '{ex.Message}'");
+                    Log?.Invoke(DiagnosticSeverity.Error, $"Error processing '{syntaxNode.Identifier}': '{ex.Message}'");
                     // TODO: declare a formal diagnostic for this
                     var err = Diagnostic.Create("DAP001", "Dapper", ex.Message, DiagnosticSeverity.Warning, DiagnosticSeverity.Warning, true, 4, location: syntaxNode.GetLocation());
                     context.ReportDiagnostic(err);
@@ -211,7 +211,7 @@ namespace Dapper.CodeAnalysis
             foreach (var nsGrp in candidates.GroupBy(x => x.Namespace))
             {
                 var materializers = new Dictionary<ITypeSymbol, string>();
-                Log?.Invoke($"Namespace '{nsGrp.Key}' has {nsGrp.Count()} candidate(s) in {nsGrp.Select(x => x.TypeName).Distinct().Count()} type(s)");
+                Log?.Invoke(DiagnosticSeverity.Info, $"Namespace '{nsGrp.Key}' has {nsGrp.Count()} candidate(s) in {nsGrp.Select(x => x.TypeName).Distinct().Count()} type(s)");
 
                 if (!string.IsNullOrWhiteSpace(nsGrp.Key))
                 {
@@ -334,7 +334,7 @@ namespace Dapper.CodeAnalysis
             var text = TryGetCommandText(attribs, out var commandType);
             if (text is null)
             {
-                Log?.Invoke($"No command-text resolved for '{method.Name}'");
+                Log?.Invoke(DiagnosticSeverity.Error, $"No command-text resolved for '{method.Name}'");
                 return false;
             }
 
@@ -349,7 +349,7 @@ namespace Dapper.CodeAnalysis
 
                         if (connection is not null)
                         {
-                            Log?.Invoke($"Multiple connection accessors found for '{method.Name}'");
+                            Log?.Invoke(DiagnosticSeverity.Error, $"Multiple connection accessors found for '{method.Name}'");
                             return false;
                         }
                         connection = p.Name;
@@ -358,7 +358,7 @@ namespace Dapper.CodeAnalysis
                     case HandledType.Transaction:
                         if (transaction is not null)
                         {
-                            Log?.Invoke($"Multiple transaction accessors found for '{method.Name}'");
+                            Log?.Invoke(DiagnosticSeverity.Error, $"Multiple transaction accessors found for '{method.Name}'");
                             return false;
                         }
                         transaction = p.Name;
@@ -367,7 +367,7 @@ namespace Dapper.CodeAnalysis
                     case HandledType.CancellationToken:
                         if (cancellationToken is not null)
                         {
-                            Log?.Invoke($"Multiple cancellation tokens found for '{method.Name}'");
+                            Log?.Invoke(DiagnosticSeverity.Error, $"Multiple cancellation tokens found for '{method.Name}'");
                             return false;
                         }
                         cancellationToken = p.Name;
@@ -399,7 +399,7 @@ namespace Dapper.CodeAnalysis
             // TODO: other APIs here
             else
             {
-                Log?.Invoke($"No connection accessors found for '{method.Name}'");
+                Log?.Invoke(DiagnosticSeverity.Error, $"No connection accessors found for '{method.Name}'");
                 return false;
             }
         }
@@ -601,7 +601,7 @@ namespace Dapper.CodeAnalysis
             var cmdType = GetMethodReturnType(connectionType, nameof(IDbConnection.CreateCommand));
             if (cmdType is null)
             {
-                Log?.Invoke($"Unable to resolve command-type for '{method.Name}'");
+                Log?.Invoke(DiagnosticSeverity.Error, $"Unable to resolve command-type for '{method.Name}'");
                 return false;
             }
             var category = CategorizeQuery(method, context);
@@ -611,7 +611,7 @@ namespace Dapper.CodeAnalysis
                 readerType = GetMethodReturnType(cmdType, nameof(IDbCommand.ExecuteReader));
                 if (readerType is null)
                 {
-                    Log?.Invoke($"Unable to resolve reader-type for '{method.Name}'");
+                    Log?.Invoke(DiagnosticSeverity.Error, $"Unable to resolve reader-type for '{method.Name}'");
                     return false;
                 }
             }

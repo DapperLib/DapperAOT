@@ -1,9 +1,9 @@
-// Input code has 1 diagnostics from 'Samples\Async\Parameters.input.cs':
-// Samples\Async\Parameters.input.cs(13,16): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
-// Output code has 1 diagnostics from 'Samples\Async\Parameters.input.cs':
-// Samples\Async\Parameters.input.cs(13,16): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
-// Output code has 1 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs':
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Parameters.output.netfx.cs(18,69): error CS0161: 'Test.ReturnViaReturnAsync(DbConnection, Test.FooParams)': not all code paths return a value
+// Input code has 1 diagnostics from 'Samples/Async/Parameters.input.cs':
+// Samples/Async/Parameters.input.cs(13,16): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+// Output code has 1 diagnostics from 'Samples/Async/Parameters.input.cs':
+// Samples/Async/Parameters.input.cs(13,16): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+// Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.netfx.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.netfx.cs(18,69): error CS0161: 'Test.ReturnViaReturnAsync(DbConnection, Test.FooParams)': not all code paths return a value
 
 #nullable enable
 //------------------------------------------------------------------------------

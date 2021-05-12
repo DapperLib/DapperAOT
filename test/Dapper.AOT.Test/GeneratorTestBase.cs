@@ -46,7 +46,7 @@ namespace Dapper.AOT.Test
                 if (!string.IsNullOrWhiteSpace(message))
                 {
                     _log?.WriteLine(message);
-                    diagnosticsTo?.Append("// ").AppendLine(message);
+                    diagnosticsTo?.Append("// ").AppendLine(message.Replace('\\', '/')); // need to normalize paths
                 }
             }
             // Create the 'input' compilation that the generator will act on
@@ -95,7 +95,7 @@ namespace Dapper.AOT.Test
                 if (!string.IsNullOrWhiteSpace(message))
                 {
                     _log?.WriteLine(message);
-                    diagnosticsTo?.Append("// ").AppendLine(message);
+                    diagnosticsTo?.Append("// ").AppendLine(message.Replace('\\', '/')); // need to normalize paths
                 }
             }
             foreach (var tree in compilation.SyntaxTrees)

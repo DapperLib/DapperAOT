@@ -1,9 +1,9 @@
-// Output code has 5 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs':
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(281,8): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'bool'
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(283,5): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(283,5): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(312,25): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Transactions.output.netfx.cs(312,25): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
+// Output code has 5 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.netfx.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.netfx.cs(281,8): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'bool'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.netfx.cs(283,5): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.netfx.cs(283,5): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.netfx.cs(312,25): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.netfx.cs(312,25): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
 
 #nullable enable
 //------------------------------------------------------------------------------

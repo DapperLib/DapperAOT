@@ -1,6 +1,6 @@
-// Output code has 2 diagnostics from 'Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs':
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(642,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
-// Dapper.AOT.Analyzers\Dapper.CodeAnalysis.CommandGenerator\Single.output.cs(672,11): error CS1029: #error: 'Scalar not implemented'
+// Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(642,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(672,11): error CS1029: #error: 'Scalar not implemented'
 
 #nullable enable
 //------------------------------------------------------------------------------
