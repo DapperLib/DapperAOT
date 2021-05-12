@@ -28,7 +28,7 @@ jobs:
     - name: Build
       run: dotnet build Build.csproj --no-restore -c Release
     - name: Test
-      run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net5.0
+      run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net6.0
     - name: Pack
       run: dotnet pack Build.csproj --no-build --verbosity normal -c Release
     - name: Push

@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFrameworks>net48;netcoreapp3.1;net5.0</TargetFrameworks>
+        <TargetFrameworks>net48;netcoreapp3.1;net5.0;net6.0</TargetFrameworks>
         <NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
         <SignAssembly Condition="'$(TargetFramework)'=='net48'">false</SignAssembly>
     </PropertyGroup>
