@@ -28,10 +28,10 @@ jobs:
     - name: Build
       run: dotnet build Build.csproj --no-restore -c Release
     - name: Test
-      run: dotnet test Build.csproj --no-build --verbosity normal -c Release
+      run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net5.0
     - name: Pack
       run: dotnet pack Build.csproj --no-build --verbosity normal -c Release
     - name: Push
-      run: dotnet nuget push src/Dapper.AOT/bin/Release/$NBGV_SemVer2.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key ${MYGETAPIKEY}
+      run: dotnet nuget push src/Dapper.AOT/bin/Release/${NBGV_SemVer2}.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key ${MYGETAPIKEY}
       env:
         MYGETAPIKEY: ${{ secrets.MYGETAPIKEY }}
