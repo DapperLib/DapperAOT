@@ -9,14 +9,31 @@ using System.Data.Common;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Ductus.FluentDocker.Builders;
 
 // [module: LegacyMaterializer(true)]
 namespace UsageBenchmark
 {
     class Program
     {
+        public const string ConnectionString
+            = "server=localhost,11433;database=master;user=sa;password=Pass123!;";
+        
         static void Main()
-            => BenchmarkRunner.Run(typeof(Program).Assembly);
+        {
+            using var container =
+                new Builder()
+                    .UseContainer()
+                    .WithName("dapper_benchmark")
+                    .UseImage("mcr.microsoft.com/mssql/server")
+                    .ExposePort(11433, 1433)
+                    .WithEnvironment("SA_PASSWORD=Pass123!", "ACCEPT_EULA=Y")
+                    .WaitForMessageInLog("Starting up database 'tempdb'.", TimeSpan.FromSeconds(30))
+                    .Build()
+                    .Start();
+            
+            BenchmarkRunner.Run(typeof(Program).Assembly);
+        }
     }
 
     //[SimpleJob(RuntimeMoniker.NetCoreApp50)]
@@ -29,10 +46,9 @@ namespace UsageBenchmark
         [GlobalSetup]
         public void Connect()
         {
-            const string cs = @"Data Source=.\SQLEXPRESS;Initial Catalog=master;Integrated Security=True";
-            _msData = new Microsoft.Data.SqlClient.SqlConnection(cs);
+            _msData = new Microsoft.Data.SqlClient.SqlConnection(Program.ConnectionString);
             _msData.Open();
-            _systemData = new System.Data.SqlClient.SqlConnection(cs);
+            _systemData = new System.Data.SqlClient.SqlConnection(Program.ConnectionString);
             _systemData.Open();
 
             try
