@@ -1,5 +1,5 @@
 // Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(90,11): error CS1029: #error: 'Unable to resolve constructor for encryption configuration'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(92,11): error CS1029: #error: 'Unable to resolve constructor for encryption configuration'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -18,6 +18,7 @@ partial class Test
 	private static global::System.Data.SqlClient.SqlCommand? s___dapper__command_Samples_CustomOptions_input_cs_WithEncryptionSystemSql_8;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::SomeType WithEncryptionSystemSql(global::System.Data.SqlClient.SqlConnection connection, int id, string name)
 	{
 		// locals
@@ -88,6 +89,7 @@ partial class Test
 
 		// command factory for WithEncryptionSystemSql
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.SqlClient.SqlCommand __dapper__CreateCommand(global::System.Data.SqlClient.SqlConnection connection)
 		{
 			#error Unable to resolve constructor for encryption configuration
@@ -116,6 +118,7 @@ partial class Test
 	private static global::Microsoft.Data.SqlClient.SqlCommand? s___dapper__command_Samples_CustomOptions_input_cs_WithEncryptionMicrosoftSql_12;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::SomeType WithEncryptionMicrosoftSql(global::Microsoft.Data.SqlClient.SqlConnection connection, int id, string name)
 	{
 		// locals
@@ -186,6 +189,7 @@ partial class Test
 
 		// command factory for WithEncryptionMicrosoftSql
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::Microsoft.Data.SqlClient.SqlCommand __dapper__CreateCommand(global::Microsoft.Data.SqlClient.SqlConnection connection)
 		{
 			var command = new global::Microsoft.Data.SqlClient.SqlCommand(@"sproc", connection, null!, global::Microsoft.Data.SqlClient.SqlCommandColumnEncryptionSetting.Enabled);

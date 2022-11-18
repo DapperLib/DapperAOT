@@ -19,6 +19,7 @@ partial class Foo
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Basic_input_cs_ShouldDetectThis_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial int? ShouldDetectThis(global::System.Data.Common.DbConnection connection, string region)
 	{
 		// locals
@@ -88,6 +89,7 @@ partial class Foo
 
 		// command factory for ShouldDetectThis
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -121,6 +123,7 @@ namespace X.Y.Z
 			private static global::System.Data.SqlClient.SqlCommand? s___dapper__command_Samples_Basic_input_cs_ViaDapper_32;
 
 			[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+			[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 			public virtual partial global::X.Y.Z.Customer ViaDapper(string region, global::System.Data.SqlClient.SqlConnection c)
 			{
 				// locals
@@ -190,6 +193,7 @@ namespace X.Y.Z
 
 				// command factory for ViaDapper
 				[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+				[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 				static global::System.Data.SqlClient.SqlCommand __dapper__CreateCommand(global::System.Data.SqlClient.SqlConnection connection)
 				{
 					var command = connection.CreateCommand();
@@ -212,6 +216,7 @@ namespace X.Y.Z
 			private static global::Oracle.ManagedDataAccess.Client.OracleCommand? s___dapper__command_Samples_Basic_input_cs_ViaOracle_35;
 
 			[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+			[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 			public new static partial global::X.Y.Z.Customer ViaOracle(string region, global::Oracle.ManagedDataAccess.Client.OracleConnection c)
 			{
 				// locals
@@ -281,6 +286,7 @@ namespace X.Y.Z
 
 				// command factory for ViaOracle
 				[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+				[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 				static global::Oracle.ManagedDataAccess.Client.OracleCommand __dapper__CreateCommand(global::Oracle.ManagedDataAccess.Client.OracleConnection connection)
 				{
 					var command = connection.CreateCommand();

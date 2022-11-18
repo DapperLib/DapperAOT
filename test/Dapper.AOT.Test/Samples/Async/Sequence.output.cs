@@ -16,12 +16,14 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Sequence_input_cs_SequenceAsync_8;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::System.Collections.Generic.IAsyncEnumerable<global::SomeType> SequenceAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// use wrapper method to add support for enumerator cancellation
 		return __dapper__SequenceAsync(connection, id, name, global::System.Threading.CancellationToken.None);
 
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static async global::System.Collections.Generic.IAsyncEnumerable<global::SomeType> __dapper__SequenceAsync(global::System.Data.Common.DbConnection connection, int id, string name, [global::System.Runtime.CompilerServices.EnumeratorCancellationAttribute] global::System.Threading.CancellationToken __dapper__cancellation)
 		{
 			// locals
@@ -93,6 +95,7 @@ partial class Test
 
 		// command factory for SequenceAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -125,6 +128,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Sequence_input_cs_SequenceWithCancellationAsync_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public async partial global::System.Collections.Generic.IAsyncEnumerable<global::SomeType> SequenceWithCancellationAsync(global::System.Data.Common.DbConnection connection, int id, string name, [global::System.Runtime.CompilerServices.EnumeratorCancellationAttribute] global::System.Threading.CancellationToken cancellation)
 	{
 		// locals
@@ -195,6 +199,7 @@ partial class Test
 
 		// command factory for SequenceWithCancellationAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();

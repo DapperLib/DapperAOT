@@ -16,6 +16,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Sequence_input_cs_Sequence_7;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::System.Collections.Generic.IEnumerable<global::SomeType> Sequence(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -86,6 +87,7 @@ partial class Test
 
 		// command factory for Sequence
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();

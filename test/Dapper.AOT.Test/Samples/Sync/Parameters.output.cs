@@ -8,10 +8,10 @@
 // Samples/Sync/Parameters.input.cs(17,22): error CS8795: Partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, ref string, out DateTime, out int, out int)' must have an implementation part because it has accessibility modifiers.
 // Samples/Sync/Parameters.input.cs(18,72): error CS1003: Syntax error, ',' expected
 // Output code has 4 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(18,21): error CS0161: 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)': not all code paths return a value
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(18,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(106,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(214,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(19,21): error CS0161: 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)': not all code paths return a value
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(19,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(109,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(219,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -30,6 +30,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Parameters_input_cs_ReturnViaReturn_9;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial int ReturnViaReturn(global::System.Data.Common.DbConnection connection, int id, string inputOutput, global::System.DateTime output)
 	{
 		// locals
@@ -81,6 +82,7 @@ partial class Test
 
 		// command factory for ReturnViaReturn
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -118,6 +120,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Parameters_input_cs_RecordsAffectedViaReturn_13;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial int RecordsAffectedViaReturn(global::System.Data.Common.DbConnection connection, int id, string inputOutput, global::System.DateTime output)
 	{
 		// locals
@@ -189,6 +192,7 @@ partial class Test
 
 		// command factory for RecordsAffectedViaReturn
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -226,6 +230,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Parameters_input_cs_ReturnAndRecordsAffectedViaOut_16;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial void ReturnAndRecordsAffectedViaOut(global::System.Data.Common.DbConnection connection, int id, string inputOutput, global::System.DateTime output, int count, int recordsAffected)
 	{
 		// locals
@@ -279,6 +284,7 @@ partial class Test
 
 		// command factory for ReturnAndRecordsAffectedViaOut
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -326,6 +332,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Parameters_input_cs_FineControl_21;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial void FineControl(global::System.Data.Common.DbConnection connection, decimal value)
 	{
 		// locals
@@ -375,6 +382,7 @@ partial class Test
 
 		// command factory for FineControl
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();

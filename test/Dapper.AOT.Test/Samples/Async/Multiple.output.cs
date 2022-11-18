@@ -16,6 +16,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_TaskAsync_10;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public async partial global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<global::SomeType>> TaskAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -90,6 +91,7 @@ partial class Test
 
 		// command factory for TaskAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -122,6 +124,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ValueTaskAsync_13;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.List<global::SomeType>> ValueTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
@@ -197,6 +200,7 @@ partial class Test
 
 		// command factory for ValueTaskAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -229,6 +233,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_TaskWithCancellationAsync_16;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public async partial global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<global::SomeType>> TaskWithCancellationAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
 	{
 		// locals
@@ -303,6 +308,7 @@ partial class Test
 
 		// command factory for TaskWithCancellationAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -335,6 +341,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ValueWithCancellationTaskAsync_19;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.List<global::SomeType>> ValueWithCancellationTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
 	{
@@ -410,6 +417,7 @@ partial class Test
 
 		// command factory for ValueWithCancellationTaskAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -442,6 +450,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ArrayAsync_22;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<global::SomeType[]> ArrayAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
@@ -513,6 +522,7 @@ partial class Test
 
 		// command factory for ArrayAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -545,6 +555,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_IListAsync_25;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.IList<global::SomeType>> IListAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
@@ -620,6 +631,7 @@ partial class Test
 
 		// command factory for IListAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -652,6 +664,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ICollectionAsync_28;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Generic.ICollection<global::SomeType>> ICollectionAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
@@ -727,6 +740,7 @@ partial class Test
 
 		// command factory for ICollectionAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -759,6 +773,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ImmutableArrayAsync_31;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Immutable.ImmutableArray<global::SomeType>> ImmutableArrayAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
@@ -836,6 +851,7 @@ partial class Test
 
 		// command factory for ImmutableArrayAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -868,6 +884,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Multiple_input_cs_ImmutableListAsync_34;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<global::System.Collections.Immutable.ImmutableList<global::SomeType>> ImmutableListAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
@@ -945,6 +962,7 @@ partial class Test
 
 		// command factory for ImmutableListAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();

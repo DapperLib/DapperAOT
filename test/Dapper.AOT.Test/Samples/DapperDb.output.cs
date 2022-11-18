@@ -1,11 +1,10 @@
 // Input code has 2 diagnostics from 'Samples/DapperDb.input.cs':
-// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Output code has 4 diagnostics from 'Samples/DapperDb.input.cs':
+// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Output code has 3 diagnostics from 'Samples/DapperDb.input.cs':
 // Samples/DapperDb.input.cs(98,45): error CS8795: Partial method 'DapperDb.ReadFortunesRows()' must have an implementation part because it has accessibility modifiers.
-// Samples/DapperDb.input.cs(101,30): error CS8795: Partial method 'DapperDb.ExecuteBatch(string, Dictionary<string, int>, DbConnection?)' must have an implementation part because it has accessibility modifiers.
-// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -26,6 +25,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 		private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_DapperDb_input_cs_ReadSingleRow_94;
 
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		private async partial global::System.Threading.Tasks.Task<global::Dapper.Samples.DapperDbBenchmark.World> ReadSingleRow(int id, global::System.Data.Common.DbConnection? db)
 		{
 			// locals
@@ -95,6 +95,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 
 			// command factory for ReadSingleRow
 			[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+			[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 			static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 			{
 				var command = connection.CreateCommand();
@@ -117,6 +118,70 @@ namespace Dapper.Samples.DapperDbBenchmark
 		}
 
 
+
+		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
+		private async partial global::System.Threading.Tasks.Task ExecuteBatch(string command, global::System.Collections.Generic.Dictionary<string, int> parameters, global::System.Data.Common.DbConnection? db)
+		{
+			// locals
+			global::System.Data.Common.DbCommand? __dapper__command = null;
+			bool __dapper__close = false;
+			try
+			{
+				// prepare connection
+				if (db!.State == global::System.Data.ConnectionState.Closed)
+				{
+					await db!.OpenAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+					__dapper__close = true;
+				}
+
+				// prepare command (excluding parameter values)
+				__dapper__command = __dapper__CreateCommand(db!, command);
+
+				// assign parameter values
+#pragma warning disable CS0618
+				__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(parameters);
+#pragma warning restore CS0618
+
+				// execute non-query
+				await __dapper__command.ExecuteNonQueryAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+
+				// TODO: post-process parameters
+
+			}
+			finally
+			{
+				// cleanup
+				if (__dapper__command is not null)
+				{
+					await __dapper__command.DisposeAsync().ConfigureAwait(false);
+				}
+				if (__dapper__close) await (db?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			}
+
+			// command factory for ExecuteBatch
+			[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+			[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
+			static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection, string? commandText)
+			{
+				var command = connection.CreateCommand();
+				if (command is global::Oracle.ManagedDataAccess.Client.OracleCommand typed0)
+				{
+					typed0.BindByName = true;
+					typed0.InitialLONGFetchSize = -1;
+				}
+				command.CommandType = global::System.Data.CommandType.Text;
+				command.CommandText = commandText;
+				var args = command.Parameters;
+
+				var p = command.CreateParameter();
+				p.ParameterName = @"parameters";
+				p.Direction = global::System.Data.ParameterDirection.Input;
+				args.Add(p);
+
+				return command;
+			}
+		}
 	}
 }
 

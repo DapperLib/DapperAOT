@@ -1,9 +1,9 @@
 // Output code has 5 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(281,8): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'bool'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(283,5): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(283,5): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(312,25): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(312,25): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(290,8): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'bool'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(292,5): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(292,5): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(321,25): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(321,25): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -22,6 +22,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Transactions_input_cs_Abstract_9;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial void Abstract(global::System.Data.Common.DbConnection connection)
 	{
 		// locals
@@ -66,6 +67,7 @@ partial class Test
 
 		// command factory for Abstract
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -87,6 +89,7 @@ partial class Test
 	private static global::System.Data.IDbCommand? s___dapper__command_Samples_Transactions_input_cs_Interface_12;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial void Interface(global::System.Data.IDbConnection connection)
 	{
 		// locals
@@ -131,6 +134,7 @@ partial class Test
 
 		// command factory for Interface
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.IDbCommand __dapper__CreateCommand(global::System.Data.IDbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -152,6 +156,7 @@ partial class Test
 	private static global::System.Data.SqlClient.SqlCommand? s___dapper__command_Samples_Transactions_input_cs_Concrete_15;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial void Concrete(global::System.Data.SqlClient.SqlConnection connection)
 	{
 		// locals
@@ -196,6 +201,7 @@ partial class Test
 
 		// command factory for Concrete
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.SqlClient.SqlCommand __dapper__CreateCommand(global::System.Data.SqlClient.SqlConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -212,6 +218,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Transactions_input_cs_Transaction_18;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial void Transaction(global::System.Data.Common.DbTransaction transaction)
 	{
 		// locals
@@ -256,6 +263,7 @@ partial class Test
 
 		// command factory for Transaction
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -277,6 +285,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Transactions_input_cs_OptionalTransaction_21;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial void OptionalTransaction(global::System.Data.Common.DbConnection connection, global::System.Data.Common.DbTransaction? transaction)
 	{
 		// locals
@@ -321,6 +330,7 @@ partial class Test
 
 		// command factory for OptionalTransaction
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();

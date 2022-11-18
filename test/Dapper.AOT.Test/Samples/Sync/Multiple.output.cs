@@ -16,6 +16,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_List_8;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::System.Collections.Generic.List<global::SomeType> List(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -90,6 +91,7 @@ partial class Test
 
 		// command factory for List
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -122,6 +124,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_Array_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::SomeType[] Array(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -192,6 +195,7 @@ partial class Test
 
 		// command factory for Array
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -224,6 +228,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_IList_14;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::System.Collections.Generic.IList<global::SomeType> IList(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -298,6 +303,7 @@ partial class Test
 
 		// command factory for IList
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -330,6 +336,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_ICollection_17;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::System.Collections.Generic.ICollection<global::SomeType> ICollection(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -404,6 +411,7 @@ partial class Test
 
 		// command factory for ICollection
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -436,6 +444,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_ImmutableArray_20;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::System.Collections.Immutable.ImmutableArray<global::SomeType> ImmutableArray(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -512,6 +521,7 @@ partial class Test
 
 		// command factory for ImmutableArray
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -544,6 +554,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Multiple_input_cs_ImmutableList_23;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::System.Collections.Immutable.ImmutableList<global::SomeType> ImmutableList(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -620,6 +631,7 @@ partial class Test
 
 		// command factory for ImmutableList
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();

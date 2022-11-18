@@ -16,6 +16,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_SinglePooled_input_cs_TaskAsync_8;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public async partial global::PooledAwait.PooledTask<global::SomeType> TaskAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -86,6 +87,7 @@ partial class Test
 
 		// command factory for TaskAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -118,6 +120,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_SinglePooled_input_cs_ValueTaskAsync_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public async partial global::PooledAwait.PooledValueTask<global::SomeType> ValueTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -188,6 +191,7 @@ partial class Test
 
 		// command factory for ValueTaskAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -220,6 +224,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_SinglePooled_input_cs_TaskWithCancellationAsync_14;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public async partial global::PooledAwait.PooledTask<global::SomeType> TaskWithCancellationAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
 	{
 		// locals
@@ -290,6 +295,7 @@ partial class Test
 
 		// command factory for TaskWithCancellationAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -322,6 +328,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_SinglePooled_input_cs_ValueWithCancellationTaskAsync_17;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public async partial global::PooledAwait.PooledValueTask<global::SomeType> ValueWithCancellationTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
 	{
 		// locals
@@ -392,6 +399,7 @@ partial class Test
 
 		// command factory for ValueWithCancellationTaskAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();

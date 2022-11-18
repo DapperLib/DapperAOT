@@ -3,7 +3,7 @@
 // Output code has 1 diagnostics from 'Samples/Async/Parameters.input.cs':
 // Samples/Async/Parameters.input.cs(13,16): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
 // Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(19,69): error CS0161: 'Test.ReturnViaReturnAsync(DbConnection, Test.FooParams)': not all code paths return a value
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(20,69): error CS0161: 'Test.ReturnViaReturnAsync(DbConnection, Test.FooParams)': not all code paths return a value
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -22,6 +22,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_ReturnViaReturnAsync_19;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<int> ReturnViaReturnAsync(global::System.Data.Common.DbConnection connection, global::Test.FooParams parameters)
 	{
@@ -72,6 +73,7 @@ partial class Test
 
 		// command factory for ReturnViaReturnAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -98,6 +100,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_RecordsAffectedViaReturnAsync_23;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<int> RecordsAffectedViaReturnAsync(global::System.Data.Common.DbConnection connection, global::Test.FooParams parameters)
 	{
@@ -168,6 +171,7 @@ partial class Test
 
 		// command factory for RecordsAffectedViaReturnAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -194,6 +198,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_ReturnAndRecordsAffectedViaOutAsync_35;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder))]
 	public async partial global::System.Threading.Tasks.ValueTask ReturnAndRecordsAffectedViaOutAsync(global::System.Data.Common.DbConnection connection, global::Test.BarParams parameters)
 	{
@@ -244,6 +249,7 @@ partial class Test
 
 		// command factory for ReturnAndRecordsAffectedViaOutAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -270,6 +276,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Parameters_input_cs_FineControlAsync_38;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder))]
 	public async partial global::System.Threading.Tasks.ValueTask FineControlAsync(global::System.Data.Common.DbConnection connection, decimal value)
 	{
@@ -320,6 +327,7 @@ partial class Test
 
 		// command factory for FineControlAsync
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();

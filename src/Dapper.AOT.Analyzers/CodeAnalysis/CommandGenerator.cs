@@ -210,7 +210,7 @@ namespace Dapper.CodeAnalysis
             HashSet<INamedTypeSymbol> generateSerializersFor = new(SymbolEqualityComparer.Default);
             foreach (var nsGrp in candidates.GroupBy(x => x.Namespace))
             {
-                var materializers = new Dictionary<ITypeSymbol, string>();
+                var materializers = new Dictionary<ITypeSymbol, string>(SymbolEqualityComparer.Default);
                 Log?.Invoke(DiagnosticSeverity.Info, $"Namespace '{nsGrp.Key}' has {nsGrp.Count()} candidate(s) in {nsGrp.Select(x => x.TypeName).Distinct().Count()} type(s)");
 
                 if (!string.IsNullOrWhiteSpace(nsGrp.Key))
@@ -338,11 +338,8 @@ namespace Dapper.CodeAnalysis
         {
             var attribs = method.GetAttributes();
             var text = TryGetCommandText(attribs, out var commandType);
-            if (text is null)
-            {
-                Log?.Invoke(DiagnosticSeverity.Error, $"No command-text resolved for '{method.Name}'");
-                return false;
-            }
+            if (text is null) return false;
+            bool textDirect = true;
 
             string? connection = null, transaction = null, cancellationToken = null;
             ITypeSymbol? connectionType = null, transactionType = null;
@@ -378,7 +375,20 @@ namespace Dapper.CodeAnalysis
                         }
                         cancellationToken = p.Name;
                         break;
+                    case HandledType.None when TryGetCommandText(p.GetAttributes(), out _) is string ignoreCmdText:
+                        if (!string.IsNullOrWhiteSpace(ignoreCmdText))
+                        {
+                            Log?.Invoke(DiagnosticSeverity.Error, $"Fixed command-text should not be specified against parameters for '{method.Name}'");
+                        }
+                        text = p.Name;
+                        textDirect = false;
+                        break;
                 }
+            }
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                Log?.Invoke(DiagnosticSeverity.Error, $"No command-text resolved for '{method.Name}'");
+                return false;
             }
             if (transaction is not null)
             {
@@ -400,7 +410,8 @@ namespace Dapper.CodeAnalysis
 
             if (connection is not null)
             {
-                return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionType!, transaction, transactionType!, text, commandType, context, cancellationToken, generateSerializersFor);
+                return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionType!, transaction, transactionType!, text, textDirect,
+                    commandType, context, cancellationToken, generateSerializersFor);
             }
             // TODO: other APIs here
             else
@@ -603,7 +614,16 @@ namespace Dapper.CodeAnalysis
 
         const string LocalPrefix = "__dapper__";
 
-        bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, CommandType commandType, in GeneratorExecutionContext context, string cancellationToken, HashSet<INamedTypeSymbol> generateSerializersFor)
+        static bool UseCommandField(string? identifier, bool commandTextAsLiteral)
+        {
+            if (!commandTextAsLiteral) return false; // only re-use fixed-text commands
+            if (string.IsNullOrWhiteSpace(identifier)) return false; // needs an identifier
+
+            // maps?
+
+            return true;
+        }
+        bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, Dictionary<ITypeSymbol, string> materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, bool commandTextAsLiteral, CommandType commandType, in GeneratorExecutionContext context, string cancellationToken, HashSet<INamedTypeSymbol> generateSerializersFor)
         {
             var cmdType = GetMethodReturnType(connectionType, nameof(IDbConnection.CreateCommand));
             if (cmdType is null)
@@ -626,7 +646,7 @@ namespace Dapper.CodeAnalysis
             category.ConsiderGeneratingTypeReader(generateSerializersFor);
 
             var location = GetLocation(method, out string? identifier);
-            var commandField = identifier is null ? null : ("s_" + LocalPrefix + "command_" + identifier);
+            var commandField = UseCommandField(identifier, commandTextAsLiteral) ? ("s_" + LocalPrefix + "command_" + identifier) : null;
 
             sb.NewLine();
             if (commandField is not null)
@@ -698,7 +718,9 @@ namespace Dapper.CodeAnalysis
                 sb.NewLine().Append("if ((").Append(LocalPrefix).Append("command = global::System.Threading.Interlocked.Exchange(ref ").Append(commandField).Append(", null)) is null)");
                 sb.Indent();
             }
-            sb.NewLine().Append(LocalPrefix).Append("command = ").Append(LocalPrefix).Append("CreateCommand(").Append(connection).Append("!);");
+            sb.NewLine().Append(LocalPrefix).Append("command = ").Append(LocalPrefix).Append("CreateCommand(").Append(connection).Append("!");
+            if (!commandTextAsLiteral) sb.Append(", ").Append(commandText); // append the evaluated expression
+            sb.Append(");");
             if (commandField is not null)
             {
                 sb.Outdent().NewLine().Append("else").Indent().NewLine().Append(LocalPrefix).Append("command.Connection = ").Append(connection).Append(";").Outdent();
@@ -709,6 +731,7 @@ namespace Dapper.CodeAnalysis
             foreach (var p in method.Parameters)
             {
                 if (GetHandledType(p.Type) != HandledType.None) continue;
+                if (TryGetCommandText(p.GetAttributes(), out _) is not null) continue; // ignore commands
                 if (index == 0)
                 {
                     sb.NewLine().NewLine().Append("// assign parameter values");
@@ -826,11 +849,16 @@ namespace Dapper.CodeAnalysis
             }
             if (category.IsAsync() && cmdType.HasDisposeAsync())
             {
-                sb.NewLine().Append("if (").Append(LocalPrefix).Append("command is not null) ").Append("await ").Append(LocalPrefix).Append("command.DisposeAsync().ConfigureAwait(false);");
+                sb.NewLine();
+                if (commandField is not null)
+                {   // it could have become null via the interlock, so guard against that
+                    sb.Append("if (").Append(LocalPrefix).Append("command is not null) ");
+                }
+                sb.Append("await ").Append(LocalPrefix).Append("command.DisposeAsync().ConfigureAwait(false);");
             }
             else
             {
-                sb.NewLine().Append(LocalPrefix).Append("command?.Dispose();");
+                sb.NewLine().Append(LocalPrefix).Append(commandField is null ? "command.Dispose();" : "command?.Dispose();");
             }
             sb.Outdent();
 
@@ -856,10 +884,11 @@ namespace Dapper.CodeAnalysis
             AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, method);
             if (context.AllowUnsafe()) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, null);
             sb.NewLine().Append("static ").Append(cmdType).Append(" ").Append(LocalPrefix).Append("CreateCommand(").Append(connectionType)
-                .Append(" connection)").Indent();
+                .Append(" connection");
+            if (!commandTextAsLiteral) sb.Append(", string? commandText");
+            sb.Append(")").Indent();
 
-
-            if (commandType == CommandType.Text && location is not null)
+            if (commandTextAsLiteral && commandType == CommandType.Text && location is not null)
             {
                 commandText = "/* " + location + " */ " + commandText;
             }
@@ -881,8 +910,16 @@ namespace Dapper.CodeAnalysis
                             && p[3].Type.TypeKind == TypeKind.Enum
                             && p[3].Type.Name == "SqlCommandColumnEncryptionSetting")
                         {
-                            sb.NewLine().Append("var command = new ").Append(cmdType).Append(@"(").AppendVerbatimLiteral(commandText)
-                                .Append(", connection, null!, ").AppendEnumLiteral(p[3].Type, kind).Append(");");
+                            sb.NewLine().Append("var command = new ").Append(cmdType).Append(@"(");
+                            if (commandTextAsLiteral)
+                            {
+                                sb.AppendVerbatimLiteral(commandText);
+                            }
+                            else
+                            {
+                                sb.Append("commandText"); // use the parameter
+                            }
+                            sb.Append(", connection, null!, ").AppendEnumLiteral(p[3].Type, kind).Append(");");
                             emitCreateCommand = setCommandText = false;
                             break;
                         }
@@ -901,13 +938,23 @@ namespace Dapper.CodeAnalysis
             sb.NewLine().Append("command.CommandType = global::System.Data.CommandType.").Append(commandType.ToString()).Append(";");
             if (setCommandText)
             {
-                sb.NewLine().Append("command.CommandText = ").AppendVerbatimLiteral(commandText).Append(";");
+                sb.NewLine().Append("command.CommandText = ");
+                if (commandTextAsLiteral)
+                {
+                    sb.AppendVerbatimLiteral(commandText);
+                }
+                else
+                {
+                    sb.Append("commandText"); // use the parameter
+                }
+                sb.Append(";");
             }
             index = 0;
             sb.NewLine().Append("var args = command.Parameters;");
             foreach (var p in method.Parameters)
             {
                 if (GetHandledType(p.Type) != HandledType.None) continue;
+                if (TryGetCommandText(p.GetAttributes(), out _) is not null) continue; // ignore commands
                 sb.NewLine().NewLine();
                 if (index == 0) sb.Append("var ");
                 sb.Append("p = ").Append("command").Append(".CreateParameter();");
@@ -1172,23 +1219,26 @@ namespace Dapper.CodeAnalysis
             {
                 if (IsCommandAttribute(attrib.AttributeClass))
                 {
-                    if (attrib.TryGetAttributeValue<string>("CommandText", out var commandText))
+                    attrib.TryGetAttributeValue<string>("CommandText", out var commandText);
+                    if (commandText is null) commandText = "";
+
+                    if (attrib.TryGetAttributeValue<int>("CommandType", out var rawValue))
                     {
-                        if (attrib.TryGetAttributeValue<int>("CommandType", out var rawValue))
-                        {
-                            commandType = (CommandType)rawValue;
-                        }
-                        else
-                        {
-                            commandType = commandText.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure;
-                        }
-                        return commandText;
+                        commandType = (CommandType)rawValue;
                     }
-                    break; // only expect one of these, so: give up
+                    else if (string.IsNullOrWhiteSpace(commandText))
+                    {
+                        commandType = CommandType.Text;
+                    }
+                    else
+                    {
+                        commandType = commandText.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure;
+                    }
+                    return commandText;
                 }
             }
             commandType = default;
-            return default;
+            return null;
         }
 
         internal static bool IsCommandAttribute(ITypeSymbol? type)

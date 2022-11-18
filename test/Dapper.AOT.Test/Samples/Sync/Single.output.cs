@@ -1,6 +1,6 @@
 // Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(642,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(672,11): error CS1029: #error: 'Scalar not implemented'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(655,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(685,11): error CS1029: #error: 'Scalar not implemented'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -19,6 +19,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_ImplicitComplex_6;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::SomeType ImplicitComplex(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -89,6 +90,7 @@ partial class Test
 
 		// command factory for ImplicitComplex
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -121,6 +123,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_ImplicitScalar_9;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial int ImplicitScalar(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -191,6 +194,7 @@ partial class Test
 
 		// command factory for ImplicitScalar
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -223,6 +227,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_First_12;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::SomeType First(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -296,6 +301,7 @@ partial class Test
 
 		// command factory for First
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -328,6 +334,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_FirstOrDefault_15;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::SomeType FirstOrDefault(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -398,6 +405,7 @@ partial class Test
 
 		// command factory for FirstOrDefault
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -430,6 +438,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_Single_18;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::SomeType Single(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -506,6 +515,7 @@ partial class Test
 
 		// command factory for Single
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -538,6 +548,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_SingleOrDefault_21;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial global::SomeType SingleOrDefault(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -611,6 +622,7 @@ partial class Test
 
 		// command factory for SingleOrDefault
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
@@ -643,6 +655,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Sync_Single_input_cs_Scalar_24;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	public partial int Scalar(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -692,6 +705,7 @@ partial class Test
 
 		// command factory for Scalar
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		static global::System.Data.Common.DbCommand __dapper__CreateCommand(global::System.Data.Common.DbConnection connection)
 		{
 			var command = connection.CreateCommand();
