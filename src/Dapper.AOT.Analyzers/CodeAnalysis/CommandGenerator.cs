@@ -266,6 +266,12 @@ namespace Dapper.CodeAnalysis
                 sb.NewLine().NewLine().Append("namespace Dapper.Internal.").Append(LocalPrefix).Append(context.Compilation.AssemblyName).Append("_TypeReaders").Indent();
                 string lastName = "";
                 int nameCounter = 0;
+                string helperAccessibility = "internal";
+                if (context.ParseOptions is CSharpParseOptions csOpt && csOpt.LanguageVersion >= (LanguageVersion)1100)
+                {
+                    helperAccessibility = "file";
+                }
+
                 foreach (var genType in generateSerializersFor.OrderBy(x => x.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)))
                 {
                     // if we have multiple types with the same name, we'll need to disambiguate them in our code
@@ -282,7 +288,7 @@ namespace Dapper.CodeAnalysis
                         lastName = name;
                         fullName = LocalPrefix + type.Name + "_TypeReader";
                     }
-                    sb.NewLine().Append("internal sealed class ").Append(fullName).Append(" : global::Dapper.TypeReader<").Append(genType).Append(">").Indent();
+                    sb.NewLine().Append(helperAccessibility).Append(" sealed class ").Append(fullName).Append(" : global::Dapper.TypeReader<").Append(genType).Append(">").Indent();
                     sb.NewLine().Append("private ").Append(fullName).Append("() { }");
                     sb.NewLine().Append("internal static readonly ").Append(fullName).Append(" Instance = new();");
                     sb.NewLine().NewLine().Append("protected override int GetColumnToken(string name, global::System.Type? type, bool isNullable)").Indent();
@@ -514,10 +520,11 @@ namespace Dapper.CodeAnalysis
                     }
                 }
             }
+            LanguageVersion langVer = context.ParseOptions is CSharpParseOptions csOpt ? csOpt.LanguageVersion : 0;
 
             AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, method);
             if (context.AllowUnsafe()) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, method);
-            if (flags.IsAsync() && !flags.Has(QueryFlags.IsIterator) && method.ReturnType.IsValueType)
+            if (langVer >= (LanguageVersion)1000 && flags.IsAsync() && !flags.Has(QueryFlags.IsIterator) && method.ReturnType.IsValueType)
             {
                 if (method.ReturnType is INamedTypeSymbol ntret && (ntret.Arity is 0 or 1)
                      && method.ReturnType.IsExact("System", "Threading", "Tasks", "ValueTask", ntret.Arity)
@@ -526,8 +533,8 @@ namespace Dapper.CodeAnalysis
                     && !method.IsDefined(aba))
                 {
                     sb.NewLine().Append("[").Append(aba).Append("(typeof(").Append(builder);
-                    if (ntret.Arity == 1) sb.Append("<").Append(ntret.TypeArguments[0]).Append(">");
-                    sb.NewLine().Append("))]");
+                    if (ntret.Arity == 1) sb.Append("<>");
+                    sb.Append("))]");
                 }
             }
 

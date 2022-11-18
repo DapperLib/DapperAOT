@@ -98,6 +98,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_NonQuery_input_cs_ValueTaskAsync_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder))]
 	public async partial global::System.Threading.Tasks.ValueTask ValueTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -262,6 +263,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_NonQuery_input_cs_ValueWithCancellationTaskAsync_17;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder))]
 	public async partial global::System.Threading.Tasks.ValueTask ValueWithCancellationTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
 	{
 		// locals

@@ -11,6 +11,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
@@ -121,9 +122,11 @@ namespace Dapper.AOT.Test
             orderby loc.SourceTree?.FilePath, loc.SourceSpan.Start, d.Id, msg
             select msg).ToList();
 
+        static readonly CSharpParseOptions ParseOptionsLatestLangVer = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest);
+
         protected static Compilation CreateCompilation(string source, string name, string fileName)
            => CSharpCompilation.Create(name,
-               syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source).WithFilePath(fileName) },
+               syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source, ParseOptionsLatestLangVer).WithFilePath(fileName) },
                references: new[] {
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
 #if !NET48
@@ -131,6 +134,7 @@ namespace Dapper.AOT.Test
                    MetadataReference.CreateFromFile(Assembly.Load("System.Data").Location),
                    MetadataReference.CreateFromFile(Assembly.Load("netstandard").Location),
 #endif
+                   MetadataReference.CreateFromFile(typeof(List<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(System.Data.SqlClient.SqlConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly.Location),
@@ -145,6 +149,7 @@ namespace Dapper.AOT.Test
                    MetadataReference.CreateFromFile(typeof(IAsyncEnumerable<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(PooledValueTask).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Span<int>).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(IgnoreDataMemberAttribute).Assembly.Location),
                },
                options: new CSharpCompilationOptions(OutputKind.ConsoleApplication));
     }

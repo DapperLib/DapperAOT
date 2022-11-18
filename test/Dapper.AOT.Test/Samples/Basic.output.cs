@@ -306,7 +306,7 @@ namespace X.Y.Z
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
-	internal sealed class __dapper__CommandGenerator_TypeReader : global::Dapper.TypeReader<global::X.Y.Z.Customer>
+	file sealed class __dapper__CommandGenerator_TypeReader : global::Dapper.TypeReader<global::X.Y.Z.Customer>
 	{
 		private __dapper__CommandGenerator_TypeReader() { }
 		internal static readonly __dapper__CommandGenerator_TypeReader Instance = new();

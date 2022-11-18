@@ -118,6 +118,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Single_input_cs_ValueTaskAsync_11;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<global::SomeType> ValueTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name)
 	{
 		// locals
@@ -322,6 +323,7 @@ partial class Test
 	private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_Async_Single_input_cs_ValueWithCancellationTaskAsync_17;
 
 	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+	[global::System.Runtime.CompilerServices.AsyncMethodBuilderAttribute(typeof(global::System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<>))]
 	public async partial global::System.Threading.Tasks.ValueTask<global::SomeType> ValueWithCancellationTaskAsync(global::System.Data.Common.DbConnection connection, int id, string name, global::System.Threading.CancellationToken cancellation)
 	{
 		// locals
@@ -422,7 +424,7 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
-	internal sealed class __dapper__CommandGenerator_TypeReader : global::Dapper.TypeReader<global::SomeType>
+	file sealed class __dapper__CommandGenerator_TypeReader : global::Dapper.TypeReader<global::SomeType>
 	{
 		private __dapper__CommandGenerator_TypeReader() { }
 		internal static readonly __dapper__CommandGenerator_TypeReader Instance = new();
