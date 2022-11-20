@@ -3,56 +3,55 @@ using System.ComponentModel;
 using System.Data.Common;
 using System.Diagnostics;
 
-namespace Dapper
+namespace Dapper;
+
+/// <summary>
+/// Allows fine-grained control over how single-row operations are handled
+/// </summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
+[ImmutableObject(true), Conditional("DEBUG")]
+public sealed class SingleRowAttribute : Attribute
 {
     /// <summary>
-    /// Allows fine-grained control over how single-row operations are handled
+    /// Defines how single-row operations are handled
     /// </summary>
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
-    [ImmutableObject(true), Conditional("DEBUG")]
-    public sealed class SingleRowAttribute : Attribute
-    {
-        /// <summary>
-        /// Defines how single-row operations are handled
-        /// </summary>
-        public SingleRowKind Kind { get; }
-        /// <summary>
-        /// Create a new <see cref="SingleRowAttribute"/> instance
-        /// </summary>
-        /// <param name="kind"></param>
-        public SingleRowAttribute(SingleRowKind kind = SingleRowKind.Automatic)
-            => Kind = kind;
-    }
-
+    public SingleRowKind Kind { get; }
     /// <summary>
-    /// Allows fine-grained control over how single-row operations are handled
+    /// Create a new <see cref="SingleRowAttribute"/> instance
     /// </summary>
-    public enum SingleRowKind
-    {
-        /// <summary>
-        /// Infer safe behaviour from the context
-        /// </summary>
-        Automatic = -1,
-        // note: the following *could* also be flags, "1=demand at least one row", "2=demand at most one row"
-        /// <summary>
-        /// Zero, one, or many rows are allowed; the first row is returned when present, otherwise the type's default is returned
-        /// </summary>
-        FirstOrDefault = 0,
-        /// <summary>
-        /// One or many rows are allowed; the first row is returned
-        /// </summary>
-        First = 1,
-        /// <summary>
-        /// Zero or one row is allowed; the first row is returned when present, otherwise the type's default is returned
-        /// </summary>
-        SingleOrDefault = 2,
-        /// <summary>
-        /// Exactly one row is allowed and returned
-        /// </summary>
-        Single = 3,
-        /// <summary>
-        /// A single cell is expected; execution should use the <see cref="DbCommand.ExecuteScalar"/> API
-        /// </summary>
-        Scalar = 4,
-    }
+    /// <param name="kind"></param>
+    public SingleRowAttribute(SingleRowKind kind = SingleRowKind.Automatic)
+        => Kind = kind;
+}
+
+/// <summary>
+/// Allows fine-grained control over how single-row operations are handled
+/// </summary>
+public enum SingleRowKind
+{
+    /// <summary>
+    /// Infer safe behaviour from the context
+    /// </summary>
+    Automatic = -1,
+    // note: the following *could* also be flags, "1=demand at least one row", "2=demand at most one row"
+    /// <summary>
+    /// Zero, one, or many rows are allowed; the first row is returned when present, otherwise the type's default is returned
+    /// </summary>
+    FirstOrDefault = 0,
+    /// <summary>
+    /// One or many rows are allowed; the first row is returned
+    /// </summary>
+    First = 1,
+    /// <summary>
+    /// Zero or one row is allowed; the first row is returned when present, otherwise the type's default is returned
+    /// </summary>
+    SingleOrDefault = 2,
+    /// <summary>
+    /// Exactly one row is allowed and returned
+    /// </summary>
+    Single = 3,
+    /// <summary>
+    /// A single cell is expected; execution should use the <see cref="DbCommand.ExecuteScalar"/> API
+    /// </summary>
+    Scalar = 4,
 }

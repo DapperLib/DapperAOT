@@ -1,6 +1,17 @@
 // Output code has 2 diagnostics from 'Samples/Basic.input.cs':
 // Samples/Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
 // Samples/Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
+// Output code has 10 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(59,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(75,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(163,26): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(179,6): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(256,26): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(272,6): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(311,52): error CS0535: '__dapper__Customer_TypeReader' does not implement interface member 'ITypeReader<Customer>.Read(DbDataReader, ReadOnlySpan<int>, int)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(323,33): error CS0161: '__dapper__Customer_TypeReader.Read(DbDataReader, ReadOnlySpan<int>, int)': not all code paths return a value
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(323,58): error CS0234: The type or namespace name 'DbDataReader' does not exist in the namespace 'System.Data' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(327,3): error CS1513: } expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -312,21 +323,21 @@ namespace X.Y.Z
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
-	file sealed class __dapper__CommandGenerator_TypeReader : global::Dapper.TypeReader<global::X.Y.Z.Customer>
+	file sealed class __dapper__Customer_TypeReader : global::Dapper.ITypeReader<global::X.Y.Z.Customer>
 	{
-		private __dapper__CommandGenerator_TypeReader() { }
-		internal static readonly __dapper__CommandGenerator_TypeReader Instance = new();
+		private __dapper__Customer_TypeReader() { }
+		public static readonly __dapper__Customer_TypeReader Instance = new();
 
-		protected override int GetColumnToken(string name, global::System.Type? type, bool isNullable)
+		public int GetToken(string columnName)
 		{
-			return NoField;
+			return -1;
 		}
 
-		protected override global::X.Y.Z.Customer ReadFallback(global::System.Data.IDataReader reader, global::System.ReadOnlySpan<int> tokens, int offset)
+		public int GetToken(int token, global::System.Type type, bool isNullable) => token;
+
+		public global::X.Y.Z.Customer Read(global::System.Data.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
 		{
 			global::X.Y.Z.Customer obj = new();
-			return obj;
 		}
 	}
-}
-#endregion
+	#endregion

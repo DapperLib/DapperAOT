@@ -6,6 +6,9 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <WarningsAsErrors>true</WarningsAsErrors>
         <AllowUnsafeBlocks Condition="'$(TargetFramework)'=='net6.0'">true</AllowUnsafeBlocks>
+        <Nullable>enable</Nullable>
+        <LangVersion>10</LangVersion>
+        <AllowUnsafeBlocks Condition="'$(TargetFramework)'=='net48' or '$(TargetFramework)'=='netstandard2.0'">true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>

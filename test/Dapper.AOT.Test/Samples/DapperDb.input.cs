@@ -207,11 +207,11 @@ namespace System.ComponentModel.DataAnnotations.Schema
 {
     sealed class TableAttribute : Attribute
     {
-        public TableAttribute(string _) {}
+        public TableAttribute(string name) {}
     }
     sealed class ColumnAttribute : Attribute
     {
-        public ColumnAttribute(string _) {}
+        public ColumnAttribute(string name) {}
     }
     sealed class NotMappedAttribute : Attribute {}
 }

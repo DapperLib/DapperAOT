@@ -7,10 +7,12 @@
 // Samples/Sync/Parameters.input.cs(14,21): error CS8795: Partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, ref string, out DateTime)' must have an implementation part because it has accessibility modifiers.
 // Samples/Sync/Parameters.input.cs(17,22): error CS8795: Partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, ref string, out DateTime, out int, out int)' must have an implementation part because it has accessibility modifiers.
 // Samples/Sync/Parameters.input.cs(18,72): error CS1003: Syntax error, ',' expected
-// Output code has 4 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs':
+// Output code has 6 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs':
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(19,21): error CS0161: 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)': not all code paths return a value
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(19,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)'
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(109,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(151,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(167,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(219,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
 
 #nullable enable

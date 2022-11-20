@@ -1,6 +1,22 @@
-// Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs':
+// Output code has 18 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(60,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(76,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(164,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(180,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(268,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(287,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(375,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(391,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(479,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(501,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(589,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(608,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(655,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(685,11): error CS1029: #error: 'Scalar not implemented'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(735,52): error CS0535: '__dapper__SomeType_TypeReader' does not implement interface member 'ITypeReader<SomeType>.Read(DbDataReader, ReadOnlySpan<int>, int)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(747,27): error CS0161: '__dapper__SomeType_TypeReader.Read(DbDataReader, ReadOnlySpan<int>, int)': not all code paths return a value
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(747,52): error CS0234: The type or namespace name 'DbDataReader' does not exist in the namespace 'System.Data' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(751,3): error CS1513: } expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -736,21 +752,21 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
-	file sealed class __dapper__CommandGenerator_TypeReader : global::Dapper.TypeReader<global::SomeType>
+	file sealed class __dapper__SomeType_TypeReader : global::Dapper.ITypeReader<global::SomeType>
 	{
-		private __dapper__CommandGenerator_TypeReader() { }
-		internal static readonly __dapper__CommandGenerator_TypeReader Instance = new();
+		private __dapper__SomeType_TypeReader() { }
+		public static readonly __dapper__SomeType_TypeReader Instance = new();
 
-		protected override int GetColumnToken(string name, global::System.Type? type, bool isNullable)
+		public int GetToken(string columnName)
 		{
-			return NoField;
+			return -1;
 		}
 
-		protected override global::SomeType ReadFallback(global::System.Data.IDataReader reader, global::System.ReadOnlySpan<int> tokens, int offset)
+		public int GetToken(int token, global::System.Type type, bool isNullable) => token;
+
+		public global::SomeType Read(global::System.Data.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
 		{
 			global::SomeType obj = new();
-			return obj;
 		}
 	}
-}
-#endregion
+	#endregion

@@ -1,10 +1,19 @@
 // Input code has 2 diagnostics from 'Samples/DapperDb.input.cs':
-// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
 // Output code has 3 diagnostics from 'Samples/DapperDb.input.cs':
 // Samples/DapperDb.input.cs(98,45): error CS8795: Partial method 'DapperDb.ReadFortunesRows()' must have an implementation part because it has accessibility modifiers.
-// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Output code has 8 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs(61,25): warning CS0618: 'InternalUtilities' is obsolete: 'This type is not intended for public consumption, and can change without warning.'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs(61,67): error CS7036: There is no argument given that corresponds to the required parameter 'typeReader' of 'InternalUtilities.Read<T>(ITypeReader<T>, DbDataReader, ref int[]?)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs(61,128): error CS0103: The name 'blah' does not exist in the current context
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs(77,5): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs(182,49): error CS0535: '__dapper__World_TypeReader' does not implement interface member 'ITypeReader<World>.Read(DbDataReader, ReadOnlySpan<int>, int)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs(207,57): error CS0161: '__dapper__World_TypeReader.Read(DbDataReader, ReadOnlySpan<int>, int)': not all code paths return a value
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs(207,82): error CS0234: The type or namespace name 'DbDataReader' does not exist in the namespace 'System.Data' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs(223,3): error CS1513: } expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -66,7 +75,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 				global::Dapper.Samples.DapperDbBenchmark.World __dapper__result;
 				if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 				{
-					__dapper__result = await global::Dapper.TypeReader.TryGetReader<global::Dapper.Samples.DapperDbBenchmark.World>()!.ReadAsync(__dapper__reader, ref __dapper__tokenBuffer, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+					__dapper__result = global::Dapper.Internal.InternalUtilities.Read<global::Dapper.Samples.DapperDbBenchmark.World>()!.Read(blah, __dapper__reader, ref __dapper__tokenBuffer);
 				}
 				else
 				{
@@ -187,36 +196,46 @@ namespace Dapper.Samples.DapperDbBenchmark
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
-	file sealed class __dapper__CommandGenerator_TypeReader : global::Dapper.TypeReader<global::Dapper.Samples.DapperDbBenchmark.World>
+	file sealed class __dapper__World_TypeReader : global::Dapper.ITypeReader<global::Dapper.Samples.DapperDbBenchmark.World>
 	{
-		private __dapper__CommandGenerator_TypeReader() { }
-		internal static readonly __dapper__CommandGenerator_TypeReader Instance = new();
+		private __dapper__World_TypeReader() { }
+		public static readonly __dapper__World_TypeReader Instance = new();
 
-		protected override int GetColumnToken(string name, global::System.Type? type, bool isNullable)
+		public int GetToken(string columnName)
 		{
-			switch (name)
+#pragma warning disable CS0618
+			switch (global::Dapper.Internal.InternalUtilities.NormalizedHash(columnName))
 			{
-				case @"<Id>k__BackingField":
-					return 0;
-				case @"Id":
-					return 1;
-				case @"<_Id>k__BackingField":
-					return 2;
-				case @"_Id":
-					return 3;
-				case @"<RandomNumber>k__BackingField":
-					return 4;
-				case @"RandomNumber":
-					return 5;
+				case 843736943U:
+					if (global::Dapper.Internal.InternalUtilities.NormalizedEquals(columnName, @"randomnumber")) return 1;
+					break;
+				case 926444256U:
+					if (global::Dapper.Internal.InternalUtilities.NormalizedEquals(columnName, @"id")) return 0;
+					break;
 			}
-			return NoField;
+#pragma warning restore CS0618
+			return -1;
 		}
 
-		protected override global::Dapper.Samples.DapperDbBenchmark.World ReadFallback(global::System.Data.IDataReader reader, global::System.ReadOnlySpan<int> tokens, int offset)
+		public int GetToken(int token, global::System.Type type, bool isNullable) => token;
+
+		public global::System.Type Type => typeof(global::Dapper.Samples.DapperDbBenchmark.World);
+
+		public global::Dapper.Samples.DapperDbBenchmark.World Read(global::System.Data.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
 		{
 			global::Dapper.Samples.DapperDbBenchmark.World obj = new();
-			return obj;
+			for (int i = 0; i < tokens.Length; i++)
+			{
+				switch (tokens[i])
+				{
+					case 0:
+						obj.Id = reader.GetInt32(columnOffset + i);
+						break;
+					case 1:
+						obj.RandomNumber = reader.GetInt32(columnOffset + i);
+						break;
+				}
+			}
 		}
 	}
-}
-#endregion
+	#endregion

@@ -7,7 +7,12 @@
         <DevelopmentDependency>true</DevelopmentDependency>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <AllowUnsafeBlocks Condition="'$(TargetFramework)'=='netstandard2.0'">true</AllowUnsafeBlocks>
+        <LangVersion>10</LangVersion>
     </PropertyGroup>
+
+    <ItemGroup>
+      <Compile Include="..\Dapper.AOT\Internal\InternalUtilities.StringHash.cs" Link="Internal\InternalUtilities.StringHash.cs" />
+    </ItemGroup>
 
     <ItemGroup>
         <!-- build time deps -->

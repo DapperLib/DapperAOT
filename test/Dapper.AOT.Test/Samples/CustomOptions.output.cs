@@ -1,5 +1,13 @@
-// Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs':
+// Output code has 9 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(60,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(76,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(92,11): error CS1029: #error: 'Unable to resolve constructor for encryption configuration'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(160,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(176,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(214,52): error CS0535: '__dapper__SomeType_TypeReader' does not implement interface member 'ITypeReader<SomeType>.Read(DbDataReader, ReadOnlySpan<int>, int)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(226,27): error CS0161: '__dapper__SomeType_TypeReader.Read(DbDataReader, ReadOnlySpan<int>, int)': not all code paths return a value
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(226,52): error CS0234: The type or namespace name 'DbDataReader' does not exist in the namespace 'System.Data' (are you missing an assembly reference?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(230,3): error CS1513: } expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -214,21 +222,21 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
-	file sealed class __dapper__CommandGenerator_TypeReader : global::Dapper.TypeReader<global::SomeType>
+	file sealed class __dapper__SomeType_TypeReader : global::Dapper.ITypeReader<global::SomeType>
 	{
-		private __dapper__CommandGenerator_TypeReader() { }
-		internal static readonly __dapper__CommandGenerator_TypeReader Instance = new();
+		private __dapper__SomeType_TypeReader() { }
+		public static readonly __dapper__SomeType_TypeReader Instance = new();
 
-		protected override int GetColumnToken(string name, global::System.Type? type, bool isNullable)
+		public int GetToken(string columnName)
 		{
-			return NoField;
+			return -1;
 		}
 
-		protected override global::SomeType ReadFallback(global::System.Data.IDataReader reader, global::System.ReadOnlySpan<int> tokens, int offset)
+		public int GetToken(int token, global::System.Type type, bool isNullable) => token;
+
+		public global::SomeType Read(global::System.Data.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
 		{
 			global::SomeType obj = new();
-			return obj;
 		}
 	}
-}
-#endregion
+	#endregion
