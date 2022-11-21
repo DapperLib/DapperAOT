@@ -10,8 +10,8 @@
 // Output code has 4 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs':
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(19,21): error CS0161: 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)': not all code paths return a value
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(19,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnViaReturn(DbConnection, int, string, DateTime)'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(109,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(219,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(112,21): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.RecordsAffectedViaReturn(DbConnection, int, string, DateTime)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(225,22): error CS0759: No defining declaration found for implementing declaration of partial method 'Test.ReturnAndRecordsAffectedViaOut(DbConnection, int, string, DateTime, int, int)'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -98,17 +98,20 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"inputOutput";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"output";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.DateTime;
 			args.Add(p);
 
 			return command;
@@ -208,17 +211,20 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"inputOutput";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"output";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.DateTime;
 			args.Add(p);
 
 			return command;
@@ -300,27 +306,32 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"inputOutput";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"output";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.DateTime;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"count";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"recordsAffected";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			return command;

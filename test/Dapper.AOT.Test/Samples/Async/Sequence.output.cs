@@ -1,8 +1,8 @@
 // Output code has 4 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs':
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs(66,55): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs(67,55): error CS0117: 'TypeReader' does not contain a definition for 'RentSegment'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs(171,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs(172,54): error CS0117: 'TypeReader' does not contain a definition for 'RentSegment'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs(173,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs(174,54): error CS0117: 'TypeReader' does not contain a definition for 'RentSegment'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -116,11 +116,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -220,11 +222,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 

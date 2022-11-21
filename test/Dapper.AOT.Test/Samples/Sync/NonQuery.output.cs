@@ -83,11 +83,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 

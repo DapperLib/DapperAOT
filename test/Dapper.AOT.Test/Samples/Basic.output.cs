@@ -2,9 +2,9 @@
 // Samples/Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
 // Samples/Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
 // Output code has 3 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(340,10): error CS0266: Cannot implicitly convert type 'long' to 'uint'. An explicit conversion exists (are you missing a cast?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(360,7): error CS0200: Property or indexer 'int?.HasValue' cannot be assigned to -- it is read only
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(363,7): error CS0200: Property or indexer 'int?.Value' cannot be assigned to -- it is read only
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(343,10): error CS0266: Cannot implicitly convert type 'long' to 'uint'. An explicit conversion exists (are you missing a cast?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(363,7): error CS0200: Property or indexer 'int?.HasValue' cannot be assigned to -- it is read only
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(366,7): error CS0200: Property or indexer 'int?.Value' cannot be assigned to -- it is read only
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -109,6 +109,7 @@ partial class Foo
 			var p = command.CreateParameter();
 			p.ParameterName = @"region";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -208,6 +209,7 @@ namespace X.Y.Z
 					var p = command.CreateParameter();
 					p.ParameterName = @"region";
 					p.Direction = global::System.Data.ParameterDirection.Input;
+					p.DbType = global::System.Data.DbType.String;
 					p.Size = -1;
 					args.Add(p);
 
@@ -303,6 +305,7 @@ namespace X.Y.Z
 					var p = command.CreateParameter();
 					p.ParameterName = @"region";
 					p.Direction = global::System.Data.ParameterDirection.Input;
+					p.DbType = global::System.Data.DbType.String;
 					p.Size = -1;
 					args.Add(p);
 

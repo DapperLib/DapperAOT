@@ -1,14 +1,9 @@
-// Output code has 10 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs':
+// Output code has 5 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs':
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(51,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(52,106): error CS0117: 'TypeReader' does not contain a definition for 'MaxStackTokens'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(147,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(148,106): error CS0117: 'TypeReader' does not contain a definition for 'MaxStackTokens'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(253,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(254,106): error CS0117: 'TypeReader' does not contain a definition for 'MaxStackTokens'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(361,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(362,106): error CS0117: 'TypeReader' does not contain a definition for 'MaxStackTokens'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(469,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(470,106): error CS0117: 'TypeReader' does not contain a definition for 'MaxStackTokens'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(149,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(257,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(367,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Commands.output.cs(477,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -106,11 +101,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -202,11 +199,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -310,11 +309,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -418,11 +419,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -526,11 +529,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 

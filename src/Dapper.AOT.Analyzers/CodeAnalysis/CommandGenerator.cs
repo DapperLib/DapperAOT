@@ -352,18 +352,21 @@ public sealed class CommandGenerator : ISourceGenerator
         };
         static string? GetReadMethod(ITypeSymbol type)
         {
-            if (type.IsExact("System", "String")) return "GetString";
-            if (type.IsExact("System", "Int32")) return "GetInt32";
-            if (type.IsExact("System", "Int64")) return "GetInt64";
-            if (type.IsExact("System", "Int16")) return "GetInt16";
-            if (type.IsExact("System", "Byte")) return "GetByte";
-            if (type.IsExact("System", "Char")) return "GetChar";
-            if (type.IsExact("System", "Single")) return "GetFloat";
-            if (type.IsExact("System", "Double")) return "GetDouble";
-            if (type.IsExact("System", "Decimal")) return "GetDecimal";
-            if (type.IsExact("System", "DateTime")) return "GetString";
+            switch(type.SpecialType)
+            {
+                case SpecialType.System_String: return "GetString";
+                case SpecialType.System_Int32: return "GetInt32";
+                case SpecialType.System_Int64: return "GetInt64";
+                case SpecialType.System_Int16: return "GetInt16";
+                case SpecialType.System_Byte: return "GetByte";
+                case SpecialType.System_Char: return "GetChar";
+                case SpecialType.System_Single: return "GetFloat";
+                case SpecialType.System_Double: return "GetDouble";
+                case SpecialType.System_Decimal: return "GetDecimal";
+                case SpecialType.System_DateTime: return "GetDateTime";
+                case SpecialType.System_Boolean: return "GetBoolean";
+            };
             if (type.IsExact("System", "Guid")) return "GetGuid";
-            if (type.IsExact("System", "Boolean")) return "GetBoolean";
             return null;
         }
     }
@@ -551,10 +554,10 @@ public sealed class CommandGenerator : ISourceGenerator
         return null;
     }
 
-    static DbType? GetDbType(IParameterSymbol parameter, out int? size)
+    static DbType? GetDbType(IParameterSymbol parameter, out int? size, ITypeSymbol? type = null)
     {
         size = default;
-        var type = parameter.Type;
+        type ??= parameter.Type;
         DbType? dbType = type.SpecialType switch
         {
             SpecialType.System_UInt16 => DbType.UInt16,
@@ -584,7 +587,7 @@ public sealed class CommandGenerator : ISourceGenerator
         {
             size = -1;
         }
-        return default;
+        return dbType;
     }
 
     static void AddIfMissing(CodeWriter sb, string attribute, in GeneratorExecutionContext context, IMethodSymbol? method)
@@ -809,8 +812,21 @@ public sealed class CommandGenerator : ISourceGenerator
             sb.Outdent().NewLine().Append("else").Indent().NewLine().Append(LocalPrefix).Append("command.Connection = ").Append(connection).Append(";").Outdent();
         }
 
+        static bool IsDictionary(ITypeSymbol type, [NotNullWhen(true)] out ITypeSymbol? valueType)
+        {
+            if (type is INamedTypeSymbol named && (named.IsExact("System", "Collections", "Generic", "Dictionary", 2) || named.IsExact("System", "Collections", "Generic", "IDictionary", 2))
+                && named.TypeArguments[0].SpecialType == SpecialType.System_String)
+            {
+                valueType = named.TypeArguments[1];
+                return true;
+            }
+            valueType = null;
+            return false;
+        }
+
         // assign parameter values
         int index = 0;
+        var allBasic = !method.Parameters.Any(p => IsDictionary(p.Type, out _));
         foreach (var p in method.Parameters)
         {
             if (GetHandledType(p.Type) != HandledType.None) continue;
@@ -820,8 +836,40 @@ public sealed class CommandGenerator : ISourceGenerator
                 sb.NewLine().NewLine().Append("// assign parameter values");
                 sb.DisableObsolete();
             }
-            sb.NewLine().Append(LocalPrefix).Append("command.Parameters[").Append(index++).Append("].Value = global::Dapper.Internal.InternalUtilities.AsValue(").Append(p.Name).Append(");");
+            if (IsDictionary(p.Type, out _)) continue;
+            sb.NewLine().Append(LocalPrefix).Append("command.Parameters[").Append(index).Append("].Value = global::Dapper.Internal.InternalUtilities.AsValue(").Append(p.Name).Append(");");
+            index++;
         }
+        if (!allBasic)
+        {
+            foreach (var p in method.Parameters)
+            {
+                if (GetHandledType(p.Type) != HandledType.None) continue;
+                if (TryGetCommandText(p.GetAttributes(), out _) is not null) continue; // ignore commands
+                if (!IsDictionary(p.Type, out var valueType)) continue;
+                {
+                    var type = GetDbType(p, out var size, valueType);
+                    sb.NewLine().Append("if (").Append(p.Name).Append(" is not null)").Indent();
+                    sb.NewLine().Append("var ").Append(LocalPrefix).Append("args = command.Parameters;");
+                    sb.NewLine().Append("foreach (var ").Append(LocalPrefix).Append("pair in ").Append(p.Name).Append(")").Indent();
+                    sb.NewLine().Append("var ").Append(LocalPrefix).Append("p = ").Append(LocalPrefix).Append("command.CreateParameter();");
+                    sb.NewLine().Append(LocalPrefix).Append("p.ParameterName = ").Append(LocalPrefix).Append("pair.Key;");
+                    sb.NewLine().Append(LocalPrefix).Append("p.Direction = global::System.Data.ParameterDirection.Input;");
+                    if (type is not null)
+                    {
+                        sb.NewLine().Append(LocalPrefix).Append("p.DbType = global::System.Data.DbType.").Append(type.ToString()).Append(";");
+                    }
+                    if (size is not null)
+                    {
+                        sb.NewLine().Append(LocalPrefix).Append("p.Size = ").Append(size.GetValueOrDefault()).Append(";");
+                    }
+                    sb.NewLine().Append(LocalPrefix).Append("p.Value = global::Dapper.Internal.InternalUtilities.AsValue(").Append(LocalPrefix).Append("pair.Value);");
+                    sb.NewLine().Append(LocalPrefix).Append("args.Add(").Append(LocalPrefix).Append("p);");
+                    sb.Outdent().Outdent();
+                }
+            }
+        }
+
         if (index != 0) sb.RestoreObsolete();
         sb.NewLine();
 
@@ -1038,6 +1086,7 @@ public sealed class CommandGenerator : ISourceGenerator
         {
             if (GetHandledType(p.Type) != HandledType.None) continue;
             if (TryGetCommandText(p.GetAttributes(), out _) is not null) continue; // ignore commands
+            if (IsDictionary(p.Type, out _)) continue;
             sb.NewLine().NewLine();
             if (index == 0) sb.Append("var ");
             sb.Append("p = ").Append("command").Append(".CreateParameter();");
@@ -1046,7 +1095,7 @@ public sealed class CommandGenerator : ISourceGenerator
             var type = GetDbType(p, out var size);
             if (type is not null)
             {
-                sb.NewLine().Append("p.DbType = global::System.Data.DbType").Append(type.ToString()).Append(";");
+                sb.NewLine().Append("p.DbType = global::System.Data.DbType.").Append(type.ToString()).Append(";");
             }
             if (size is not null)
             {
@@ -1238,6 +1287,7 @@ public sealed class CommandGenerator : ISourceGenerator
 
     static void AddProviderSpecificSettings(CodeWriter sb, ITypeSymbol cmdType, string target, in GeneratorExecutionContext context)
     {
+        // TODO: generalize; add SqlCommand.EnableOptimizedParameterBinding
         static void TestForKnownCommand(CodeWriter sb, ITypeSymbol cmdType, string target, in GeneratorExecutionContext context, string fullyQualifiedName, ref int index)
         {
             var foundType = context.Compilation.GetTypeByMetadataName(fullyQualifiedName);

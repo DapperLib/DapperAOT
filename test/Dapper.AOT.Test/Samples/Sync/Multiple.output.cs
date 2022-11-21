@@ -1,30 +1,25 @@
-// Output code has 26 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs':
+// Output code has 21 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs':
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(61,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(62,106): error CS0117: 'TypeReader' does not contain a definition for 'MaxStackTokens'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(168,24): error CS0118: 'Dapper.Internal.__dapper__Run_TypeReaders' is a namespace but is used like a variable
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(168,67): error CS0103: The name 'Instance' does not exist in the current context
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(273,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(274,106): error CS0117: 'TypeReader' does not contain a definition for 'MaxStackTokens'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(381,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(382,106): error CS0117: 'TypeReader' does not contain a definition for 'MaxStackTokens'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(490,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(491,106): error CS0117: 'TypeReader' does not contain a definition for 'MaxStackTokens'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(600,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(601,106): error CS0117: 'TypeReader' does not contain a definition for 'MaxStackTokens'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(679,21): error CS0534: '' does not implement inherited abstract member 'TypeReader<SomeType[]>.Read(DbDataReader, ReadOnlySpan<int>, int)'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(679,21): error CS1001: Identifier expected
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(680,3): error CS1513: } expected
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(681,12): error CS8124: Tuple must contain at least two elements.
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(681,14): error CS1022: Type or namespace definition, or end-of-file expected
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(682,27): error CS0116: A namespace cannot directly contain members such as fields, methods or statements
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(682,36): error CS1525: Invalid expression term '='
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(682,36): error CS8803: Top-level statements must precede namespace and type declarations.
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(685,23): error CS0115: '<invalid-global-code>.GetToken(int, Type, bool)': no suitable method found to override
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(685,23): error CS0116: A namespace cannot directly contain members such as fields, methods or statements
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(688,38): error CS0115: '<invalid-global-code>.Read(DbDataReader, ReadOnlySpan<int>, int)': no suitable method found to override
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(690,29): error CS8752: The type 'SomeType[]' may not be used as the target type of new()
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(693,2): error CS1022: Type or namespace definition, or end-of-file expected
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(694,1): error CS1022: Type or namespace definition, or end-of-file expected
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(170,24): error CS0118: 'Dapper.Internal.__dapper__Run_TypeReaders' is a namespace but is used like a variable
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(170,67): error CS0103: The name 'Instance' does not exist in the current context
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(277,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(387,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(498,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(610,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(691,21): error CS0534: '' does not implement inherited abstract member 'TypeReader<SomeType[]>.Read(DbDataReader, ReadOnlySpan<int>, int)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(691,21): error CS1001: Identifier expected
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(692,3): error CS1513: } expected
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(693,12): error CS8124: Tuple must contain at least two elements.
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(693,14): error CS1022: Type or namespace definition, or end-of-file expected
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(694,27): error CS0116: A namespace cannot directly contain members such as fields, methods or statements
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(694,36): error CS1525: Invalid expression term '='
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(694,36): error CS8803: Top-level statements must precede namespace and type declarations.
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(697,23): error CS0115: '<invalid-global-code>.GetToken(int, Type, bool)': no suitable method found to override
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(697,23): error CS0116: A namespace cannot directly contain members such as fields, methods or statements
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(700,38): error CS0115: '<invalid-global-code>.Read(DbDataReader, ReadOnlySpan<int>, int)': no suitable method found to override
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(702,29): error CS8752: The type 'SomeType[]' may not be used as the target type of new()
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(705,2): error CS1022: Type or namespace definition, or end-of-file expected
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(706,1): error CS1022: Type or namespace definition, or end-of-file expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -134,11 +129,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -238,11 +235,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -346,11 +345,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -454,11 +455,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -564,11 +567,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 
@@ -674,11 +679,13 @@ partial class Test
 			var p = command.CreateParameter();
 			p.ParameterName = @"id";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.Int32;
 			args.Add(p);
 
 			p = command.CreateParameter();
 			p.ParameterName = @"name";
 			p.Direction = global::System.Data.ParameterDirection.Input;
+			p.DbType = global::System.Data.DbType.String;
 			p.Size = -1;
 			args.Add(p);
 

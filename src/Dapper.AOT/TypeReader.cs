@@ -75,6 +75,9 @@ public abstract class TypeReader
             buffer = null;
         }
     }
+
+    /// <summary>The recommended upper-bound on stack-allocated tokens</summary>
+    public const int MaxStackTokens = 32;
 }
 /// <summary>
 /// Parses data of type <typeparamref name="T"/>
@@ -97,9 +100,6 @@ public abstract class TypeReader<T> : TypeReader
 
     /// <inheritdoc/>
     public sealed override Type Type => typeof(T);
-
-    /// <summary>The recommended upper-bound on stack-allocated tokens</summary>
-    public const int MaxStackTokens = 32;
 
     /// <summary>Reads a single row of type <typeparamref name="T"/></summary>
     public T Read(DbDataReader dataReader, ref int[]? tokenBuffer)

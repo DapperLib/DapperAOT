@@ -1,10 +1,12 @@
 // Input code has 2 diagnostics from 'Samples/DapperDb.input.cs':
-// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
 // Output code has 3 diagnostics from 'Samples/DapperDb.input.cs':
 // Samples/DapperDb.input.cs(98,45): error CS8795: Partial method 'DapperDb.ReadFortunesRows()' must have an implementation part because it has accessibility modifiers.
-// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs(138,35): error CS1061: 'string' does not contain a definition for 'Parameters' and no accessible extension method 'Parameters' accepting a first argument of type 'string' could be found (are you missing a using directive or an assembly reference?)
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -111,6 +113,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 				var p = command.CreateParameter();
 				p.ParameterName = @"id";
 				p.Direction = global::System.Data.ParameterDirection.Input;
+				p.DbType = global::System.Data.DbType.Int32;
 				args.Add(p);
 
 				return command;
@@ -140,8 +143,19 @@ namespace Dapper.Samples.DapperDbBenchmark
 
 				// assign parameter values
 #pragma warning disable CS0618
-				__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(parameters);
-#pragma warning restore CS0618
+				if (parameters is not null)
+				{
+					var __dapper__args = command.Parameters;
+					foreach (var __dapper__pair in parameters)
+					{
+						var __dapper__p = __dapper__command.CreateParameter();
+						__dapper__p.ParameterName = __dapper__pair.Key;
+						__dapper__p.Direction = global::System.Data.ParameterDirection.Input;
+						__dapper__p.DbType = global::System.Data.DbType.Int32;
+						__dapper__p.Value = global::Dapper.Internal.InternalUtilities.AsValue(__dapper__pair.Value);
+						__dapper__args.Add(__dapper__p);
+					}
+				}
 
 				// execute non-query
 				await __dapper__command.ExecuteNonQueryAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false);
@@ -173,11 +187,6 @@ namespace Dapper.Samples.DapperDbBenchmark
 				command.CommandType = global::System.Data.CommandType.Text;
 				command.CommandText = commandText;
 				var args = command.Parameters;
-
-				var p = command.CreateParameter();
-				p.ParameterName = @"parameters";
-				p.Direction = global::System.Data.ParameterDirection.Input;
-				args.Add(p);
 
 				return command;
 			}
