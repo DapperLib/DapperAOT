@@ -1,10 +1,10 @@
 // Input code has 2 diagnostics from 'Samples/DapperDb.input.cs':
-// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
 // Output code has 3 diagnostics from 'Samples/DapperDb.input.cs':
 // Samples/DapperDb.input.cs(98,45): error CS8795: Partial method 'DapperDb.ReadFortunesRows()' must have an implementation part because it has accessibility modifiers.
-// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
+// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
 
 #nullable enable
 //------------------------------------------------------------------------------

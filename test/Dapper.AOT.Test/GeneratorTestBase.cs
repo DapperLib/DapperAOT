@@ -35,7 +35,7 @@ namespace Dapper.AOT.Test
 
         // input from https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#unit-testing-of-generators
 
-        protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics) Execute<T>(string source,
+        protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics, int ErrorCount) Execute<T>(string source,
             StringBuilder? diagnosticsTo = null,
             [CallerMemberName] string? name = null,
             string? fileName = null,
@@ -84,13 +84,13 @@ namespace Dapper.AOT.Test
                 }
             }
 
-            ShowDiagnostics("Output code", outputCompilation, diagnosticsTo, "CS1701", "CS1702");
-            return (outputCompilation, runResult, diagnostics);
+            var errorCount = ShowDiagnostics("Output code", outputCompilation, diagnosticsTo, "CS1701", "CS1702");
+            return (outputCompilation, runResult, diagnostics, errorCount);
         }
 
-        void ShowDiagnostics(string caption, Compilation compilation, StringBuilder? diagnosticsTo, params string[] ignore)
+        int ShowDiagnostics(string caption, Compilation compilation, StringBuilder? diagnosticsTo, params string[] ignore)
         {
-            if (_log is null && diagnosticsTo is null) return; // nothing useful to do!
+            if (_log is null && diagnosticsTo is null) return 0; // nothing useful to do!
             void Output(string message)
             {
                 if (!string.IsNullOrWhiteSpace(message))
@@ -99,10 +99,13 @@ namespace Dapper.AOT.Test
                     diagnosticsTo?.Append("// ").AppendLine(message.Replace('\\', '/')); // need to normalize paths
                 }
             }
+            int errorCountTotal = 0;
             foreach (var tree in compilation.SyntaxTrees)
             {
-                var diagnostics = Normalize(compilation.GetSemanticModel(tree).GetDiagnostics(), ignore);
-                
+                var rawDiags = compilation.GetSemanticModel(tree).GetDiagnostics();
+                var diagnostics = Normalize(rawDiags, ignore);
+                errorCountTotal += rawDiags.Count(x => x.Severity == DiagnosticSeverity.Error);
+
                 if (diagnostics.Any())
                 {
                     Output($"{caption} has {diagnostics.Count} diagnostics from '{tree.FilePath}':");
@@ -112,6 +115,7 @@ namespace Dapper.AOT.Test
                     }
                 }
             }
+            return errorCountTotal;
         }
 
         static List<string> Normalize(ImmutableArray<Diagnostic> diagnostics, string[] ignore) => (

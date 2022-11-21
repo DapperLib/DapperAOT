@@ -61,7 +61,7 @@ namespace Dapper.AOT.Test
             {
                 Log(ex.Message);
             }
-
+            Assert.Equal(0, result.ErrorCount);
             Assert.Equal(expected.Trim(), actual.Trim(), ignoreLineEndingDifferences: true, ignoreWhiteSpaceDifferences: true);
         }
 
