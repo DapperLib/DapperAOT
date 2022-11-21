@@ -6,10 +6,13 @@ namespace Dapper.Internal;
 
 internal sealed class MaterializerTracker
 {
-    readonly Dictionary<INamedTypeSymbol, string> materializers = new(SymbolEqualityComparer.Default);
+    readonly Dictionary<ITypeSymbol, string> materializers = new(SymbolEqualityComparer.Default);
     readonly Dictionary<string, int> nameCounter = new Dictionary<string, int>();
+    public string Namespace { get; }
+    public MaterializerTracker(string @namespace)
+        => Namespace = @namespace;
 
-    public string GetMaterializerName(INamedTypeSymbol symbol)
+    public string GetMaterializerName(ITypeSymbol symbol)
     {
         if (materializers.TryGetValue(symbol, out var name)) return name;
 
@@ -27,12 +30,12 @@ internal sealed class MaterializerTracker
         return name;
     }
 
-    internal void Add(INamedTypeSymbol? symbol)
+    internal void Add(ITypeSymbol? symbol)
     {
         if (symbol is not null) GetMaterializerName(symbol);
     }
 
-    public Dictionary<INamedTypeSymbol, string>.KeyCollection Symbols => materializers.Keys;
+    public Dictionary<ITypeSymbol, string>.KeyCollection Symbols => materializers.Keys;
 
     public int Count => materializers.Count;
 }

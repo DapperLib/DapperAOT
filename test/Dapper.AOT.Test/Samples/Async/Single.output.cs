@@ -1,16 +1,3 @@
-// Output code has 12 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(60,30): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(76,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(165,30): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(181,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(269,30): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(285,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(374,30): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(390,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(434,52): error CS0535: '__dapper__SomeType_TypeReader' does not implement interface member 'ITypeReader<SomeType>.Read(DbDataReader, ReadOnlySpan<int>, int)'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(446,27): error CS0161: '__dapper__SomeType_TypeReader.Read(DbDataReader, ReadOnlySpan<int>, int)': not all code paths return a value
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(446,52): error CS0234: The type or namespace name 'DbDataReader' does not exist in the namespace 'System.Data' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(450,3): error CS1513: } expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -71,7 +58,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 			{
-				__dapper__result = await global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.ReadAsync(__dapper__reader, ref __dapper__tokenBuffer, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -176,7 +163,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 			{
-				__dapper__result = await global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.ReadAsync(__dapper__reader, ref __dapper__tokenBuffer, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -280,7 +267,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(cancellation).ConfigureAwait(false))
 			{
-				__dapper__result = await global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.ReadAsync(__dapper__reader, ref __dapper__tokenBuffer, cancellation).ConfigureAwait(false);
+				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -385,7 +372,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(cancellation).ConfigureAwait(false))
 			{
-				__dapper__result = await global::Dapper.TypeReader.TryGetReader<global::SomeType>()!.ReadAsync(__dapper__reader, ref __dapper__tokenBuffer, cancellation).ConfigureAwait(false);
+				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -445,21 +432,20 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
-	file sealed class __dapper__SomeType_TypeReader : global::Dapper.ITypeReader<global::SomeType>
+	file sealed class SomeType : global::Dapper.TypeReader<global::SomeType>
 	{
-		private __dapper__SomeType_TypeReader() { }
-		public static readonly __dapper__SomeType_TypeReader Instance = new();
+		private SomeType() { }
+		public static readonly SomeType Instance = new();
 
-		public int GetToken(string columnName)
-		{
-			return -1;
-		}
+		/// <inheritdoc/>
+		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
 
-		public int GetToken(int token, global::System.Type type, bool isNullable) => token;
-
-		public global::SomeType Read(global::System.Data.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+		/// <inheritdoc/>
+		public override global::SomeType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
 		{
 			global::SomeType obj = new();
+			return obj;
 		}
 	}
-	#endregion
+}
+#endregion

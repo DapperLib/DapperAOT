@@ -1,17 +1,10 @@
 // Output code has 2 diagnostics from 'Samples/Basic.input.cs':
 // Samples/Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
 // Samples/Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
-// Output code has 10 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(59,24): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(75,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(163,26): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(179,6): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(256,26): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(272,6): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(311,52): error CS0535: '__dapper__Customer_TypeReader' does not implement interface member 'ITypeReader<Customer>.Read(DbDataReader, ReadOnlySpan<int>, int)'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(323,33): error CS0161: '__dapper__Customer_TypeReader.Read(DbDataReader, ReadOnlySpan<int>, int)': not all code paths return a value
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(323,58): error CS0234: The type or namespace name 'DbDataReader' does not exist in the namespace 'System.Data' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(327,3): error CS1513: } expected
+// Output code has 3 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(340,10): error CS0266: Cannot implicitly convert type 'long' to 'uint'. An explicit conversion exists (are you missing a cast?)
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(360,7): error CS0200: Property or indexer 'int?.HasValue' cannot be assigned to -- it is read only
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(363,7): error CS0200: Property or indexer 'int?.Value' cannot be assigned to -- it is read only
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -71,7 +64,7 @@ partial class Foo
 			int? __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = global::Dapper.TypeReader.TryGetReader<int?>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.Nullable.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -175,7 +168,7 @@ namespace X.Y.Z
 					global::X.Y.Z.Customer __dapper__result;
 					if (__dapper__reader.HasRows && __dapper__reader.Read())
 					{
-						__dapper__result = global::Dapper.TypeReader.TryGetReader<global::X.Y.Z.Customer>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
+						__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.Customer.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 					}
 					else
 					{
@@ -268,7 +261,7 @@ namespace X.Y.Z
 					global::X.Y.Z.Customer __dapper__result;
 					if (__dapper__reader.HasRows && __dapper__reader.Read())
 					{
-						__dapper__result = global::Dapper.TypeReader.TryGetReader<global::X.Y.Z.Customer>()!.Read(__dapper__reader, ref __dapper__tokenBuffer);
+						__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.Customer.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 					}
 					else
 					{
@@ -323,21 +316,64 @@ namespace X.Y.Z
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
-	file sealed class __dapper__Customer_TypeReader : global::Dapper.ITypeReader<global::X.Y.Z.Customer>
+	file sealed class Customer : global::Dapper.TypeReader<global::X.Y.Z.Customer>
 	{
-		private __dapper__Customer_TypeReader() { }
-		public static readonly __dapper__Customer_TypeReader Instance = new();
+		private Customer() { }
+		public static readonly Customer Instance = new();
 
-		public int GetToken(string columnName)
+		/// <inheritdoc/>
+		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
+
+		/// <inheritdoc/>
+		public override global::X.Y.Z.Customer Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
 		{
+			global::X.Y.Z.Customer obj = new();
+			return obj;
+		}
+	}
+	file sealed class Nullable : global::Dapper.TypeReader<int?>
+	{
+		private Nullable() { }
+		public static readonly Nullable Instance = new();
+
+		/// <inheritdoc/>
+		public override int GetToken(string columnName)
+		{
+#pragma warning disable CS0618
+			switch (global::Dapper.Internal.InternalUtilities.NormalizedHash(columnName))
+			{
+				case 1113510858U:
+					if (global::Dapper.Internal.InternalUtilities.NormalizedEquals(columnName, @"value")) return 1;
+					break;
+				case -1729559200U:
+					if (global::Dapper.Internal.InternalUtilities.NormalizedEquals(columnName, @"hasvalue")) return 0;
+					break;
+			}
+#pragma warning restore CS0618
 			return -1;
 		}
 
-		public int GetToken(int token, global::System.Type type, bool isNullable) => token;
+		/// <inheritdoc/>
+		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
 
-		public global::X.Y.Z.Customer Read(global::System.Data.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+		/// <inheritdoc/>
+		public override int? Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
 		{
-			global::X.Y.Z.Customer obj = new();
+			int? obj = new();
+			for (int i = 0; i < tokens.Length; i++)
+			{
+				switch (tokens[i])
+				{
+					case 0:
+						obj.HasValue = reader.GetBoolean(columnOffset + i);
+						break;
+					case 1:
+						obj.Value = reader.GetInt32(columnOffset + i);
+						break;
+				}
+			}
+			return obj;
 		}
 	}
-	#endregion
+}
+#endregion

@@ -2,10 +2,8 @@
 // Samples/Async/Parameters.input.cs(13,16): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
 // Output code has 1 diagnostics from 'Samples/Async/Parameters.input.cs':
 // Samples/Async/Parameters.input.cs(13,16): warning CS8632: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
-// Output code has 3 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs':
+// Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs':
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(20,69): error CS0161: 'Test.ReturnViaReturnAsync(DbConnection, Test.FooParams)': not all code paths return a value
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(138,30): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Parameters.output.cs(154,4): error CS0234: The type or namespace name 'TypeReader' does not exist in the namespace 'Dapper' (are you missing an assembly reference?)
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -144,7 +142,7 @@ partial class Test
 			int __dapper__result;
 			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 			{
-				__dapper__result = await global::Dapper.TypeReader.TryGetReader<int>()!.ReadAsync(__dapper__reader, ref __dapper__tokenBuffer, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
+				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.Int32.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -348,6 +346,25 @@ partial class Test
 			args.Add(p);
 
 			return command;
+		}
+	}
+}
+
+namespace Dapper.Internal.__dapper__Run_TypeReaders
+{
+	file sealed class Int32 : global::Dapper.TypeReader<int>
+	{
+		private Int32() { }
+		public static readonly Int32 Instance = new();
+
+		/// <inheritdoc/>
+		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
+
+		/// <inheritdoc/>
+		public override int Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+		{
+			int obj = new();
+			return obj;
 		}
 	}
 }

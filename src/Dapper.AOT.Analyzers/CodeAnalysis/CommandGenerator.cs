@@ -195,7 +195,6 @@ public sealed class CommandGenerator : ISourceGenerator
 #pragma warning restore IDE0079
     private string Generate(List<(string Namespace, string TypeName, IMethodSymbol Method, MethodDeclarationSyntax Syntax)> candidates, in GeneratorExecutionContext context)
     {
-        string readerNamespace = "Dapper.Internal." + LocalPrefix + context.Compilation.AssemblyName + "_TypeReaders";
         var generatorType = GetType();
         var sb = CodeWriter.Create().Append("#nullable enable")
             .NewLine().Append("//------------------------------------------------------------------------------")
@@ -209,8 +208,8 @@ public sealed class CommandGenerator : ISourceGenerator
             .NewLine().Append("#region Designer generated code");
 
         int totalWritten = 0;
-        MaterializerTracker materializers = new();
-        
+        MaterializerTracker materializers = new("Dapper.Internal." + LocalPrefix + context.Compilation.AssemblyName + "_TypeReaders");
+
         foreach (var nsGrp in candidates.GroupBy(x => x.Namespace))
         {
             Log?.Invoke(DiagnosticSeverity.Info, $"Namespace '{nsGrp.Key}' has {nsGrp.Count()} candidate(s) in {nsGrp.Select(x => x.TypeName).Distinct().Count()} type(s)");
@@ -265,7 +264,7 @@ public sealed class CommandGenerator : ISourceGenerator
 
         if (materializers.Count != 0)
         {
-            sb.NewLine().NewLine().Append("namespace ").Append(readerNamespace).Indent();
+            sb.NewLine().NewLine().Append("namespace ").Append(materializers.Namespace).Indent();
             string helperAccessibility = "internal";
             if (context.ParseOptions is CSharpParseOptions csOpt && csOpt.LanguageVersion >= (LanguageVersion)1100)
             {
@@ -276,15 +275,16 @@ public sealed class CommandGenerator : ISourceGenerator
             {
                 var members = BuildMembers(genType, context);
                 // if we have multiple types with the same name, we'll need to disambiguate them in our code
-                var shortName = materializers.GetMaterializerName(genType);
-                var fullName = LocalPrefix + shortName + "_TypeReader";
-                sb.NewLine().Append(helperAccessibility).Append(" sealed class ").Append(fullName).Append(" : global::Dapper.ITypeReader<").Append(genType).Append(">").Indent();
-                sb.NewLine().Append("private ").Append(fullName).Append("() { }");
-                sb.NewLine().Append("public static readonly ").Append(fullName).Append(" Instance = new();");
-                sb.NewLine().NewLine().Append("public int GetToken(string columnName)").Indent();
+                var readerName = materializers.GetMaterializerName(genType);
+                sb.NewLine().Append(helperAccessibility).Append(" sealed class ").Append(readerName).Append(" : global::Dapper.TypeReader<").Append(genType).Append(">").Indent();
+                sb.NewLine().Append("private ").Append(readerName).Append("() { }");
+                sb.NewLine().Append("public static readonly ").Append(readerName).Append(" Instance = new();");
 
                 if (members.Length > 0)
                 {
+                    sb.NewLine()
+                        .NewLine().Append("/// <inheritdoc/>")
+                        .NewLine().Append("public override int GetToken(string columnName)").Indent();
                     sb.DisableObsolete().NewLine().Append("switch (global::Dapper.Internal.InternalUtilities.NormalizedHash(columnName))").Indent();
                     foreach (var grp in members.GroupBy(x => x.Hash).OrderBy(x => x.Key))
                     {
@@ -296,14 +296,17 @@ public sealed class CommandGenerator : ISourceGenerator
                         sb.NewLine().Append("break;").Outdent(false);
                     }
                     sb.Outdent().RestoreObsolete();
+                    sb.NewLine().Append("return -1;").Outdent(); // GetToken
                 }
-                sb.NewLine().Append("return -1;").Outdent(); // GetToken
+                
 
-                sb.NewLine().NewLine().Append("public int GetToken(int token, global::System.Type type, bool isNullable) => token;");
+                sb.NewLine()
+                    .NewLine().Append("/// <inheritdoc/>")
+                    .NewLine().Append("public override int GetToken(int token, global::System.Type type, bool isNullable) => token;");
 
-                sb.NewLine().NewLine().Append("public global::System.Type Type => typeof(").Append(genType).Append(");");
-
-                sb.NewLine().NewLine().Append("public ").Append(genType).Append(" Read(global::System.Data.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)").Indent();
+                sb.NewLine()
+                    .NewLine().Append("/// <inheritdoc/>")
+                    .NewLine().Append("public override ").Append(genType).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)").Indent();
                 sb.NewLine().Append(genType).Append(" obj = new();");
                 if (members.Length > 0)
                 {
@@ -330,8 +333,8 @@ public sealed class CommandGenerator : ISourceGenerator
                     }
                     sb.Outdent().Outdent();
                 }
-
-                sb.Outdent(); // serializer type
+                sb.NewLine().Append("return obj;").Outdent() // Read
+                    .Outdent(); // serializer type
             }
 
             sb.Outdent();
@@ -365,7 +368,7 @@ public sealed class CommandGenerator : ISourceGenerator
         }
     }
 
-    private (string ColumnName, uint Hash, int Token, ISymbol Member, ITypeSymbol Type)[] BuildMembers(INamedTypeSymbol genType, GeneratorExecutionContext context)
+    private (string ColumnName, uint Hash, int Token, ISymbol Member, ITypeSymbol Type)[] BuildMembers(ITypeSymbol genType, GeneratorExecutionContext context)
     {
         var genMembers = genType.GetMembers();
         var members = new List<(string ColumnName, uint Hash, int Token, ISymbol Member, ITypeSymbol Type)>(genMembers.Length);
@@ -826,7 +829,7 @@ public sealed class CommandGenerator : ISourceGenerator
         {
             if (category.Has(QueryFlags.IsSingle))
             {
-                ExecuteReaderSingle(sb, category.Flags, category.ItemType, cancellationToken);
+                ExecuteReaderSingle(sb, category.Flags, category.ItemType, cancellationToken, materializers);
             }
             else
             {
@@ -1106,7 +1109,7 @@ public sealed class CommandGenerator : ISourceGenerator
             sb.NewLine().Append(LocalPrefix).Append("close = false; // performed via CommandBehavior");
             sb.NewLine();
         }
-        static void ExecuteReaderSingle(CodeWriter sb, QueryFlags flags, ITypeSymbol itemType, string cancellationToken)
+        static void ExecuteReaderSingle(CodeWriter sb, QueryFlags flags, ITypeSymbol itemType, string cancellationToken, MaterializerTracker materializers)
         {
             WriteExecuteReader(sb, flags, cancellationToken);
 
@@ -1120,14 +1123,10 @@ public sealed class CommandGenerator : ISourceGenerator
                 sb.NewLine().Append(LocalPrefix).Append("result = global::Dapper.SqlMapper.GetRowParser<").Append(itemType).Append(">(")
                     .Append(LocalPrefix).Append("reader).Invoke(").Append(LocalPrefix).Append("reader);");
             }
-//            else if (flags.IsAsync())
-//            {
-//                sb.NewLine().Append(LocalPrefix).Append("result = await global::Dapper.TypeReader.TryGetReader<").Append(itemType).Append(">()!.ReadAsync(")
-//.Append(LocalPrefix).Append("reader, ref ").Append(LocalPrefix).Append("tokenBuffer, ").Append(cancellationToken).Append(").ConfigureAwait(false);");
-//            }
             else
             {
-                sb.NewLine().Append(LocalPrefix).Append("result = global::Dapper.Internal.InternalUtilities.Read<").Append(itemType).Append(">()!.Read(").Append("blah, ").Append(LocalPrefix).Append("reader, ref ").Append(LocalPrefix).Append("tokenBuffer);");
+                sb.NewLine().Append(LocalPrefix).Append("result = ").Append(materializers.Namespace).Append('.').Append(materializers.GetMaterializerName(itemType))
+                    .Append(".Instance.Read(").Append(LocalPrefix).Append("reader, ref ").Append(LocalPrefix).Append("tokenBuffer);");
             }
 
             if (flags.Has(QueryFlags.DemandAtMostOneRow))

@@ -17,55 +17,7 @@ namespace Dapper.Internal;
 [Obsolete(InternalUtilities.ObsoleteWarning)]
 public static partial class InternalUtilities
 {
-    /// <summary>
-    /// The recommended upper-bound on stack-allocated tokens
-    /// </summary>
-    public const int MaxStackTokens = 32;
-
-    public static T Read<T>(ITypeReader<T> typeReader, DbDataReader dataReader, ref int[]? tokenBuffer)
-    {
-        Span<int> tokens = dataReader.FieldCount <= MaxStackTokens ? stackalloc int[dataReader.FieldCount] : RentSpan(ref tokenBuffer, dataReader.FieldCount);
-        GetTokens(typeReader, dataReader, tokens);
-        return typeReader.Read(dataReader, tokens);
-    }
-
-    public static void GetTokens(ITypeReader typeReader, DbDataReader dataReader, Span<int> tokens, int offset = 0)
-    {
-        for (int i = 0; i < tokens.Length; i++)
-        {
-            tokens[i] = typeReader.GetToken(dataReader.GetName(offset + i));
-        }
-    }
-
-    /// <summary>
-    /// Gets a right-sized buffer for the given size, liasing with the array-pool as necessary
-    /// </summary>
-    public static Span<int> RentSpan(ref int[]? buffer, int length)
-    {
-        if (buffer is object)
-        {
-            if (buffer.Length <= length)
-                return new Span<int>(buffer, 0, length);
-
-            // otherwise, existing buffer isn't big enough; return it
-            // and we'll get a bigger one in a moment
-            ArrayPool<int>.Shared.Return(buffer);
-        }
-        buffer = ArrayPool<int>.Shared.Rent(length);
-        return new Span<int>(buffer, 0, length);
-    }
-
-    /// <summary>
-    /// Return a buffer to the array-pool
-    /// </summary>
-    public static void Return(ref int[]? buffer)
-    {
-        if (buffer is not null)
-        {
-            ArrayPool<int>.Shared.Return(buffer);
-            buffer = null;
-        }
-    }
+   
 
     internal const string ObsoleteWarning = "This type is not intended for public consumption, and can change without warning.";
 
