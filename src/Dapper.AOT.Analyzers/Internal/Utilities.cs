@@ -40,7 +40,7 @@ internal static class Utilities
     private static bool IsNamespace(INamespaceSymbol? ns, string ns0, string ns1, string ns2, string ns3, string ns4)
         => ns?.Name == ns4 && IsNamespace(ns.ContainingNamespace, ns0, ns1, ns2, ns3);
 
-    public static bool IsKindOf([NotNullWhen(true)] this ITypeSymbol? type, string ns0, string name, int arity)
+    public static bool IsKindOf([NotNullWhen(true)] this ITypeSymbol? type, string ns0, string name, int arity = 0)
     {
         while (type is not null)
         {
@@ -53,7 +53,7 @@ internal static class Utilities
         }
         return false;
     }
-    public static bool IsKindOf([NotNullWhen(true)] this ITypeSymbol? type, string ns0, string ns1, string name, int arity)
+    public static bool IsKindOf([NotNullWhen(true)] this ITypeSymbol? type, string ns0, string ns1, string name, int arity = 0)
     {
         while (type is not null)
         {
@@ -66,7 +66,7 @@ internal static class Utilities
         }
         return false;
     }
-    public static bool IsKindOf([NotNullWhen(true)] this ITypeSymbol? type, string ns0, string ns1, string ns2, string name, int arity)
+    public static bool IsKindOf([NotNullWhen(true)] this ITypeSymbol? type, string ns0, string ns1, string ns2, string name, int arity = 0)
     {
         while (type is not null)
         {
@@ -79,6 +79,21 @@ internal static class Utilities
         }
         return false;
     }
+
+    public static bool IsKindOf([NotNullWhen(true)] this ITypeSymbol? type, string ns0, string ns1, string ns2, string ns3, string name, int arity = 0)
+    {
+        while (type is not null)
+        {
+            if (type.IsExact(ns0, ns1, ns2, ns3, name, arity)) return true;
+            foreach (var iType in type.Interfaces)
+            {
+                if (iType.IsExact(ns0, ns1, ns2, ns3, name, arity)) return true;
+            }
+            type = type.BaseType;
+        }
+        return false;
+    }
+
     public static bool IsDefined(this IMethodSymbol symbol, ITypeSymbol attributeType)
     {
         foreach (var attrib in symbol.GetAttributes())

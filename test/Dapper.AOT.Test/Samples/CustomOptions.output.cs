@@ -1,5 +1,5 @@
 // Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(92,11): error CS1029: #error: 'Unable to resolve constructor for encryption configuration'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/CustomOptions.output.cs(96,11): error CS1029: #error: 'Unable to resolve constructor for encryption configuration'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -46,9 +46,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -60,7 +61,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -84,7 +85,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_CustomOptions_input_cs_WithEncryptionSystemSql_8, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for WithEncryptionSystemSql
@@ -148,9 +152,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -162,7 +167,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -186,7 +191,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_CustomOptions_input_cs_WithEncryptionMicrosoftSql_12, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for WithEncryptionMicrosoftSql
@@ -218,6 +226,7 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
+	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class SomeType : global::Dapper.TypeReader<global::SomeType>
 	{
@@ -228,7 +237,7 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
 
 		/// <inheritdoc/>
-		public override global::SomeType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+		public override global::SomeType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset = 0)
 		{
 			global::SomeType obj = new();
 			return obj;

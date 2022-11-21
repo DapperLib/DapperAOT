@@ -44,9 +44,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -58,7 +59,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -82,7 +83,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_SinglePooled_input_cs_TaskAsync_8, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			if (connection is not null)
+			{
+				if (__dapper__close) await (connection.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			}
 		}
 
 		// command factory for TaskAsync
@@ -150,9 +154,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -164,7 +169,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(global::System.Threading.CancellationToken.None).ConfigureAwait(false))
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -188,7 +193,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_SinglePooled_input_cs_ValueTaskAsync_11, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			if (connection is not null)
+			{
+				if (__dapper__close) await (connection.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			}
 		}
 
 		// command factory for ValueTaskAsync
@@ -256,9 +264,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -270,7 +279,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(cancellation).ConfigureAwait(false))
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -294,7 +303,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_SinglePooled_input_cs_TaskWithCancellationAsync_14, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			if (connection is not null)
+			{
+				if (__dapper__close) await (connection.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			}
 		}
 
 		// command factory for TaskWithCancellationAsync
@@ -362,9 +374,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -376,7 +389,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && await __dapper__reader.ReadAsync(cancellation).ConfigureAwait(false))
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -400,7 +413,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_SinglePooled_input_cs_ValueWithCancellationTaskAsync_17, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			if (connection is not null)
+			{
+				if (__dapper__close) await (connection.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			}
 		}
 
 		// command factory for ValueWithCancellationTaskAsync
@@ -438,6 +454,7 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
+	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class SomeType : global::Dapper.TypeReader<global::SomeType>
 	{
@@ -448,7 +465,7 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
 
 		/// <inheritdoc/>
-		public override global::SomeType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+		public override global::SomeType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset = 0)
 		{
 			global::SomeType obj = new();
 			return obj;

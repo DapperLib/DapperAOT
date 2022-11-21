@@ -1,6 +1,7 @@
 ﻿using Dapper.Internal;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Formatting;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
@@ -276,6 +277,7 @@ public sealed class CommandGenerator : ISourceGenerator
                 var members = BuildMembers(genType, context);
                 // if we have multiple types with the same name, we'll need to disambiguate them in our code
                 var readerName = materializers.GetMaterializerName(genType);
+                AddIfMissing(sb, "System.Diagnostics.DebuggerNonUserCodeAttribute", context, null);
                 if (context.AllowUnsafe()) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, null);
                 sb.NewLine().Append(helperAccessibility).Append(" sealed class ").Append(readerName).Append(" : global::Dapper.TypeReader<").Append(genType).Append(">").Indent();
                 sb.NewLine().Append("private ").Append(readerName).Append("() { }");
@@ -307,7 +309,7 @@ public sealed class CommandGenerator : ISourceGenerator
 
                 sb.NewLine()
                     .NewLine().Append("/// <inheritdoc/>")
-                    .NewLine().Append("public override ").Append(genType).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)").Indent();
+                    .NewLine().Append("public override ").Append(genType).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset = 0)").Indent();
                 sb.NewLine().Append(genType).Append(" obj = new();");
                 if (members.Length > 0)
                 {
@@ -317,7 +319,7 @@ public sealed class CommandGenerator : ISourceGenerator
                         sb.NewLine().Append("case ").Append(member.Token);
                         if (DoNullCheck(member.Type))
                         {
-                            sb.Append(" when reader.IsDBNull(columnOffset + i)");
+                            sb.Append(" when !reader.IsDBNull(columnOffset + i)");
                         }
                         sb.Append(':').Indent(false);
                         sb.NewLine().Append("obj.").Append(member.Member.Name).Append(" = ");
@@ -423,16 +425,28 @@ public sealed class CommandGenerator : ISourceGenerator
 
     private bool WriteMethod(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, MaterializerTracker materializers, in GeneratorExecutionContext context)
     {
+        static ITypeSymbol GetConnectionKind(ITypeSymbol factoryType)
+        {
+            foreach (var member in factoryType.GetMembers())
+            {
+                if (!member.IsStatic && member.Name == "CreateConnection" && member is IMethodSymbol method)
+                {
+                    return method.ReturnType;
+                }
+            }
+            return null!;
+        }
+
         var attribs = method.GetAttributes();
         var text = TryGetCommandText(attribs, out var commandType);
         if (text is null) return false;
         bool textDirect = true;
 
-        string? connection = null, transaction = null, cancellationToken = null;
+        string? connection = null, transaction = null, cancellationToken = null, connectionString = null, connectionFactory = null;
         ITypeSymbol? connectionType = null, transactionType = null;
         foreach (var p in method.Parameters)
         {
-            var type = GetHandledType(p.Type);
+            var type = GetHandledType(p);
             switch (type)
             {
                 case HandledType.Connection:
@@ -444,6 +458,21 @@ public sealed class CommandGenerator : ISourceGenerator
                     }
                     connection = p.Name;
                     connectionType = p.Type;
+                    break;
+                case HandledType.ConnectionString:
+                    connectionString = p.Name;
+                    break;
+                case HandledType.ConnectionFactory:
+                    connectionFactory = p.Name;
+                    connectionType = GetConnectionKind(p.Type);
+                    break;
+                case HandledType.CommandText when TryGetCommandText(p.GetAttributes(), out _) is string ignoreCmdText:
+                    if (ignoreCmdText.Length != 0)
+                    {
+                        Log?.Invoke(DiagnosticSeverity.Error, $"Fixed command-text should not be specified against parameters for '{method.Name}'");
+                    }
+                    text = p.Name;
+                    textDirect = false;
                     break;
                 case HandledType.Transaction:
                     if (transaction is not null)
@@ -462,16 +491,68 @@ public sealed class CommandGenerator : ISourceGenerator
                     }
                     cancellationToken = p.Name;
                     break;
-                case HandledType.None when TryGetCommandText(p.GetAttributes(), out _) is string ignoreCmdText:
-                    if (!string.IsNullOrWhiteSpace(ignoreCmdText))
-                    {
-                        Log?.Invoke(DiagnosticSeverity.Error, $"Fixed command-text should not be specified against parameters for '{method.Name}'");
-                    }
-                    text = p.Name;
-                    textDirect = false;
-                    break;
             }
         }
+
+        int csCount = 0, connCount = 0;
+        foreach (var member in method.ContainingType.GetMembers())
+        {
+            static string? Invoke(ISymbol symbol, out ITypeSymbol type)
+            {
+                switch (symbol)
+                {
+                    case IMethodSymbol method:
+                        type = method.ReturnType;
+                        return symbol.Name + "()";
+                    case IFieldSymbol field:
+                        type = field.Type;
+                        return symbol.Name;
+                    case IPropertySymbol prop:
+                        type = prop.Type;
+                        return symbol.Name;
+                }
+                type = null!;
+                return null!;
+            }
+            var memberAttribs = member.GetAttributes();
+            foreach (var attrib in memberAttribs)
+            {
+                var ac = attrib.AttributeClass;
+                if (ac is null) continue;
+                if (ac.IsExact("Dapper", "ConnectionStringAttribute"))
+                {
+                    if (csCount++ != 0) 
+                    {
+                        Log?.Invoke(DiagnosticSeverity.Error, $"Multiple aux connection-strings found for '{method.ContainingType.Name}'");
+                        continue;
+                    }
+                    var ivk = Invoke(member, out _);
+                    if (ivk is null) continue;
+                    connectionString = connectionString is null ? ivk : (connectionString + " ?? " + ivk);
+                }
+                else if (ac.IsExact("Dapper", "ConnectionAttribute"))
+                {
+                    if (connCount++ != 0)
+                    {
+                        Log?.Invoke(DiagnosticSeverity.Error, $"Multiple aux connection-providers found for '{method.ContainingType.Name}'");
+                        continue;
+                    }
+                    var ivk = Invoke(member, out var effectiveType);
+                    if (ivk is null) continue;
+                    if (effectiveType.IsKindOf("System", "Data", "Common", "DbProviderFactory"))
+                    {
+                        connectionFactory = connectionFactory is null ? ivk : (connectionFactory + " ?? " + ivk);
+                        connectionType = GetConnectionKind(effectiveType);
+                    }
+                    else
+                    {
+                        connection = connection is null ? ivk : (connection + " ?? " + ivk);
+                        connectionType = effectiveType;
+                    }
+                }
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(text))
         {
             Log?.Invoke(DiagnosticSeverity.Error, $"No command-text resolved for '{method.Name}'");
@@ -494,10 +575,9 @@ public sealed class CommandGenerator : ISourceGenerator
             cancellationToken = "global::System.Threading.CancellationToken.None";
         }
 
-
-        if (connection is not null)
+        if (connection is not null || (connectionFactory is not null && connectionString is not null))
         {
-            return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionType!, transaction, transactionType!, text, textDirect,
+            return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionFactory, connectionString, connectionType!, transaction, transactionType!, text, textDirect,
                 commandType, context, cancellationToken);
         }
         // TODO: other APIs here
@@ -514,9 +594,13 @@ public sealed class CommandGenerator : ISourceGenerator
         Connection,
         Transaction,
         CancellationToken,
+        CommandText,
+        ConnectionString,
+        ConnectionFactory,
     }
-    static HandledType GetHandledType(ITypeSymbol type)
+    static HandledType GetHandledType(IParameterSymbol parameter)
     {
+        var type = parameter.Type;
         if (type is INamedTypeSymbol named && named.Arity == 0)
         {
             if (type.IsReferenceType)
@@ -532,6 +616,16 @@ public sealed class CommandGenerator : ISourceGenerator
                     return HandledType.CancellationToken;
             }
         }
+        if (type.SpecialType == SpecialType.System_String)
+        {
+            foreach (var attrib in parameter.GetAttributes())
+            {
+                if (IsCommandAttribute(attrib.AttributeClass)) return HandledType.CommandText;
+                if (attrib.AttributeClass.IsExact("Dapper", "ConnectionStringAttribute")) return HandledType.ConnectionString;
+            }
+        }
+        if (type.IsKindOf("System", "Data", "Common", "DbProviderFactory")) return HandledType.ConnectionFactory;
+
         return HandledType.None;
     }
 
@@ -611,7 +705,7 @@ public sealed class CommandGenerator : ISourceGenerator
 
             foreach (var p in method.Parameters)
             {
-                if (GetHandledType(p.Type) == HandledType.CancellationToken)
+                if (GetHandledType(p) == HandledType.CancellationToken)
                 {
                     needsCancellationToken = false;
                     break;
@@ -679,7 +773,7 @@ public sealed class CommandGenerator : ISourceGenerator
             {
                 sb.Append(", ");
             }
-            if (GetHandledType(p.Type) == HandledType.CancellationToken)
+            if (GetHandledType(p) == HandledType.CancellationToken)
             {
                 if (flags.IsAsync() && flags.Has(QueryFlags.IsIterator) && !p.IsEnumeratorCancellationToken())
                 {
@@ -710,7 +804,8 @@ public sealed class CommandGenerator : ISourceGenerator
 
         return true;
     }
-    bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, MaterializerTracker materializers, string connection, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, bool commandTextAsLiteral, CommandType commandType, in GeneratorExecutionContext context, string cancellationToken)
+    bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, MaterializerTracker materializers,
+        string? connection, string? connectionFactory, string? connectionString, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, bool commandTextAsLiteral, CommandType commandType, in GeneratorExecutionContext context, string cancellationToken)
     {
         var cmdType = GetMethodReturnType(connectionType, nameof(IDbConnection.CreateCommand));
         if (cmdType is null)
@@ -733,7 +828,8 @@ public sealed class CommandGenerator : ISourceGenerator
         category.ConsiderGeneratingTypeReader(materializers);
 
         var location = GetLocation(method, out string? identifier);
-        var commandField = UseCommandField(identifier, commandTextAsLiteral) ? ("s_" + LocalPrefix + "command_" + identifier) : null;
+        var allParametersBasic = !method.Parameters.Any(p => IsDictionary(p.Type, out _));
+        var commandField = allParametersBasic && UseCommandField(identifier, commandTextAsLiteral) ? ("s_" + LocalPrefix + "command_" + identifier) : null;
 
         sb.NewLine();
         if (commandField is not null)
@@ -767,7 +863,13 @@ public sealed class CommandGenerator : ISourceGenerator
         sb.NewLine().Append("// locals");
         sb.NewLine().Append(cmdType).Append("? ").Append(LocalPrefix).Append("command = null;");
         if (readerType is not null) sb.NewLine().Append(readerType).Append("? ").Append(LocalPrefix).Append("reader = null;");
-        sb.NewLine().Append("bool ").Append(LocalPrefix).Append("close = false;");
+        sb.NewLine().Append("bool ").Append(LocalPrefix).Append("close = false");
+        if (connectionFactory is not null)
+        {
+            sb.Append(", ").Append(LocalPrefix).Append("dispose = false");
+        }
+        sb.Append(';');
+
         bool useFieldTokens = category.Has(QueryFlags.IsQuery);
         if (useFieldTokens)
         {
@@ -782,11 +884,39 @@ public sealed class CommandGenerator : ISourceGenerator
             if (category.UseCollector()) sb.RestoreObsolete();
         }
 
+        if (connectionFactory is not null)
+        {
+            sb.NewLine().Append(connectionType).Append("? ").Append(LocalPrefix).Append("connection = null;");
+        }
+
         sb.NewLine().Append("try");
         sb.Indent();
 
         // prepare connection
         sb.NewLine().Append("// prepare connection");
+
+        if (connectionFactory is not null)
+        {
+            bool conditional = false;
+            if (connection is not null)
+            {
+                sb.NewLine().Append(LocalPrefix).Append("connection").Append(" = ").Append(connection).Append(';');
+                conditional = true;
+            }
+            connection = LocalPrefix + "connection";
+            if (conditional)
+            {
+                sb.NewLine().Append("if (").Append(connection).Append(" is null)").Indent();
+            }
+            sb.NewLine().Append(connection).Append(" = ").Append(connectionFactory).Append(".CreateConnection();")
+                .NewLine().Append(connection).Append("!.ConnectionString = ").Append(connectionString).Append(";")
+                .NewLine().Append(LocalPrefix).Append("dispose = true;");
+            if (conditional)
+            {
+                sb.Outdent();
+            }
+        }
+
         sb.NewLine().Append("if (").Append(connection).Append("!.State == global::System.Data.ConnectionState.Closed)").Indent();
         if (category.IsAsync())
         {
@@ -825,49 +955,48 @@ public sealed class CommandGenerator : ISourceGenerator
             return false;
         }
 
+        static void PrepareWriteParameters(CodeWriter sb)
+        {
+            sb.NewLine().NewLine().Append("// assign parameter values")
+              .NewLine().Append("var ").Append(LocalPrefix).Append("args = ").Append(LocalPrefix).Append("command.Parameters;")
+              .DisableObsolete();
+        }
         // assign parameter values
         int index = 0;
-        var allBasic = !method.Parameters.Any(p => IsDictionary(p.Type, out _));
         foreach (var p in method.Parameters)
         {
-            if (GetHandledType(p.Type) != HandledType.None) continue;
-            if (TryGetCommandText(p.GetAttributes(), out _) is not null) continue; // ignore commands
-            if (index == 0)
-            {
-                sb.NewLine().NewLine().Append("// assign parameter values");
-                sb.DisableObsolete();
-            }
+            if (GetHandledType(p) != HandledType.None) continue;
             if (IsDictionary(p.Type, out _)) continue;
-            sb.NewLine().Append(LocalPrefix).Append("command.Parameters[").Append(index).Append("].Value = global::Dapper.Internal.InternalUtilities.AsValue(").Append(p.Name).Append(");");
+            if (index == 0) PrepareWriteParameters(sb);
+            sb.NewLine().Append(LocalPrefix).Append("args[").Append(index).Append("].Value = global::Dapper.Internal.InternalUtilities.AsValue(").Append(p.Name).Append(");");
             index++;
         }
-        if (!allBasic)
+        if (!allParametersBasic)
         {
             foreach (var p in method.Parameters)
             {
-                if (GetHandledType(p.Type) != HandledType.None) continue;
-                if (TryGetCommandText(p.GetAttributes(), out _) is not null) continue; // ignore commands
+                if (GetHandledType(p) != HandledType.None) continue;
                 if (!IsDictionary(p.Type, out var valueType)) continue;
+
+                if (index == 0) PrepareWriteParameters(sb);
+                var type = GetDbType(p, out var size, valueType);
+                sb.NewLine().Append("if (").Append(p.Name).Append(" is not null)").Indent();
+                sb.NewLine().Append("foreach (var ").Append(LocalPrefix).Append("pair in ").Append(p.Name).Append(")").Indent();
+                sb.NewLine().Append("var ").Append(LocalPrefix).Append("p = ").Append(LocalPrefix).Append("command.CreateParameter();");
+                sb.NewLine().Append(LocalPrefix).Append("p.ParameterName = ").Append(LocalPrefix).Append("pair.Key;");
+                sb.NewLine().Append(LocalPrefix).Append("p.Direction = global::System.Data.ParameterDirection.Input;");
+                if (type is not null)
                 {
-                    var type = GetDbType(p, out var size, valueType);
-                    sb.NewLine().Append("if (").Append(p.Name).Append(" is not null)").Indent();
-                    sb.NewLine().Append("var ").Append(LocalPrefix).Append("args = command.Parameters;");
-                    sb.NewLine().Append("foreach (var ").Append(LocalPrefix).Append("pair in ").Append(p.Name).Append(")").Indent();
-                    sb.NewLine().Append("var ").Append(LocalPrefix).Append("p = ").Append(LocalPrefix).Append("command.CreateParameter();");
-                    sb.NewLine().Append(LocalPrefix).Append("p.ParameterName = ").Append(LocalPrefix).Append("pair.Key;");
-                    sb.NewLine().Append(LocalPrefix).Append("p.Direction = global::System.Data.ParameterDirection.Input;");
-                    if (type is not null)
-                    {
-                        sb.NewLine().Append(LocalPrefix).Append("p.DbType = global::System.Data.DbType.").Append(type.ToString()).Append(";");
-                    }
-                    if (size is not null)
-                    {
-                        sb.NewLine().Append(LocalPrefix).Append("p.Size = ").Append(size.GetValueOrDefault()).Append(";");
-                    }
-                    sb.NewLine().Append(LocalPrefix).Append("p.Value = global::Dapper.Internal.InternalUtilities.AsValue(").Append(LocalPrefix).Append("pair.Value);");
-                    sb.NewLine().Append(LocalPrefix).Append("args.Add(").Append(LocalPrefix).Append("p);");
-                    sb.Outdent().Outdent();
+                    sb.NewLine().Append(LocalPrefix).Append("p.DbType = global::System.Data.DbType.").Append(type.ToString()).Append(";");
                 }
+                if (size is not null)
+                {
+                    sb.NewLine().Append(LocalPrefix).Append("p.Size = ").Append(size.GetValueOrDefault()).Append(";");
+                }
+                sb.NewLine().Append(LocalPrefix).Append("p.Value = global::Dapper.Internal.InternalUtilities.AsValue(").Append(LocalPrefix).Append("pair.Value);");
+                sb.NewLine().Append(LocalPrefix).Append("args.Add(").Append(LocalPrefix).Append("p);");
+                sb.Outdent().Outdent();
+                index++;
             }
         }
 
@@ -882,7 +1011,7 @@ public sealed class CommandGenerator : ISourceGenerator
             }
             else
             {
-                ExecuteReaderMultiple(sb, category, cancellationToken);
+                ExecuteReaderMultiple(sb, category, cancellationToken, materializers);
             }
         }
         else if (category.Has(QueryFlags.IsScalar) && category.ItemType is not null)
@@ -994,16 +1123,32 @@ public sealed class CommandGenerator : ISourceGenerator
         }
         sb.Outdent();
 
+        sb.NewLine().Append("if (").Append(connection).Append(" is not null)").Indent();
+        sb.NewLine().Append("if (").Append(LocalPrefix).Append("close) ");
         if (category.IsAsync() && connectionType.HasBasicAsyncMethod("CloseAsync", out var awaitableType, out bool cancellable) && !cancellable)
         {
-            sb.NewLine().Append("if (").Append(LocalPrefix).Append("close) await (").Append(connection).Append("?.CloseAsync() ?? ")
+            sb.Append("await (").Append(connection).Append(".CloseAsync() ?? ")
                 .Append(awaitableType.IsValueType ? "default" : "global::System.Threading.Tasks.Task.CompletedTask")
                 .Append(").ConfigureAwait(false);");
         }
         else
         {
-            sb.NewLine().Append("if (").Append(LocalPrefix).Append("close) ").Append(connection).Append("?.Close();");
+            sb.Append(connection).Append(".Close();");
         }
+        if (connectionFactory is not null)
+        {
+            sb.NewLine().Append("if (").Append(LocalPrefix).Append("dispose) ");
+            if (category.IsAsync() && connectionType.HasDisposeAsync())
+            {
+                sb.Append("await ").Append(connection).Append(".DisposeAsync().ConfigureAwait(false);");
+            }
+            else
+            {
+                sb.Append(connection).Append(".Dispose();");
+            }
+        }
+        sb.Outdent(); // connection not null
+
         sb.Outdent();
 
         if (needsInnerImpl)
@@ -1085,8 +1230,7 @@ public sealed class CommandGenerator : ISourceGenerator
         sb.NewLine().Append("var args = command.Parameters;");
         foreach (var p in method.Parameters)
         {
-            if (GetHandledType(p.Type) != HandledType.None) continue;
-            if (TryGetCommandText(p.GetAttributes(), out _) is not null) continue; // ignore commands
+            if (GetHandledType(p) != HandledType.None) continue;
             if (IsDictionary(p.Type, out _)) continue;
             sb.NewLine().NewLine();
             if (index == 0) sb.Append("var ");
@@ -1175,7 +1319,7 @@ public sealed class CommandGenerator : ISourceGenerator
             }
             else
             {
-                sb.NewLine().Append(LocalPrefix).Append("result = ").Append(materializers.Namespace).Append('.').Append(materializers.GetMaterializerName(itemType))
+                sb.NewLine().Append(LocalPrefix).Append("result = global::").Append(materializers.Namespace).Append('.').Append(materializers.GetMaterializerName(itemType))
                     .Append(".Instance.Read(").Append(LocalPrefix).Append("reader, ref ").Append(LocalPrefix).Append("tokenBuffer);");
             }
 
@@ -1208,7 +1352,7 @@ public sealed class CommandGenerator : ISourceGenerator
                     .Append(").ConfigureAwait(false)")
                 : sb.Append(LocalPrefix).Append("reader.").Append(name).Append("()");
 
-        static void ExecuteReaderMultiple(CodeWriter sb, in QueryCategory category, string cancellationToken)
+        static void ExecuteReaderMultiple(CodeWriter sb, in QueryCategory category, string cancellationToken, MaterializerTracker materializers)
         {
             WriteExecuteReader(sb, category.Flags, cancellationToken);
 
@@ -1225,7 +1369,7 @@ public sealed class CommandGenerator : ISourceGenerator
             }
             else
             {
-                sb.NewLine().Append("var ").Append(LocalPrefix).Append("parser = global::Dapper.TypeReader.TryGetReader<").Append(category.ItemType).Append(">()!;");
+                sb.NewLine().Append("var ").Append(LocalPrefix).Append("parser = global::").Append(materializers.Namespace).Append('.').Append(materializers.GetMaterializerName(category.ItemType!)).Append(".Instance;");
 
                 if (category.IsAsync())
                 {
@@ -1236,7 +1380,7 @@ public sealed class CommandGenerator : ISourceGenerator
                     sb.NewLine().Append("global::System.Span<int> ").Append(LocalPrefix).Append("tokens = ").Append(LocalPrefix).Append("reader.FieldCount <= global::Dapper.TypeReader.MaxStackTokens ? stackalloc int[")
                         .Append(LocalPrefix).Append("reader.FieldCount] : global::Dapper.TypeReader.RentSpan(ref ").Append(LocalPrefix).Append("tokenBuffer, ").Append(LocalPrefix).Append("reader.FieldCount);");
                 }
-                sb.NewLine().Append(LocalPrefix).Append("parser.IdentifyFieldTokensFromSchema(").Append(LocalPrefix).Append("reader, ").Append(LocalPrefix).Append("tokens);");
+                sb.NewLine().Append(LocalPrefix).Append("parser.IdentifyColumnTokens(").Append(LocalPrefix).Append("reader, ").Append(LocalPrefix).Append("tokens);");
             }
             sb.NewLine().Append("while (");
             InvokeReaderMethod(sb, category.Flags, nameof(DbDataReader.Read), cancellationToken).Append(")").Indent();
@@ -1255,10 +1399,10 @@ public sealed class CommandGenerator : ISourceGenerator
             {
                 sb.Append(LocalPrefix).Append("parser(").Append(LocalPrefix).Append("reader)");
             }
-            else if (category.IsAsync())
-            {
-                sb.Append("await ").Append(LocalPrefix).Append("parser.ReadAsync(").Append(LocalPrefix).Append("reader, ").Append(LocalPrefix).Append("tokens, ").Append(cancellationToken).Append(").ConfigureAwait(false)");
-            }
+            //else if (category.IsAsync())
+            //{
+            //    sb.Append("await ").Append(LocalPrefix).Append("parser.ReadAsync(").Append(LocalPrefix).Append("reader, ").Append(LocalPrefix).Append("tokens, ").Append(cancellationToken).Append(").ConfigureAwait(false)");
+            //}
             else
             {
                 sb.Append(LocalPrefix).Append("parser.Read(").Append(LocalPrefix).Append("reader, ").Append(LocalPrefix).Append("tokens)");

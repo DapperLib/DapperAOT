@@ -42,9 +42,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute non-query
@@ -62,7 +63,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_NonQuery_input_cs_TaskAsync_8, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			if (connection is not null)
+			{
+				if (__dapper__close) await (connection.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			}
 		}
 
 		// command factory for TaskAsync
@@ -129,9 +133,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute non-query
@@ -149,7 +154,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_NonQuery_input_cs_ValueTaskAsync_11, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			if (connection is not null)
+			{
+				if (__dapper__close) await (connection.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			}
 		}
 
 		// command factory for ValueTaskAsync
@@ -215,9 +223,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute non-query
@@ -235,7 +244,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_NonQuery_input_cs_TaskWithCancellationAsync_14, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			if (connection is not null)
+			{
+				if (__dapper__close) await (connection.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			}
 		}
 
 		// command factory for TaskWithCancellationAsync
@@ -302,9 +314,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute non-query
@@ -322,7 +335,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_NonQuery_input_cs_ValueWithCancellationTaskAsync_17, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			if (connection is not null)
+			{
+				if (__dapper__close) await (connection.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			}
 		}
 
 		// command factory for ValueWithCancellationTaskAsync

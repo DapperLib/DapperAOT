@@ -1,6 +1,6 @@
 // Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(667,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(697,11): error CS1029: #error: 'Scalar not implemented'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(691,21): error CS0161: 'Test.Scalar(DbConnection, int, string)': not all code paths return a value
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Single.output.cs(722,11): error CS1029: #error: 'Scalar not implemented'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -47,9 +47,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -61,7 +62,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -85,7 +86,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_ImplicitComplex_6, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for ImplicitComplex
@@ -153,9 +157,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -167,7 +172,7 @@ partial class Test
 			int __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.Int32.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.Int32.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -191,7 +196,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_ImplicitScalar_9, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for ImplicitScalar
@@ -259,9 +267,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -273,7 +282,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -300,7 +309,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_First_12, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for First
@@ -368,9 +380,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -382,7 +395,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -406,7 +419,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_FirstOrDefault_15, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for FirstOrDefault
@@ -474,9 +490,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -488,7 +505,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 #pragma warning disable CS0618
 				if (__dapper__reader.Read()) global::Dapper.Internal.InternalUtilities.ThrowMultiple();
 #pragma warning restore CS0618
@@ -518,7 +535,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_Single_18, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for Single
@@ -586,9 +606,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -600,7 +621,7 @@ partial class Test
 			global::SomeType __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 #pragma warning disable CS0618
 				if (__dapper__reader.Read()) global::Dapper.Internal.InternalUtilities.ThrowMultiple();
 #pragma warning restore CS0618
@@ -627,7 +648,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_SingleOrDefault_21, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for SingleOrDefault
@@ -693,9 +717,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			#error Scalar not implemented
@@ -712,7 +737,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Sync_Single_input_cs_Scalar_24, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for Scalar
@@ -750,6 +778,7 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
+	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class SomeType : global::Dapper.TypeReader<global::SomeType>
 	{
@@ -760,12 +789,13 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
 
 		/// <inheritdoc/>
-		public override global::SomeType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+		public override global::SomeType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset = 0)
 		{
 			global::SomeType obj = new();
 			return obj;
 		}
 	}
+	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class Int32 : global::Dapper.TypeReader<int>
 	{
@@ -776,7 +806,7 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
 
 		/// <inheritdoc/>
-		public override int Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+		public override int Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset = 0)
 		{
 			int obj = new();
 			return obj;

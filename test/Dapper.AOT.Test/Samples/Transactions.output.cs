@@ -1,9 +1,11 @@
-// Output code has 5 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(290,8): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'bool'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(292,5): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(292,5): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(321,25): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(321,25): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
+// Output code has 7 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(302,8): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'bool'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(304,5): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(304,5): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(333,8): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'bool'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(335,26): error CS0019: Operator '??' cannot be applied to operands of type 'DbConnection' and 'void'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(335,26): error CS0201: Only assignment, call, increment, decrement, await, and new object expressions can be used as a statement
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Transactions.output.cs(335,52): warning CS8602: Dereference of a possibly null reference.
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -62,7 +64,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Transactions_input_cs_Abstract_9, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for Abstract
@@ -129,7 +134,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Transactions_input_cs_Interface_12, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for Interface
@@ -196,7 +204,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Transactions_input_cs_Concrete_15, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for Concrete
@@ -258,7 +269,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Transactions_input_cs_Transaction_18, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) transaction?.Connection?.Close();
+			if (transaction?.Connection is not null)
+			{
+				if (__dapper__close) transaction?.Connection.Close();
+			}
 		}
 
 		// command factory for Transaction
@@ -325,7 +339,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Transactions_input_cs_OptionalTransaction_21, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection ?? transaction?.Connection?.Close();
+			if (connection ?? transaction?.Connection is not null)
+			{
+				if (__dapper__close) connection ?? transaction?.Connection.Close();
+			}
 		}
 
 		// command factory for OptionalTransaction

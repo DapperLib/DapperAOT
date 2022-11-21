@@ -1,8 +1,3 @@
-// Output code has 4 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs(66,55): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs(67,55): error CS0117: 'TypeReader' does not contain a definition for 'RentSegment'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs(173,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Sequence.output.cs(174,54): error CS0117: 'TypeReader' does not contain a definition for 'RentSegment'
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -56,9 +51,10 @@ partial class Test
 				}
 
 				// assign parameter values
+				var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-				__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-				__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+				__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+				__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 				// execute reader
@@ -69,12 +65,12 @@ partial class Test
 				// process multiple rows
 				if (__dapper__reader.HasRows)
 				{
-					var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+					var __dapper__parser = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance;
 					var __dapper__tokens = global::Dapper.TypeReader.RentSegment(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
-					__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
+					__dapper__parser.IdentifyColumnTokens(__dapper__reader, __dapper__tokens);
 					while (await __dapper__reader.ReadAsync(__dapper__cancellation).ConfigureAwait(false))
 					{
-						yield return await __dapper__parser.ReadAsync(__dapper__reader, __dapper__tokens, __dapper__cancellation).ConfigureAwait(false);
+						yield return __dapper__parser.Read(__dapper__reader, __dapper__tokens);
 					}
 				}
 				// consume additional results (ensures errors from the server are observed)
@@ -94,7 +90,10 @@ partial class Test
 					__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Sequence_input_cs_SequenceAsync_8, __dapper__command);
 					if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 				}
-				if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+				if (connection is not null)
+				{
+					if (__dapper__close) await (connection.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+				}
 			}
 		}
 
@@ -163,9 +162,10 @@ partial class Test
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
-			__dapper__command.Parameters[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(id);
+			__dapper__args[1].Value = global::Dapper.Internal.InternalUtilities.AsValue(name);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -176,12 +176,12 @@ partial class Test
 			// process multiple rows
 			if (__dapper__reader.HasRows)
 			{
-				var __dapper__parser = global::Dapper.TypeReader.TryGetReader<global::SomeType>()!;
+				var __dapper__parser = global::Dapper.Internal.__dapper__Run_TypeReaders.SomeType.Instance;
 				var __dapper__tokens = global::Dapper.TypeReader.RentSegment(ref __dapper__tokenBuffer, __dapper__reader.FieldCount);
-				__dapper__parser.IdentifyFieldTokensFromSchema(__dapper__reader, __dapper__tokens);
+				__dapper__parser.IdentifyColumnTokens(__dapper__reader, __dapper__tokens);
 				while (await __dapper__reader.ReadAsync(cancellation).ConfigureAwait(false))
 				{
-					yield return await __dapper__parser.ReadAsync(__dapper__reader, __dapper__tokens, cancellation).ConfigureAwait(false);
+					yield return __dapper__parser.Read(__dapper__reader, __dapper__tokens);
 				}
 			}
 			// consume additional results (ensures errors from the server are observed)
@@ -201,7 +201,10 @@ partial class Test
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Async_Sequence_input_cs_SequenceWithCancellationAsync_11, __dapper__command);
 				if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
 			}
-			if (__dapper__close) await (connection?.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			if (connection is not null)
+			{
+				if (__dapper__close) await (connection.CloseAsync() ?? global::System.Threading.Tasks.Task.CompletedTask).ConfigureAwait(false);
+			}
 		}
 
 		// command factory for SequenceWithCancellationAsync
@@ -239,6 +242,7 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
+	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class SomeType : global::Dapper.TypeReader<global::SomeType>
 	{
@@ -249,7 +253,7 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
 
 		/// <inheritdoc/>
-		public override global::SomeType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+		public override global::SomeType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset = 0)
 		{
 			global::SomeType obj = new();
 			return obj;

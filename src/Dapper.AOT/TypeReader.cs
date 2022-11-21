@@ -38,7 +38,7 @@ public abstract class TypeReader
     }
 
     /// <summary>
-    /// Read a single row of type <typeparamref name="T"/>, reading the columns specified via
+    /// Read a single row of type <see cref="Type"/>, reading the columns specified via
     /// <paramref name="tokens"/>, with relative offset <paramref name="columnOffset"/>;
     /// so: if <paramref name="tokens"/> has length <c>3</c> and <paramref name="columnOffset"/> is
     /// <c>4</c>, then columns <c>4</c>, <c>5</c> and <c>6</c> from <paramref name="reader"/> should
@@ -62,6 +62,24 @@ public abstract class TypeReader
         }
         buffer = ArrayPool<int>.Shared.Rent(length);
         return new Span<int>(buffer, 0, length);
+    }
+
+    /// <summary>
+    /// Gets a right-sized buffer for the given size, liasing with the array-pool as necessary
+    /// </summary>she
+    public static ArraySegment<int> RentSegment(ref int[]? buffer, int length)
+    {
+        if (buffer is object)
+        {
+            if (buffer.Length <= length)
+                return new ArraySegment<int>(buffer, 0, length);
+
+            // otherwise, existing buffer isn't big enough; return it
+            // and we'll get a bigger one in a moment
+            ArrayPool<int>.Shared.Return(buffer);
+        }
+        buffer = ArrayPool<int>.Shared.Rent(length);
+        return new ArraySegment<int>(buffer, 0, length);
     }
 
     /// <summary>

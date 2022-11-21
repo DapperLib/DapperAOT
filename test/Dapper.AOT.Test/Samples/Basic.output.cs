@@ -2,8 +2,8 @@
 // Samples/Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
 // Samples/Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
 // Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(365,7): error CS0200: Property or indexer 'int?.HasValue' cannot be assigned to -- it is read only
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(368,7): error CS0200: Property or indexer 'int?.Value' cannot be assigned to -- it is read only
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(379,7): error CS0200: Property or indexer 'int?.HasValue' cannot be assigned to -- it is read only
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(382,7): error CS0200: Property or indexer 'int?.Value' cannot be assigned to -- it is read only
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -50,8 +50,9 @@ partial class Foo
 			}
 
 			// assign parameter values
+			var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-			__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
+			__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
 #pragma warning restore CS0618
 
 			// execute reader
@@ -63,7 +64,7 @@ partial class Foo
 			int? __dapper__result;
 			if (__dapper__reader.HasRows && __dapper__reader.Read())
 			{
-				__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.Nullable.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+				__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.Nullable.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 			}
 			else
 			{
@@ -87,7 +88,10 @@ partial class Foo
 				__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Basic_input_cs_ShouldDetectThis_11, __dapper__command);
 				__dapper__command?.Dispose();
 			}
-			if (__dapper__close) connection?.Close();
+			if (connection is not null)
+			{
+				if (__dapper__close) connection.Close();
+			}
 		}
 
 		// command factory for ShouldDetectThis
@@ -155,8 +159,9 @@ namespace X.Y.Z
 					}
 
 					// assign parameter values
+					var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-					__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
+					__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
 #pragma warning restore CS0618
 
 					// execute reader
@@ -168,7 +173,7 @@ namespace X.Y.Z
 					global::X.Y.Z.Customer __dapper__result;
 					if (__dapper__reader.HasRows && __dapper__reader.Read())
 					{
-						__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.Customer.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+						__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.Customer.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 					}
 					else
 					{
@@ -192,7 +197,10 @@ namespace X.Y.Z
 						__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Basic_input_cs_ViaDapper_32, __dapper__command);
 						__dapper__command?.Dispose();
 					}
-					if (__dapper__close) c?.Close();
+					if (c is not null)
+					{
+						if (__dapper__close) c.Close();
+					}
 				}
 
 				// command factory for ViaDapper
@@ -249,8 +257,9 @@ namespace X.Y.Z
 					}
 
 					// assign parameter values
+					var __dapper__args = __dapper__command.Parameters;
 #pragma warning disable CS0618
-					__dapper__command.Parameters[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
+					__dapper__args[0].Value = global::Dapper.Internal.InternalUtilities.AsValue(region);
 #pragma warning restore CS0618
 
 					// execute reader
@@ -262,7 +271,7 @@ namespace X.Y.Z
 					global::X.Y.Z.Customer __dapper__result;
 					if (__dapper__reader.HasRows && __dapper__reader.Read())
 					{
-						__dapper__result = Dapper.Internal.__dapper__Run_TypeReaders.Customer.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
+						__dapper__result = global::Dapper.Internal.__dapper__Run_TypeReaders.Customer.Instance.Read(__dapper__reader, ref __dapper__tokenBuffer);
 					}
 					else
 					{
@@ -286,7 +295,10 @@ namespace X.Y.Z
 						__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_Basic_input_cs_ViaOracle_35, __dapper__command);
 						__dapper__command?.Dispose();
 					}
-					if (__dapper__close) c?.Close();
+					if (c is not null)
+					{
+						if (__dapper__close) c.Close();
+					}
 				}
 
 				// command factory for ViaOracle
@@ -318,6 +330,7 @@ namespace X.Y.Z
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
+	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class Customer : global::Dapper.TypeReader<global::X.Y.Z.Customer>
 	{
@@ -328,12 +341,13 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
 
 		/// <inheritdoc/>
-		public override global::X.Y.Z.Customer Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+		public override global::X.Y.Z.Customer Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset = 0)
 		{
 			global::X.Y.Z.Customer obj = new();
 			return obj;
 		}
 	}
+	[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class Nullable : global::Dapper.TypeReader<int?>
 	{
@@ -361,7 +375,7 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 		public override int GetToken(int token, global::System.Type type, bool isNullable) => token;
 
 		/// <inheritdoc/>
-		public override int? Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+		public override int? Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset = 0)
 		{
 			int? obj = new();
 			for (int i = 0; i < tokens.Length; i++)
