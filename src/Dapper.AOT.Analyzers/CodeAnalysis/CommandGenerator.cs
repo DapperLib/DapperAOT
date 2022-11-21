@@ -438,7 +438,7 @@ public sealed class CommandGenerator : ISourceGenerator
         }
 
         var attribs = method.GetAttributes();
-        var text = TryGetCommandText(attribs, out var commandType);
+        var text = TryGetCommandText(attribs, out var commandType, out bool annotate);
         if (text is null) return false;
         bool textDirect = true;
 
@@ -466,7 +466,7 @@ public sealed class CommandGenerator : ISourceGenerator
                     connectionFactory = p.Name;
                     connectionType = GetConnectionKind(p.Type);
                     break;
-                case HandledType.CommandText when TryGetCommandText(p.GetAttributes(), out _) is string ignoreCmdText:
+                case HandledType.CommandText when TryGetCommandText(p.GetAttributes(), out _, out _) is string ignoreCmdText:
                     if (ignoreCmdText.Length != 0)
                     {
                         Log?.Invoke(DiagnosticSeverity.Error, $"Fixed command-text should not be specified against parameters for '{method.Name}'");
@@ -577,7 +577,8 @@ public sealed class CommandGenerator : ISourceGenerator
 
         if (connection is not null || (connectionFactory is not null && connectionString is not null))
         {
-            return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionFactory, connectionString, connectionType!, transaction, transactionType!, text, textDirect,
+            return WriteMethodViaAdoDotNet(method, syntax, sb, materializers, connection, connectionFactory, connectionString, connectionType!, transaction, transactionType!,
+                text, annotate, textDirect,
                 commandType, context, cancellationToken);
         }
         // TODO: other APIs here
@@ -805,7 +806,8 @@ public sealed class CommandGenerator : ISourceGenerator
         return true;
     }
     bool WriteMethodViaAdoDotNet(IMethodSymbol method, MethodDeclarationSyntax syntax, CodeWriter sb, MaterializerTracker materializers,
-        string? connection, string? connectionFactory, string? connectionString, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType, string commandText, bool commandTextAsLiteral, CommandType commandType, in GeneratorExecutionContext context, string cancellationToken)
+        string? connection, string? connectionFactory, string? connectionString, ITypeSymbol connectionType, string? transaction, ITypeSymbol transactionType,
+        string commandText, bool annotate, bool commandTextAsLiteral, CommandType commandType, in GeneratorExecutionContext context, string cancellationToken)
     {
         var cmdType = GetMethodReturnType(connectionType, nameof(IDbConnection.CreateCommand));
         if (cmdType is null)
@@ -1165,7 +1167,7 @@ public sealed class CommandGenerator : ISourceGenerator
         if (!commandTextAsLiteral) sb.Append(", string? commandText");
         sb.Append(")").Indent();
 
-        if (commandTextAsLiteral && commandType == CommandType.Text && location is not null)
+        if (annotate && commandTextAsLiteral && commandType == CommandType.Text && location is not null)
         {
             commandText = "/* " + location + " */ " + commandText;
         }
@@ -1486,8 +1488,9 @@ public sealed class CommandGenerator : ISourceGenerator
     void ISourceGenerator.Initialize(GeneratorInitializationContext context)
         => context.RegisterForSyntaxNotifications(static () => new CommandSyntaxReceiver());
 
-    static string? TryGetCommandText(ImmutableArray<AttributeData> attributes, out CommandType commandType)
+    static string? TryGetCommandText(ImmutableArray<AttributeData> attributes, out CommandType commandType, out bool annotate)
     {
+        annotate = true;
         foreach (var attrib in attributes)
         {
             if (IsCommandAttribute(attrib.AttributeClass))
@@ -1506,6 +1509,10 @@ public sealed class CommandGenerator : ISourceGenerator
                 else
                 {
                     commandType = commandText.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure;
+                }
+                if (attrib.TryGetAttributeValue<bool>("Annotate", out var rawBool))
+                {
+                    annotate = rawBool;
                 }
                 return commandText;
             }

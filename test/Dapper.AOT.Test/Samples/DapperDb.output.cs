@@ -111,7 +111,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 					typed0.InitialLONGFetchSize = -1;
 				}
 				command.CommandType = global::System.Data.CommandType.Text;
-				command.CommandText = @"/* DapperDb.ReadSingleRow, Samples/DapperDb.input.cs #94 */ SELECT id, randomnumber FROM world WHERE id = @id";
+				command.CommandText = @"SELECT id, randomnumber FROM world WHERE id = @id";
 				var args = command.Parameters;
 
 				var p = command.CreateParameter();
@@ -216,7 +216,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 					typed0.InitialLONGFetchSize = -1;
 				}
 				command.CommandType = global::System.Data.CommandType.Text;
-				command.CommandText = @"/* DapperDb.ReadFortunesRows, Samples/DapperDb.input.cs #97 */ SELECT id, message FROM fortune";
+				command.CommandText = @"SELECT id, message FROM fortune";
 				var args = command.Parameters;
 
 				return command;

@@ -91,13 +91,13 @@ namespace Dapper.Samples.DapperDbBenchmark
 
         public Task<World> LoadSingleQueryRow() => ReadSingleRow(NextRandom());
 
-        [Command("SELECT id, randomnumber FROM world WHERE id = @id")]
+        [Command("SELECT id, randomnumber FROM world WHERE id = @id", Annotate = false)]
         private partial Task<World> ReadSingleRow(int id, DbConnection? db = null);
 
-        [Command("SELECT id, message FROM fortune")]
+        [Command("SELECT id, message FROM fortune", Annotate = false)]
         private partial Task<List<Fortune>> ReadFortunesRows();
 
-        [Command]
+        [Command(Annotate = false)]
         private partial Task ExecuteBatch([Command] string command, Dictionary<string, int> parameters, DbConnection? db);
     }
 

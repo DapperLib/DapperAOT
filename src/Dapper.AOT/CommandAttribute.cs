@@ -28,6 +28,11 @@ public sealed class CommandAttribute : Attribute
     public CommandType CommandType { get; set; }
 
     /// <summary>
+    /// Indicate whether a location hint should be added to the command, if possible.
+    /// </summary>
+    public bool Annotate { get; set; } = true;
+
+    /// <summary>
     /// Creates a new <see cref="CommandAttribute"/> instance.
     /// </summary>
     public CommandAttribute() { }
