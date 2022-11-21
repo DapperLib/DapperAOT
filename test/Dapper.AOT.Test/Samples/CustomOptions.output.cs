@@ -218,6 +218,7 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class SomeType : global::Dapper.TypeReader<global::SomeType>
 	{
 		private SomeType() { }

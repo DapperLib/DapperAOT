@@ -1,10 +1,5 @@
-// Input code has 2 diagnostics from 'Samples/DapperDb.input.cs':
-// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Output code has 3 diagnostics from 'Samples/DapperDb.input.cs':
+// Output code has 1 diagnostics from 'Samples/DapperDb.input.cs':
 // Samples/DapperDb.input.cs(98,45): error CS8795: Partial method 'DapperDb.ReadFortunesRows()' must have an implementation part because it has accessibility modifiers.
-// Samples/DapperDb.input.cs(136,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
-// Samples/DapperDb.input.cs(141,17): error CS0012: The type 'List<>' is defined in an assembly that is not referenced. You must add a reference to assembly 'System.Collections, Version=7.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.
 // Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs':
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/DapperDb.output.cs(138,35): error CS1061: 'string' does not contain a definition for 'Parameters' and no accessible extension method 'Parameters' accepting a first argument of type 'string' could be found (are you missing a using directive or an assembly reference?)
 
@@ -196,6 +191,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class World : global::Dapper.TypeReader<global::Dapper.Samples.DapperDbBenchmark.World>
 	{
 		private World() { }

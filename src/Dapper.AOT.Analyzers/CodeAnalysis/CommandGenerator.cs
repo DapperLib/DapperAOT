@@ -276,6 +276,7 @@ public sealed class CommandGenerator : ISourceGenerator
                 var members = BuildMembers(genType, context);
                 // if we have multiple types with the same name, we'll need to disambiguate them in our code
                 var readerName = materializers.GetMaterializerName(genType);
+                if (context.AllowUnsafe()) AddIfMissing(sb, "System.Runtime.CompilerServices.SkipLocalsInitAttribute", context, null);
                 sb.NewLine().Append(helperAccessibility).Append(" sealed class ").Append(readerName).Append(" : global::Dapper.TypeReader<").Append(genType).Append(">").Indent();
                 sb.NewLine().Append("private ").Append(readerName).Append("() { }");
                 sb.NewLine().Append("public static readonly ").Append(readerName).Append(" Instance = new();");
@@ -288,7 +289,7 @@ public sealed class CommandGenerator : ISourceGenerator
                     sb.DisableObsolete().NewLine().Append("switch (global::Dapper.Internal.InternalUtilities.NormalizedHash(columnName))").Indent();
                     foreach (var grp in members.GroupBy(x => x.Hash).OrderBy(x => x.Key))
                     {
-                        sb.NewLine().Append("case ").Append((int)grp.Key).Append("U:").Indent(false);
+                        sb.NewLine().Append("case ").Append(grp.Key).Append(':').Indent(false);
                         foreach (var el in grp)
                         {
                             sb.NewLine().Append("if (global::Dapper.Internal.InternalUtilities.NormalizedEquals(columnName, ").AppendVerbatimLiteral(InternalUtilities.Normalize(el.ColumnName)).Append(")) return ").Append(el.Token).Append(';');

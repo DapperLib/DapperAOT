@@ -1,10 +1,9 @@
 // Output code has 2 diagnostics from 'Samples/Basic.input.cs':
 // Samples/Basic.input.cs(14,24): error CS8795: Partial method 'Foo.ShouldIgnoreThis_NoAttribute(string)' must have an implementation part because it has accessibility modifiers.
 // Samples/Basic.input.cs(48,32): error CS8795: Partial method 'A<TRandom>.B.ShouldAlsoDetectThisInB(string)' must have an implementation part because it has accessibility modifiers.
-// Output code has 3 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(343,10): error CS0266: Cannot implicitly convert type 'long' to 'uint'. An explicit conversion exists (are you missing a cast?)
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(363,7): error CS0200: Property or indexer 'int?.HasValue' cannot be assigned to -- it is read only
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(366,7): error CS0200: Property or indexer 'int?.Value' cannot be assigned to -- it is read only
+// Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs':
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(365,7): error CS0200: Property or indexer 'int?.HasValue' cannot be assigned to -- it is read only
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Basic.output.cs(368,7): error CS0200: Property or indexer 'int?.Value' cannot be assigned to -- it is read only
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -319,6 +318,7 @@ namespace X.Y.Z
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class Customer : global::Dapper.TypeReader<global::X.Y.Z.Customer>
 	{
 		private Customer() { }
@@ -334,6 +334,7 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 			return obj;
 		}
 	}
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class Nullable : global::Dapper.TypeReader<int?>
 	{
 		private Nullable() { }
@@ -348,7 +349,7 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 				case 1113510858U:
 					if (global::Dapper.Internal.InternalUtilities.NormalizedEquals(columnName, @"value")) return 1;
 					break;
-				case -1729559200U:
+				case 2565408096U:
 					if (global::Dapper.Internal.InternalUtilities.NormalizedEquals(columnName, @"hasvalue")) return 0;
 					break;
 			}

@@ -137,8 +137,8 @@ namespace Dapper.AOT.Test
                    MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
                    MetadataReference.CreateFromFile(Assembly.Load("System.Data").Location),
                    MetadataReference.CreateFromFile(Assembly.Load("netstandard").Location),
+                   MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
 #endif
-                   MetadataReference.CreateFromFile(typeof(List<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(System.Data.SqlClient.SqlConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly.Location),

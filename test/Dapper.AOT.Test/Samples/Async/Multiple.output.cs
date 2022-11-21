@@ -17,20 +17,20 @@
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(835,54): error CS0117: 'TypeReader' does not contain a definition for 'RentSegment'
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(947,54): error CS0117: 'TypeReader' does not contain a definition for 'TryGetReader'
 // Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(948,54): error CS0117: 'TypeReader' does not contain a definition for 'RentSegment'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1028,21): error CS0534: '' does not implement inherited abstract member 'TypeReader<SomeType[]>.Read(DbDataReader, ReadOnlySpan<int>, int)'
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1028,21): error CS1001: Identifier expected
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1029,3): error CS1513: } expected
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1030,12): error CS8124: Tuple must contain at least two elements.
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1030,14): error CS1022: Type or namespace definition, or end-of-file expected
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1031,27): error CS0116: A namespace cannot directly contain members such as fields, methods or statements
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1031,36): error CS1525: Invalid expression term '='
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1031,36): error CS8803: Top-level statements must precede namespace and type declarations.
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1034,23): error CS0115: '<invalid-global-code>.GetToken(int, Type, bool)': no suitable method found to override
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1034,23): error CS0116: A namespace cannot directly contain members such as fields, methods or statements
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1037,38): error CS0115: '<invalid-global-code>.Read(DbDataReader, ReadOnlySpan<int>, int)': no suitable method found to override
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1039,29): error CS8752: The type 'SomeType[]' may not be used as the target type of new()
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1042,2): error CS1022: Type or namespace definition, or end-of-file expected
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1043,1): error CS1022: Type or namespace definition, or end-of-file expected
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1030,21): error CS0534: '' does not implement inherited abstract member 'TypeReader<SomeType[]>.Read(DbDataReader, ReadOnlySpan<int>, int)'
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1030,21): error CS1001: Identifier expected
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1031,3): error CS1513: } expected
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1032,12): error CS8124: Tuple must contain at least two elements.
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1032,14): error CS1022: Type or namespace definition, or end-of-file expected
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1033,27): error CS0116: A namespace cannot directly contain members such as fields, methods or statements
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1033,36): error CS1525: Invalid expression term '='
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1033,36): error CS8803: Top-level statements must precede namespace and type declarations.
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1036,23): error CS0115: '<invalid-global-code>.GetToken(int, Type, bool)': no suitable method found to override
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1036,23): error CS0116: A namespace cannot directly contain members such as fields, methods or statements
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1039,38): error CS0115: '<invalid-global-code>.Read(DbDataReader, ReadOnlySpan<int>, int)': no suitable method found to override
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1041,29): error CS8752: The type 'SomeType[]' may not be used as the target type of new()
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1044,2): error CS1022: Type or namespace definition, or end-of-file expected
+// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.CommandGenerator/Multiple.output.cs(1045,1): error CS1022: Type or namespace definition, or end-of-file expected
 
 #nullable enable
 //------------------------------------------------------------------------------
@@ -1044,6 +1044,7 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class SomeType : global::Dapper.TypeReader<global::SomeType>
 	{
 		private SomeType() { }
@@ -1059,6 +1060,7 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 			return obj;
 		}
 	}
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class  : global::Dapper.TypeReader<global::SomeType[]>
 	{
 		private () { }

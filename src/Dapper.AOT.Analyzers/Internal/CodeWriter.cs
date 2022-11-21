@@ -101,6 +101,12 @@ internal sealed class CodeWriter
         return this;
     }
 
+    internal CodeWriter Append(uint value)
+    {
+        Core.Append(value.ToString(CultureInfo.InvariantCulture)).Append('U');
+        return this;
+    }
+
     public CodeWriter NewLine()
     {
         _sb.AppendLine();

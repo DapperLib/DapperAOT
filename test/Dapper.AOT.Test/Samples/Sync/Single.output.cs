@@ -750,6 +750,7 @@ partial class Test
 
 namespace Dapper.Internal.__dapper__Run_TypeReaders
 {
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class SomeType : global::Dapper.TypeReader<global::SomeType>
 	{
 		private SomeType() { }
@@ -765,6 +766,7 @@ namespace Dapper.Internal.__dapper__Run_TypeReaders
 			return obj;
 		}
 	}
+	[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 	file sealed class Int32 : global::Dapper.TypeReader<int>
 	{
 		private Int32() { }
