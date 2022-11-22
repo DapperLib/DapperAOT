@@ -33,6 +33,11 @@ public sealed class CommandAttribute : Attribute
     public bool Annotate { get; set; } = true;
 
     /// <summary>
+    /// Indicate whether commands should be reused, if possible.
+    /// </summary>
+    public bool ReuseCommand { get; set; } = true;
+
+    /// <summary>
     /// Creates a new <see cref="CommandAttribute"/> instance.
     /// </summary>
     public CommandAttribute() { }

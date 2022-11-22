@@ -796,11 +796,21 @@ public sealed class CommandGenerator : ISourceGenerator
 
     const string LocalPrefix = "__dapper__";
 
-    static bool UseCommandField(string? identifier, bool commandTextAsLiteral)
+    static bool UseCommandField(IMethodSymbol method, string? identifier, bool commandTextAsLiteral)
     {
         if (!commandTextAsLiteral) return false; // only re-use fixed-text commands
         if (string.IsNullOrWhiteSpace(identifier)) return false; // needs an identifier
-
+        foreach (var attrib in method.GetAttributes()) // explicitly disallowed?
+        {
+            if (IsCommandAttribute(attrib.AttributeClass))
+            {
+                if (attrib.TryGetAttributeValue<bool>("ReuseCommand", out var rawBool))
+                {
+                    if (!rawBool) return false;
+                    break;
+                }
+            }
+        }
         // maps?
 
         return true;
@@ -831,7 +841,7 @@ public sealed class CommandGenerator : ISourceGenerator
 
         var location = GetLocation(method, out string? identifier);
         var allParametersBasic = !method.Parameters.Any(p => IsDictionary(p.Type, out _));
-        var commandField = allParametersBasic && UseCommandField(identifier, commandTextAsLiteral) ? ("s_" + LocalPrefix + "command_" + identifier) : null;
+        var commandField = allParametersBasic && UseCommandField(method, identifier, commandTextAsLiteral) ? ("s_" + LocalPrefix + "command_" + identifier) : null;
 
         sb.NewLine();
         if (commandField is not null)
@@ -1283,7 +1293,7 @@ public sealed class CommandGenerator : ISourceGenerator
         {
             sb.NewLine().Append("// execute reader");
             sb.NewLine().Append("const global::System.Data.CommandBehavior ").Append(LocalPrefix).Append("behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult");
-            if (!flags.Has(QueryFlags.DemandAtMostOneRow))
+            if (flags.Has(QueryFlags.IsSingle) && !flags.Has(QueryFlags.DemandAtMostOneRow))
             {   // if we don't need to check for a second row, can optimize
                 sb.Append(" | global::System.Data.CommandBehavior.SingleRow");
             }
@@ -1302,7 +1312,7 @@ public sealed class CommandGenerator : ISourceGenerator
             {
                 sb.Append(");");
             }
-            sb.NewLine().Append(LocalPrefix).Append("close = false; // performed via CommandBehavior");
+            sb.NewLine().Append(LocalPrefix).Append("close = false; // performed via CommandBehavior (if needed)");
             sb.NewLine();
         }
         static void ExecuteReaderSingle(CodeWriter sb, QueryFlags flags, ITypeSymbol itemType, string cancellationToken, MaterializerTracker materializers)
