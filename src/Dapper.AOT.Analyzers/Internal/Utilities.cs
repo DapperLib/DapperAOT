@@ -292,7 +292,7 @@ internal static class Utilities
         return ListStrategy.None;
     }
 
-    public static bool TryGetNearest<T>(ISymbol symbol, string memberName, Func<INamedTypeSymbol, bool> predicate, out T? value)
+    public static bool TryGetNearest<T>(this ISymbol symbol, string memberName, Func<INamedTypeSymbol, bool> predicate, out T? value)
     {
         static bool TryGetAttributeValue(ISymbol? symbol, string memberName, Func<INamedTypeSymbol, bool> predicate, out T? value)
         {

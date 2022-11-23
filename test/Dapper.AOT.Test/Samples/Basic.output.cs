@@ -58,7 +58,7 @@ partial class Foo
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
-			__dapper__close = false; // performed via CommandBehavior
+			__dapper__close = false; // performed via CommandBehavior (if needed)
 
 			// process single row
 			int? __dapper__result;
@@ -106,7 +106,7 @@ partial class Foo
 				typed0.InitialLONGFetchSize = -1;
 			}
 			command.CommandType = global::System.Data.CommandType.Text;
-			command.CommandText = @"/* Foo.ShouldDetectThis, Samples/Basic.input.cs #11 */ select * from Customers where Region = @region";
+			command.CommandText = @"select * from Customers where Region = @region";
 			var args = command.Parameters;
 
 			var p = command.CreateParameter();
@@ -167,7 +167,7 @@ namespace X.Y.Z
 					// execute reader
 					const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 					__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
-					__dapper__close = false; // performed via CommandBehavior
+					__dapper__close = false; // performed via CommandBehavior (if needed)
 
 					// process single row
 					global::X.Y.Z.Customer __dapper__result;
@@ -210,7 +210,7 @@ namespace X.Y.Z
 				{
 					var command = connection.CreateCommand();
 					command.CommandType = global::System.Data.CommandType.Text;
-					command.CommandText = @"/* B.ViaDapper, Samples/Basic.input.cs #32 */ select * from Customers where Region = @region";
+					command.CommandText = @"select * from Customers where Region = @region";
 					var args = command.Parameters;
 
 					var p = command.CreateParameter();
@@ -265,7 +265,7 @@ namespace X.Y.Z
 					// execute reader
 					const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 					__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
-					__dapper__close = false; // performed via CommandBehavior
+					__dapper__close = false; // performed via CommandBehavior (if needed)
 
 					// process single row
 					global::X.Y.Z.Customer __dapper__result;
@@ -310,7 +310,7 @@ namespace X.Y.Z
 					command.BindByName = true;
 					command.InitialLONGFetchSize = -1;
 					command.CommandType = global::System.Data.CommandType.Text;
-					command.CommandText = @"/* B.ViaOracle, Samples/Basic.input.cs #35 */ select * from Customers where Region = @region";
+					command.CommandText = @"select * from Customers where Region = @region";
 					var args = command.Parameters;
 
 					var p = command.CreateParameter();

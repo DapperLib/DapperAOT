@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 
 namespace Dapper.Samples.DapperDbBenchmark
 {
+    [Annotate(false), ReuseCommand(false)]
     public partial class DapperDb : IDb
     {
         private static readonly Comparison<World> WorldSortComparison = (a, b) => a.Id.CompareTo(b.Id);
@@ -91,13 +92,13 @@ namespace Dapper.Samples.DapperDbBenchmark
 
         public Task<World> LoadSingleQueryRow() => ReadSingleRow(NextRandom());
 
-        [Command("SELECT id, randomnumber FROM world WHERE id = @id", Annotate = false, ReuseCommand = false)]
+        [Command("SELECT id, randomnumber FROM world WHERE id = @id")]
         private partial Task<World> ReadSingleRow(int id, DbConnection? db = null);
 
-        [Command("SELECT id, message FROM fortune", Annotate = false, ReuseCommand = false)]
+        [Command("SELECT id, message FROM fortune")]
         private partial Task<List<Fortune>> ReadFortunesRows();
 
-        [Command(Annotate = false)]
+        [Command]
         private partial Task ExecuteBatch([Command] string command, Dictionary<string, int> parameters, DbConnection? db);
     }
 

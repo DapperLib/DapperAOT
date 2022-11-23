@@ -14,9 +14,6 @@ namespace Dapper.Samples.DapperDbBenchmark
 	partial class DapperDb
 	{
 
-		// available inactive command for ReadSingleRow (interlocked)
-		private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_DapperDb_input_cs_ReadSingleRow_94;
-
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		private async partial global::System.Threading.Tasks.Task<global::Dapper.Samples.DapperDbBenchmark.World> ReadSingleRow(int id, global::System.Data.Common.DbConnection? db)
@@ -44,14 +41,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 				}
 
 				// prepare command (excluding parameter values)
-				if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_DapperDb_input_cs_ReadSingleRow_94, null)) is null)
-				{
-					__dapper__command = __dapper__CreateCommand(__dapper__connection!);
-				}
-				else
-				{
-					__dapper__command.Connection = __dapper__connection;
-				}
+				__dapper__command = __dapper__CreateCommand(__dapper__connection!);
 
 				// assign parameter values
 				var __dapper__args = __dapper__command.Parameters;
@@ -62,7 +52,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 				// execute reader
 				const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 				__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
-				__dapper__close = false; // performed via CommandBehavior
+				__dapper__close = false; // performed via CommandBehavior (if needed)
 
 				// process single row
 				global::Dapper.Samples.DapperDbBenchmark.World __dapper__result;
@@ -88,9 +78,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 				if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 				if (__dapper__command is not null)
 				{
-					__dapper__command.Connection = default;
-					__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_DapperDb_input_cs_ReadSingleRow_94, __dapper__command);
-					if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
+					await __dapper__command.DisposeAsync().ConfigureAwait(false);
 				}
 				if (__dapper__connection is not null)
 				{
@@ -125,9 +113,6 @@ namespace Dapper.Samples.DapperDbBenchmark
 		}
 
 
-		// available inactive command for ReadFortunesRows (interlocked)
-		private static global::System.Data.Common.DbCommand? s___dapper__command_Samples_DapperDb_input_cs_ReadFortunesRows_97;
-
 		[global::System.Diagnostics.DebuggerNonUserCodeAttribute]
 		[global::System.Runtime.CompilerServices.SkipLocalsInitAttribute]
 		private async partial global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<global::Dapper.Samples.DapperDbBenchmark.Fortune>> ReadFortunesRows()
@@ -152,19 +137,12 @@ namespace Dapper.Samples.DapperDbBenchmark
 				}
 
 				// prepare command (excluding parameter values)
-				if ((__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_DapperDb_input_cs_ReadFortunesRows_97, null)) is null)
-				{
-					__dapper__command = __dapper__CreateCommand(__dapper__connection!);
-				}
-				else
-				{
-					__dapper__command.Connection = __dapper__connection;
-				}
+				__dapper__command = __dapper__CreateCommand(__dapper__connection!);
 
 				// execute reader
-				const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
+				const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult;
 				__dapper__reader = await __dapper__command.ExecuteReaderAsync(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior, global::System.Threading.CancellationToken.None).ConfigureAwait(false);
-				__dapper__close = false; // performed via CommandBehavior
+				__dapper__close = false; // performed via CommandBehavior (if needed)
 
 				// process multiple rows
 				__dapper__result = new global::System.Collections.Generic.List<global::Dapper.Samples.DapperDbBenchmark.Fortune>();
@@ -193,9 +171,7 @@ namespace Dapper.Samples.DapperDbBenchmark
 				if (__dapper__reader is not null) await __dapper__reader.DisposeAsync().ConfigureAwait(false);
 				if (__dapper__command is not null)
 				{
-					__dapper__command.Connection = default;
-					__dapper__command = global::System.Threading.Interlocked.Exchange(ref s___dapper__command_Samples_DapperDb_input_cs_ReadFortunesRows_97, __dapper__command);
-					if (__dapper__command is not null) await __dapper__command.DisposeAsync().ConfigureAwait(false);
+					await __dapper__command.DisposeAsync().ConfigureAwait(false);
 				}
 				if (__dapper__connection is not null)
 				{

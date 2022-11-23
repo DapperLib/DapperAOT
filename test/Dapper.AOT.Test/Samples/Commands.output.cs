@@ -42,9 +42,9 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute reader
-			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
+			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
-			__dapper__close = false; // performed via CommandBehavior
+			__dapper__close = false; // performed via CommandBehavior (if needed)
 
 			// process multiple rows
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
@@ -144,9 +144,9 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute reader
-			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
+			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
-			__dapper__close = false; // performed via CommandBehavior
+			__dapper__close = false; // performed via CommandBehavior (if needed)
 
 			// process multiple rows
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
@@ -256,9 +256,9 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute reader
-			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
+			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
-			__dapper__close = false; // performed via CommandBehavior
+			__dapper__close = false; // performed via CommandBehavior (if needed)
 
 			// process multiple rows
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
@@ -309,7 +309,7 @@ partial class Test
 				typed0.InitialLONGFetchSize = -1;
 			}
 			command.CommandType = global::System.Data.CommandType.Text;
-			command.CommandText = @"/* Test.ImplicitCommandText, Samples/Commands.input.cs #14 */ this is CommandText";
+			command.CommandText = @"this is CommandText";
 			var args = command.Parameters;
 
 			var p = command.CreateParameter();
@@ -370,9 +370,9 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute reader
-			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
+			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
-			__dapper__close = false; // performed via CommandBehavior
+			__dapper__close = false; // performed via CommandBehavior (if needed)
 
 			// process multiple rows
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();
@@ -484,9 +484,9 @@ partial class Test
 #pragma warning restore CS0618
 
 			// execute reader
-			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
+			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
-			__dapper__close = false; // performed via CommandBehavior
+			__dapper__close = false; // performed via CommandBehavior (if needed)
 
 			// process multiple rows
 			__dapper__result = new global::System.Collections.Generic.List<global::SomeType>();

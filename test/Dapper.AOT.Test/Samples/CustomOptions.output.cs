@@ -55,7 +55,7 @@ partial class Test
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
-			__dapper__close = false; // performed via CommandBehavior
+			__dapper__close = false; // performed via CommandBehavior (if needed)
 
 			// process single row
 			global::SomeType __dapper__result;
@@ -161,7 +161,7 @@ partial class Test
 			// execute reader
 			const global::System.Data.CommandBehavior __dapper__behavior = global::System.Data.CommandBehavior.SequentialAccess | global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SingleRow;
 			__dapper__reader = __dapper__command.ExecuteReader(__dapper__close ? (__dapper__behavior | global::System.Data.CommandBehavior.CloseConnection) : __dapper__behavior);
-			__dapper__close = false; // performed via CommandBehavior
+			__dapper__close = false; // performed via CommandBehavior (if needed)
 
 			// process single row
 			global::SomeType __dapper__result;
