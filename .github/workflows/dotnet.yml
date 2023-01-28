@@ -23,7 +23,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 6.0.x # note: 5.0 lacks msbuild for simple reproducible-builds
+        dotnet-version: 7.0.x # note: the tests use .NET 7.0
         include-prerelease: true
 
     - name: Restore dependencies
@@ -33,7 +33,7 @@ jobs:
       run: dotnet build Build.csproj --no-restore -c Release
 
     - name: Test
-      run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net6.0
+      run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net7.0
 
     - name: Pack
       if: ${{ success() && !github.base_ref }}
