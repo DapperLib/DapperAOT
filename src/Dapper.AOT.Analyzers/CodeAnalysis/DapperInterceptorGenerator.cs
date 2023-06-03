@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Dapper.Internal;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
@@ -16,7 +17,7 @@ namespace Dapper.CodeAnalysis;
 /// Analyzes source for Dapper syntax and generates suitable interceptors where possible.
 /// </summary>
 [Generator(LanguageNames.CSharp)]
-public sealed class DapperGenerator : IIncrementalGenerator
+public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 {
     /// <summary>
     /// Provide log feedback.
@@ -232,7 +233,7 @@ public sealed class DapperGenerator : IIncrementalGenerator
             // nothing to generate
             return;
         }
-        var sb = new StringBuilder().AppendLine("file static class DapperGeneratedInterceptors").AppendLine("{");
+        var sb = new CodeWriter().Append("file static class DapperGeneratedInterceptors").Indent().NewLine();
         int methodIndex = 0;
         foreach (var grp in state.Nodes.GroupBy(x => x.Group(), CommonComparer.Instance))
         {
@@ -241,7 +242,8 @@ public sealed class DapperGenerator : IIncrementalGenerator
             {
                 var loc = op.Location.GetLineSpan();
                 var start = loc.StartLinePosition;
-                sb.AppendLine($"    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute({Verbatim(loc.Path)}, {start.Line + 1}, {start.Character + 1})]");
+                sb.Append("[global::System.Runtime.CompilerServices.InterceptsLocationAttribute(")
+                    .AppendVerbatimLiteral(loc.Path).Append(", ").Append(start.Line + 1).Append(", ").Append(start.Character + 1).Append(")]").NewLine();
                 usageCount++;
             }
 
@@ -251,7 +253,7 @@ public sealed class DapperGenerator : IIncrementalGenerator
             }
 
             var (flags, method, parameterType) = grp.Key;
-            sb.Append($"    internal static {method.ReturnType} {method.Name}{methodIndex++}(");
+            sb.Append("internal static ").Append(method.ReturnType).Append(" ").Append(method.Name).Append(methodIndex++).Append("(");
             var parameters = method.Parameters;
             for (int i = 0; i < parameters.Length; i++)
             {
@@ -259,20 +261,20 @@ public sealed class DapperGenerator : IIncrementalGenerator
                 else if (method.IsExtensionMethod) sb.Append("this ");
                 sb.Append(parameters[i].Type).Append(" ").Append(parameters[i].Name);
             }
-            sb.AppendLine(")").AppendLine("    {");
-            sb.AppendLine($"        // {flags}");
+            sb.Append(")").Indent().NewLine();
+            sb.Append("// ").Append(flags.ToString()).NewLine();
             if (HasAny(flags, OperationFlags.HasParameters))
             {
-                sb.AppendLine($"        // takes parameter: {parameterType}");
+                sb.Append("// takes parameter: ").Append(parameterType).NewLine();
             }
             if (HasAny(flags, OperationFlags.TypedResult))
             {
-                sb.AppendLine($"        // returns data: {grp.First().ResultType}");
+                sb.Append("// returns data: ").Append(grp.First().ResultType).NewLine();
             }
-            sb.AppendLine("        throw new global::System.NotImplementedException(\"lower your expectations\");").AppendLine("    }").AppendLine();
+            sb.Append("throw new global::System.NotImplementedException(\"lower your expectations\");").Outdent().NewLine();
         }
-        sb.AppendLine("}");
-        ctx.AddSource($"{state.Compilation.AssemblyName ?? "package"}.generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
+        sb.Outdent();
+        ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
 
         static string Verbatim(string value) => value is null ? "null"
             : SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(value)).ToFullString();
@@ -298,7 +300,7 @@ public sealed class DapperGenerator : IIncrementalGenerator
 
         public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType) Group() => new(Flags, Method, ParameterType);
 
-        
+
     }
     private sealed class CommonComparer : IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType)>, IComparer<Location>
     {

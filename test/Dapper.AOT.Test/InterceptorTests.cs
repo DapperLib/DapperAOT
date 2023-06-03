@@ -30,7 +30,7 @@ public class InterceptorTests : GeneratorTestBase
 #endif
         var expected = File.Exists(outputPath) ? File.ReadAllText(outputPath) : "";
         var sb = new StringBuilder();
-        var result = Execute<DapperGenerator>(sourceText, sb, fileName: path, initializer: g =>
+        var result = Execute<DapperInterceptorGenerator>(sourceText, sb, fileName: path, initializer: g =>
         {
             g.Log += (severity, message) => Log($"{severity}: {message}");
         });

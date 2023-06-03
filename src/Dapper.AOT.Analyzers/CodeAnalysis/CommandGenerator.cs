@@ -374,7 +374,7 @@ public sealed class CommandGenerator : ISourceGenerator
         }
     }
 
-    private (string ColumnName, uint Hash, int Token, ISymbol Member, ITypeSymbol Type)[] BuildMembers(ITypeSymbol genType, GeneratorExecutionContext context)
+    private (string ColumnName, uint Hash, int Token, ISymbol Member, ITypeSymbol Type)[] BuildMembers(ITypeSymbol genType, GeneratorExecutionContext _)
     {
         var genMembers = genType.GetMembers();
         var members = new List<(string ColumnName, uint Hash, int Token, ISymbol Member, ITypeSymbol Type)>(genMembers.Length);

@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Globalization;
 using System.Text;
@@ -29,17 +30,22 @@ internal sealed class CodeWriter
         set => _sb.Length = value;
     }
     private StringBuilder Core
-		{
+    {
         get
         {
             if (_isLineEmpty)
             {
-                _sb.Append('\t', _indent);
+                for (int i = 0; i < _indent; i++)
+                {
+                    _sb.Append(Tab);
+                }
                 _isLineEmpty = false;
             }
             return _sb;
         }
-		}
+    }
+
+    public string Tab { get; set; } = "    "; // "\t"
 
     public CodeWriter Append(string? value)
     {
@@ -51,7 +57,7 @@ internal sealed class CodeWriter
     }
 
     public CodeWriter Append(ITypeSymbol? value)
-        => Append(value?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+        => Append(value?.ToDisplayString(value.IsAnonymousType ? SymbolDisplayFormat.MinimallyQualifiedFormat : SymbolDisplayFormat.FullyQualifiedFormat));
 
     public CodeWriter AppendEnumLiteral(ITypeSymbol enumType, int value)
 		{
@@ -66,11 +72,8 @@ internal sealed class CodeWriter
         return Append("(").Append(enumType).Append(")").Append(value).Append("); ");
 
     }
-    public CodeWriter AppendVerbatimLiteral(string? value)
-    {
-        if (value is null) return Append("null");
-        return Append("@\"").Append(value.Replace("\"", "\"\"")).Append("\"");
-    }
+    public CodeWriter AppendVerbatimLiteral(string? value) => Append(
+        value is null ? "null" : SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(value)).ToFullString());
     public CodeWriter Append(char value)
     {
         Core.Append(value);
