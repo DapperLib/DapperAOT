@@ -4,12 +4,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis.Text;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
 
@@ -63,8 +60,12 @@ public sealed class DapperGenerator : IIncrementalGenerator
         {
             return null;
         }
-
-        var loc = op.Syntax.GetLocation();
+        Location? loc = null;
+        if (op.Syntax.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
+        {
+            loc = ma.ChildNodes().Skip(1).FirstOrDefault()?.GetLocation();
+        }
+        loc ??= op.Syntax.GetLocation();
         if (loc is null)
         {
             Log?.Invoke(DiagnosticSeverity.Hidden, $"No location found; cannot intercept");
