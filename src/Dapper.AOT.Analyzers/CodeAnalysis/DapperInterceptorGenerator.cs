@@ -271,13 +271,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             {
                 sb.Append("// returns data: ").Append(grp.First().ResultType).NewLine();
             }
-            sb.Append("throw new global::System.NotImplementedException(\"lower your expectations\");").Outdent().NewLine();
+            sb.Append("throw new global::System.NotImplementedException(\"lower your expectations\");").Outdent().NewLine().NewLine();
         }
         sb.Outdent();
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
-
-        static string Verbatim(string value) => value is null ? "null"
-            : SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(value)).ToFullString();
     }
 
     sealed class SourceState
