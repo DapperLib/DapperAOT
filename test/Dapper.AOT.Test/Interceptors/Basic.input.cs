@@ -6,7 +6,10 @@ Customer customer = null!;
 new NotDapper().Execute("abc");
 DbConnection foo = null!;
 foo.Execute("abc");
+SqlMapper.Execute(foo, "abc");
+
 await foo.ExecuteAsync("abc");
+await SqlMapper.ExecuteAsync(foo, "abc");
 
 await foo.ExecuteAsync("abc", customer);
 

@@ -2,20 +2,22 @@
 file static class DapperGeneratedInterceptors
 {
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 8, 5)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 9, 11)]
     internal static int Execute0(this System.Data.IDbConnection cnn, string sql, object param, System.Data.IDbTransaction transaction, int? commandTimeout, System.Data.CommandType? commandType)
     {
         // Execute
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 9, 11)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 11, 11)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 12, 17)]
     internal static System.Threading.Tasks.Task<int> ExecuteAsync1(this System.Data.IDbConnection cnn, string sql, object param, System.Data.IDbTransaction transaction, int? commandTimeout, System.Data.CommandType? commandType)
     {
         // Execute, Async
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 11, 11)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 14, 11)]
     internal static System.Threading.Tasks.Task<int> ExecuteAsync2(this System.Data.IDbConnection cnn, string sql, object param, System.Data.IDbTransaction transaction, int? commandTimeout, System.Data.CommandType? commandType)
     {
         // Execute, Async, HasParameters
@@ -23,7 +25,7 @@ file static class DapperGeneratedInterceptors
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 13, 5)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 16, 5)]
     internal static System.Collections.Generic.IEnumerable<int> Query3(this System.Data.IDbConnection cnn, string sql, object param, System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered
@@ -31,7 +33,7 @@ file static class DapperGeneratedInterceptors
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 14, 11)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 17, 11)]
     internal static System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<int>> QueryAsync4(this System.Data.IDbConnection cnn, string sql, object param, System.Data.IDbTransaction transaction, int? commandTimeout, System.Data.CommandType? commandType)
     {
         // Query, Async, TypedResult, Buffered
@@ -39,8 +41,8 @@ file static class DapperGeneratedInterceptors
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 16, 11)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 17, 11)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 19, 11)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 20, 11)]
     internal static System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<int>> QueryAsync5(this System.Data.IDbConnection cnn, string sql, object param, System.Data.IDbTransaction transaction, int? commandTimeout, System.Data.CommandType? commandType)
     {
         // Query, Async, TypedResult, HasParameters, Buffered
