@@ -240,7 +240,7 @@ public sealed class DapperGenerator : IIncrementalGenerator
             {
                 var loc = op.Location.GetLineSpan();
                 var start = loc.StartLinePosition;
-                sb.AppendLine($"    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute({Verbatim(loc.Path)}, {start.Line}, {start.Character})]");
+                sb.AppendLine($"    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute({Verbatim(loc.Path)}, {start.Line + 1}, {start.Character + 1})]");
                 usageCount++;
             }
 
