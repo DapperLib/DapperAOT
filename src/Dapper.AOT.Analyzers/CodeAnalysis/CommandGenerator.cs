@@ -570,10 +570,7 @@ public sealed class CommandGenerator : ISourceGenerator
                 connection = connection + " ?? " + transaction + "?." + nameof(IDbTransaction.Connection);
             }
         }
-        if (cancellationToken is null)
-        {
-            cancellationToken = "global::System.Threading.CancellationToken.None";
-        }
+        cancellationToken ??= "global::System.Threading.CancellationToken.None";
 
         if (connection is not null || (connectionFactory is not null && connectionString is not null))
         {
@@ -1504,7 +1501,7 @@ public sealed class CommandGenerator : ISourceGenerator
             if (IsCommandAttribute(attrib.AttributeClass))
             {
                 attrib.TryGetAttributeValue<string>("CommandText", out var commandText);
-                if (commandText is null) commandText = "";
+                commandText ??= "";
 
                 if (attrib.TryGetAttributeValue<int>("CommandType", out var rawValue))
                 {

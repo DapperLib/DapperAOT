@@ -25,13 +25,15 @@ namespace Dapper.AOT.Test
             => _log = log;
 
 #if !NET48
-        [return: NotNullIfNotNull("message")]
+        [return: NotNullIfNotNull(nameof(message))]
 #endif
         protected string? Log(string? message)
         {
             if (message is not null) _log?.WriteLine(message);
             return message;
         }
+
+        protected static string? GetOriginCodeLocation([CallerFilePath] string? path = null) => path;
 
         // input from https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#unit-testing-of-generators
 
@@ -40,7 +42,7 @@ namespace Dapper.AOT.Test
             [CallerMemberName] string? name = null,
             string? fileName = null,
             Action<T>? initializer = null
-            ) where T : class, ISourceGenerator, new()
+            ) where T : class, new()
         {
             void Output(string message)
             {
@@ -61,9 +63,14 @@ namespace Dapper.AOT.Test
             initializer?.Invoke(generator);
 
             ShowDiagnostics("Input code", inputCompilation, diagnosticsTo, "CS8795", "CS1701", "CS1702");
-            
+
             // Create the driver that will control the generation, passing in our generator
-            GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+            GeneratorDriver driver = generator switch
+            {
+                IIncrementalGenerator incremental => CSharpGeneratorDriver.Create(incremental),
+                ISourceGenerator basic => CSharpGeneratorDriver.Create(basic),
+                _ => throw new ArgumentException("Generator must implement IIncrementalGenerator or ISourceGenerator"),
+            };
 
             // Run the generation pass
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)
@@ -154,6 +161,7 @@ namespace Dapper.AOT.Test
                    MetadataReference.CreateFromFile(typeof(PooledValueTask).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Span<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(IgnoreDataMemberAttribute).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
                },
                options: new CSharpCompilationOptions(OutputKind.ConsoleApplication, allowUnsafe: true));
     }

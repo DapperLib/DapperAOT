@@ -13,6 +13,13 @@
         <None Include="Samples/**/*.input.cs" CopyToOutputDirectory="PreserveNewest" />
         <None Include="Samples/**/*.output.cs" CopyToOutputDirectory="PreserveNewest" />
         <None Include="Samples/**/*.output.netfx.cs" CopyToOutputDirectory="PreserveNewest" />
+
+        <Compile Remove="Interceptors/**/*.input.cs" />
+        <Compile Remove="Interceptors/**/*.output.cs" />
+        <Compile Remove="Interceptors/**/*.output.netfx.cs" />
+        <None Include="Interceptors/**/*.input.cs" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="Interceptors/**/*.output.cs" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="Interceptors/**/*.output.netfx.cs" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" Version="2.0.123" />
@@ -35,5 +42,10 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.4.0" />
         <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
         <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Include="Interceptors\Basic.input.cs">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 </Project>
