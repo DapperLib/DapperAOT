@@ -1,4 +1,5 @@
-﻿using Dapper;
+﻿#pragma warning disable CA1050, CA1822
+using Dapper;
 using System.Data.Common;
 using System.Threading.Tasks;
 
@@ -28,6 +29,8 @@ public static class Foo
     class Customer
     {
         public int X { get; set; }
-        public string Y;
+        public string? Y;
     }
 }
+
+
