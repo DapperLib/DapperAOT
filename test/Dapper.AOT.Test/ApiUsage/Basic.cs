@@ -24,9 +24,11 @@ public static class Foo
 
         await foo.QueryAsync<int>("abc", new { Foo = 12, bar });
         await foo.QueryAsync<int>("def", new { Foo = 12, bar });
+
+        foo.QueryFirst<Customer>("def", new { Foo = 12, bar });
     }
     class NotDapper { public void Execute(string _) { } }
-    class Customer
+    public class Customer
     {
         public int X { get; set; }
         public string? Y;

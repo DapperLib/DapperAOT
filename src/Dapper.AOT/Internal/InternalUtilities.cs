@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Buffers;
 using System.ComponentModel;
 using System.Data;
-using System.Data.Common;
 using System.Linq;
 
 namespace Dapper.Internal;
@@ -17,8 +15,6 @@ namespace Dapper.Internal;
 [Obsolete(InternalUtilities.ObsoleteWarning)]
 public static partial class InternalUtilities
 {
-   
-
     internal const string ObsoleteWarning = "This type is not intended for public consumption, and can change without warning.";
 
     static readonly object[] s_BoxedInt32 = new object[] { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };

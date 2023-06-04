@@ -7,14 +7,13 @@
         <WarningsAsErrors>true</WarningsAsErrors>
         <AllowUnsafeBlocks Condition="'$(TargetFramework)'=='net6.0'">true</AllowUnsafeBlocks>
         <Nullable>enable</Nullable>
-        <LangVersion>10</LangVersion>
-        <AllowUnsafeBlocks Condition="'$(TargetFramework)'=='net48' or '$(TargetFramework)'=='netstandard2.0'">true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="System.Memory" Version="4.5.5" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
         <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
-
+        <PackageReference Include="Dapper" Version="2.0.123" />
+        
         <None Include="../Dapper.AOT.Analyzers/bin/Release/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
     </ItemGroup>
 </Project>

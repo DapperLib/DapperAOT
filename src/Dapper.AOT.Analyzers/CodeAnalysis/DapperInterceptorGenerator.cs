@@ -43,7 +43,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 Log?.Invoke(DiagnosticSeverity.Info, $"Discovered possible execution: {node}");
                 return true;
             }
-            if (name.StartsWith("Query<") || name.StartsWith("QueryAsync<"))
+            if (name.StartsWith("Query<") || name.StartsWith("QueryAsync<")
+                || name.StartsWith("QueryFirst<") || name.StartsWith("QueryFirstAsync<")
+                || name.StartsWith("QuerySingle<") || name.StartsWith("QuerySingleAsync<")
+                )
             {
                 Log?.Invoke(DiagnosticSeverity.Info, $"Discovered possible <T> query: {node}");
                 return true;
@@ -202,6 +205,14 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 case "QueryAsync":
                     flags |= OperationFlags.Query;
                     return method.Arity == 1;
+                case "QueryFirst":
+                case "QueryFirstAsync":
+                    flags |= OperationFlags.First;
+                    goto case "Query";
+                case "QuerySingle":
+                case "QuerySingleAsync":
+                    flags |= OperationFlags.Single;
+                    goto case "Query";
                 case "Execute":
                 case "ExecuteAsync":
                     flags |= OperationFlags.Execute;
@@ -224,6 +235,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         TypedResult = 1 << 3,
         HasParameters = 1 << 4,
         Buffered = 1 << 5,
+        First = 1 << 6,
+        Single = 1 << 7,
     }
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
@@ -273,7 +286,15 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             }
             sb.Append("throw new global::System.NotImplementedException(\"lower your expectations\");").Outdent().NewLine().NewLine();
         }
-        sb.Outdent();
+        // used for convenience
+        sb.NewLine().Append("private static object DBNull => global::System.DBNull.Value;").Outdent();
+
+        // we need an accessible [InterceptsLocation] - if not; add our own in the generated code
+        var attrib = state.Compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute");
+        if (attrib is null || attrib.DeclaredAccessibility != Accessibility.Public)
+        {
+            sb.NewLine().Append(Resources.ReadString("Dapper.InterceptsLocationAttribute.cs"));
+        }
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
     }
 

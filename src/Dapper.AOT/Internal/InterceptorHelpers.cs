@@ -3,9 +3,8 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace Dapper.Internal;
 
@@ -16,9 +15,6 @@ namespace Dapper.Internal;
 /// Utilities to assist with interceptor AOT implementations
 /// </summary>
 [Obsolete("Not intended for external use; this API can change at an time")]
-#if NET6_0_OR_GREATER
-[System.Runtime.CompilerServices.SkipLocalsInit]
-#endif
 public class InterceptorHelpers
 {
     /// <summary>Identify column tokens from a reader</summary>
@@ -31,26 +27,30 @@ public class InterceptorHelpers
     /// <summary>
     /// Perform a synchronous buffered query
     /// </summary>
-    public static List<TResult> QueryBuffered<TResult, TRawArgs, TArgs>(DbConnection connection,
-        object? rawArgs, string sql, int? timeout, CommandBehavior behavior,
+    public static List<TResult> QueryBuffered<TResult, TRawArgs, TArgs>(
+        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
         Func<TRawArgs> unused,
         Func<TRawArgs?, TArgs> argsParser,
         Action<DbCommand, TArgs> commandBuilder,
-        ColumnTokenizer columnTokenizer,
-        RowParser<TResult> rowReader)
+        ColumnTokenizer? columnTokenizer,
+        RowParser<TResult>? rowReader)
     {
         bool closeConn = false;
         DbCommand? cmd = null;
         DbDataReader? reader = null;
         int[]? leased = null;
+        CommandBehavior behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
         try
         {
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
                 closeConn = true;
+                behavior |= CommandBehavior.CloseConnection;
             }
             cmd = connection.CreateCommand();
+            cmd.Connection = connection;
+            cmd.Transaction = transaction;
             cmd.CommandText = sql;
             if (timeout is not null)
             {
@@ -58,18 +58,44 @@ public class InterceptorHelpers
             }
             commandBuilder.Invoke(cmd, argsParser((TRawArgs?)rawArgs));
             reader = cmd.ExecuteReader(behavior);
+            closeConn = false; // handled by CommandBehavior.CloseConnection
+
             var results = new List<TResult>();
             if (reader.Read())
             {
-                Span<int> readWriteTokens = reader.FieldCount <= MAX_STACK_TOKENS ? stackalloc int[MAX_STACK_TOKENS] : (leased = ArrayPool<int>.Shared.Rent(reader.FieldCount));
-                readWriteTokens = readWriteTokens.Slice(0, reader.FieldCount);
-                columnTokenizer(reader, readWriteTokens, 0);
-                ReadOnlySpan<int> readOnlyTokens = readWriteTokens;
-                do
+                var fieldCount = reader.FieldCount;
+                if (columnTokenizer is null | fieldCount == 0)
                 {
-                    results.Add(rowReader(reader, readOnlyTokens, 0));
+                    if (rowReader is null)
+                    {
+                        do
+                        {
+                            results.Add(reader.GetFieldValue<TResult>(0));
+                        }
+                        while (reader.Read());
+                    }
+                    else
+                    {
+                        ReadOnlySpan<int> readOnlyTokens = default;
+                        do
+                        {
+                            results.Add(rowReader(reader, readOnlyTokens, 0));
+                        }
+                        while (reader.Read());
+                    }
                 }
-                while (reader.Read());
+                else
+                {
+                    var readWriteTokens = fieldCount <= MAX_STACK_TOKENS ? stackalloc int[MAX_STACK_TOKENS] : (leased = ArrayPool<int>.Shared.Rent(fieldCount));
+                    readWriteTokens = readWriteTokens.Slice(0, fieldCount);
+                    columnTokenizer!(reader, readWriteTokens, 0);
+                    ReadOnlySpan<int> readOnlyTokens = readWriteTokens;
+                    do
+                    {
+                        results.Add(rowReader!(reader, readOnlyTokens, 0));
+                    }
+                    while (reader.Read());
+                }
             }
             // consume entire results (avoid unobserved TDS error messages)
             while (reader.NextResult()) { }
@@ -90,6 +116,165 @@ public class InterceptorHelpers
         }
     }
 
+    /// <summary>
+    /// Perform a synchronous first-row query
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TResult QueryFirst<TResult, TRawArgs, TArgs>(
+        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
+        Func<TRawArgs> _,
+        Func<TRawArgs?, TArgs> argsParser,
+        Action<DbCommand, TArgs> commandBuilder,
+        ColumnTokenizer? columnTokenizer,
+        RowParser<TResult>? rowReader)
+        => QueryOneRow(connection, sql, rawArgs, transaction, timeout, OneRowFlags.ThrowIfNone,
+            argsParser, commandBuilder, columnTokenizer, rowReader);
+
+    /// <summary>
+    /// Perform a synchronous first-row query
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TResult QueryFirstOrDefault<TResult, TRawArgs, TArgs>(
+        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
+        Func<TRawArgs> _,
+        Func<TRawArgs?, TArgs> argsParser,
+        Action<DbCommand, TArgs> commandBuilder,
+        ColumnTokenizer? columnTokenizer,
+        RowParser<TResult>? rowReader)
+        => QueryOneRow(connection, sql, rawArgs, transaction, timeout, OneRowFlags.None,
+            argsParser, commandBuilder, columnTokenizer, rowReader);
+
+    /// <summary>
+    /// Perform a synchronous single-row query
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TResult QuerySingle<TResult, TRawArgs, TArgs>(
+        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
+        Func<TRawArgs> _,
+        Func<TRawArgs?, TArgs> argsParser,
+        Action<DbCommand, TArgs> commandBuilder,
+        ColumnTokenizer? columnTokenizer,
+        RowParser<TResult>? rowReader)
+        => QueryOneRow(connection, sql, rawArgs, transaction, timeout, OneRowFlags.ThrowIfNone | OneRowFlags.ThrowIfMultiple,
+            argsParser, commandBuilder, columnTokenizer, rowReader);
+
+
+    /// <summary>
+    /// Perform a synchronous single-row query
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TResult QuerySingleOrDefault<TResult, TRawArgs, TArgs>(
+        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
+        Func<TRawArgs> _,
+        Func<TRawArgs?, TArgs> argsParser,
+        Action<DbCommand, TArgs> commandBuilder,
+        ColumnTokenizer? columnTokenizer,
+        RowParser<TResult>? rowReader)
+        => QueryOneRow(connection, sql, rawArgs, transaction, timeout, OneRowFlags.ThrowIfMultiple,
+            argsParser, commandBuilder, columnTokenizer, rowReader);
+
+    [Flags]
+    private enum OneRowFlags
+    {
+        None = 0,
+        ThrowIfNone = 1 << 0,
+        ThrowIfMultiple = 1 << 1,
+    }
+
+    private static TResult QueryOneRow<TResult, TRawArgs, TArgs>(
+        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
+        OneRowFlags oneRowFlags,
+        Func<TRawArgs?, TArgs> argsParser,
+        Action<DbCommand, TArgs> commandBuilder,
+        ColumnTokenizer? columnTokenizer,
+        RowParser<TResult>? rowReader)
+    {
+        bool closeConn = false;
+        DbCommand? cmd = null;
+        DbDataReader? reader = null;
+        int[]? leased = null;
+        CommandBehavior behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
+        try
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+                closeConn = true;
+                behavior |= CommandBehavior.CloseConnection;
+            }
+            cmd = connection.CreateCommand();
+            cmd.Connection = connection;
+            cmd.Transaction = transaction;
+            cmd.CommandText = sql;
+            if (timeout is not null)
+            {
+                cmd.CommandTimeout = timeout.GetValueOrDefault();
+            }
+            commandBuilder.Invoke(cmd, argsParser((TRawArgs?)rawArgs));
+            reader = cmd.ExecuteReader(behavior);
+            closeConn = false; // handled by CommandBehavior.CloseConnection
+
+            TResult result = default!;
+            if (reader.Read())
+            {
+                var fieldCount = reader.FieldCount;
+                if (columnTokenizer is null | fieldCount == 0)
+                {
+                    if (rowReader is null)
+                    {
+                        result = reader.GetFieldValue<TResult>(0);
+                    }
+                    else
+                    {
+                        result = rowReader(reader, default, 0);
+                    }
+                }
+                else
+                {
+                    var readWriteTokens = fieldCount <= MAX_STACK_TOKENS ? stackalloc int[MAX_STACK_TOKENS] : (leased = ArrayPool<int>.Shared.Rent(fieldCount));
+                    readWriteTokens = readWriteTokens.Slice(0, fieldCount);
+                    columnTokenizer!(reader, readWriteTokens, 0);
+                    result = rowReader!(reader, readWriteTokens, 0);
+                }
+
+                if (reader.Read())
+                {
+                    if ((oneRowFlags & OneRowFlags.ThrowIfNone) != 0)
+                    {
+                        ThrowMultiple();
+                    }
+                    while (reader.Read()) { }
+                }
+            }
+            else if ((oneRowFlags & OneRowFlags.ThrowIfNone) != 0)
+            {
+                ThrowNone();
+            }
+            // consume entire results (avoid unobserved TDS error messages)
+            while (reader.NextResult()) { }
+            return result;
+        }
+        finally
+        {
+            if (leased is not null)
+            {
+                ArrayPool<int>.Shared.Return(leased);
+            }
+            reader?.Dispose();
+            cmd?.Dispose();
+            if (closeConn)
+            {
+                connection.Close();
+            }
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowNone() => "".First();
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowMultiple() => " ".Single();
+
+    /*
     /// <summary>
     /// Perform a synchronous buffered query
     /// </summary>
@@ -128,13 +313,16 @@ public class InterceptorHelpers
             var results = new List<TResult>();
             if (await reader.ReadAsync(cancellationToken))
             {
-                var fieldCount = reader.FieldCount;
-                leased = ArrayPool<int>.Shared.Rent(fieldCount);
-                columnTokenizer(reader, new Span<int>(leased, 0, fieldCount), 0);
+                var fieldCount = columnTokenizer is null ? 0 : reader.FieldCount;
+                if (fieldCount != 0)
+                {
+                    leased = ArrayPool<int>.Shared.Rent(fieldCount);
+                    columnTokenizer!(reader, new Span<int>(leased, 0, fieldCount), 0);
+                }
                 do
                 {
 #if NETCOREAPP3_1_OR_GREATER
-                    results.Add(rowReader(reader, fieldCount == 0 ? default : MemoryMarshal.CreateReadOnlySpan(ref leased[0], fieldCount), 0));
+                    results.Add(rowReader(reader, fieldCount == 0 ? default : MemoryMarshal.CreateReadOnlySpan(ref leased![0], fieldCount), 0));
 #else
                     results.Add(rowReader(reader, new ReadOnlySpan<int>(leased, 0, fieldCount), 0));
 #endif
@@ -174,10 +362,30 @@ public class InterceptorHelpers
 #endif
         }
     }
+    */
 
     /// <summary>
     /// Asserts that the connection provided is usable
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static DbConnection TypeCheck(DbConnection cnn)
+    {
+#if NET6_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(cnn);
+#else
+        if (cnn is null)
+        {
+            Throw();
+        }
+        static void Throw() => throw new ArgumentNullException(nameof(cnn));
+#endif
+        return cnn!;
+    }
+
+    /// <summary>
+    /// Asserts that the connection provided is usable
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DbConnection TypeCheck(IDbConnection cnn)
     {
         if (cnn is not DbConnection typed)
@@ -195,6 +403,13 @@ public class InterceptorHelpers
     /// <summary>
     /// Asserts that the transaction provided is usable
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static DbTransaction? TypeCheck(DbTransaction? transaction) => transaction;
+
+    /// <summary>
+    /// Asserts that the transaction provided is usable
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DbTransaction? TypeCheck(IDbTransaction? transaction)
     {
         if (transaction is null) return null;

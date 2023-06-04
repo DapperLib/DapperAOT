@@ -51,5 +51,27 @@ file static class DapperGeneratedInterceptors
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 27, 13)]
+    internal static global::Foo.Customer QueryFirst6(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, TypedResult, HasParameters, Buffered, First
+        // takes parameter: <anonymous type: int Foo, string bar>
+        // returns data: global::Foo.Customer
+        throw new global::System.NotImplementedException("lower your expectations");
+    }
 
+
+}
+namespace System.Runtime.CompilerServices
+{
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    sealed file class InterceptsLocationAttribute : Attribute
+    {
+        public InterceptsLocationAttribute(string path, int lineNumber, int columnNumber)
+        {
+            _ = path;
+            _ = lineNumber;
+            _ = columnNumber;
+        }
+    }
 }
