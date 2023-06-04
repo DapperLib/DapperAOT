@@ -1,6 +1,7 @@
 
 file static class DapperGeneratedInterceptors
 {
+#pragma warning disable CS0618
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 13, 13)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 14, 19)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
@@ -61,6 +62,7 @@ file static class DapperGeneratedInterceptors
     }
 
 
+#pragma warning restore CS0618
 }
 namespace System.Runtime.CompilerServices
 {

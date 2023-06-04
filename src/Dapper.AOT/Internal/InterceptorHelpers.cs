@@ -3,12 +3,13 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Dapper.Internal;
 
-
+#pragma warning disable CS1591 // intellisense
 
 
 /// <summary>
@@ -181,6 +182,20 @@ public class InterceptorHelpers
         ThrowIfMultiple = 1 << 1,
     }
 
+    /// <summary>
+    /// Perform a synchronous first-row query
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe static TResult UnsafeQueryFirst<TResult, TRawArgs, TArgs>(
+        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
+        Func<TRawArgs> _,
+        Func<TRawArgs?, TArgs> argsParser,
+        delegate*<DbCommand, TArgs, void> commandBuilder,
+        delegate*<DbDataReader, Span<int>, int, void> columnTokenizer,
+        delegate*<DbDataReader, ReadOnlySpan<int>, int, TResult> rowReader)
+        => UnsafeQueryOneRow(connection, sql, rawArgs, transaction, timeout, OneRowFlags.ThrowIfNone,
+            argsParser, commandBuilder, columnTokenizer, rowReader);
+
     private static TResult QueryOneRow<TResult, TRawArgs, TArgs>(
         DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
         OneRowFlags oneRowFlags,
@@ -235,6 +250,94 @@ public class InterceptorHelpers
                     readWriteTokens = readWriteTokens.Slice(0, fieldCount);
                     columnTokenizer!(reader, readWriteTokens, 0);
                     result = rowReader!(reader, readWriteTokens, 0);
+                }
+
+                if (reader.Read())
+                {
+                    if ((oneRowFlags & OneRowFlags.ThrowIfNone) != 0)
+                    {
+                        ThrowMultiple();
+                    }
+                    while (reader.Read()) { }
+                }
+            }
+            else if ((oneRowFlags & OneRowFlags.ThrowIfNone) != 0)
+            {
+                ThrowNone();
+            }
+            // consume entire results (avoid unobserved TDS error messages)
+            while (reader.NextResult()) { }
+            return result;
+        }
+        finally
+        {
+            if (leased is not null)
+            {
+                ArrayPool<int>.Shared.Return(leased);
+            }
+            reader?.Dispose();
+            cmd?.Dispose();
+            if (closeConn)
+            {
+                connection.Close();
+            }
+        }
+    }
+
+    private unsafe static TResult UnsafeQueryOneRow<TResult, TRawArgs, TArgs>(
+        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
+        OneRowFlags oneRowFlags,
+        Func<TRawArgs?, TArgs> argsParser,
+        delegate*<DbCommand, TArgs, void> commandBuilder,
+        delegate*<DbDataReader, Span<int>, int, void> columnTokenizer,
+        delegate*<DbDataReader, ReadOnlySpan<int>, int, TResult> rowReader)
+    {
+        bool closeConn = false;
+        DbCommand? cmd = null;
+        DbDataReader? reader = null;
+        int[]? leased = null;
+        CommandBehavior behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
+        try
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+                closeConn = true;
+                behavior |= CommandBehavior.CloseConnection;
+            }
+            cmd = connection.CreateCommand();
+            cmd.Connection = connection;
+            cmd.Transaction = transaction;
+            cmd.CommandText = sql;
+            if (timeout is not null)
+            {
+                cmd.CommandTimeout = timeout.GetValueOrDefault();
+            }
+            commandBuilder(cmd, argsParser((TRawArgs?)rawArgs));
+            reader = cmd.ExecuteReader(behavior);
+            closeConn = false; // handled by CommandBehavior.CloseConnection
+
+            TResult result = default!;
+            if (reader.Read())
+            {
+                var fieldCount = reader.FieldCount;
+                if (columnTokenizer is null | fieldCount == 0)
+                {
+                    if (rowReader is null)
+                    {
+                        result = reader.GetFieldValue<TResult>(0);
+                    }
+                    else
+                    {
+                        result = rowReader(reader, default, 0);
+                    }
+                }
+                else
+                {
+                    var readWriteTokens = fieldCount <= MAX_STACK_TOKENS ? stackalloc int[MAX_STACK_TOKENS] : (leased = ArrayPool<int>.Shared.Rent(fieldCount));
+                    readWriteTokens = readWriteTokens.Slice(0, fieldCount);
+                    columnTokenizer(reader, readWriteTokens, 0);
+                    result = rowReader(reader, readWriteTokens, 0);
                 }
 
                 if (reader.Read())
@@ -420,4 +523,43 @@ public class InterceptorHelpers
         return typed;
         static void Throw() => throw new ArgumentException("The supplied transaction must be a DbTransaction", nameof(transaction));
     }
+
+    public static int GetInt32(DbDataReader reader, int fieldOffset)
+        => Convert.ToInt32(reader.GetValue(fieldOffset), CultureInfo.InvariantCulture);
+
+    public static string GetString(DbDataReader reader, int fieldOffset)
+        => Convert.ToString(reader.GetValue(fieldOffset), CultureInfo.InvariantCulture);
+
+    private static readonly object[] s_BoxedInt32 = new object[] { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    private static readonly object s_BoxedTrue = true, s_BoxedFalse = false;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object AsValue(int value)
+        => value >= -1 && value <= 10 ? s_BoxedInt32[value + 1] : value;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object AsValue(int? value)
+        => value.HasValue ? AsValue(value.GetValueOrDefault()) : DBNull.Value;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object AsValue(bool value)
+        => value ? s_BoxedTrue : s_BoxedFalse;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object AsValue(bool? value)
+        => value.HasValue ? AsValue(value.GetValueOrDefault()) : DBNull.Value;
+    // ... and a few others
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object AsValue(object? value)
+        => value ?? DBNull.Value;
 }
+
+/// <summary>
+/// Helper APIs; not intended for public consumption
+/// </summary>
+[Obsolete("Not intended for external use; this API can change at an time")]
+public static partial class InternalUtilities
+{ }
+
+#pragma warning restore CS1591

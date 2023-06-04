@@ -246,7 +246,9 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             // nothing to generate
             return;
         }
-        var sb = new CodeWriter().Append("file static class DapperGeneratedInterceptors").Indent().NewLine();
+        var sb = new CodeWriter().Append("file static class DapperGeneratedInterceptors").Indent()
+            .DisableObsolete()
+            .NewLine();
         int methodIndex = 0;
         foreach (var grp in state.Nodes.GroupBy(x => x.Group(), CommonComparer.Instance))
         {
@@ -286,8 +288,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             }
             sb.Append("throw new global::System.NotImplementedException(\"lower your expectations\");").Outdent().NewLine().NewLine();
         }
-        // used for convenience
-        sb.NewLine().Append("private static object DBNull => global::System.DBNull.Value;").Outdent();
+        sb.RestoreObsolete().Outdent();
 
         // we need an accessible [InterceptsLocation] - if not; add our own in the generated code
         var attrib = state.Compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute");

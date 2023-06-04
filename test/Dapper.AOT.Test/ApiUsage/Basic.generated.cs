@@ -1,10 +1,8 @@
 ﻿#nullable enable
 
-using System;
-using System.Data.Common;
-
 file static class DapperGeneratedInterceptors
 {
+#pragma warning disable CS0618
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 13, 13)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 14, 19)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
@@ -54,11 +52,9 @@ file static class DapperGeneratedInterceptors
         //        // Query, Async, TypedResult, HasParameters, Buffered
         //        // takes parameter: <anonymous type: int Foo, string bar>
         //        // returns data: int
-        //#pragma warning disable CS0618
         //        return global::Dapper.Internal.InterceptorHelpers.QueryBufferedAsync(
         //            global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn),
         //            global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction),
-        //#pragma warning restore CS0618
         //            param, sql, commandTimeout,
         //            global::System.Data.CommandBehavior.SingleResult | global::System.Data.CommandBehavior.SequentialAccess,
         //            static () => new { Foo = default(int), bar = default(string) },
@@ -85,29 +81,25 @@ file static class DapperGeneratedInterceptors
         throw new global::System.NotImplementedException("lower your expectations");
     }
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 27, 13)]
-    internal static global::Foo.Customer QueryFirst6(this global::System.Data.IDbConnection cnn, string sql,object param, global::System.Data.IDbTransaction transaction, int? commandTimeout,global::System.Data.CommandType? commandType)
+    internal static unsafe global::Foo.Customer QueryFirst6(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, HasParameters, Buffered, First
         // takes parameter: <anonymous type: int Foo, string bar>
         // returns data: global::Foo.Customer
-
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        #pragma warning disable CS0618
-        return global::Dapper.Internal.InterceptorHelpers.QueryFirst(
+        return global::Dapper.Internal.InterceptorHelpers.UnsafeQueryFirst(
             global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn),
             sql, param,
             global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction),
-#pragma warning restore CS0618
             commandTimeout,
             static () => new { Foo = default(int), bar = default(string) },
             static args => (args!.Foo, args!.bar),
-            CommandBuilder0,
-            ColumnTokenizer0,
-            RowReader0
+            &CommandBuilder0,
+            &ColumnTokenizer0,
+            &RowReader0
         );
-
     }
 
     private static void CommandBuilder0(global::System.Data.Common.DbCommand cmd, (int Foo, string? bar) args)
@@ -116,28 +108,69 @@ file static class DapperGeneratedInterceptors
         var p = cmd.CreateParameter();
         p.ParameterName = nameof(args.Foo);
         p.DbType = global::System.Data.DbType.Int32;
-        p.Value = args.Foo;
+        p.Value = global::Dapper.Internal.InterceptorHelpers.AsValue(args.Foo);
         cmd.Parameters.Add(p);
 
         p = cmd.CreateParameter();
         p.ParameterName = nameof(args.bar);
         p.DbType = global::System.Data.DbType.String;
-        p.Value = args.bar ?? DBNull;
+        p.Value = global::Dapper.Internal.InterceptorHelpers.AsValue(args.bar);
         cmd.Parameters.Add(p);
     }
 
-    private static void ColumnTokenizer0(global::System.Data.Common.DbDataReader reader, Span<int> tokens, int fieldOffset)
+    private static void ColumnTokenizer0(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int fieldOffset)
     {
-
+        for (int i = 0; i < tokens.Length; i++)
+        {
+            int token = -1;
+            var name = reader.GetName(fieldOffset);
+            var type = reader.GetFieldType(fieldOffset);
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                switch (global::Dapper.Internal.InternalUtilities.NormalizedHash(name))
+                {
+                    case 4245442695 when global::Dapper.Internal.InternalUtilities.NormalizedEquals(name, "x"):
+                        token = type == typeof(int) ? 0 : 2;
+                        break;
+                    case 4228665076 when global::Dapper.Internal.InternalUtilities.NormalizedEquals(name, "y"):
+                        token = type == typeof(string) ? 1 : 3;
+                        break;
+                }
+            }
+            tokens[i] = token;
+            fieldOffset++;
+        }
     }
 
-    private static Foo.Customer RowReader0(global::System.Data.Common.DbDataReader reader, ReadOnlySpan<int> tokens, int fieldOffset)
+    private static Foo.Customer RowReader0(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int fieldOffset)
     {
-        return new();
+        var obj = new Foo.Customer();
+        foreach (var token in tokens)
+        {
+            if (!reader.IsDBNull(fieldOffset))
+            {
+                switch (token)
+                {
+                    case 0:
+                        obj.X = reader.GetInt32(fieldOffset);
+                        break;
+                    case 1:
+                        obj.Y = reader.GetString(fieldOffset);
+                        break;
+                    // same, but with type conversions
+                    case 2:
+                        obj.X = global::Dapper.Internal.InterceptorHelpers.GetInt32(reader, fieldOffset);
+                        break;
+                    case 3:
+                        obj.Y = global::Dapper.Internal.InterceptorHelpers.GetString(reader, fieldOffset);
+                        break;
+                }
+            }
+            fieldOffset++;
+        }
+        return obj;
     }
-
-    private static object DBNull => global::System.DBNull.Value;
-
+#pragma warning restore CS0618
 }
 namespace System.Runtime.CompilerServices
 {
