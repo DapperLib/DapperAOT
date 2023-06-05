@@ -329,6 +329,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             return;
         }
 
+        var dbCommandTypes = IdentifyDbCommandTypes(state.Compilation, out var needsCommandPrep);
+
         bool allowUnsafe = state.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append(allowUnsafe ? "unsafe " : "").Append("file static class DapperGeneratedInterceptors").Indent()
             .DisableObsolete()
@@ -372,6 +374,33 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             }
             sb.Append("throw new global::System.NotImplementedException(\"lower your expectations\");").Outdent().NewLine().NewLine();
         }
+
+        if (needsCommandPrep)
+        {
+            // at least one command-type needs special handling; do that
+            sb.Append("private static void InitCommand(global::System.Data.Common.DbCommand cmd)").Indent().NewLine();
+            int cmdTypeIndex = 0;
+            foreach (var type in dbCommandTypes)
+            {
+                var flags = GetSpecialCommandFlags(type);
+                if (flags != SpecialCommandFlags.None)
+                {
+                    sb.Append("// apply special per-provider command initialization logic").NewLine()
+                        .Append(cmdTypeIndex == 0 ? "" : "else ").Append("if (cmd is ").Append(type).Append(" cmd").Append(cmdTypeIndex).Append(")").Indent().NewLine();
+                    if ((flags & SpecialCommandFlags.BindByName) != 0)
+                    {
+                        sb.Append("cmd").Append(cmdTypeIndex).Append(".BindByName = true;").NewLine();
+                    }
+                    if ((flags & SpecialCommandFlags.InitialLONGFetchSize) != 0)
+                    {
+                        sb.Append("cmd").Append(cmdTypeIndex).Append(".InitialLONGFetchSize = -1;").NewLine();
+                    }
+                    sb.Outdent();
+                    cmdTypeIndex++;
+                }
+            }
+            sb.Outdent().NewLine();
+        }
         sb.RestoreObsolete().Outdent();
 
         // we need an accessible [InterceptsLocation] - if not; add our own in the generated code
@@ -381,6 +410,115 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             sb.NewLine().Append(Resources.ReadString("Dapper.InterceptsLocationAttribute.cs"));
         }
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
+    }
+
+
+    private static SpecialCommandFlags GetSpecialCommandFlags(ITypeSymbol type)
+    {
+        // check whether these command-types need special handling
+        var flags = SpecialCommandFlags.None;
+        foreach (var member in type.GetMembers())
+        {
+            switch (member.Name)
+            {
+                // just do a quick check for now, will be close enough
+                case "BindByName" when IsSettableInstanceProperty(member, SpecialType.System_Boolean):
+                    flags |= SpecialCommandFlags.BindByName;
+                    break;
+                case "InitialLONGFetchSize" when IsSettableInstanceProperty(member, SpecialType.System_Int32):
+                    flags |= SpecialCommandFlags.InitialLONGFetchSize;
+                    break;
+            }
+        }
+        return flags;
+
+        static bool IsSettableInstanceProperty(ISymbol? symbol, SpecialType type) =>
+            symbol is IPropertySymbol prop
+            && prop.SetMethod is { DeclaredAccessibility: Accessibility.Public }
+            && prop.Type.SpecialType == type
+            && !prop.IsIndexer && !prop.IsStatic;
+    }
+
+    [Flags]
+    private enum SpecialCommandFlags
+    {
+        None = 0,
+        BindByName = 1 << 0,
+        InitialLONGFetchSize = 1 << 1,
+    }
+
+    private ImmutableArray<ITypeSymbol> IdentifyDbCommandTypes(Compilation compilation, out bool needsPrepare)
+    {
+        needsPrepare = false;
+        var dbCommand = compilation.GetTypeByMetadataName("System.Data.Common.DbCommand");
+        if (dbCommand is null)
+        {
+            // if we can't find DbCommand, we're out of luck
+            return ImmutableArray<ITypeSymbol>.Empty;
+        }
+        var pending = new Queue<INamespaceOrTypeSymbol>();
+        foreach (var assemblyName in compilation.References)
+        {
+            if (assemblyName is null) continue;
+            var ns = compilation.GetAssemblyOrModuleSymbol(assemblyName) switch
+            {
+                IAssemblySymbol assembly => assembly.GlobalNamespace,
+                IModuleSymbol module => module.GlobalNamespace,
+                _ => null
+            };
+            if (ns is not null)
+            {
+                pending.Enqueue(ns);
+            }
+        }
+        var found = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+        while (pending.Count != 0)
+        {
+            var current = pending.Dequeue();
+            foreach (var member in current.GetMembers())
+            {
+                switch (member)
+                {
+                    case INamespaceSymbol ns:
+                        pending.Enqueue(ns);
+                        break;
+                    case ITypeSymbol type:
+                        // only interested in public non-static classes
+                        if (!type.IsStatic && type.TypeKind == TypeKind.Class && type.DeclaredAccessibility == Accessibility.Public)
+                        {
+                            // note we're not checking for nested types; that seems incredibly unlikely for ADO.NET types
+                            if (IsDerived(type, dbCommand))
+                            {
+                                found.Add(type);
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+
+        foreach (var type in found)
+        {
+            if (GetSpecialCommandFlags(type) != SpecialCommandFlags.None)
+            {
+                needsPrepare = true;
+                break; // only need at least one
+            }
+        }
+        return found.ToImmutableArray();
+
+        static bool IsDerived(ITypeSymbol? type, ITypeSymbol baseType)
+        {
+            while (type is not null && type.SpecialType != SpecialType.System_Object)
+            {
+                type = type.BaseType;
+                if (SymbolEqualityComparer.Default.Equals(type, baseType))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     sealed class SourceState

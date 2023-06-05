@@ -61,6 +61,16 @@ unsafe file static class DapperGeneratedInterceptors
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
+    private static void InitCommand(global::System.Data.Common.DbCommand cmd)
+    {
+        // apply special per-provider command initialization logic
+        if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
+        {
+            cmd0.BindByName = true;
+            cmd0.InitialLONGFetchSize = -1;
+
+        }
+    }
 
 #pragma warning restore CS0618
 }
