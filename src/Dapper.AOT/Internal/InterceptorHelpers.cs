@@ -208,7 +208,12 @@ public class InterceptorHelpers
         DbCommand? cmd = null;
         DbDataReader? reader = null;
         int[]? leased = null;
-        CommandBehavior behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess | CommandBehavior.SingleRow;
+        var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
+        if ((oneRowFlags & OneRowFlags.ThrowIfMultiple) == 0)
+        {   // if we don't care if there's two rows, we can restrict to read one only
+            behavior |= CommandBehavior.SingleRow;
+        }
+
         try
         {
             if (connection.State != ConnectionState.Open)
@@ -254,7 +259,7 @@ public class InterceptorHelpers
 
                 if (reader.Read())
                 {
-                    if ((oneRowFlags & OneRowFlags.ThrowIfNone) != 0)
+                    if ((oneRowFlags & OneRowFlags.ThrowIfMultiple) != 0)
                     {
                         ThrowMultiple();
                     }
@@ -373,9 +378,9 @@ public class InterceptorHelpers
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowNone() => "".First();
+    private static void ThrowNone() => _ = "".First();
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowMultiple() => " ".Single();
+    private static void ThrowMultiple() => _ = " ".Single();
 
     /*
     /// <summary>
@@ -528,7 +533,7 @@ public class InterceptorHelpers
         => Convert.ToInt32(reader.GetValue(fieldOffset), CultureInfo.InvariantCulture);
 
     public static string GetString(DbDataReader reader, int fieldOffset)
-        => Convert.ToString(reader.GetValue(fieldOffset), CultureInfo.InvariantCulture);
+        => Convert.ToString(reader.GetValue(fieldOffset), CultureInfo.InvariantCulture)!;
 
     private static readonly object[] s_BoxedInt32 = new object[] { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
     private static readonly object s_BoxedTrue = true, s_BoxedFalse = false;

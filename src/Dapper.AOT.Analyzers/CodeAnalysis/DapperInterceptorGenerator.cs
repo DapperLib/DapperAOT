@@ -20,6 +20,11 @@ namespace Dapper.CodeAnalysis;
 public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 {
     /// <summary>
+    /// Whether to emit interceptors even if the "interceptors" feature is not detected
+    /// </summary>
+    public bool OverrideFeatureEnabled { get; set; }
+
+    /// <summary>
     /// Provide log feedback.
     /// </summary>
     public event Action<DiagnosticSeverity, string>? Log;
@@ -33,11 +38,13 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         context.RegisterImplementationSourceOutput(combined, Generate);
     }
 
+    private bool InterceptorsEnabled(SyntaxTree syntaxTree)
+            // only even test this for things that look interesting
+            => OverrideFeatureEnabled || syntaxTree.Options.Features.ContainsKey("interceptors");
+
     private bool PreFilter(SyntaxNode node, CancellationToken cancellation)
     {
-        static bool InterceptorsEnabled(SyntaxTree syntaxTree)
-            // only even test this for things that look interesting
-            => syntaxTree.Options.Features.ContainsKey("interceptors");
+        
 
         if (node is InvocationExpressionSyntax ie && ie.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
         {

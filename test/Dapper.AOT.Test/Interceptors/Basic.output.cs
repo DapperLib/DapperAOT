@@ -1,5 +1,5 @@
 
-file static class DapperGeneratedInterceptors
+unsafe file static class DapperGeneratedInterceptors
 {
 #pragma warning disable CS0618
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 13, 13)]
@@ -66,8 +66,12 @@ file static class DapperGeneratedInterceptors
 }
 namespace System.Runtime.CompilerServices
 {
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-    sealed file class InterceptsLocationAttribute : Attribute
+    // this type is needed by the compiler to implement interceptors - it doesn't need to
+    // come from the runtime itself, though
+
+    [global::System.Diagnostics.Conditional("DEBUG")] // not needed post-build, so: evaporate
+    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]
+    sealed file class InterceptsLocationAttribute : global::System.Attribute
     {
         public InterceptsLocationAttribute(string path, int lineNumber, int columnNumber)
         {
