@@ -215,9 +215,32 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     break;
                 case "cnn":
                 case "commandTimeout":
-                case "commandType":
                 case "transaction":
                     // nothing to do
+                    break;
+                case "commandType":
+                    if (!TryGetConstantValue(arg, out int? ct))
+                    {
+                        Log?.Invoke(DiagnosticSeverity.Hidden, $"Non-constant value for '{arg.Parameter?.Name}'");
+                        return null;
+                    }
+                    switch (ct)
+                    {
+                        case null:
+                            break;
+                        case 1:
+                            flags |= OperationFlags.Text;
+                            break;
+                        case 4:
+                            flags |= OperationFlags.StoredProcedure;
+                            break;
+                        case 512:
+                            flags |= OperationFlags.TableDirect;
+                            break;
+                        default:
+                            Log?.Invoke(DiagnosticSeverity.Hidden, $"Unexpected value for '{arg.Parameter?.Name}'");
+                            return null;
+                    }
                     break;
                 default:
                     Log?.Invoke(DiagnosticSeverity.Hidden, $"Unexpected parameter '{arg.Parameter?.Name}'");
@@ -249,9 +272,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     value = (T?)op.ConstantValue.Value;
                     return true;
                 }
-                else if (op.Value is ILiteralOperation { ConstantValue.HasValue: true } literal)
+                else if (op.Value is ILiteralOperation or IDefaultValueOperation)
                 {
-                    value = (T?)literal.ConstantValue.Value;
+                    var v = op.Value.ConstantValue;
+                    value = v.HasValue ? (T?)v.Value : default;
                     return true;
                 }
             }
@@ -319,25 +343,68 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         Buffered = 1 << 5,
         First = 1 << 6,
         Single = 1 << 7,
+        Text = 1 << 8,
+        StoredProcedure = 1 << 9,
+        TableDirect = 1 << 10,
     }
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
     {
+        static Dictionary<(string name, int arity, int args), IMethodSymbol> GetKnownMethods(ITypeSymbol type)
+        {
+            Dictionary<(string name, int arity, int args), IMethodSymbol> result = new();
+            foreach (var member in type.GetMembers())
+            {
+                if (member is IMethodSymbol method
+                    && method.IsStatic && method.DeclaredAccessibility == Accessibility.Public
+                    && (method.Name.Contains("Query") || method.Name.Contains("Execute")))
+                {
+                    result.Add((method.Name, method.Arity, method.Parameters.Length), method);
+                }
+            }
+            return result;
+        }
+
         if (state.Nodes.IsDefaultOrEmpty)
         {
             // nothing to generate
             return;
         }
 
+        var helpers = state.Compilation.GetTypeByMetadataName("Dapper.Internal.InterceptorHelpers");
+        if (helpers is null)
+        {
+            // without InterceptorHelpers, we're toast
+            return;
+        }
+        var knownMethods = GetKnownMethods(helpers);
+
         var dbCommandTypes = IdentifyDbCommandTypes(state.Compilation, out var needsCommandPrep);
 
         bool allowUnsafe = state.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
-        var sb = new CodeWriter().Append(allowUnsafe ? "unsafe " : "").Append("file static class DapperGeneratedInterceptors").Indent()
+        var sb = new CodeWriter().Append("file static class DapperGeneratedInterceptors").Indent()
             .DisableObsolete()
             .NewLine();
         int methodIndex = 0;
+
+        var resultTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
+
         foreach (var grp in state.Nodes.GroupBy(x => x.Group(), CommonComparer.Instance))
         {
+            // first, try to resolve the helper method that we're going to use for this
+            var (flags, method, parameterType) = grp.Key;
+            int arity = HasAny(flags, OperationFlags.TypedResult) ? 2 : 1, argCount = 8;
+            bool useUnsafe = false;
+            if (allowUnsafe && knownMethods.TryGetValue(("Unsafe" + method.Name, arity, argCount), out var helperMethod))
+            {
+                useUnsafe = true;
+            }
+            else if (!knownMethods.TryGetValue((method.Name, arity, argCount), out helperMethod))
+            {
+                // unable to find matching helper method; don't try to help!
+                continue;
+            }
+
             int usageCount = 0;
             foreach (var op in grp.OrderBy(row => row.Location, CommonComparer.Instance))
             {
@@ -353,8 +420,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 continue; // empty group?
             }
 
-            var (flags, method, parameterType) = grp.Key;
-            sb.Append("internal static ").Append(method.ReturnType).Append(" ").Append(method.Name).Append(methodIndex++).Append("(");
+            sb.Append("internal static ").Append(useUnsafe ? "unsafe " : "").Append(method.ReturnType).Append(" ").Append(method.Name).Append(methodIndex++).Append("(");
             var parameters = method.Parameters;
             for (int i = 0; i < parameters.Length; i++)
             {
@@ -368,11 +434,75 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             {
                 sb.Append("// takes parameter: ").Append(parameterType).NewLine();
             }
+            ITypeSymbol? resultType = null;
             if (HasAny(flags, OperationFlags.TypedResult))
             {
-                sb.Append("// returns data: ").Append(grp.First().ResultType).NewLine();
+                resultType = grp.First().ResultType!;
+                sb.Append("// returns data: ").Append(resultType).NewLine();
             }
-            sb.Append("throw new global::System.NotImplementedException(\"lower your expectations\");").Outdent().NewLine().NewLine();
+
+            // assertions
+            var mode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
+            switch (mode)
+            {
+                case 0:
+                    sb.Append("global::System.Diagnostics.Debug.Assert(commandType is null);").NewLine();
+                    // basic default for now
+                    mode = OperationFlags.Text;
+                    break;
+                default:
+                    sb.Append("global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.")
+                        .Append(mode.ToString()).Append(");").NewLine();
+                    break;
+            }
+            sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine();
+
+            sb.Append(@"return global::Dapper.Internal.InterceptorHelpers.").Append(helperMethod.Name).Append("(").NewLine().Indent(withScope: false)
+                .Append("global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn), sql,").NewLine();
+
+            sb.Append("param,").NewLine();
+
+
+            if (!resultTypes.TryGetValue(resultType!, out var resultTypeIndex))
+            {
+                resultTypes.Add(resultType!, resultTypeIndex = resultTypes.Count);
+            }
+            var prefix = useUnsafe ? "&" : "";
+            sb.Append("global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction),").NewLine()
+                .Append("commandTimeout, ")
+                .Append(prefix).Append("CommandBuilder, ")
+                .Append(prefix).Append("ColumnTokenizer").Append(resultTypeIndex).Append(", ")
+                .Append(prefix).Append("RowReader").Append(resultTypeIndex).Append(");")
+                .NewLine().Outdent(withScope: false).NewLine();
+
+            sb.Append("static void CommandBuilder(global::System.Data.Common.DbCommand cmd, object args)").Indent().NewLine();
+            if (needsCommandPrep)
+            {
+                sb.Append("InitCommand(cmd);").NewLine();
+            }
+            sb.Append("cmd.CommandType = global::System.Data.CommandType.").Append(mode.ToString()).Append(";").NewLine();
+
+            sb.Outdent().Outdent().NewLine().NewLine();
+        }
+
+        foreach (var pair in resultTypes)
+        {
+            /*
+                 private static void ColumnTokenizer0(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int fieldOffset)
+    
+    }
+
+    private static Foo.Customer RowReader0(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int fieldOffset)
+    {
+       
+    }
+             * */
+            sb.Append("private static void ColumnTokenizer").Append(pair.Value).Append("(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int fieldOffset)").Indent().NewLine()
+                .Append("// tokenize ").Append(pair.Key).NewLine()
+                .Outdent().NewLine();
+            sb.Append("private static ").Append(pair.Key).Append(" RowReader").Append(pair.Value).Append("(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int fieldOffset)").Indent().NewLine()
+                .Append("// parse ").Append(pair.Key).NewLine()
+                .Append("throw new global::System.NotImplementedException();").Outdent().NewLine();
         }
 
         if (needsCommandPrep)
