@@ -35,13 +35,17 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
     private bool PreFilter(SyntaxNode node, CancellationToken cancellation)
     {
+        static bool InterceptorsEnabled(SyntaxTree syntaxTree)
+            // only even test this for things that look interesting
+            => syntaxTree.Options.Features.ContainsKey("interceptors");
+
         if (node is InvocationExpressionSyntax ie && ie.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
         {
             var name = ma.Name.ToString();
             if (name is "Execute" or "ExecuteAsync")
             {
                 Log?.Invoke(DiagnosticSeverity.Info, $"Discovered possible execution: {node}");
-                return true;
+                return InterceptorsEnabled(node.SyntaxTree);
             }
             if (name.StartsWith("Query<") || name.StartsWith("QueryAsync<")
                 || name.StartsWith("QueryFirst<") || name.StartsWith("QueryFirstAsync<")
@@ -49,7 +53,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 )
             {
                 Log?.Invoke(DiagnosticSeverity.Info, $"Discovered possible <T> query: {node}");
-                return true;
+                return InterceptorsEnabled(node.SyntaxTree);
             }
         }
 
@@ -246,7 +250,9 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             // nothing to generate
             return;
         }
-        var sb = new CodeWriter().Append("file static class DapperGeneratedInterceptors").Indent()
+
+        bool allowUnsafe = state.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
+        var sb = new CodeWriter().Append(allowUnsafe ? "unsafe " : "").Append("file static class DapperGeneratedInterceptors").Indent()
             .DisableObsolete()
             .NewLine();
         int methodIndex = 0;

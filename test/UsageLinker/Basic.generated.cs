@@ -3,23 +3,23 @@
 file static class DapperGeneratedInterceptors
 {
 #pragma warning disable CS0618
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 13, 13)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 14, 19)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("D:\\Code\\DapperAOT\\test\\UsageLinker\\Basic.cs", 14, 13)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("D:\\Code\\DapperAOT\\test\\UsageLinker\\Basic.cs", 15, 19)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 16, 19)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 17, 25)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("D:\\Code\\DapperAOT\\test\\UsageLinker\\Basic.cs", 17, 19)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("D:\\Code\\DapperAOT\\test\\UsageLinker\\Basic.cs", 18, 25)]
     internal static global::System.Threading.Tasks.Task<int> ExecuteAsync1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, Async
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 19, 19)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("D:\\Code\\DapperAOT\\test\\UsageLinker\\Basic.cs", 20, 19)]
     internal static global::System.Threading.Tasks.Task<int> ExecuteAsync2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, Async, HasParameters
@@ -27,7 +27,7 @@ file static class DapperGeneratedInterceptors
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 21, 13)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("D:\\Code\\DapperAOT\\test\\UsageLinker\\Basic.cs", 22, 13)]
     internal static global::System.Collections.Generic.IEnumerable<int> Query3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered
@@ -35,7 +35,7 @@ file static class DapperGeneratedInterceptors
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 22, 19)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("D:\\Code\\DapperAOT\\test\\UsageLinker\\Basic.cs", 23, 19)]
     internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<int>> QueryAsync4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Async, TypedResult, Buffered
@@ -43,8 +43,8 @@ file static class DapperGeneratedInterceptors
         throw new global::System.NotImplementedException("lower your expectations");
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 24, 19)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 25, 19)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("D:\\Code\\DapperAOT\\test\\UsageLinker\\Basic.cs", 25, 19)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("D:\\Code\\DapperAOT\\test\\UsageLinker\\Basic.cs", 26, 19)]
     internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<int>> QueryAsync5(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
@@ -80,7 +80,7 @@ file static class DapperGeneratedInterceptors
         //        );
         throw new global::System.NotImplementedException("lower your expectations");
     }
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Basic.input.cs", 27, 13)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("D:\\Code\\DapperAOT\\test\\UsageLinker\\Basic.cs", 28, 13)]
     internal static unsafe global::Foo.Customer QueryFirst6(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, HasParameters, Buffered, First

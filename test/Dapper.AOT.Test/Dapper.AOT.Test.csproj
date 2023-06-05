@@ -3,8 +3,6 @@
         <TargetFrameworks>net6.0;net7.0</TargetFrameworks> <!-- net48;netcoreapp3.1 -->
         <NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
         <SignAssembly Condition="'$(TargetFramework)'=='net48'">false</SignAssembly>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <LangVersion>11</LangVersion>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="Samples/**/*.input.cs" />

@@ -17,6 +17,7 @@
         <LangVersion>11</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <CheckEolTargetFramework>false</CheckEolTargetFramework>
+		<WarningsAsErrors>true</WarningsAsErrors>
     </PropertyGroup>
     <ItemGroup>
         <None Include="$(MSBuildThisFileDirectory)Dapper.png" Visible="false">

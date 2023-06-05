@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 public static class Foo
 {
-    static async Task SomeCode()
+    public static async Task SomeCode()
     {
         string bar = "das";
         Customer customer = null!;
