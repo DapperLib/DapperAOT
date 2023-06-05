@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 public static class Foo
 {
+    [DapperAot(false)]
     public static async Task SomeCode()
     {
         string bar = "das";

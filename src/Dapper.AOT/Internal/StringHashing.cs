@@ -3,7 +3,7 @@ using System.Buffers;
 
 namespace Dapper.Internal;
 
-static partial class InternalUtilities
+static partial class StringHashing
 {
     /// <summary>
     /// Computes a reliable hash after applying normalization rules

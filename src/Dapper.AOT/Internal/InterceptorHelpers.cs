@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
@@ -15,9 +16,16 @@ namespace Dapper.Internal;
 /// <summary>
 /// Utilities to assist with interceptor AOT implementations
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never), Browsable(false)]
 [Obsolete("Not intended for external use; this API can change at an time")]
 public class InterceptorHelpers
 {
+    /// <summary>
+    /// Used to reshape anonymous-type data into types that can be used statically
+    /// </summary>
+    public static TResult Reshape<TSource, TResult>(object? value, Func<TSource> _, Func<TSource, TResult> selector)
+        => selector((TSource)value!);
+
     /// <summary>Identify column tokens from a reader</summary>
     public delegate void ColumnTokenizer(DbDataReader reader, Span<int> tokens, int columnOffset);
     /// <summary>Identify column tokens from a reader</summary>
@@ -28,10 +36,8 @@ public class InterceptorHelpers
     /// <summary>
     /// Perform a synchronous buffered query
     /// </summary>
-    public static List<TResult> QueryBuffered<TResult, TRawArgs, TArgs>(
-        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
-        Func<TRawArgs> unused,
-        Func<TRawArgs?, TArgs> argsParser,
+    public static List<TResult> QueryBuffered<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
         Action<DbCommand, TArgs> commandBuilder,
         ColumnTokenizer? columnTokenizer,
         RowParser<TResult>? rowReader)
@@ -57,7 +63,7 @@ public class InterceptorHelpers
             {
                 cmd.CommandTimeout = timeout.GetValueOrDefault();
             }
-            commandBuilder.Invoke(cmd, argsParser((TRawArgs?)rawArgs));
+            commandBuilder.Invoke(cmd, args);
             reader = cmd.ExecuteReader(behavior);
             closeConn = false; // handled by CommandBehavior.CloseConnection
 
@@ -121,58 +127,50 @@ public class InterceptorHelpers
     /// Perform a synchronous first-row query
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TResult QueryFirst<TResult, TRawArgs, TArgs>(
-        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
-        Func<TRawArgs> _,
-        Func<TRawArgs?, TArgs> argsParser,
+    public static TResult QueryFirst<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
         Action<DbCommand, TArgs> commandBuilder,
         ColumnTokenizer? columnTokenizer,
         RowParser<TResult>? rowReader)
-        => QueryOneRow(connection, sql, rawArgs, transaction, timeout, OneRowFlags.ThrowIfNone,
-            argsParser, commandBuilder, columnTokenizer, rowReader);
+        => QueryOneRow(connection, sql, args, transaction, timeout, OneRowFlags.ThrowIfNone,
+            commandBuilder, columnTokenizer, rowReader);
 
     /// <summary>
     /// Perform a synchronous first-row query
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TResult QueryFirstOrDefault<TResult, TRawArgs, TArgs>(
-        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
-        Func<TRawArgs> _,
-        Func<TRawArgs?, TArgs> argsParser,
+    public static TResult QueryFirstOrDefault<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
         Action<DbCommand, TArgs> commandBuilder,
         ColumnTokenizer? columnTokenizer,
         RowParser<TResult>? rowReader)
-        => QueryOneRow(connection, sql, rawArgs, transaction, timeout, OneRowFlags.None,
-            argsParser, commandBuilder, columnTokenizer, rowReader);
+        => QueryOneRow(connection, sql, args, transaction, timeout, OneRowFlags.None,
+            commandBuilder, columnTokenizer, rowReader);
 
     /// <summary>
     /// Perform a synchronous single-row query
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TResult QuerySingle<TResult, TRawArgs, TArgs>(
-        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
-        Func<TRawArgs> _,
-        Func<TRawArgs?, TArgs> argsParser,
+    public static TResult QuerySingle<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
         Action<DbCommand, TArgs> commandBuilder,
         ColumnTokenizer? columnTokenizer,
         RowParser<TResult>? rowReader)
-        => QueryOneRow(connection, sql, rawArgs, transaction, timeout, OneRowFlags.ThrowIfNone | OneRowFlags.ThrowIfMultiple,
-            argsParser, commandBuilder, columnTokenizer, rowReader);
+        => QueryOneRow(connection, sql, args, transaction, timeout, OneRowFlags.ThrowIfNone | OneRowFlags.ThrowIfMultiple,
+            commandBuilder, columnTokenizer, rowReader);
 
 
     /// <summary>
     /// Perform a synchronous single-row query
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TResult QuerySingleOrDefault<TResult, TRawArgs, TArgs>(
-        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
-        Func<TRawArgs> _,
-        Func<TRawArgs?, TArgs> argsParser,
+    public static TResult QuerySingleOrDefault<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
         Action<DbCommand, TArgs> commandBuilder,
         ColumnTokenizer? columnTokenizer,
         RowParser<TResult>? rowReader)
-        => QueryOneRow(connection, sql, rawArgs, transaction, timeout, OneRowFlags.ThrowIfMultiple,
-            argsParser, commandBuilder, columnTokenizer, rowReader);
+        => QueryOneRow(connection, sql, args, transaction, timeout, OneRowFlags.ThrowIfMultiple,
+            commandBuilder, columnTokenizer, rowReader);
 
     [Flags]
     private enum OneRowFlags
@@ -186,20 +184,17 @@ public class InterceptorHelpers
     /// Perform a synchronous first-row query
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public unsafe static TResult UnsafeQueryFirst<TResult, TRawArgs, TArgs>(
-        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
-        Func<TRawArgs> _,
-        Func<TRawArgs?, TArgs> argsParser,
+    public unsafe static TResult UnsafeQueryFirst<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
         delegate*<DbCommand, TArgs, void> commandBuilder,
         delegate*<DbDataReader, Span<int>, int, void> columnTokenizer,
         delegate*<DbDataReader, ReadOnlySpan<int>, int, TResult> rowReader)
-        => UnsafeQueryOneRow(connection, sql, rawArgs, transaction, timeout, OneRowFlags.ThrowIfNone,
-            argsParser, commandBuilder, columnTokenizer, rowReader);
+        => UnsafeQueryOneRow(connection, sql, args, transaction, timeout, OneRowFlags.ThrowIfNone,
+            commandBuilder, columnTokenizer, rowReader);
 
-    private static TResult QueryOneRow<TResult, TRawArgs, TArgs>(
-        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
+    private static TResult QueryOneRow<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
         OneRowFlags oneRowFlags,
-        Func<TRawArgs?, TArgs> argsParser,
         Action<DbCommand, TArgs> commandBuilder,
         ColumnTokenizer? columnTokenizer,
         RowParser<TResult>? rowReader)
@@ -230,7 +225,7 @@ public class InterceptorHelpers
             {
                 cmd.CommandTimeout = timeout.GetValueOrDefault();
             }
-            commandBuilder.Invoke(cmd, argsParser((TRawArgs?)rawArgs));
+            commandBuilder.Invoke(cmd, args);
             reader = cmd.ExecuteReader(behavior);
             closeConn = false; // handled by CommandBehavior.CloseConnection
 
@@ -289,10 +284,9 @@ public class InterceptorHelpers
         }
     }
 
-    private unsafe static TResult UnsafeQueryOneRow<TResult, TRawArgs, TArgs>(
-        DbConnection connection, string sql, object? rawArgs, DbTransaction? transaction, int? timeout,
+    private unsafe static TResult UnsafeQueryOneRow<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
         OneRowFlags oneRowFlags,
-        Func<TRawArgs?, TArgs> argsParser,
         delegate*<DbCommand, TArgs, void> commandBuilder,
         delegate*<DbDataReader, Span<int>, int, void> columnTokenizer,
         delegate*<DbDataReader, ReadOnlySpan<int>, int, TResult> rowReader)
@@ -318,7 +312,7 @@ public class InterceptorHelpers
             {
                 cmd.CommandTimeout = timeout.GetValueOrDefault();
             }
-            commandBuilder(cmd, argsParser((TRawArgs?)rawArgs));
+            commandBuilder(cmd, args);
             reader = cmd.ExecuteReader(behavior);
             closeConn = false; // handled by CommandBehavior.CloseConnection
 
@@ -386,12 +380,10 @@ public class InterceptorHelpers
     /// <summary>
     /// Perform a synchronous buffered query
     /// </summary>
-    public static async Task<IEnumerable<TResult>> QueryBufferedAsync<TResult, TRawArgs, TArgs>(
+    public static async Task<IEnumerable<TResult>> QueryBufferedAsync<TResult, TArgs>(
         DbConnection connection,
         DbTransaction? transaction,
-        object? rawArgs, string sql, int? timeout, CommandBehavior behavior,
-        Func<TRawArgs> unused,
-        Func<TRawArgs, TArgs> argsParser,
+        TArgs args, string sql, int? timeout, CommandBehavior behavior,
         Action<DbCommand, TArgs> commandBuilder,
         ColumnTokenizer columnTokenizer,
         RowParser<TResult> rowReader,
@@ -563,8 +555,9 @@ public class InterceptorHelpers
 /// <summary>
 /// Helper APIs; not intended for public consumption
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never), Browsable(false)]
 [Obsolete("Not intended for external use; this API can change at an time")]
-public static partial class InternalUtilities
+public static partial class StringHashing
 { }
 
 #pragma warning restore CS1591

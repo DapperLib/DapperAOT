@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
@@ -9,14 +9,9 @@
 		<Features>interceptors</Features>
     </PropertyGroup>
     <ItemGroup>
-      <Compile Remove="Basic.generated.cs" />
-    </ItemGroup>
-    <ItemGroup>
-      <None Include="Basic.generated.cs" />
-    </ItemGroup>
-    <ItemGroup>
         <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
         <PackageReference Include="Microsoft.Data.SqlClient" Version="5.0.1" />
+        <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="3.21.100" />
     </ItemGroup>
 </Project>

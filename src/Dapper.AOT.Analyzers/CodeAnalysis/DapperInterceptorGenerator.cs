@@ -67,6 +67,69 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         return false;
     }
 
+    // support the fact that [DapperAot(bool)] can enable/disable generation at any level
+    // including method, type, module and assembly; first attribute found (walking up the tree): wins
+    static bool IsEnabled(in GeneratorSyntaxContext ctx, IOperation op, CancellationToken cancellation)
+    {
+        var method = GetContainingMethodSyntax(op);
+        if (method is not null)
+        {
+            var symbol = ctx.SemanticModel.GetDeclaredSymbol(method, cancellation);
+            while (symbol is not null)
+            {
+                if (HasDapperAotAttribute(symbol, out bool enabled))
+                {
+                    return enabled;
+                }
+                symbol = symbol.ContainingSymbol;
+            }
+        }
+
+        // enabled globally by default
+        return true;
+
+        static SyntaxNode? GetContainingMethodSyntax(IOperation op)
+        {
+            var syntax = op.Syntax;
+            while (syntax is not null)
+            {
+                if (syntax.IsKind(SyntaxKind.MethodDeclaration))
+                {
+                    return syntax;
+                }
+                syntax = syntax.Parent;
+            }
+            return null;
+        }
+        static bool HasDapperAotAttribute(ISymbol? symbol, out bool enabled)
+        {
+            if (symbol is not null)
+            {
+                foreach (var attrib in symbol.GetAttributes())
+                {
+                    if (attrib.AttributeClass is
+                        {
+                            Name: "DapperAotAttribute",
+                            ContainingNamespace:
+                            {
+                                Name: "Dapper",
+                                ContainingNamespace: { IsGlobalNamespace: true }
+                            }
+                        }
+                    && attrib.ConstructorArguments.Length == 1
+                    && attrib.ConstructorArguments[0].Value is bool b)
+                    {
+                        enabled = b;
+                        return true;
+                    }
+                }
+            }
+
+            enabled = default;
+            return false;
+        }
+    }
+
     private SourceState? Parse(GeneratorSyntaxContext ctx, CancellationToken cancellation)
     {
         if (ctx.Node is not InvocationExpressionSyntax ie
@@ -75,7 +138,15 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         {
             return null;
         }
+
         Location? loc = null;
+
+        if (!IsEnabled(ctx, op, cancellation))
+        {
+            Log?.Invoke(DiagnosticSeverity.Hidden, $"Generation disabled by attribute");
+            return null;
+        }
+
         if (op.Syntax.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
         {
             loc = ma.ChildNodes().Skip(1).FirstOrDefault()?.GetLocation();
