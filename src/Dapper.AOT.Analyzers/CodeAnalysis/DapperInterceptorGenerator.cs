@@ -596,7 +596,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     sb.Append("case ").Append(StringHashing.NormalizedHash(name))
                         .Append(" when global::Dapper.Internal.StringHashing.NormalizedEquals(name, ")
                         .AppendVerbatimLiteral(name).Append("):").Indent(false).NewLine()
-                        .Append("token = type == typeof(").Append(memberType).Append(") ? ").Append(token)
+                        .Append("token = type == typeof(").Append(MakeNonNullable(memberType)).Append(") ? ").Append(token)
                         .Append(" : ").Append(token + memberCount).Append(";")
                         .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
                         .Append("break;").Outdent(false).NewLine();

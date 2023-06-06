@@ -2,34 +2,15 @@
 using Dapper;
 using System;
 using System.Data.Common;
-using System.Threading.Tasks;
 
 public static class Foo
 {
-    [DapperAot(false)]
-    public static async Task SomeCode()
+    [DapperAot(true)]
+    public static Customer GetCustomer(DbConnection connection, int id, string region)
     {
-        string bar = "das";
-        Customer customer = null!;
-        new NotDapper().Execute("abc");
-        DbConnection foo = null!;
-        foo.Execute("abc");
-        SqlMapper.Execute(foo, "abc");
-
-        await foo.ExecuteAsync("abc");
-        await SqlMapper.ExecuteAsync(foo, "abc");
-
-        await foo.ExecuteAsync("abc", customer);
-
-        foo.Query<int>("abc");
-        await foo.QueryAsync<int>("abc");
-
-        await foo.QueryAsync<int>("abc", new { Foo = 12, bar });
-        await foo.QueryAsync<int>("def", new { Foo = 12, bar });
-
-        foo.QueryFirst<Customer>("def", new { Foo = 12, bar, Blap = (Guid?)null });
+        return connection.QueryFirst<Customer>("select * from Customers where id=@id and region=@region",
+            new { id, region});
     }
-    class NotDapper { public void Execute(string _) { } }
     public class Customer
     {
         public int X { get; set; }
