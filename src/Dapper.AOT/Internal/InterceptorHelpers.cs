@@ -7,6 +7,7 @@ using System.Data.Common;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Dapper.Internal;
 
@@ -32,6 +33,17 @@ public class InterceptorHelpers
     public delegate T RowParser<T>(DbDataReader reader, ReadOnlySpan<int> tokens, int columnOffset);
 
     private const int MAX_STACK_TOKENS = 64;
+
+    /// <summary>
+    /// Perform a synchronous buffered query
+    /// </summary>
+    public static IEnumerable<TResult> Query<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
+        Action<DbCommand, TArgs> commandBuilder,
+        ColumnTokenizer? columnTokenizer,
+        RowParser<TResult>? rowReader, bool buffered) => buffered
+        ? QueryBuffered(connection, sql, args, transaction, timeout, commandBuilder, columnTokenizer, rowReader)
+        : QueryUnbuffered(connection, sql, args, transaction, timeout, commandBuilder, columnTokenizer, rowReader);
 
     /// <summary>
     /// Perform a synchronous buffered query
@@ -83,10 +95,9 @@ public class InterceptorHelpers
                     }
                     else
                     {
-                        ReadOnlySpan<int> readOnlyTokens = default;
                         do
                         {
-                            results.Add(rowReader(reader, readOnlyTokens, 0));
+                            results.Add(rowReader(reader, default, 0));
                         }
                         while (reader.Read());
                     }
@@ -106,7 +117,92 @@ public class InterceptorHelpers
             }
             // consume entire results (avoid unobserved TDS error messages)
             while (reader.NextResult()) { }
-            return default!;
+            return results;
+        }
+        finally
+        {
+            if (leased is not null)
+            {
+                ArrayPool<int>.Shared.Return(leased);
+            }
+            reader?.Dispose();
+            cmd?.Dispose();
+            if (closeConn)
+            {
+                connection.Close();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Perform a synchronous buffered query
+    /// </summary>
+    public static IEnumerable<TResult> QueryUnbuffered<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
+        Action<DbCommand, TArgs> commandBuilder,
+        ColumnTokenizer? columnTokenizer,
+        RowParser<TResult>? rowReader)
+    {
+        bool closeConn = false;
+        DbCommand? cmd = null;
+        DbDataReader? reader = null;
+        int[]? leased = null;
+        CommandBehavior behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
+        try
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+                closeConn = true;
+                behavior |= CommandBehavior.CloseConnection;
+            }
+            cmd = connection.CreateCommand();
+            cmd.Connection = connection;
+            cmd.Transaction = transaction;
+            cmd.CommandText = sql;
+            if (timeout is not null)
+            {
+                cmd.CommandTimeout = timeout.GetValueOrDefault();
+            }
+            commandBuilder.Invoke(cmd, args);
+            reader = cmd.ExecuteReader(behavior);
+            closeConn = false; // handled by CommandBehavior.CloseConnection
+
+            if (reader.Read())
+            {
+                var fieldCount = reader.FieldCount;
+                if (columnTokenizer is null | fieldCount == 0)
+                {
+                    if (rowReader is null)
+                    {
+                        do
+                        {
+                            yield return reader.GetFieldValue<TResult>(0);
+                        }
+                        while (reader.Read());
+                    }
+                    else
+                    {
+                        do
+                        {
+                            yield return rowReader(reader, default, 0);
+                        }
+                        while (reader.Read());
+                    }
+                }
+                else
+                {
+                    leased = ArrayPool<int>.Shared.Rent(fieldCount);
+                    columnTokenizer!(reader, new Span<int>(leased, 0, fieldCount), 0);
+                    do
+                    {
+                        yield return rowReader!(reader, new ReadOnlySpan<int>(leased, 0, fieldCount), 0);
+                    }
+                    while (reader.Read());
+                }
+            }
+            // consume entire results (avoid unobserved TDS error messages)
+            while (reader.NextResult()) { }
         }
         finally
         {
@@ -190,6 +286,42 @@ public class InterceptorHelpers
         delegate*<DbDataReader, Span<int>, int, void> columnTokenizer,
         delegate*<DbDataReader, ReadOnlySpan<int>, int, TResult> rowReader)
         => UnsafeQueryOneRow(connection, sql, args, transaction, timeout, OneRowFlags.ThrowIfNone,
+            commandBuilder, columnTokenizer, rowReader);
+
+    /// <summary>
+    /// Perform a synchronous first-row query
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe static TResult UnsafeQueryFirstOrDefault<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
+        delegate*<DbCommand, TArgs, void> commandBuilder,
+        delegate*<DbDataReader, Span<int>, int, void> columnTokenizer,
+        delegate*<DbDataReader, ReadOnlySpan<int>, int, TResult> rowReader)
+        => UnsafeQueryOneRow(connection, sql, args, transaction, timeout, OneRowFlags.None,
+            commandBuilder, columnTokenizer, rowReader);
+
+    /// <summary>
+    /// Perform a synchronous first-row query
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe static TResult UnsafeQuerySingle<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
+        delegate*<DbCommand, TArgs, void> commandBuilder,
+        delegate*<DbDataReader, Span<int>, int, void> columnTokenizer,
+        delegate*<DbDataReader, ReadOnlySpan<int>, int, TResult> rowReader)
+        => UnsafeQueryOneRow(connection, sql, args, transaction, timeout, OneRowFlags.ThrowIfNone | OneRowFlags.ThrowIfMultiple,
+            commandBuilder, columnTokenizer, rowReader);
+
+    /// <summary>
+    /// Perform a synchronous first-row query
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public unsafe static TResult UnsafeQuerySingleOrDefault<TResult, TArgs>(
+        DbConnection connection, string sql, TArgs args, DbTransaction? transaction, int? timeout,
+        delegate*<DbCommand, TArgs, void> commandBuilder,
+        delegate*<DbDataReader, Span<int>, int, void> columnTokenizer,
+        delegate*<DbDataReader, ReadOnlySpan<int>, int, TResult> rowReader)
+        => UnsafeQueryOneRow(connection, sql, args, transaction, timeout, OneRowFlags.ThrowIfMultiple,
             commandBuilder, columnTokenizer, rowReader);
 
     private static TResult QueryOneRow<TResult, TArgs>(

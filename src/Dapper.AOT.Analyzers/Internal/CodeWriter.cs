@@ -48,6 +48,8 @@ internal sealed class CodeWriter
 
     public string Tab { get; set; } = "    "; // "\t"
 
+    public CodeWriter Append(bool value) => Append(value ? "true" : "false");
+
     public CodeWriter Append(string? value)
     {
         if (!string.IsNullOrEmpty(value))

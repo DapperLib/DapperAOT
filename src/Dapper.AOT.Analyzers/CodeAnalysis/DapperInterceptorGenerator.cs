@@ -58,7 +58,9 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             }
             if (name.StartsWith("Query<") || name.StartsWith("QueryAsync<")
                 || name.StartsWith("QueryFirst<") || name.StartsWith("QueryFirstAsync<")
+                || name.StartsWith("QueryFirstOrDefault<") || name.StartsWith("QueryFirstOrDefaultAsync<")
                 || name.StartsWith("QuerySingle<") || name.StartsWith("QuerySingleAsync<")
+                || name.StartsWith("QuerySingleOrDefault<") || name.StartsWith("QuerySingleOrDefaultAsync<")
                 )
             {
                 Log?.Invoke(DiagnosticSeverity.Info, $"Discovered possible <T> query: {node}");
@@ -191,23 +193,21 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     sql = s;
                     break;
                 case "buffered":
-                    if (!TryGetConstantValue(arg, out bool b))
+                    if (TryGetConstantValue(arg, out bool b))
                     {
-                        Log?.Invoke(DiagnosticSeverity.Hidden, $"Non-constant value for '{arg.Parameter?.Name}'");
-                        return null;
+                        buffered = b;
                     }
-                    buffered = b;
                     break;
                 case "param":
                     if (arg.Value is not IDefaultValueOperation)
                     {
                         var expr = arg.Value;
-                        if (expr is IConversionOperation conv && IsObject(expr.Type))
+                        if (expr is IConversionOperation conv && expr.Type?.SpecialType == SpecialType.System_Object)
                         {
                             expr = conv.Operand;
                         }
                         paramType = expr?.Type;
-                        if (paramType is null || IsObject(paramType))
+                        if (paramType is null || paramType.SpecialType == SpecialType.System_Object)
                         {
                             Log?.Invoke(DiagnosticSeverity.Hidden, $"Cannot use parameter type '{paramType?.Name}'");
                             return null;
@@ -254,16 +254,13 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             Log?.Invoke(DiagnosticSeverity.Hidden, $"SQL not detected");
             return null;
         }
-        if (HasAny(flags, OperationFlags.Query) && (buffered ?? true))
+        if (HasAny(flags, OperationFlags.Query) && buffered.HasValue)
         {
-            flags |= OperationFlags.Buffered;
+            flags |= buffered.GetValueOrDefault() ? OperationFlags.Buffered : OperationFlags.Unbuffered;
         }
         Log?.Invoke(DiagnosticSeverity.Hidden, $"OK, {flags}, result-type: {resultType}, param-type: {paramType}");
 
         return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType);
-
-        static bool IsObject(ITypeSymbol? symbol)
-            => symbol is { Name: "Object", ContainingNamespace: { Name: "System", ContainingNamespace.IsGlobalNamespace: true } };
 
         static bool TryGetConstantValue<T>(IArgumentOperation op, out T? value)
         {
@@ -274,9 +271,21 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     value = (T?)op.ConstantValue.Value;
                     return true;
                 }
-                else if (op.Value is ILiteralOperation or IDefaultValueOperation)
+                var val = op.Value;
+                if (val is IConversionOperation conv)
                 {
-                    var v = op.Value.ConstantValue;
+                    val = conv.Operand;
+                }
+
+                if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
+                {
+                    value = (T?)field.Field.ConstantValue;
+                    return true;
+                }
+
+                if (val is ILiteralOperation or IDefaultValueOperation)
+                {
+                    var v = val.ConstantValue;
                     value = v.HasValue ? (T?)v.Value : default;
                     return true;
                 }
@@ -314,12 +323,14 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     flags |= OperationFlags.Query;
                     return method.Arity == 1;
                 case "QueryFirst":
-                case "QueryFirstAsync":
-                    flags |= OperationFlags.First;
-                    goto case "Query";
                 case "QuerySingle":
+                case "QueryFirstOrDefault":
+                case "QuerySingleOrDefault":
+                case "QueryFirstAsync":
                 case "QuerySingleAsync":
-                    flags |= OperationFlags.Single;
+                case "QueryFirstOrDefaultAsync":
+                case "QuerySingleOrDefaultAsync":
+                    flags |= OperationFlags.SingleRow;
                     goto case "Query";
                 case "Execute":
                 case "ExecuteAsync":
@@ -343,8 +354,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         TypedResult = 1 << 3,
         HasParameters = 1 << 4,
         Buffered = 1 << 5,
-        First = 1 << 6,
-        Single = 1 << 7,
+        Unbuffered = 1 << 6,
+        SingleRow = 1 << 7,
         Text = 1 << 8,
         StoredProcedure = 1 << 9,
         TableDirect = 1 << 10,
@@ -384,7 +395,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         var dbCommandTypes = IdentifyDbCommandTypes(state.Compilation, out var needsCommandPrep);
 
         bool allowUnsafe = state.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
-        var sb = new CodeWriter().Append("file static partial class DapperGeneratedInterceptors").Indent()
+        var sb = new CodeWriter().Append("#nullable enable").NewLine()
+            .Append("file static partial class DapperGeneratedInterceptors").Indent()
             .DisableObsolete().NewLine()
             .NewLine()
             .Append("// placeholder for per-provider setup rules").NewLine()
@@ -399,11 +411,25 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             var (flags, method, parameterType) = grp.Key;
             int arity = HasAny(flags, OperationFlags.TypedResult) ? 2 : 1, argCount = 8;
             bool useUnsafe = false;
-            if (allowUnsafe && knownMethods.TryGetValue(("Unsafe" + method.Name, arity, argCount), out var helperMethod))
+            var helperName = method.Name;
+            if (helperName == "Query")
+            {
+                if (HasAny(flags, OperationFlags.Buffered | OperationFlags.Unbuffered))
+                {
+                    //dedicated mode
+                    helperName = HasAny(flags, OperationFlags.Buffered) ? "QueryBuffered" : "QueryUnbuffered";
+                }
+                else
+                {
+                    // fallback mode, needs an extra arg to pass in "buffered"
+                    argCount++;
+                }
+            }
+            if (allowUnsafe && knownMethods.TryGetValue(("Unsafe" + helperName, arity, argCount), out var helperMethod))
             {
                 useUnsafe = true;
             }
-            else if (!knownMethods.TryGetValue((method.Name, arity, argCount), out helperMethod))
+            else if (!knownMethods.TryGetValue((helperName, arity, argCount), out helperMethod))
             {
                 // unable to find matching helper method; don't try to help!
                 continue;
@@ -462,12 +488,17 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 }
             }
 
+            if (HasAny(flags, OperationFlags.Buffered | OperationFlags.Unbuffered))
+            {
+                sb.Append("global::System.Diagnostics.Debug.Assert(buffered is ").Append((flags & OperationFlags.Buffered) != 0).Append(");").NewLine();
+            }
+
             if (mode == 0)
             {
                 // basic default for now
                 mode = OperationFlags.Text;
             }
-            sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine();
+            sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
             sb.Append(@"return global::Dapper.Internal.InterceptorHelpers.").Append(helperMethod.Name).Append("(").NewLine().Indent(withScope: false)
                 .Append("global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn), sql,").NewLine();
@@ -498,10 +529,17 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 .Append(Forward(methodParameters, "commandTimeout")).Append(", ")
                 .Append(prefix).Append("CommandBuilder, ")
                 .Append(prefix).Append("ColumnTokenizer").Append(resultTypeIndex).Append(", ")
-                .Append(prefix).Append("RowReader").Append(resultTypeIndex).Append(");")
+                .Append(prefix).Append("RowReader").Append(resultTypeIndex);
+            if (helperName == "Query")
+            {
+                // pass in "buffered"
+                sb.Append(", buffered");
+            }
+            sb.Append(");")
                 .NewLine().Outdent(withScope: false).NewLine();
 
-            sb.Append("static void CommandBuilder(global::System.Data.Common.DbCommand cmd, ").Append(parameterType, true).Append(" args)").Indent().NewLine()
+            sb.Append("static void CommandBuilder(global::System.Data.Common.DbCommand cmd, ").Append(parameterType, true)
+                .Append(parameterType is null ? "object?" : "").Append(" args)").Indent().NewLine()
               .Append("InitCommand(cmd);").NewLine()
               .Append("cmd.CommandType = global::System.Data.CommandType.").Append(mode.ToString()).Append(";").NewLine();
             WriteArgs(parameterType, sb);
@@ -786,6 +824,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     if (CodeWriter.IsGettableInstanceMember(member, out var type))
                     {
                         sb.Append(first ? " " : ", ").Append(member.Name).Append(" = default(").Append(type).Append(")");
+                        if (type.IsReferenceType && type.NullableAnnotation == NullableAnnotation.None)
+                        {
+                            sb.Append("!");
+                        }
                         first = false;
                     }
                 }
