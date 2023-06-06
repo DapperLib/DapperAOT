@@ -2,7 +2,10 @@
 
 using Microsoft.Data.SqlClient;
 using Oracle.ManagedDataAccess.Client;
+using System;
 using System.Data.Common;
+using System.Globalization;
+using System.IO;
 
 file static class DapperGeneratedInterceptors
 {
@@ -165,13 +168,14 @@ file static class DapperGeneratedInterceptors
                         break;
                     // same, but with type conversions
                     case 2:
-                        obj.X = global::Dapper.Internal.InterceptorHelpers.GetInt32(reader, fieldOffset);
+                        obj.X = global::Dapper.Internal.InterceptorHelpers.GetValue<int>(reader, fieldOffset);
                         break;
                     case 3:
-                        obj.Y = global::Dapper.Internal.InterceptorHelpers.GetString(reader, fieldOffset);
+                        obj.Y = global::Dapper.Internal.InterceptorHelpers.GetValue<string>(reader, fieldOffset);
                         break;
                 }
             }
+
             fieldOffset++;
         }
         return obj;

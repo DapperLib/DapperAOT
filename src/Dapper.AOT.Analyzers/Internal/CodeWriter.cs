@@ -3,7 +3,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Collections.Immutable;
 using System.Globalization;
-using System.Security.Principal;
 using System.Text;
 using System.Threading;
 
@@ -57,6 +56,10 @@ internal sealed class CodeWriter
         }
         return this;
     }
+
+    public static string GetTypeName(ITypeSymbol value)
+        => value.IsAnonymousType ? value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+        : value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
     public CodeWriter Append(ITypeSymbol? value, bool anonToTuple = false)
     {
@@ -133,6 +136,24 @@ internal sealed class CodeWriter
                     type = prop.Type;
                     return true;
                 case IFieldSymbol field:
+                    type = field.Type;
+                    return true;
+            }
+        }
+        type = default!;
+        return false;
+    }
+
+    public static bool IsSettableInstanceMember(ISymbol symbol, out ITypeSymbol type)
+    {
+        if (symbol.DeclaredAccessibility == Accessibility.Public && !symbol.IsStatic)
+        {
+            switch (symbol)
+            {
+                case IPropertySymbol prop when !prop.IsIndexer && prop.SetMethod is { DeclaredAccessibility: Accessibility.Public }:
+                    type = prop.Type;
+                    return true;
+                case IFieldSymbol field when !field.IsReadOnly:
                     type = field.Type;
                     return true;
             }

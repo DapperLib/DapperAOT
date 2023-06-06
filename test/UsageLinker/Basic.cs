@@ -1,5 +1,6 @@
 ﻿#pragma warning disable CA1050, CA1822
 using Dapper;
+using System;
 using System.Data.Common;
 using System.Threading.Tasks;
 
@@ -26,13 +27,14 @@ public static class Foo
         await foo.QueryAsync<int>("abc", new { Foo = 12, bar });
         await foo.QueryAsync<int>("def", new { Foo = 12, bar });
 
-        foo.QueryFirst<Customer>("def", new { Foo = 12, bar });
+        foo.QueryFirst<Customer>("def", new { Foo = 12, bar, Blap = (Guid?)null });
     }
     class NotDapper { public void Execute(string _) { } }
     public class Customer
     {
         public int X { get; set; }
         public string? Y;
+        public Guid? Z { get; set; }
     }
 }
 

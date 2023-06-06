@@ -24,6 +24,7 @@ public static class Foo
         await foo.QueryAsync<int>("abc", new { Foo = 12, bar });
         await foo.QueryAsync<int>("def", new { Foo = 12, bar });
 
+        foo.QueryFirst<Customer>("def", new { Blap = (double?)null });
         foo.QueryFirst<Customer>("def", new { Foo = 12, bar });
     }
     class NotDapper { public void Execute(string _) { } }
@@ -31,5 +32,6 @@ public static class Foo
     {
         public int X { get; set; }
         public string Y;
+        public double? Z { get; set; }
     }
 }

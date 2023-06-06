@@ -7,6 +7,8 @@ using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -382,9 +384,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         var dbCommandTypes = IdentifyDbCommandTypes(state.Compilation, out var needsCommandPrep);
 
         bool allowUnsafe = state.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
-        var sb = new CodeWriter().Append("file static class DapperGeneratedInterceptors").Indent()
-            .DisableObsolete()
-            .NewLine();
+        var sb = new CodeWriter().Append("file static partial class DapperGeneratedInterceptors").Indent()
+            .DisableObsolete().NewLine()
+            .NewLine()
+            .Append("// placeholder for per-provider setup rules").NewLine()
+            .Append("static partial void InitCommand(global::System.Data.Common.DbCommand cmd);").NewLine().NewLine();
         int methodIndex = 0;
 
         var resultTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
@@ -443,17 +447,25 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
             // assertions
             var mode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
-            switch (mode)
+            var methodParameters = grp.Key.Method.Parameters;
+            if (HasParam(methodParameters, "commandType"))
             {
-                case 0:
-                    sb.Append("global::System.Diagnostics.Debug.Assert(commandType is null);").NewLine();
-                    // basic default for now
-                    mode = OperationFlags.Text;
-                    break;
-                default:
-                    sb.Append("global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.")
-                        .Append(mode.ToString()).Append(");").NewLine();
-                    break;
+                switch (mode)
+                {
+                    case 0:
+                        sb.Append("global::System.Diagnostics.Debug.Assert(commandType is null);").NewLine();
+                        break;
+                    default:
+                        sb.Append("global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.")
+                            .Append(mode.ToString()).Append(");").NewLine();
+                        break;
+                }
+            }
+
+            if (mode == 0)
+            {
+                // basic default for now
+                mode = OperationFlags.Text;
             }
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine();
 
@@ -480,48 +492,46 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             {
                 resultTypes.Add(resultType!, resultTypeIndex = resultTypes.Count);
             }
+
             var prefix = useUnsafe ? "&" : "";
-            sb.Append("global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction),").NewLine()
-                .Append("commandTimeout, ")
+            sb.Append(HasParam(methodParameters, "transaction") ? "global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction)," : "default,").NewLine()
+                .Append(Forward(methodParameters, "commandTimeout")).Append(", ")
                 .Append(prefix).Append("CommandBuilder, ")
                 .Append(prefix).Append("ColumnTokenizer").Append(resultTypeIndex).Append(", ")
                 .Append(prefix).Append("RowReader").Append(resultTypeIndex).Append(");")
                 .NewLine().Outdent(withScope: false).NewLine();
 
-            sb.Append("static void CommandBuilder(global::System.Data.Common.DbCommand cmd, ").Append(parameterType, true).Append(" args)").Indent().NewLine();
-            if (needsCommandPrep)
-            {
-                sb.Append("InitCommand(cmd);").NewLine();
-            }
-            sb.Append("cmd.CommandType = global::System.Data.CommandType.").Append(mode.ToString()).Append(";").NewLine();
+            sb.Append("static void CommandBuilder(global::System.Data.Common.DbCommand cmd, ").Append(parameterType, true).Append(" args)").Indent().NewLine()
+              .Append("InitCommand(cmd);").NewLine()
+              .Append("cmd.CommandType = global::System.Data.CommandType.").Append(mode.ToString()).Append(";").NewLine();
+            WriteArgs(parameterType, sb);
 
             sb.Outdent().Outdent().NewLine().NewLine();
+
+            static bool HasParam(ImmutableArray<IParameterSymbol> methodParameters, string name)
+            {
+                foreach (var p in methodParameters)
+                {
+                    if (p.Name == name)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            static string Forward(ImmutableArray<IParameterSymbol> methodParameters, string name)
+                => HasParam(methodParameters, name) ? name : "default";
         }
 
         foreach (var pair in resultTypes)
         {
-            /*
-                 private static void ColumnTokenizer0(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int fieldOffset)
-    
-    }
-
-    private static Foo.Customer RowReader0(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int fieldOffset)
-    {
-       
-    }
-             * */
-            sb.Append("private static void ColumnTokenizer").Append(pair.Value).Append("(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int fieldOffset)").Indent().NewLine()
-            .Append("// tokenize ").Append(pair.Key).NewLine()
-            .Outdent().NewLine();
-            sb.Append("private static ").Append(pair.Key).Append(" RowReader").Append(pair.Value).Append("(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int fieldOffset)").Indent().NewLine()
-                .Append("// parse ").Append(pair.Key).NewLine()
-                .Append("throw new global::System.NotImplementedException();").Outdent().NewLine();
+            WriteTokenizerAndReader(sb, pair.Key, pair.Value);
         }
 
         if (needsCommandPrep)
         {
             // at least one command-type needs special handling; do that
-            sb.Append("private static void InitCommand(global::System.Data.Common.DbCommand cmd)").Indent().NewLine();
+            sb.Append("static partial void InitCommand(global::System.Data.Common.DbCommand cmd)").Indent().NewLine();
             int cmdTypeIndex = 0;
             foreach (var type in dbCommandTypes)
             {
@@ -555,6 +565,209 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
     }
 
+    private static void WriteTokenizerAndReader(CodeWriter sb, ITypeSymbol resultType, int index)
+    {
+        var members = resultType.GetMembers();
+        var memberCount = 0;
+        foreach (var member in members)
+        {
+            if (CodeWriter.IsSettableInstanceMember(member, out _))
+            {
+                memberCount++;
+            }
+        }
+        sb.Append("private static void ColumnTokenizer").Append(index).Append("(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int fieldOffset)").Indent().NewLine()
+            .Append("// tokenize ").Append(resultType).NewLine();
+
+        if (memberCount != 0)
+        {
+            sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
+            .Append("int token = -1;").NewLine()
+            .Append("var name = reader.GetName(fieldOffset);").NewLine()
+            .Append("var type = reader.GetFieldType(fieldOffset);").NewLine()
+            .Append("switch (global::Dapper.Internal.StringHashing.NormalizedHash(name))").Indent().NewLine();
+
+            int token = 0;
+            foreach (var member in members)
+            {
+                if (CodeWriter.IsSettableInstanceMember(member, out var memberType))
+                {
+                    var name = member.Name; // TODO: [Column] ?
+                    sb.Append("case ").Append(StringHashing.NormalizedHash(name))
+                        .Append(" when global::Dapper.Internal.StringHashing.NormalizedEquals(name, ")
+                        .AppendVerbatimLiteral(name).Append("):").Indent(false).NewLine()
+                        .Append("token = type == typeof(").Append(memberType).Append(") ? ").Append(token)
+                        .Append(" : ").Append(token + memberCount).Append(";")
+                        .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
+                        .Append("break;").Outdent(false).NewLine();
+                    token++;
+                }
+            }
+            sb.Outdent().NewLine()
+                .Append("tokens[i] = token;").NewLine()
+                .Append("fieldOffset++;").NewLine();
+        }
+        sb.Outdent().NewLine();
+
+        sb.Outdent().NewLine().Append("private static ").Append(resultType).Append(" RowReader").Append(index).Append("(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int fieldOffset)").Indent().NewLine()
+            .Append("// parse ").Append(resultType).NewLine();
+
+        sb.Append(resultType.NullableAnnotation == NullableAnnotation.Annotated
+            ? resultType.WithNullableAnnotation(NullableAnnotation.None) : resultType).Append(" result = new();").NewLine();
+
+        if (memberCount != 0)
+        {
+            sb.Append("foreach (var token in tokens)").Indent().NewLine()
+            .Append("switch (token)").Indent().NewLine();
+
+            int token = 0;
+            foreach (var member in members)
+            {
+                if (CodeWriter.IsSettableInstanceMember(member, out var memberType))
+                {
+                    IdentifyDbType(memberType, out var readerMethod);
+                    var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(fieldOffset) ? ({CodeWriter.GetTypeName(memberType)})null : " : "";
+                    sb.Append("case ").Append(token).Append(":").NewLine().Indent(false)
+                        .Append("result.").Append(member.Name).Append(" = ").Append(nullCheck);
+
+                    if (readerMethod is null)
+                    {
+                        sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(fieldOffset);");
+                    }
+                    else
+                    {
+                        sb.Append("reader.").Append(readerMethod).Append("(fieldOffset);");
+                    }
+                    sb.NewLine().Append("break;").NewLine().Outdent(false)
+                        .Append("case ").Append(token + memberCount).Append(":").NewLine().Indent(false)
+                        .Append("result.").Append(member.Name).Append(" = ").Append(nullCheck)
+                        .Append("global::Dapper.Internal.InterceptorHelpers.GetValue<")
+                        .Append(MakeNonNullable(memberType)).Append(">(reader, fieldOffset);").NewLine()
+                        .Append("break;").NewLine().Outdent(false);
+                    token++;
+                }
+            }
+
+            sb.Outdent().NewLine().Append("fieldOffset++;").NewLine();
+        }
+        sb.Outdent().NewLine().Append("return result;").NewLine().Outdent().NewLine();
+
+        static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
+            ? symbol.NullableAnnotation == NullableAnnotation.Annotated
+            : symbol.NullableAnnotation != NullableAnnotation.None;
+    }
+
+    private void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb)
+    {
+        if (parameterType is null)
+        {
+            return;
+        }
+        var members = parameterType.GetMembers();
+        bool useDirect = parameterType.IsAnonymousType && CodeWriter.CountGettableInstanceMembers(members) == 1;
+        bool first = true;
+        foreach (var member in members)
+        {
+            if (CodeWriter.IsGettableInstanceMember(member, out var type))
+            {
+                var name = member.Name; // TODO use [Column] here?
+                sb.Append(first ? "var " : "").Append("p = cmd.CreateParameter();").NewLine()
+                    .Append("p.ParameterName = ").AppendVerbatimLiteral(name).Append(";").NewLine();
+                var dbType = IdentifyDbType(type, out _);
+                if (dbType is not null)
+                {
+                    sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.ToString()).Append(";").NewLine();
+                }
+                sb.Append("p.Value = global::Dapper.Internal.InterceptorHelpers.AsValue(args");
+                if (!useDirect)
+                {
+                    sb.Append(".").Append(member.Name);
+                }
+                sb.Append(");").NewLine()
+                    .Append("cmd.Parameters.Add(p);").NewLine();
+                first = false;
+            }
+        }
+    }
+
+    private static ITypeSymbol MakeNonNullable(ITypeSymbol type)
+    {
+        // think: type = Nullable.GetUnderlyingType(type) ?? type
+        if (type.IsValueType && type.NullableAnnotation == NullableAnnotation.Annotated
+            && type is INamedTypeSymbol named && named.Arity == 1)
+        {
+            type = named.TypeArguments[0];
+        }
+        return type.NullableAnnotation == NullableAnnotation.None
+            ? type : type.WithNullableAnnotation(NullableAnnotation.None);
+    }
+    private static DbType? IdentifyDbType(ITypeSymbol type, out string? readerMethod)
+    {
+        type = MakeNonNullable(type);
+        switch (type.SpecialType)
+        {
+            case SpecialType.System_Boolean:
+                readerMethod = nameof(DbDataReader.GetBoolean);
+                return DbType.Boolean;
+            case SpecialType.System_String:
+                readerMethod = nameof(DbDataReader.GetString);
+                return DbType.String;
+            case SpecialType.System_Single:
+                readerMethod = nameof(DbDataReader.GetFloat);
+                return DbType.Single;
+            case SpecialType.System_Double:
+                readerMethod = nameof(DbDataReader.GetDouble);
+                return DbType.Double;
+            case SpecialType.System_Decimal:
+                readerMethod = nameof(DbDataReader.GetDecimal);
+                return DbType.Decimal;
+            case SpecialType.System_DateTime:
+                readerMethod = nameof(DbDataReader.GetDateTime);
+                return DbType.DateTime;
+            case SpecialType.System_Int16:
+                readerMethod = nameof(DbDataReader.GetInt16);
+                return DbType.Int16;
+            case SpecialType.System_Int32:
+                readerMethod = nameof(DbDataReader.GetInt32);
+                return DbType.Int32;
+            case SpecialType.System_Int64:
+                readerMethod = nameof(DbDataReader.GetInt64);
+                return DbType.Int64;
+            case SpecialType.System_UInt16:
+                readerMethod = null;
+                return DbType.UInt16;
+            case SpecialType.System_UInt32:
+                readerMethod = null;
+                return DbType.UInt32;
+            case SpecialType.System_UInt64:
+                readerMethod = null;
+                return DbType.UInt64;
+            case SpecialType.System_Byte:
+                readerMethod = nameof(DbDataReader.GetByte);
+                return DbType.Byte;
+            case SpecialType.System_SByte:
+                readerMethod = null;
+                return DbType.SByte;
+        }
+        //if (type is IArrayTypeSymbol array && array.IsSZArray) // SZArray === "vector" (1-dim, 0-based)
+        //{
+        // byte
+        //}
+
+        if (type.Name == nameof(Guid) && type.ContainingNamespace is { Name: "System", ContainingNamespace: { IsGlobalNamespace: true } })
+        {
+            readerMethod = nameof(DbDataReader.GetGuid);
+            return DbType.Guid;
+        }
+        if (type.Name == nameof(DateTimeOffset) && type.ContainingNamespace is { Name: "System", ContainingNamespace: { IsGlobalNamespace: true } })
+        {
+            readerMethod = null;
+            return DbType.DateTimeOffset;
+        }
+        readerMethod = null;
+        return null;
+    }
+
     private void AppendShapeAndTransform(CodeWriter sb, ITypeSymbol parameterType)
     {
         var members = parameterType.GetMembers();
@@ -576,15 +789,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                         first = false;
                     }
                 }
-                sb.Append(" }, // expected shape");
-                if (count == 1)
-                {
-                    sb.Append(" "); // 1 member? fit it all on one-line
-                }
-                else
-                {
-                    sb.NewLine();
-                }
+                sb.Append(" }, // expected shape").NewLine();
                 first = true;
                 // note that single-member value-tuples don't exist, so go direct the value in that case
                 sb.Append("static args => ").Append(count == 1 ? "" : "(");
@@ -598,11 +803,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 }
                 if (count != 1)
                 {
-                    sb.Append(")");
+                    sb.Append(") ");
                 }
                 break;
         }
-        sb.Append(" ), // project to named type");
+        sb.Append("), // project to named type");
     }
 
     private static SpecialCommandFlags GetSpecialCommandFlags(ITypeSymbol type)

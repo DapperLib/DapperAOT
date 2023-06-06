@@ -521,11 +521,101 @@ public class InterceptorHelpers
         static void Throw() => throw new ArgumentException("The supplied transaction must be a DbTransaction", nameof(transaction));
     }
 
-    public static int GetInt32(DbDataReader reader, int fieldOffset)
-        => Convert.ToInt32(reader.GetValue(fieldOffset), CultureInfo.InvariantCulture);
-
-    public static string GetString(DbDataReader reader, int fieldOffset)
-        => Convert.ToString(reader.GetValue(fieldOffset), CultureInfo.InvariantCulture)!;
+    public static T GetValue<T>(DbDataReader reader, int fieldOffset)
+    {
+        var value = reader.GetValue(fieldOffset);
+        if (value is T typed)
+        {
+            // no conversion necessary
+            return typed;
+        }
+        // note we're using value-type T JIT dead-code removal to elide most of these checks
+        if (typeof(T) == typeof(int))
+        {
+            var t = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<int, T>(ref t);
+        }
+        else if (typeof(T) == typeof(bool))
+        {
+            var t = Convert.ToBoolean(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<bool, T>(ref t);
+        }
+        else if (typeof(T) == typeof(float))
+        {
+            var t = Convert.ToSingle(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<float, T>(ref t);
+        }
+        else if (typeof(T) == typeof(double))
+        {
+            var t = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<double, T>(ref t);
+        }
+        else if (typeof(T) == typeof(decimal))
+        {
+            var t = Convert.ToDecimal(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<decimal, T>(ref t);
+        }
+        else if (typeof(T) == typeof(decimal))
+        {
+            var t = Convert.ToDecimal(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<decimal, T>(ref t);
+        }
+        else if (typeof(T) == typeof(DateTime))
+        {
+            var t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<DateTime, T>(ref t);
+        }
+        else if (typeof(T) == typeof(long))
+        {
+            var t = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<long, T>(ref t);
+        }
+        else if (typeof(T) == typeof(short))
+        {
+            var t = Convert.ToInt16(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<short, T>(ref t);
+        }
+        else if (typeof(T) == typeof(sbyte))
+        {
+            var t = Convert.ToSByte(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<sbyte, T>(ref t);
+        }
+        else if (typeof(T) == typeof(ulong))
+        {
+            var t = Convert.ToUInt64(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<ulong, T>(ref t);
+        }
+        else if (typeof(T) == typeof(uint))
+        {
+            var t = Convert.ToUInt32(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<uint, T>(ref t);
+        }
+        else if (typeof(T) == typeof(ushort))
+        {
+            var t = Convert.ToUInt16(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<ushort, T>(ref t);
+        }
+        else if (typeof(T) == typeof(byte))
+        {
+            var t = Convert.ToByte(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<byte, T>(ref t);
+        }
+        else if (typeof(T) == typeof(char))
+        {
+            var t = Convert.ToChar(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<char, T>(ref t);
+        }
+        // this won't elide, but: we'll live with it
+        else if (typeof(T) == typeof(string))
+        {
+            var t = Convert.ToString(value, CultureInfo.InvariantCulture);
+            return Unsafe.As<string, T>(ref t);
+        }
+        else
+        {
+            return (T)Convert.ChangeType(value, typeof(T), CultureInfo.InvariantCulture);
+        }
+    }
 
     private static readonly object[] s_BoxedInt32 = new object[] { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
     private static readonly object s_BoxedTrue = true, s_BoxedFalse = false;
@@ -545,7 +635,10 @@ public class InterceptorHelpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object AsValue(bool? value)
         => value.HasValue ? AsValue(value.GetValueOrDefault()) : DBNull.Value;
-    // ... and a few others
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static object AsValue<T>(T? value) where T : struct
+        => value.HasValue ? AsValue(value.GetValueOrDefault()) : DBNull.Value;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object AsValue(object? value)
