@@ -44,7 +44,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
     private bool PreFilter(SyntaxNode node, CancellationToken cancellation)
     {
-        
+
 
         if (node is InvocationExpressionSyntax ie && ie.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
         {
@@ -460,7 +460,20 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             sb.Append(@"return global::Dapper.Internal.InterceptorHelpers.").Append(helperMethod.Name).Append("(").NewLine().Indent(withScope: false)
                 .Append("global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn), sql,").NewLine();
 
-            sb.Append("param,").NewLine();
+            if (parameterType is null)
+            {
+                sb.Append("(object?)null,").NewLine();
+            }
+            else if (parameterType.IsAnonymousType)
+            {
+                sb.Append("global::Dapper.Internal.InterceptorHelpers.Reshape(param!, // transform anon-type").NewLine().Indent(false);
+                AppendShapeAndTransform(sb, parameterType);
+                sb.Outdent(false).NewLine();
+            }
+            else
+            {
+                sb.Append("param,").NewLine();
+            }
 
 
             if (!resultTypes.TryGetValue(resultType!, out var resultTypeIndex))
@@ -475,7 +488,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 .Append(prefix).Append("RowReader").Append(resultTypeIndex).Append(");")
                 .NewLine().Outdent(withScope: false).NewLine();
 
-            sb.Append("static void CommandBuilder(global::System.Data.Common.DbCommand cmd, object args)").Indent().NewLine();
+            sb.Append("static void CommandBuilder(global::System.Data.Common.DbCommand cmd, ").Append(parameterType, true).Append(" args)").Indent().NewLine();
             if (needsCommandPrep)
             {
                 sb.Append("InitCommand(cmd);").NewLine();
@@ -498,8 +511,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
     }
              * */
             sb.Append("private static void ColumnTokenizer").Append(pair.Value).Append("(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int fieldOffset)").Indent().NewLine()
-                .Append("// tokenize ").Append(pair.Key).NewLine()
-                .Outdent().NewLine();
+            .Append("// tokenize ").Append(pair.Key).NewLine()
+            .Outdent().NewLine();
             sb.Append("private static ").Append(pair.Key).Append(" RowReader").Append(pair.Value).Append("(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int fieldOffset)").Indent().NewLine()
                 .Append("// parse ").Append(pair.Key).NewLine()
                 .Append("throw new global::System.NotImplementedException();").Outdent().NewLine();
@@ -542,6 +555,55 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
     }
 
+    private void AppendShapeAndTransform(CodeWriter sb, ITypeSymbol parameterType)
+    {
+        var members = parameterType.GetMembers();
+        int count = CodeWriter.CountGettableInstanceMembers(members);
+        switch (count)
+        {
+            case 0:
+                sb.Append("static () => (object?)null,").NewLine()
+                .Append("static args => null)").NewLine();
+                break;
+            default:
+                bool first = true;
+                sb.Append("static () => new {");
+                foreach (var member in members)
+                {
+                    if (CodeWriter.IsGettableInstanceMember(member, out var type))
+                    {
+                        sb.Append(first ? " " : ", ").Append(member.Name).Append(" = default(").Append(type).Append(")");
+                        first = false;
+                    }
+                }
+                sb.Append(" }, // expected shape");
+                if (count == 1)
+                {
+                    sb.Append(" "); // 1 member? fit it all on one-line
+                }
+                else
+                {
+                    sb.NewLine();
+                }
+                first = true;
+                // note that single-member value-tuples don't exist, so go direct the value in that case
+                sb.Append("static args => ").Append(count == 1 ? "" : "(");
+                foreach (var member in members)
+                {
+                    if (CodeWriter.IsGettableInstanceMember(member, out var type))
+                    {
+                        sb.Append(first ? "" : ", ").Append("args.").Append(member.Name);
+                        first = false;
+                    }
+                }
+                if (count != 1)
+                {
+                    sb.Append(")");
+                }
+                break;
+        }
+        sb.Append(" ), // project to named type");
+    }
 
     private static SpecialCommandFlags GetSpecialCommandFlags(ITypeSymbol type)
     {
@@ -563,7 +625,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         return flags;
 
         static bool IsSettableInstanceProperty(ISymbol? symbol, SpecialType type) =>
-            symbol is IPropertySymbol prop
+            symbol is IPropertySymbol prop && prop.DeclaredAccessibility == Accessibility.Public
             && prop.SetMethod is { DeclaredAccessibility: Accessibility.Public }
             && prop.Type.SpecialType == type
             && !prop.IsIndexer && !prop.IsStatic;

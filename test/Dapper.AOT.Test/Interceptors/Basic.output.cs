@@ -12,11 +12,13 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(param is not null);
         return global::Dapper.Internal.InterceptorHelpers.UnsafeQueryFirst(
             global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn), sql,
-            param,
+            global::Dapper.Internal.InterceptorHelpers.Reshape(param!, // transform anon-type
+                static () => new { Foo = default(int), bar = default(string) }, // expected shape
+                static args => (args.Foo, args.bar) ), // project to named type
             global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction),
             commandTimeout, &CommandBuilder, &ColumnTokenizer0, &RowReader0);
 
-        static void CommandBuilder(global::System.Data.Common.DbCommand cmd, object args)
+        static void CommandBuilder(global::System.Data.Common.DbCommand cmd, (int Foo, string bar) args)
         {
             InitCommand(cmd);
             cmd.CommandType = global::System.Data.CommandType.Text;
