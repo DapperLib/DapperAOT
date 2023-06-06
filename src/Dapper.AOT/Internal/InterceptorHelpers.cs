@@ -196,7 +196,11 @@ public class InterceptorHelpers
                     columnTokenizer!(reader, new Span<int>(leased, 0, fieldCount), 0);
                     do
                     {
+#if NET8_0_OR_GREATER
+                        yield return rowReader!(reader, MemoryMarshal.CreateReadOnlySpan(ref MemoryMarshal.GetArrayDataReference(leased), fieldCount), 0);
+#else
                         yield return rowReader!(reader, new ReadOnlySpan<int>(leased, 0, fieldCount), 0);
+#endif
                     }
                     while (reader.Read());
                 }
