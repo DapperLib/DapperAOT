@@ -2,6 +2,8 @@
 using System;
 using System.Data.Common;
 
+namespace UsageLinker;
+
 [DapperAot(true)]
 public class Product
 {
@@ -34,7 +36,7 @@ public class Product
     public DateTime SellStartDate { get; set; }
     public DateTime? SellEndDate { get; set; }
     public DateTime? DiscontinuedDate { get; set; }
-    public Guid rowguid { get; set; }
+    public Guid RowGuid { get; set; }
     public DateTime ModifiedDate { get; set; }
 }
 

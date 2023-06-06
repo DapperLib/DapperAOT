@@ -115,7 +115,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                             ContainingNamespace:
                             {
                                 Name: "Dapper",
-                                ContainingNamespace: { IsGlobalNamespace: true }
+                                ContainingNamespace.IsGlobalNamespace: true
                             }
                         }
                     && attrib.ConstructorArguments.Length == 1
@@ -754,12 +754,12 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         // byte
         //}
 
-        if (type.Name == nameof(Guid) && type.ContainingNamespace is { Name: "System", ContainingNamespace: { IsGlobalNamespace: true } })
+        if (type.Name == nameof(Guid) && type.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true })
         {
             readerMethod = nameof(DbDataReader.GetGuid);
             return DbType.Guid;
         }
-        if (type.Name == nameof(DateTimeOffset) && type.ContainingNamespace is { Name: "System", ContainingNamespace: { IsGlobalNamespace: true } })
+        if (type.Name == nameof(DateTimeOffset) && type.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true })
         {
             readerMethod = null;
             return DbType.DateTimeOffset;
@@ -795,7 +795,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 sb.Append("static args => ").Append(count == 1 ? "" : "(");
                 foreach (var member in members)
                 {
-                    if (CodeWriter.IsGettableInstanceMember(member, out var type))
+                    if (CodeWriter.IsGettableInstanceMember(member, out _))
                     {
                         sb.Append(first ? "" : ", ").Append("args.").Append(member.Name);
                         first = false;
