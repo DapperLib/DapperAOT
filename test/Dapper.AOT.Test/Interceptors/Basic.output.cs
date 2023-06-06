@@ -79,14 +79,14 @@ file static partial class DapperGeneratedInterceptors
             var type = reader.GetFieldType(fieldOffset);
             switch (global::Dapper.Internal.StringHashing.NormalizedHash(name))
             {
-                case 4245442695U when global::Dapper.Internal.StringHashing.NormalizedEquals(name, "X"):
+                case 4245442695U when global::Dapper.Internal.StringHashing.NormalizedEquals(name, "x"):
                     token = type == typeof(int) ? 0 : 3; // two tokens for right-typed and type-flexible
                     break;
-                case 4228665076U when global::Dapper.Internal.StringHashing.NormalizedEquals(name, "Y"):
+                case 4228665076U when global::Dapper.Internal.StringHashing.NormalizedEquals(name, "y"):
                     token = type == typeof(string) ? 1 : 4;
                     break;
-                case 4278997933U when global::Dapper.Internal.StringHashing.NormalizedEquals(name, "Z"):
-                    token = type == typeof(double?) ? 2 : 5;
+                case 4278997933U when global::Dapper.Internal.StringHashing.NormalizedEquals(name, "z"):
+                    token = type == typeof(double) ? 2 : 5;
                     break;
 
             }
