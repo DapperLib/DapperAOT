@@ -10,8 +10,10 @@ public class Product
         "select * from Production.Product where ProductId=@productId", new { productId });
 
     public int ProductID { get; set; }
+#pragma warning disable CS8618 // non-null init
     public string Name { get; set; }
     public string ProductNumber { get; set; }
+#pragma warning restore CS8618 // non-null init
     public bool MakeFlag { get; set; }
     public bool FinishedGoodsFlag { get; set; }
     public string? Color { get; set; }

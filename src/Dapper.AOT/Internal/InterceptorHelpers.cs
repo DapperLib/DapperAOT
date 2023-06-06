@@ -608,7 +608,7 @@ public class InterceptorHelpers
         // this won't elide, but: we'll live with it
         else if (typeof(T) == typeof(string))
         {
-            var t = Convert.ToString(value, CultureInfo.InvariantCulture);
+            var t = Convert.ToString(value, CultureInfo.InvariantCulture)!;
             return Unsafe.As<string, T>(ref t);
         }
         else
