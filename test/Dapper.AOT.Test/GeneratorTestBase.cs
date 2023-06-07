@@ -153,9 +153,7 @@ namespace Dapper.AOT.Test
                    MetadataReference.CreateFromFile(typeof(OracleConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(ValueTask<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Component).Assembly.Location),
-#pragma warning disable CS0618
-                   MetadataReference.CreateFromFile(typeof(InterceptorHelpers).Assembly.Location),
-#pragma warning restore CS0618
+                   MetadataReference.CreateFromFile(typeof(Command<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(ImmutableList<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(ImmutableArray<int>).Assembly.Location),

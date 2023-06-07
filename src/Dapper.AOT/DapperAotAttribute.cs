@@ -8,7 +8,7 @@ namespace Dapper;
 /// Indicates whether Dapper AOT is enabled for this element
 /// </summary>
 [ImmutableObject(true), Conditional("DEBUG")]
-[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Module | AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface | AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+[AttributeUsage(AttributeTargets.All, AllowMultiple = false, Inherited = true)]
 public sealed class DapperAotAttribute : Attribute
 {
     /// <summary>
@@ -18,5 +18,5 @@ public sealed class DapperAotAttribute : Attribute
     /// <summary>
     /// Indicates whether Dapper AOT is enabled for this element
     /// </summary>
-    public DapperAotAttribute(bool enabled) => Enabled = enabled;
+    public DapperAotAttribute(bool enabled = true) => Enabled = enabled;
 }

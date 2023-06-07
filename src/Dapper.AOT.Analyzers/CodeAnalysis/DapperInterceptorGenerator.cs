@@ -323,14 +323,20 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     flags |= OperationFlags.Query;
                     return method.Arity == 1;
                 case "QueryFirst":
-                case "QuerySingle":
-                case "QueryFirstOrDefault":
-                case "QuerySingleOrDefault":
                 case "QueryFirstAsync":
-                case "QuerySingleAsync":
+                    flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne;
+                    goto case "Query";
+                case "QueryFirstOrDefault":
                 case "QueryFirstOrDefaultAsync":
-                case "QuerySingleOrDefaultAsync":
                     flags |= OperationFlags.SingleRow;
+                    goto case "Query";
+                case "QuerySingle":
+                case "QuerySingleAsync":
+                    flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne | OperationFlags.AtMostOne;
+                    goto case "Query";
+                case "QuerySingleOrDefault":
+                case "QuerySingleOrDefaultAsync":
+                    flags |= OperationFlags.SingleRow | OperationFlags.AtMostOne;
                     goto case "Query";
                 case "Execute":
                 case "ExecuteAsync":
@@ -359,6 +365,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         Text = 1 << 8,
         StoredProcedure = 1 << 9,
         TableDirect = 1 << 10,
+        AtLeastOne = 1 << 11,
+        AtMostOne = 1 << 12,
     }
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
@@ -384,26 +392,17 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             return;
         }
 
-        var helpers = state.Compilation.GetTypeByMetadataName("Dapper.Internal.InterceptorHelpers");
-        if (helpers is null)
-        {
-            // without InterceptorHelpers, we're toast
-            return;
-        }
-        var knownMethods = GetKnownMethods(helpers);
-
         var dbCommandTypes = IdentifyDbCommandTypes(state.Compilation, out var needsCommandPrep);
+        string defaultCommandFactory = needsCommandPrep ? "DefaultCommandFactory" : "null";
 
         bool allowUnsafe = state.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
-            .Append("file static partial class DapperGeneratedInterceptors").Indent()
-            .DisableObsolete().NewLine()
-            .NewLine()
-            .Append("// placeholder for per-provider setup rules").NewLine()
-            .Append("static partial void InitCommand(global::System.Data.Common.DbCommand cmd);").NewLine().NewLine();
+            .Append("file static class DapperGeneratedInterceptors").Indent()
+            .DisableObsolete().NewLine().NewLine();
         int methodIndex = 0;
 
         var resultTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
+        var parameterTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
 
         foreach (var grp in state.Nodes.GroupBy(x => x.Group(), CommonComparer.Instance))
         {
@@ -425,15 +424,6 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     argCount++;
                 }
             }
-            if (allowUnsafe && knownMethods.TryGetValue(("Unsafe" + helperName, arity, argCount), out var helperMethod))
-            {
-                useUnsafe = true;
-            }
-            else if (!knownMethods.TryGetValue((helperName, arity, argCount), out helperMethod))
-            {
-                // unable to find matching helper method; don't try to help!
-                continue;
-            }
 
             int usageCount = 0;
             foreach (var op in grp.OrderBy(row => row.Location, CommonComparer.Instance))
@@ -450,7 +440,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 continue; // empty group?
             }
 
-            sb.Append("internal static ").Append(useUnsafe ? "unsafe " : "").Append(method.ReturnType).Append(" ").Append(method.Name).Append(methodIndex++).Append("(");
+            sb.Append("internal static ").Append(useUnsafe ? "unsafe " : "").Append(method.ReturnType)
+                .Append(
+                // respect that FirstOrDefault and SingleOrDefault could return null, but don't change from T to Nullable<T> (breaking)
+                method.ReturnType.IsReferenceType && (flags & (OperationFlags.SingleRow | OperationFlags.AtLeastOne)) == OperationFlags.SingleRow
+                ? "? " : " ").Append(method.Name).Append(methodIndex++).Append("(");
             var parameters = method.Parameters;
             for (int i = 0; i < parameters.Length; i++)
             {
@@ -472,18 +466,18 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             }
 
             // assertions
-            var mode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
+            var commandTypeMode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
             var methodParameters = grp.Key.Method.Parameters;
             if (HasParam(methodParameters, "commandType"))
             {
-                switch (mode)
+                switch (commandTypeMode)
                 {
                     case 0:
                         sb.Append("global::System.Diagnostics.Debug.Assert(commandType is null);").NewLine();
                         break;
                     default:
                         sb.Append("global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.")
-                            .Append(mode.ToString()).Append(");").NewLine();
+                            .Append(commandTypeMode.ToString()).Append(");").NewLine();
                         break;
                 }
             }
@@ -493,58 +487,99 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 sb.Append("global::System.Diagnostics.Debug.Assert(buffered is ").Append((flags & OperationFlags.Buffered) != 0).Append(");").NewLine();
             }
 
-            if (mode == 0)
-            {
-                // basic default for now
-                mode = OperationFlags.Text;
-            }
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
-            sb.Append(@"return global::Dapper.Internal.InterceptorHelpers.").Append(helperMethod.Name).Append("(").NewLine().Indent(withScope: false)
-                .Append("global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn), sql,").NewLine();
-
-            if (parameterType is null)
+            // (DbConnection connection, DbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, CommandFactory<TArgs>? commandFactory)
+            sb.Append("return new global::Dapper.Command<");
+            if (parameterType is null || parameterType.IsAnonymousType)
             {
-                sb.Append("(object?)null,").NewLine();
-            }
-            else if (parameterType.IsAnonymousType)
-            {
-                sb.Append("global::Dapper.Internal.InterceptorHelpers.Reshape(param!, // transform anon-type").NewLine().Indent(false);
-                AppendShapeAndTransform(sb, parameterType);
-                sb.Outdent(false).NewLine();
+                sb.Append("object?");
             }
             else
             {
-                sb.Append("param,").NewLine();
+                sb.Append(parameterType);
             }
-
-
-            if (!resultTypes.TryGetValue(resultType!, out var resultTypeIndex))
+            sb.Append(">(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", sql, ");
+            if (parameterType is null || parameterType.IsAnonymousType)
             {
-                resultTypes.Add(resultType!, resultTypeIndex = resultTypes.Count);
+                sb.Append("param");
             }
-
-            var prefix = useUnsafe ? "&" : "";
-            sb.Append(HasParam(methodParameters, "transaction") ? "global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction)," : "default,").NewLine()
-                .Append(Forward(methodParameters, "commandTimeout")).Append(", ")
-                .Append(prefix).Append("CommandBuilder, ")
-                .Append(prefix).Append("ColumnTokenizer").Append(resultTypeIndex).Append(", ")
-                .Append(prefix).Append("RowReader").Append(resultTypeIndex);
-            if (helperName == "Query")
+            else
             {
-                // pass in "buffered"
-                sb.Append(", buffered");
+                sb.Append("(").Append(parameterType).Append(")param");
             }
-            sb.Append(");")
-                .NewLine().Outdent(withScope: false).NewLine();
+            sb.Append(", ");
+            if (commandTypeMode == 0)
+            {   // not hard-coded
+                sb.Append(Forward(methodParameters, "commandType")).Append(HasParam(methodParameters, "commandType") ? ".GetValueOrDefault()" : "");
+            }
+            else
+            {
+                sb.Append("global::System.Data.CommandType.").Append(commandTypeMode.ToString());
+            }
+            sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? " ?? -1" : "").Append(", ");
+            if (HasAny(flags, OperationFlags.HasParameters))
+            {
+                if (!parameterTypes.TryGetValue(parameterType!, out var parameterTypeIndex))
+                {
+                    parameterTypes.Add(parameterType!, parameterTypeIndex = resultTypes.Count);
+                }
+                sb.Append("CommandFactory").Append(parameterTypeIndex).Append(".Instance");
+            }
+            else
+            {
+                sb.Append(defaultCommandFactory);
+            }
+            sb.Append(").");
 
-            sb.Append("static void CommandBuilder(global::System.Data.Common.DbCommand cmd, ").Append(parameterType, true)
-                .Append(parameterType is null ? "object?" : "").Append(" args)").Indent().NewLine()
-              .Append("InitCommand(cmd);").NewLine()
-              .Append("cmd.CommandType = global::System.Data.CommandType.").Append(mode.ToString()).Append(";").NewLine();
-            WriteArgs(parameterType, sb);
-
-            sb.Outdent().Outdent().NewLine().NewLine();
+            bool isAsync = HasAny(flags, OperationFlags.Async);
+            if (HasAny(flags, OperationFlags.Query))
+            {
+                sb.Append("Query").Append((flags & (OperationFlags.SingleRow | OperationFlags.AtLeastOne | OperationFlags.AtMostOne)) switch
+                {
+                    OperationFlags.SingleRow => "FirstOrDefault",
+                    OperationFlags.SingleRow | OperationFlags.AtLeastOne => "First",
+                    OperationFlags.SingleRow | OperationFlags.AtMostOne => "SingleOrDefault",
+                    OperationFlags.SingleRow | OperationFlags.AtLeastOne | OperationFlags.AtMostOne => "Single",
+                    _ => "",
+                }).Append((flags & (OperationFlags.Buffered | OperationFlags.Unbuffered)) switch
+                {
+                    OperationFlags.Buffered => "Buffered",
+                    OperationFlags.Unbuffered => "Unbuffered",
+                    _ => ""
+                }).Append(isAsync ? "Async" : "").Append("<").Append(resultType).Append(">").Append("(");
+                if (!HasAny(flags, OperationFlags.SingleRow))
+                {
+                    switch (flags & (OperationFlags.Buffered | OperationFlags.Unbuffered))
+                    {
+                        case OperationFlags.Buffered:
+                        case OperationFlags.Unbuffered:
+                            break;
+                        default: // using "could be either" buffer mode
+                            sb.Append(Forward(methodParameters, "buffered")).Append(", ");
+                            break;
+                    }
+                }
+                if (!resultTypes.TryGetValue(resultType!, out var resultTypeIndex))
+                {
+                    resultTypes.Add(resultType!, resultTypeIndex = resultTypes.Count);
+                }
+                sb.Append("RowFactory").Append(resultTypeIndex).Append(".Instance").Append(isAsync ? ", " : "");
+            }
+            else if (HasAny(flags, OperationFlags.Execute))
+            {
+                sb.Append("Execute").Append(isAsync ? "Async" : "").Append("(");
+            }
+            else
+            {
+                sb.NewLine().Append("#error not supported: ").Append(method.Name).NewLine();
+            }
+            if (isAsync)
+            {
+                sb.Append(Forward(methodParameters, "cancellationToken"));
+            }
+            sb.Append(");");
+            sb.NewLine().Outdent().NewLine().NewLine();
 
             static bool HasParam(ImmutableArray<IParameterSymbol> methodParameters, string name)
             {
@@ -561,22 +596,30 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 => HasParam(methodParameters, name) ? name : "default";
         }
 
-        foreach (var pair in resultTypes)
+        foreach (var pair in resultTypes.OrderBy(x => x.Value)) // retain discovery order
         {
-            WriteTokenizerAndReader(sb, pair.Key, pair.Value);
+            WriteRowFactory(sb, pair.Key, pair.Value);
+        }
+
+        foreach (var pair in parameterTypes.OrderBy(x => x.Value)) // retain discovery order
+        {
+            WriteCommandFactory(needsCommandPrep, sb, pair.Key, pair.Value);
         }
 
         if (needsCommandPrep)
         {
-            // at least one command-type needs special handling; do that
-            sb.Append("static partial void InitCommand(global::System.Data.Common.DbCommand cmd)").Indent().NewLine();
+            //// at least one command-type needs special handling; do that
+            sb.Append("private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();").NewLine().NewLine();
+            sb.Append("private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>").Indent().NewLine()
+                .Append("public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)").Indent().NewLine()
+                .Append("var cmd = base.Prepare(connection, sql, commandType, args);");
             int cmdTypeIndex = 0;
             foreach (var type in dbCommandTypes)
             {
                 var flags = GetSpecialCommandFlags(type);
                 if (flags != SpecialCommandFlags.None)
                 {
-                    sb.Append("// apply special per-provider command initialization logic").NewLine()
+                    sb.NewLine().Append("// apply special per-provider command initialization logic for ").Append(type.Name).NewLine()
                         .Append(cmdTypeIndex == 0 ? "" : "else ").Append("if (cmd is ").Append(type).Append(" cmd").Append(cmdTypeIndex).Append(")").Indent().NewLine();
                     if ((flags & SpecialCommandFlags.BindByName) != 0)
                     {
@@ -590,7 +633,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     cmdTypeIndex++;
                 }
             }
-            sb.Outdent().NewLine();
+            sb.Append("return cmd;")
+            .Outdent().NewLine().Outdent().NewLine();
         }
         sb.RestoreObsolete().Outdent();
 
@@ -603,9 +647,35 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
     }
 
-    private static void WriteTokenizerAndReader(CodeWriter sb, ITypeSymbol resultType, int index)
+    private static void WriteCommandFactory(bool needsCommandPrep, CodeWriter sb, ITypeSymbol type, int index)
     {
-        var members = resultType.GetMembers();
+        var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
+        sb.Append("private sealed class CommandFactory").Append(index).Append(" : ").Append(
+            needsCommandPrep ? "CommonCommandFactory" : "global::Dapper.CommandFactory").Append("<").Append(declaredType).Append(">");
+        if (type.IsAnonymousType)
+        {
+            sb.Append(" // ").Append(type); // give the reader a clue
+        }
+        sb.Indent().NewLine()
+            .Append("internal static readonly CommandFactory").Append(index).Append(" Instance = new();").NewLine()
+            .Append("private CommandFactory").Append(index).Append("() {}").NewLine()
+            .Append("public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, ").Append(declaredType).Append(" args)").Indent().NewLine().Append("var cmd = base.Prepare(connection, sql, commandType, args);").NewLine();
+        var argSource = "args";
+        if (type.IsAnonymousType)
+        {
+            sb.Append("var typed = Cast(").Append(argSource).Append(", ");
+            AppendShapeLambda(sb, type);
+            sb.Append("); // expected shape").NewLine();
+            argSource = "typed";
+        }
+        WriteArgs(type, sb, argSource);
+        sb.Append("return cmd;").Outdent().NewLine();
+        sb.Outdent().NewLine().NewLine();
+    }
+
+    private static void WriteRowFactory(CodeWriter sb, ITypeSymbol type, int index)
+    {
+        var members = type.GetMembers();
         var memberCount = 0;
         foreach (var member in members)
         {
@@ -614,16 +684,20 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 memberCount++;
             }
         }
-        sb.Append("private static void ColumnTokenizer").Append(index).Append("(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int fieldOffset)").Indent().NewLine()
-            .Append("// tokenize ").Append(resultType).NewLine();
+
+        sb.Append("private sealed class RowFactory").Append(index).Append(" : global::Dapper.RowFactory").Append("<").Append(type).Append(">")
+            .Indent().NewLine()
+            .Append("internal static readonly RowFactory").Append(index).Append(" Instance = new();").NewLine()
+            .Append("private RowFactory").Append(index).Append("() {}").NewLine();
 
         if (memberCount != 0)
         {
+            sb.Append("public override void Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
             sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
-            .Append("int token = -1;").NewLine()
-            .Append("var name = reader.GetName(fieldOffset);").NewLine()
-            .Append("var type = reader.GetFieldType(fieldOffset);").NewLine()
-            .Append("switch (global::Dapper.Internal.StringHashing.NormalizedHash(name))").Indent().NewLine();
+                .Append("int token = -1;").NewLine()
+                .Append("var name = reader.GetName(columnOffset);").NewLine()
+                .Append("var type = reader.GetFieldType(columnOffset);").NewLine()
+                .Append("switch (NormalizedHash(name))").Indent().NewLine();
 
             int token = 0;
             foreach (var member in members)
@@ -632,7 +706,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 {
                     var name = member.Name; // TODO: [Column] ?
                     sb.Append("case ").Append(StringHashing.NormalizedHash(name))
-                        .Append(" when global::Dapper.Internal.StringHashing.NormalizedEquals(name, ")
+                        .Append(" when NormalizedEquals(name, ")
                         .AppendVerbatimLiteral(StringHashing.Normalize(name)).Append("):").Indent(false).NewLine()
                         .Append("token = type == typeof(").Append(MakeNonNullable(memberType)).Append(") ? ").Append(token)
                         .Append(" : ").Append(token + memberCount).Append(";")
@@ -643,15 +717,13 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             }
             sb.Outdent().NewLine()
                 .Append("tokens[i] = token;").NewLine()
-                .Append("fieldOffset++;").NewLine();
+                .Append("columnOffset++;").NewLine();
+            sb.Outdent().NewLine().Outdent().NewLine();
         }
-        sb.Outdent().NewLine();
+        sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)").Indent().NewLine();
 
-        sb.Outdent().NewLine().Append("private static ").Append(resultType).Append(" RowReader").Append(index).Append("(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int fieldOffset)").Indent().NewLine()
-            .Append("// parse ").Append(resultType).NewLine();
-
-        sb.Append(resultType.NullableAnnotation == NullableAnnotation.Annotated
-            ? resultType.WithNullableAnnotation(NullableAnnotation.None) : resultType).Append(" result = new();").NewLine();
+        sb.Append(type.NullableAnnotation == NullableAnnotation.Annotated
+            ? type.WithNullableAnnotation(NullableAnnotation.None) : type).Append(" result = new();").NewLine();
 
         if (memberCount != 0)
         {
@@ -664,65 +736,72 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 if (CodeWriter.IsSettableInstanceMember(member, out var memberType))
                 {
                     IdentifyDbType(memberType, out var readerMethod);
-                    var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(fieldOffset) ? ({CodeWriter.GetTypeName(memberType)})null : " : "";
+                    var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType)})null : " : "";
                     sb.Append("case ").Append(token).Append(":").NewLine().Indent(false)
                         .Append("result.").Append(member.Name).Append(" = ").Append(nullCheck);
 
                     if (readerMethod is null)
                     {
-                        sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(fieldOffset);");
+                        sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
                     }
                     else
                     {
-                        sb.Append("reader.").Append(readerMethod).Append("(fieldOffset);");
+                        sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
                     }
                     sb.NewLine().Append("break;").NewLine().Outdent(false)
                         .Append("case ").Append(token + memberCount).Append(":").NewLine().Indent(false)
                         .Append("result.").Append(member.Name).Append(" = ").Append(nullCheck)
-                        .Append("global::Dapper.Internal.InterceptorHelpers.GetValue<")
-                        .Append(MakeNonNullable(memberType)).Append(">(reader, fieldOffset);").NewLine()
+                        .Append("GetValue<")
+                        .Append(MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
                         .Append("break;").NewLine().Outdent(false);
                     token++;
                 }
             }
 
-            sb.Outdent().NewLine().Append("fieldOffset++;").NewLine();
+            sb.Outdent().NewLine().Append("columnOffset++;").NewLine();
         }
         sb.Outdent().NewLine().Append("return result;").NewLine().Outdent().NewLine();
+
+
+        sb.Outdent().NewLine().NewLine();
+
+      
+
 
         static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
             ? symbol.NullableAnnotation == NullableAnnotation.Annotated
             : symbol.NullableAnnotation != NullableAnnotation.None;
     }
 
-    private void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb)
+    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, string source)
     {
         if (parameterType is null)
         {
             return;
         }
         var members = parameterType.GetMembers();
-        bool useDirect = parameterType.IsAnonymousType && CodeWriter.CountGettableInstanceMembers(members) == 1;
         bool first = true;
         foreach (var member in members)
         {
             if (CodeWriter.IsGettableInstanceMember(member, out var type))
             {
                 var name = member.Name; // TODO use [Column] here?
-                sb.Append(first ? "var " : "").Append("p = cmd.CreateParameter();").NewLine()
+                if (first)
+                {
+                    sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
+                    first = false;
+                }
+                sb.Append("if (Include(sql, commandType, ").AppendVerbatimLiteral(name).Append("))").Indent().NewLine()
+                    .Append("p = cmd.CreateParameter();").NewLine()
                     .Append("p.ParameterName = ").AppendVerbatimLiteral(name).Append(";").NewLine();
                 var dbType = IdentifyDbType(type, out _);
                 if (dbType is not null)
                 {
                     sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.ToString()).Append(";").NewLine();
                 }
-                sb.Append("p.Value = global::Dapper.Internal.InterceptorHelpers.AsValue(args");
-                if (!useDirect)
-                {
-                    sb.Append(".").Append(member.Name);
-                }
+                sb.Append("p.Value = AsValue(").Append(source).Append(".").Append(member.Name);
                 sb.Append(");").NewLine()
-                    .Append("cmd.Parameters.Add(p);").NewLine();
+                    .Append("cmd.Parameters.Add(p);").Outdent().NewLine();
                 first = false;
             }
         }
@@ -806,15 +885,14 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         return null;
     }
 
-    private void AppendShapeAndTransform(CodeWriter sb, ITypeSymbol parameterType)
+    private static void AppendShapeLambda(CodeWriter sb, ITypeSymbol parameterType)
     {
         var members = parameterType.GetMembers();
         int count = CodeWriter.CountGettableInstanceMembers(members);
         switch (count)
         {
             case 0:
-                sb.Append("static () => (object?)null,").NewLine()
-                .Append("static args => null)").NewLine();
+                sb.Append("static () => (object?)null");
                 break;
             default:
                 bool first = true;
@@ -831,25 +909,9 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                         first = false;
                     }
                 }
-                sb.Append(" }, // expected shape").NewLine();
-                first = true;
-                // note that single-member value-tuples don't exist, so go direct the value in that case
-                sb.Append("static args => ").Append(count == 1 ? "" : "(");
-                foreach (var member in members)
-                {
-                    if (CodeWriter.IsGettableInstanceMember(member, out _))
-                    {
-                        sb.Append(first ? "" : ", ").Append("args.").Append(member.Name);
-                        first = false;
-                    }
-                }
-                if (count != 1)
-                {
-                    sb.Append(") ");
-                }
+                sb.Append(" }");
                 break;
         }
-        sb.Append("), // project to named type");
     }
 
     private static SpecialCommandFlags GetSpecialCommandFlags(ITypeSymbol type)

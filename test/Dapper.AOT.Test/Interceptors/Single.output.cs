@@ -1,49 +1,24 @@
 
 #nullable enable
-file static partial class DapperGeneratedInterceptors
+file static class DapperGeneratedInterceptors
 {
 #pragma warning disable CS0618
 
-    // placeholder for per-provider setup rules
-    static partial void InitCommand(global::System.Data.Common.DbCommand cmd);
-
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Single.input.cs", 10, 24)]
-    internal static unsafe global::Foo.Customer QueryFirst0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::Foo.Customer QueryFirst0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, HasParameters, SingleRow
+        // Query, TypedResult, HasParameters, SingleRow, AtLeastOne
         // takes parameter: <anonymous type: int Foo, string bar>
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType is null);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.Internal.InterceptorHelpers.UnsafeQueryFirst(
-            global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn), sql,
-            global::Dapper.Internal.InterceptorHelpers.Reshape(param!, // transform anon-type
-                static () => new { Foo = default(int), bar = default(string)! }, // expected shape
-                static args => (args.Foo, args.bar) ), // project to named type
-            global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction),
-            commandTimeout, &CommandBuilder, &ColumnTokenizer0, &RowReader0);
+        return new global::Dapper.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).QueryFirst<global::Foo.Customer>(RowFactory0.Instance);
 
-        static void CommandBuilder(global::System.Data.Common.DbCommand cmd, (int Foo, string bar) args)
-        {
-            InitCommand(cmd);
-            cmd.CommandType = global::System.Data.CommandType.Text;
-            var p = cmd.CreateParameter();
-            p.ParameterName = "Foo";
-            p.DbType = global::System.Data.DbType.Int32;
-            p.Value = global::Dapper.Internal.InterceptorHelpers.AsValue(args.Foo);
-            cmd.Parameters.Add(p);
-            p = cmd.CreateParameter();
-            p.ParameterName = "bar";
-            p.DbType = global::System.Data.DbType.String;
-            p.Value = global::Dapper.Internal.InterceptorHelpers.AsValue(args.bar);
-            cmd.Parameters.Add(p);
-
-        }
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Single.input.cs", 11, 24)]
-    internal static unsafe global::Foo.Customer QueryFirstOrDefault1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::Foo.Customer? QueryFirstOrDefault1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, HasParameters, SingleRow, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>
@@ -51,159 +26,147 @@ file static partial class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.Internal.InterceptorHelpers.UnsafeQueryFirstOrDefault(
-            global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn), sql,
-            global::Dapper.Internal.InterceptorHelpers.Reshape(param!, // transform anon-type
-                static () => new { Foo = default(int), bar = default(string)! }, // expected shape
-                static args => (args.Foo, args.bar) ), // project to named type
-            global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction),
-            commandTimeout, &CommandBuilder, &ColumnTokenizer0, &RowReader0);
+        return new global::Dapper.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).QueryFirstOrDefault<global::Foo.Customer>(RowFactory0.Instance);
 
-        static void CommandBuilder(global::System.Data.Common.DbCommand cmd, (int Foo, string bar) args)
-        {
-            InitCommand(cmd);
-            cmd.CommandType = global::System.Data.CommandType.StoredProcedure;
-            var p = cmd.CreateParameter();
-            p.ParameterName = "Foo";
-            p.DbType = global::System.Data.DbType.Int32;
-            p.Value = global::Dapper.Internal.InterceptorHelpers.AsValue(args.Foo);
-            cmd.Parameters.Add(p);
-            p = cmd.CreateParameter();
-            p.ParameterName = "bar";
-            p.DbType = global::System.Data.DbType.String;
-            p.Value = global::Dapper.Internal.InterceptorHelpers.AsValue(args.bar);
-            cmd.Parameters.Add(p);
-
-        }
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Single.input.cs", 12, 24)]
-    internal static unsafe global::Foo.Customer QuerySingle2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::Foo.Customer QuerySingle2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, HasParameters, SingleRow, Text
+        // Query, TypedResult, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne
         // takes parameter: <anonymous type: int Foo, string bar>
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.Internal.InterceptorHelpers.UnsafeQuerySingle(
-            global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn), sql,
-            global::Dapper.Internal.InterceptorHelpers.Reshape(param!, // transform anon-type
-                static () => new { Foo = default(int), bar = default(string)! }, // expected shape
-                static args => (args.Foo, args.bar) ), // project to named type
-            global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction),
-            commandTimeout, &CommandBuilder, &ColumnTokenizer0, &RowReader0);
+        return new global::Dapper.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).QuerySingle<global::Foo.Customer>(RowFactory0.Instance);
 
-        static void CommandBuilder(global::System.Data.Common.DbCommand cmd, (int Foo, string bar) args)
-        {
-            InitCommand(cmd);
-            cmd.CommandType = global::System.Data.CommandType.Text;
-            var p = cmd.CreateParameter();
-            p.ParameterName = "Foo";
-            p.DbType = global::System.Data.DbType.Int32;
-            p.Value = global::Dapper.Internal.InterceptorHelpers.AsValue(args.Foo);
-            cmd.Parameters.Add(p);
-            p = cmd.CreateParameter();
-            p.ParameterName = "bar";
-            p.DbType = global::System.Data.DbType.String;
-            p.Value = global::Dapper.Internal.InterceptorHelpers.AsValue(args.bar);
-            cmd.Parameters.Add(p);
-
-        }
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Single.input.cs", 13, 24)]
-    internal static unsafe global::Foo.Customer QuerySingleOrDefault3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::Foo.Customer? QuerySingleOrDefault3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, SingleRow
+        // Query, TypedResult, SingleRow, AtMostOne
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType is null);
         global::System.Diagnostics.Debug.Assert(param is null);
 
-        return global::Dapper.Internal.InterceptorHelpers.UnsafeQuerySingleOrDefault(
-            global::Dapper.Internal.InterceptorHelpers.TypeCheck(cnn), sql,
-            (object?)null,
-            global::Dapper.Internal.InterceptorHelpers.TypeCheck(transaction),
-            commandTimeout, &CommandBuilder, &ColumnTokenizer0, &RowReader0);
+        return new global::Dapper.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, DefaultCommandFactory).QuerySingleOrDefault<global::Foo.Customer>(RowFactory0.Instance);
 
-        static void CommandBuilder(global::System.Data.Common.DbCommand cmd, object? args)
-        {
-            InitCommand(cmd);
-            cmd.CommandType = global::System.Data.CommandType.Text;
-
-        }
     }
 
-    private static void ColumnTokenizer0(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int fieldOffset)
+    private sealed class RowFactory0 : global::Dapper.RowFactory<global::Foo.Customer>
     {
-        // tokenize global::Foo.Customer
-        for (int i = 0; i < tokens.Length; i++)
+        internal static readonly RowFactory0 Instance = new();
+        private RowFactory0() {}
+        public override void Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
         {
-            int token = -1;
-            var name = reader.GetName(fieldOffset);
-            var type = reader.GetFieldType(fieldOffset);
-            switch (global::Dapper.Internal.StringHashing.NormalizedHash(name))
+            for (int i = 0; i < tokens.Length; i++)
             {
-                case 4245442695U when global::Dapper.Internal.StringHashing.NormalizedEquals(name, "x"):
-                    token = type == typeof(int) ? 0 : 3; // two tokens for right-typed and type-flexible
-                    break;
-                case 4228665076U when global::Dapper.Internal.StringHashing.NormalizedEquals(name, "y"):
-                    token = type == typeof(string) ? 1 : 4;
-                    break;
-                case 4278997933U when global::Dapper.Internal.StringHashing.NormalizedEquals(name, "z"):
-                    token = type == typeof(double) ? 2 : 5;
-                    break;
+                int token = -1;
+                var name = reader.GetName(columnOffset);
+                var type = reader.GetFieldType(columnOffset);
+                switch (NormalizedHash(name))
+                {
+                    case 4245442695U when NormalizedEquals(name, "x"):
+                        token = type == typeof(int) ? 0 : 3; // two tokens for right-typed and type-flexible
+                        break;
+                    case 4228665076U when NormalizedEquals(name, "y"):
+                        token = type == typeof(string) ? 1 : 4;
+                        break;
+                    case 4278997933U when NormalizedEquals(name, "z"):
+                        token = type == typeof(double) ? 2 : 5;
+                        break;
+
+                }
+                tokens[i] = token;
+                columnOffset++;
 
             }
-            tokens[i] = token;
-            fieldOffset++;
 
         }
-
-    }
-    private static global::Foo.Customer RowReader0(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int fieldOffset)
-    {
-        // parse global::Foo.Customer
-        global::Foo.Customer result = new();
-        foreach (var token in tokens)
+        public override global::Foo.Customer Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
         {
-            switch (token)
+            global::Foo.Customer result = new();
+            foreach (var token in tokens)
             {
-                case 0:
-                    result.X = reader.GetInt32(fieldOffset);
-                    break;
-                case 3:
-                    result.X = global::Dapper.Internal.InterceptorHelpers.GetValue<int>(reader, fieldOffset);
-                    break;
-                case 1:
-                    result.Y = reader.GetString(fieldOffset);
-                    break;
-                case 4:
-                    result.Y = global::Dapper.Internal.InterceptorHelpers.GetValue<string>(reader, fieldOffset);
-                    break;
-                case 2:
-                    result.Z = reader.IsDBNull(fieldOffset) ? (double?)null : reader.GetDouble(fieldOffset);
-                    break;
-                case 5:
-                    result.Z = reader.IsDBNull(fieldOffset) ? (double?)null : global::Dapper.Internal.InterceptorHelpers.GetValue<double>(reader, fieldOffset);
-                    break;
+                switch (token)
+                {
+                    case 0:
+                        result.X = reader.GetInt32(columnOffset);
+                        break;
+                    case 3:
+                        result.X = GetValue<int>(reader, columnOffset);
+                        break;
+                    case 1:
+                        result.Y = reader.GetString(columnOffset);
+                        break;
+                    case 4:
+                        result.Y = GetValue<string>(reader, columnOffset);
+                        break;
+                    case 2:
+                        result.Z = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
+                        break;
+                    case 5:
+                        result.Z = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
+                        break;
+
+                }
+                columnOffset++;
 
             }
-            fieldOffset++;
+            return result;
 
         }
-        return result;
 
     }
-    static partial void InitCommand(global::System.Data.Common.DbCommand cmd)
-    {
-        // apply special per-provider command initialization logic
-        if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
-        {
-            cmd0.BindByName = true;
-            cmd0.InitialLONGFetchSize = -1;
 
+    private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
+    {
+        internal static readonly CommandFactory0 Instance = new();
+        private CommandFactory0() {}
+        public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, object? args)
+        {
+            var cmd = base.Prepare(connection, sql, commandType, args);
+            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            global::System.Data.Common.DbParameter p;
+            if (Include(sql, commandType, "Foo"))
+            {
+                p = cmd.CreateParameter();
+                p.ParameterName = "Foo";
+                p.DbType = global::System.Data.DbType.Int32;
+                p.Value = AsValue(typed.Foo);
+                cmd.Parameters.Add(p);
+            }
+            if (Include(sql, commandType, "bar"))
+            {
+                p = cmd.CreateParameter();
+                p.ParameterName = "bar";
+                p.DbType = global::System.Data.DbType.String;
+                p.Value = AsValue(typed.bar);
+                cmd.Parameters.Add(p);
+            }
+            return cmd;
         }
+
+    }
+
+    private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();
+
+    private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
+    {
+        public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
+        {
+            var cmd = base.Prepare(connection, sql, commandType, args);
+            // apply special per-provider command initialization logic for OracleCommand
+            if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
+            {
+                cmd0.BindByName = true;
+                cmd0.InitialLONGFetchSize = -1;
+
+            }return cmd;
+        }
+
     }
 
 #pragma warning restore CS0618
