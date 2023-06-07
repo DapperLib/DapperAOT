@@ -8,9 +8,13 @@ namespace Dapper;
 /// <summary>
 /// Specifies additional metadata to be used for columns and parameter handling; only explicitly specified values are used
 /// </summary>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = false)]
 public class DbAttribute : Attribute
 {
+    /// <summary>
+    /// Gets or sets whether to ignore this member
+    /// </summary>
+    public bool Ignore { get; set; }
     /// <summary>
     /// Gets or sets the override name used for this value as a column or parameter
     /// </summary>
@@ -56,9 +60,13 @@ public class DbAttribute : Attribute
 public class DbAttribute<T> : Attribute where T : DbParameter
 {
     /// <summary>
-    /// Creates a new metadata entry that applies to parameters of type <see cref="T"/>
+    /// Creates a new metadata entry that applies to parameters of type <typeparamref name="T"/>
     /// </summary>
     /// <param name="memberName">The name of the parameter property to set</param>
     /// <param name="value">The value to assign to the parameter property</param>
-    public DbAttribute(string memberName, object value) { }
+    public DbAttribute(string memberName, object value)
+    {
+        _ = memberName;
+        _ = value;
+    }
 }

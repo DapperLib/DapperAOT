@@ -51,7 +51,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         if (node is InvocationExpressionSyntax ie && ie.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
         {
             var name = ma.Name.ToString();
-            if (name is "Execute" or "ExecuteAsync")
+            if (name is "Execute" or "ExecuteAsync"
+                or "ExecuteScalar" or "ExecuteScalarAsync")
             {
                 Log?.Invoke(DiagnosticSeverity.Info, $"Discovered possible execution: {node}");
                 return InterceptorsEnabled(node.SyntaxTree);
@@ -61,6 +62,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 || name.StartsWith("QueryFirstOrDefault<") || name.StartsWith("QueryFirstOrDefaultAsync<")
                 || name.StartsWith("QuerySingle<") || name.StartsWith("QuerySingleAsync<")
                 || name.StartsWith("QuerySingleOrDefault<") || name.StartsWith("QuerySingleOrDefaultAsync<")
+                || name.StartsWith("ExecuteScalar<") || name.StartsWith("ExecuteScalarAsync<")
                 )
             {
                 Log?.Invoke(DiagnosticSeverity.Info, $"Discovered possible <T> query: {node}");
@@ -260,7 +262,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         }
         Log?.Invoke(DiagnosticSeverity.Hidden, $"OK, {flags}, result-type: {resultType}, param-type: {paramType}");
 
-        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType);
+        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, "?");
 
         static bool TryGetConstantValue<T>(IArgumentOperation op, out T? value)
         {
@@ -342,6 +344,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 case "ExecuteAsync":
                     flags |= OperationFlags.Execute;
                     return method.Arity == 0;
+                case "ExecuteScalar":
+                case "ExecuteScalarAsync":
+                    flags |= OperationFlags.Execute | OperationFlags.Scalar;
+                    return method.Arity is 0 or 1;
                 default:
                     return false;
             }
@@ -367,25 +373,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         TableDirect = 1 << 10,
         AtLeastOne = 1 << 11,
         AtMostOne = 1 << 12,
+        Scalar = 1 << 13,
     }
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
     {
-        static Dictionary<(string name, int arity, int args), IMethodSymbol> GetKnownMethods(ITypeSymbol type)
-        {
-            Dictionary<(string name, int arity, int args), IMethodSymbol> result = new();
-            foreach (var member in type.GetMembers())
-            {
-                if (member is IMethodSymbol method
-                    && method.IsStatic && method.DeclaredAccessibility == Accessibility.Public
-                    && (method.Name.Contains("Query") || method.Name.Contains("Execute")))
-                {
-                    result.Add((method.Name, method.Arity, method.Parameters.Length), method);
-                }
-            }
-            return result;
-        }
-
         if (state.Nodes.IsDefaultOrEmpty)
         {
             // nothing to generate
@@ -407,7 +399,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         foreach (var grp in state.Nodes.GroupBy(x => x.Group(), CommonComparer.Instance))
         {
             // first, try to resolve the helper method that we're going to use for this
-            var (flags, method, parameterType) = grp.Key;
+            var (flags, method, parameterType, parameterMap) = grp.Key;
             int arity = HasAny(flags, OperationFlags.TypedResult) ? 2 : 1, argCount = 8;
             bool useUnsafe = false;
             var helperName = method.Name;
@@ -568,7 +560,17 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             }
             else if (HasAny(flags, OperationFlags.Execute))
             {
-                sb.Append("Execute").Append(isAsync ? "Async" : "").Append("(");
+                sb.Append("Execute");
+                if (HasAny(flags, OperationFlags.Scalar))
+                {
+                    sb.Append("Scalar");
+                }
+                sb.Append(isAsync ? "Async" : "");
+                if (method.Arity == 1)
+                {
+                    sb.Append("<").Append(method.ReturnType).Append(">");
+                }
+                sb.Append("(");
             }
             else
             {
@@ -765,7 +767,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
         sb.Outdent().NewLine().NewLine();
 
-      
+
 
 
         static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
@@ -802,7 +804,6 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 sb.Append("p.Value = AsValue(").Append(source).Append(".").Append(member.Name);
                 sb.Append(");").NewLine()
                     .Append("cmd.Parameters.Add(p);").Outdent().NewLine();
-                first = false;
             }
         }
     }
@@ -1027,10 +1028,12 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         public Location Location { get; }
         public OperationFlags Flags { get; }
         public string? Sql { get; }
+        public string ParameterMap { get; }
         public IMethodSymbol Method { get; }
         public ITypeSymbol? ResultType { get; }
         public ITypeSymbol? ParameterType { get; }
-        public SourceState(Location location, IMethodSymbol method, OperationFlags flags, string? sql, ITypeSymbol? resultType, ITypeSymbol? parameterType)
+        public SourceState(Location location, IMethodSymbol method, OperationFlags flags, string? sql,
+            ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap)
         {
             Location = location;
             Flags = flags;
@@ -1038,13 +1041,14 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             ResultType = resultType;
             ParameterType = parameterType;
             Method = method;
+            ParameterMap = parameterMap;
         }
 
-        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType) Group() => new(Flags, Method, ParameterType);
+        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap) Group() => new(Flags, Method, ParameterType, ParameterMap);
 
 
     }
-    private sealed class CommonComparer : IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType)>, IComparer<Location>
+    private sealed class CommonComparer : IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap)>, IComparer<Location>
     {
         public static readonly CommonComparer Instance = new();
         private CommonComparer() { }
@@ -1067,13 +1071,16 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             return delta;
         }
 
-        public bool Equals((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType) x, (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType) y) => x.Flags == y.Flags
+        public bool Equals((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap) x, (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap) y) => x.Flags == y.Flags
+                && x.ParameterMap == y.ParameterMap
                 && SymbolEqualityComparer.Default.Equals(x.Method, y.Method)
                 && SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType);
 
-        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType) obj)
+        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap) obj)
         {
             var hash = (int)obj.Flags;
+            hash *= -47;
+            hash += obj.ParameterMap.GetHashCode();
             hash *= -47;
             hash += SymbolEqualityComparer.Default.GetHashCode(obj.Method);
             hash *= -47;
