@@ -107,6 +107,11 @@ public abstract class CommandFactory
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Used for type inference")]
     protected static T Cast<T>(object? value, Func<T> shape) => (T)value!;
+
+    /// <summary>
+    /// Gets a shared command-factory with minimal command processing
+    /// </summary>
+    public static CommandFactory<object?> Simple  => CommandFactory<object?>.Default;
 }
 
 /// <summary>
@@ -115,6 +120,7 @@ public abstract class CommandFactory
 public class CommandFactory<T> : CommandFactory
 {
     internal static readonly CommandFactory<T> Default = new();
+
     /// <summary>
     /// Create a new instance
     /// </summary>

@@ -376,6 +376,39 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         Scalar = 1 << 13,
     }
 
+    private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
+    {
+        foreach (var attribute in compilation.SourceModule.GetAttributes())
+        {
+            if(attribute.AttributeClass is {  Name: "CommandFactoryAttribute", Arity: 1, ContainingNamespace: {
+                Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } })
+            {
+                var type = attribute.AttributeClass.TypeArguments[0];
+                canConstruct = false;
+                // need non-abstract and public parameterless constructor
+                if (!type.IsAbstract && type is INamedTypeSymbol named && named.Arity == 1)
+                {
+                    foreach (var ctor in named.InstanceConstructors)
+                    {
+                        if (ctor.Parameters.IsEmpty)
+                        {
+                            canConstruct = ctor.DeclaredAccessibility == Accessibility.Public;
+                            break;
+                        }
+                    }
+                }
+                var name = CodeWriter.GetTypeName(type);
+                var trimGeneric = name.LastIndexOf('<');
+                if (trimGeneric >= 0)
+                {
+                    name = name.Substring(0, trimGeneric);
+                }
+                return name;
+            }
+        }
+        canConstruct = true; // we mean the default Dapper one, which can be constructed
+        return null;
+    }
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
     {
         if (state.Nodes.IsDefaultOrEmpty)
@@ -385,12 +418,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         }
 
         var dbCommandTypes = IdentifyDbCommandTypes(state.Compilation, out var needsCommandPrep);
-        string defaultCommandFactory = needsCommandPrep ? "DefaultCommandFactory" : "null";
 
         bool allowUnsafe = state.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
-            .Append("file static class DapperGeneratedInterceptors").Indent()
-            .DisableObsolete().NewLine().NewLine();
+            .Append("file static class DapperGeneratedInterceptors").Indent().NewLine();
         int methodIndex = 0;
 
         var resultTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
@@ -432,11 +463,23 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 continue; // empty group?
             }
 
-            sb.Append("internal static ").Append(useUnsafe ? "unsafe " : "").Append(method.ReturnType)
-                .Append(
-                // respect that FirstOrDefault and SingleOrDefault could return null, but don't change from T to Nullable<T> (breaking)
-                method.ReturnType.IsReferenceType && (flags & (OperationFlags.SingleRow | OperationFlags.AtLeastOne)) == OperationFlags.SingleRow
-                ? "? " : " ").Append(method.Name).Append(methodIndex++).Append("(");
+            // declare the method
+            bool makeMethodNullable = false; // fixup return type annotation
+            if (method.ReturnType.IsReferenceType) // (but never change from value-type T to Nullable<T>)
+            {
+                if (HasAny(flags, OperationFlags.Scalar) && method.Arity == 0)
+                {   // ExecuteScalar non-generic returns object when it should return object? - fix that
+                    makeMethodNullable = true;
+                }
+                else if ((flags & (OperationFlags.SingleRow | OperationFlags.AtLeastOne)) == OperationFlags.SingleRow)
+                {
+                    // FirstOrDefault and SingleOrDefault could return null
+                    makeMethodNullable = true;
+                }
+            }
+
+            sb.Append("internal static ").Append(useUnsafe ? "unsafe " : "").Append(method.ReturnType).Append(makeMethodNullable ? "? " : " ")
+                .Append(method.Name).Append(methodIndex++).Append("(");
             var parameters = method.Parameters;
             for (int i = 0; i < parameters.Length; i++)
             {
@@ -520,7 +563,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             }
             else
             {
-                sb.Append(defaultCommandFactory);
+                sb.Append("DefaultCommandFactory");
             }
             sb.Append(").");
 
@@ -598,6 +641,55 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 => HasParam(methodParameters, name) ? name : "default";
         }
 
+        const string DapperBaseCommandFactory = "global::Dapper.CommandFactory";
+        var baseCommandFactory = GetCommandFactory(state.Compilation, out var canConstruct) ?? DapperBaseCommandFactory;
+        if (needsCommandPrep || !canConstruct)
+        {
+            // at least one command-type needs special handling; do that
+            sb.Append("private class CommonCommandFactory<T> : ").Append(baseCommandFactory).Append("<T>").Indent().NewLine();
+            if (needsCommandPrep)
+            {
+                sb.Append("public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)").Indent().NewLine()
+                .Append("var cmd = base.Prepare(connection, sql, commandType, args);");
+                int cmdTypeIndex = 0;
+                foreach (var type in dbCommandTypes)
+                {
+                    var flags = GetSpecialCommandFlags(type);
+                    if (flags != SpecialCommandFlags.None)
+                    {
+                        sb.NewLine().Append("// apply special per-provider command initialization logic for ").Append(type.Name).NewLine()
+                            .Append(cmdTypeIndex == 0 ? "" : "else ").Append("if (cmd is ").Append(type).Append(" cmd").Append(cmdTypeIndex).Append(")").Indent().NewLine();
+                        if ((flags & SpecialCommandFlags.BindByName) != 0)
+                        {
+                            sb.Append("cmd").Append(cmdTypeIndex).Append(".BindByName = true;").NewLine();
+                        }
+                        if ((flags & SpecialCommandFlags.InitialLONGFetchSize) != 0)
+                        {
+                            sb.Append("cmd").Append(cmdTypeIndex).Append(".InitialLONGFetchSize = -1;").NewLine();
+                        }
+                        sb.Outdent().NewLine();
+                        cmdTypeIndex++;
+                    }
+                }
+                sb.Append("return cmd;").Outdent().NewLine();
+            }
+            sb.Outdent().NewLine();
+            baseCommandFactory = "CommonCommandFactory";
+        }
+
+        // add in DefaultCommandFactory as a short-hand to a non-null basic factory
+        sb.NewLine();
+        if (baseCommandFactory == DapperBaseCommandFactory)
+        {
+            sb.Append("private static ").Append(baseCommandFactory).Append("<object?> DefaultCommandFactory => ")
+                .Append(baseCommandFactory).Append(".Simple;").NewLine();
+        }
+        else
+        {
+            sb.Append("private static readonly ").Append(baseCommandFactory).Append("<object?> DefaultCommandFactory = new();").NewLine();
+        }
+        sb.NewLine();
+
         foreach (var pair in resultTypes.OrderBy(x => x.Value)) // retain discovery order
         {
             WriteRowFactory(sb, pair.Key, pair.Value);
@@ -605,40 +697,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
         foreach (var pair in parameterTypes.OrderBy(x => x.Value)) // retain discovery order
         {
-            WriteCommandFactory(needsCommandPrep, sb, pair.Key, pair.Value);
+            WriteCommandFactory(baseCommandFactory, sb, pair.Key, pair.Value);
         }
 
-        if (needsCommandPrep)
-        {
-            //// at least one command-type needs special handling; do that
-            sb.Append("private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();").NewLine().NewLine();
-            sb.Append("private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>").Indent().NewLine()
-                .Append("public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)").Indent().NewLine()
-                .Append("var cmd = base.Prepare(connection, sql, commandType, args);");
-            int cmdTypeIndex = 0;
-            foreach (var type in dbCommandTypes)
-            {
-                var flags = GetSpecialCommandFlags(type);
-                if (flags != SpecialCommandFlags.None)
-                {
-                    sb.NewLine().Append("// apply special per-provider command initialization logic for ").Append(type.Name).NewLine()
-                        .Append(cmdTypeIndex == 0 ? "" : "else ").Append("if (cmd is ").Append(type).Append(" cmd").Append(cmdTypeIndex).Append(")").Indent().NewLine();
-                    if ((flags & SpecialCommandFlags.BindByName) != 0)
-                    {
-                        sb.Append("cmd").Append(cmdTypeIndex).Append(".BindByName = true;").NewLine();
-                    }
-                    if ((flags & SpecialCommandFlags.InitialLONGFetchSize) != 0)
-                    {
-                        sb.Append("cmd").Append(cmdTypeIndex).Append(".InitialLONGFetchSize = -1;").NewLine();
-                    }
-                    sb.Outdent();
-                    cmdTypeIndex++;
-                }
-            }
-            sb.Append("return cmd;")
-            .Outdent().NewLine().Outdent().NewLine();
-        }
-        sb.RestoreObsolete().Outdent();
+        sb.Outdent(); // ends our generated file-scoped class
 
         // we need an accessible [InterceptsLocation] - if not; add our own in the generated code
         var attrib = state.Compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute");
@@ -649,11 +711,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
     }
 
-    private static void WriteCommandFactory(bool needsCommandPrep, CodeWriter sb, ITypeSymbol type, int index)
+    private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index)
     {
         var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
-        sb.Append("private sealed class CommandFactory").Append(index).Append(" : ").Append(
-            needsCommandPrep ? "CommonCommandFactory" : "global::Dapper.CommandFactory").Append("<").Append(declaredType).Append(">");
+        sb.Append("private sealed class CommandFactory").Append(index).Append(" : ")
+            .Append(baseFactory).Append("<").Append(declaredType).Append(">");
         if (type.IsAnonymousType)
         {
             sb.Append(" // ").Append(type); // give the reader a clue

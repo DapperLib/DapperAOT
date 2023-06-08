@@ -1,15 +1,9 @@
-// Output code has 3 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs(14,16): warning CS8603: Possible null reference return.
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs(25,16): warning CS8603: Possible null reference return.
-// Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs(36,16): warning CS8603: Possible null reference return.
 
 #nullable enable
 file static class DapperGeneratedInterceptors
 {
-#pragma warning disable CS0618
-
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 10, 24)]
-    internal static object ExecuteScalar0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static object? ExecuteScalar0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters, Scalar
         // takes parameter: <anonymous type: int Foo, string bar>
@@ -21,7 +15,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 11, 24)]
-    internal static object ExecuteScalar1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static object? ExecuteScalar1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, StoredProcedure, Scalar
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
@@ -32,7 +26,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 12, 24)]
-    internal static object ExecuteScalar2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static object? ExecuteScalar2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, Text, Scalar
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
@@ -79,6 +73,25 @@ file static class DapperGeneratedInterceptors
 
     }
 
+    private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
+    {
+        public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
+        {
+            var cmd = base.Prepare(connection, sql, commandType, args);
+            // apply special per-provider command initialization logic for OracleCommand
+            if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
+            {
+                cmd0.BindByName = true;
+                cmd0.InitialLONGFetchSize = -1;
+
+            }
+            return cmd;
+        }
+
+    }
+
+    private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();
+
     private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
     {
         internal static readonly CommandFactory0 Instance = new();
@@ -109,25 +122,7 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();
 
-    private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
-    {
-        public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
-        {
-            var cmd = base.Prepare(connection, sql, commandType, args);
-            // apply special per-provider command initialization logic for OracleCommand
-            if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
-            {
-                cmd0.BindByName = true;
-                cmd0.InitialLONGFetchSize = -1;
-
-            }return cmd;
-        }
-
-    }
-
-#pragma warning restore CS0618
 }
 namespace System.Runtime.CompilerServices
 {

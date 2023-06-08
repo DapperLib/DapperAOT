@@ -2,8 +2,6 @@
 #nullable enable
 file static class DapperGeneratedInterceptors
 {
-#pragma warning disable CS0618
-
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 10, 24)]
     internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
@@ -57,6 +55,25 @@ file static class DapperGeneratedInterceptors
         return new global::Dapper.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).QueryBuffered<global::Foo.Customer>(RowFactory0.Instance);
 
     }
+
+    private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
+    {
+        public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
+        {
+            var cmd = base.Prepare(connection, sql, commandType, args);
+            // apply special per-provider command initialization logic for OracleCommand
+            if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
+            {
+                cmd0.BindByName = true;
+                cmd0.InitialLONGFetchSize = -1;
+
+            }
+            return cmd;
+        }
+
+    }
+
+    private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();
 
     private sealed class RowFactory0 : global::Dapper.RowFactory<global::Foo.Customer>
     {
@@ -154,25 +171,7 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();
 
-    private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
-    {
-        public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
-        {
-            var cmd = base.Prepare(connection, sql, commandType, args);
-            // apply special per-provider command initialization logic for OracleCommand
-            if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
-            {
-                cmd0.BindByName = true;
-                cmd0.InitialLONGFetchSize = -1;
-
-            }return cmd;
-        }
-
-    }
-
-#pragma warning restore CS0618
 }
 namespace System.Runtime.CompilerServices
 {
