@@ -1,10 +1,4 @@
-﻿using Dapper.Internal;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,571 +7,110 @@ namespace Dapper;
 /// <summary>
 /// Represents the state required to perform an ADO.NET operation
 /// </summary>
-/// <typeparam name="TArgs">The type of data that holds the parameters for this command</typeparam>
-public readonly struct Command<TArgs>
-{
-    private readonly CommandType commandType;
-    private readonly int timeout;
-    private readonly string sql;
-    private readonly DbConnection connection;
-    private readonly DbTransaction? transaction;
-    private readonly CommandFactory<TArgs> commandFactory;
-    private readonly TArgs args;
-
-    /// <summary>
-    /// Create a new instance
-    /// </summary>
-    public Command(IDbConnection connection, IDbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, [DapperAot] CommandFactory<TArgs>? commandFactory = null)
-        : this(CommandUtils.TypeCheck(connection), CommandUtils.TypeCheck(transaction), sql, args, commandType, timeout, commandFactory) {}
-
-    /// <summary>
-    /// Create a new instance
-    /// </summary>
-    public Command(DbConnection connection, DbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, [DapperAot] CommandFactory<TArgs>? commandFactory = null)
-    {
-        this.commandFactory = commandFactory ?? CommandFactory<TArgs>.Default;
-#if NET6_0_OR_GREATER
-        ArgumentNullException.ThrowIfNull(connection);
-#else
-        if (connection is null) throw new ArgumentNullException(nameof(connection));
+public abstract class Command
+#if DEBUG
+    : Dapper.Internal.ICommandApi
 #endif
-        this.connection = connection;
-        this.transaction = transaction;
-        this.sql = sql;
-        this.args = args;
-        this.commandType = commandType;
-        this.timeout = timeout;
-    }
+{
+    /// <inheritdoc cref="Command{TArgs}.QuerySingle{TRow}(RowFactory{TRow}?)"/>
+    public abstract TRow QuerySingle<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null);
 
-    private void PostProcessCommand(ref DbCommand? command)
-    {
-        Debug.Assert(command is not null);
-        if (commandFactory.PostProcess(command!, args))
-        {
-            command = null;
-        }
-    }
+    /// <inheritdoc cref="Command{TArgs}.QueryFirst{TRow}(RowFactory{TRow}?)"/>
+    public abstract TRow QueryFirst<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null);
 
-    private DbCommand GetCommand()
-    {
-        var cmd = commandFactory.Prepare(connection!, sql, commandType, args);
-        cmd.Connection = connection;
-        cmd.Transaction = transaction;
-        if (timeout >= 0)
-        {
-            cmd.CommandTimeout = timeout;
-        }
-        return cmd;
-    }
+    /// <inheritdoc cref="Command{TArgs}.QuerySingleOrDefault{TRow}(RowFactory{TRow}?)"/>
+    public abstract TRow? QuerySingleOrDefault<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null);
 
-    private bool OpenIfNeeded()
-    {
-        if (connection.State == ConnectionState.Open)
-        {
-            return false;
-        }
-        else
-        {
-            connection.Open();
-            return true;
-        }
-    }
+    /// <inheritdoc cref="Command{TArgs}.QueryFirstOrDefault{TRow}(RowFactory{TRow}?)"/>
+    public abstract TRow? QueryFirstOrDefault<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null);
 
-    private ValueTask<bool> OpenIfNeededAsync(CancellationToken cancellationToken)
-    {
-        if (connection.State == ConnectionState.Open)
-        {
-            return default;
-        }
-        else
-        {
-            var pending = connection.OpenAsync(cancellationToken);
-            return pending.IsCompletedSuccessfully()
-                ? new(true) : Awaited(pending);
+    /// <inheritdoc cref="Command{TArgs}.QuerySingleAsync{TRow}(RowFactory{TRow}?, CancellationToken)"/>
+    public abstract Task<TRow> QuerySingleAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default);
 
-            static async ValueTask<bool> Awaited(Task pending)
-            {
-                await pending;
-                return true;
-            }
-        }
-    }
+    /// <inheritdoc cref="Command{TArgs}.QueryFirstAsync{TRow}(RowFactory{TRow}?, CancellationToken)"/>
+    public abstract Task<TRow> QueryFirstAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Reads exactly one row
-    /// </summary>
-    public TRow QuerySingle<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null)
-        => QueryOneRow(OneRowFlags.ThrowIfNone | OneRowFlags.ThrowIfMultiple, rowFactory)!;
+    /// <inheritdoc cref="Command{TArgs}.QuerySingleOrDefaultAsync{TRow}(RowFactory{TRow}?, CancellationToken)"/>
+    public abstract Task<TRow?> QuerySingleOrDefaultAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Reads the first row returned
-    /// </summary>
-    public TRow QueryFirst<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null)
-        => QueryOneRow(OneRowFlags.ThrowIfNone, rowFactory)!;
+    /// <inheritdoc cref="Command{TArgs}.QueryFirstOrDefaultAsync{TRow}(RowFactory{TRow}?, CancellationToken)"/>
+    public abstract Task<TRow?> QueryFirstOrDefaultAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Reads at most one row
-    /// </summary>
-    public TRow? QuerySingleOrDefault<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null)
-        => QueryOneRow(OneRowFlags.ThrowIfMultiple, rowFactory);
+    /// <inheritdoc cref="Command{TArgs}.Execute()"/>
+    public abstract int Execute();
 
-    /// <summary>
-    /// Reads the first row, if any are returned
-    /// </summary>
-    public TRow? QueryFirstOrDefault<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null)
-        => QueryOneRow(OneRowFlags.None, rowFactory);
+    /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(CancellationToken)"/>
+    public abstract Task<int> ExecuteAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Reads exactly one row
-    /// </summary>
-    public Task<TRow> QuerySingleAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default)
-        => QueryOneRowAsync(OneRowFlags.ThrowIfNone | OneRowFlags.ThrowIfMultiple, rowFactory, cancellationToken)!;
+    /// <inheritdoc cref="Command{TArgs}.ExecuteScalar()"/>
+    public abstract object? ExecuteScalar();
 
-    /// <summary>
-    /// Reads the first row returned
-    /// </summary>
-    public Task<TRow> QueryFirstAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default)
-        => QueryOneRowAsync(OneRowFlags.ThrowIfNone, rowFactory, cancellationToken)!;
+    /// <inheritdoc cref="Command{TArgs}.ExecuteScalarAsync(CancellationToken)"/>
+    public abstract Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Reads at most one row
-    /// </summary>
-    public Task<TRow?> QuerySingleOrDefaultAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default)
-        => QueryOneRowAsync(OneRowFlags.ThrowIfMultiple, rowFactory, cancellationToken);
+    /// <inheritdoc cref="Command{TArgs}.ExecuteScalar{T}()"/>
+    public abstract T ExecuteScalar<T>();
 
-    /// <summary>
-    /// Reads the first row, if any are returned
-    /// </summary>
-    public Task<TRow?> QueryFirstOrDefaultAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default)
-        => QueryOneRowAsync(OneRowFlags.None, rowFactory, cancellationToken);
+    /// <inheritdoc cref="Command{TArgs}.ExecuteScalarAsync{T}(CancellationToken)"/>
+    public abstract Task<T> ExecuteScalarAsync<T>(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Executes a non-query operation
-    /// </summary>
-    public int Execute()
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        try
-        {
-            closeConn = OpenIfNeeded();
-            cmd = GetCommand();
-            var result = cmd.ExecuteNonQuery();
-            PostProcessCommand(ref cmd);
-            return result;
-        }
-        finally
-        {
-            CommandUtils.Cleanup(null, cmd, connection, closeConn);
-        }
-    }
-
-    /// <summary>
-    /// Executes a non-query operation
-    /// </summary>
-    public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        try
-        {
-            closeConn = await OpenIfNeededAsync(cancellationToken);
-            cmd = GetCommand();
-            var result = await cmd.ExecuteNonQueryAsync(cancellationToken);
-            PostProcessCommand(ref cmd);
-            return result;
-        }
-        finally
-        {
-            await CommandUtils.CleanupAsync(null, cmd, connection, closeConn);
-        }
-    }
-
-    /// <summary>
-    /// Read the first cell of data fetched from a query
-    /// </summary>
-    public object? ExecuteScalar()
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        try
-        {
-            closeConn = OpenIfNeeded();
-            cmd = GetCommand();
-            var result = cmd.ExecuteScalar();
-            PostProcessCommand(ref cmd);
-            return result;
-        }
-        finally
-        {
-            CommandUtils.Cleanup(null, cmd, connection, closeConn);
-        }
-    }
-
-    /// <summary>
-    /// Read the first cell of data fetched from a query
-    /// </summary>
-    public async Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken = default)
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        try
-        {
-            closeConn = await OpenIfNeededAsync(cancellationToken);
-            cmd = GetCommand();
-            var result = await cmd.ExecuteScalarAsync(cancellationToken);
-            PostProcessCommand(ref cmd);
-            return result;
-        }
-        finally
-        {
-            await CommandUtils.CleanupAsync(null, cmd, connection, closeConn);
-        }
-    }
-
-    /// <summary>
-    /// Read the first cell of data fetched from a query
-    /// </summary>
-    public T ExecuteScalar<T>()
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        try
-        {
-            closeConn = OpenIfNeeded();
-            cmd = GetCommand();
-            var result = cmd.ExecuteScalar();
-            PostProcessCommand(ref cmd);
-            return CommandUtils.As<T>(result);
-        }
-        finally
-        {
-            CommandUtils.Cleanup(null, cmd, connection, closeConn);
-        }
-    }
-
-    /// <summary>
-    /// Read the first cell of data fetched from a query
-    /// </summary>
-    public async Task<T> ExecuteScalarAsync<T>(CancellationToken cancellationToken = default)
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        try
-        {
-            closeConn = await OpenIfNeededAsync(cancellationToken);
-            cmd = GetCommand();
-            var result = await cmd.ExecuteScalarAsync(cancellationToken);
-            PostProcessCommand(ref cmd);
-            return CommandUtils.As<T>(result);
-        }
-        finally
-        {
-            await CommandUtils.CleanupAsync(null, cmd, connection, closeConn);
-        }
-    }
-
-    /// <summary>
-    /// Reads rows from a query, optionally buffered
-    /// </summary>
+    /// <inheritdoc cref="Command{TArgs}.Query{TRow}(bool, RowFactory{TRow}?)"/>
     public IEnumerable<TRow> Query<TRow>(bool buffered, [DapperAot] RowFactory<TRow>? rowFactory = null)
         => buffered ? QueryBuffered(rowFactory) : QueryUnbuffered(rowFactory);
 
-    /// <summary>
-    /// Reads buffered rows from a query
-    /// </summary>
-    public List<TRow> QueryBuffered<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null)
+    /// <inheritdoc cref="Command{TArgs}.QueryBuffered{TRow}(RowFactory{TRow}?)"/>
+    public abstract List<TRow> QueryBuffered<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null);
+
+    /// <inheritdoc cref="Command{TArgs}.QueryBufferedAsync{TRow}(RowFactory{TRow}?, CancellationToken)"/>
+    public abstract Task<List<TRow>> QueryBufferedAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc cref="Command{TArgs}.QueryUnbufferedAsync{TRow}(RowFactory{TRow}?, CancellationToken)"/>
+    public abstract IAsyncEnumerable<TRow> QueryUnbufferedAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null,
+        CancellationToken cancellationToken = default);
+
+    /// <inheritdoc cref="Command{TArgs}.QueryUnbuffered{TRow}(RowFactory{TRow}?)"/>
+    public abstract IEnumerable<TRow> QueryUnbuffered<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null);
+
+    internal sealed class TypedCommand<TArgs> : Command
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
-        try
-        {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if (closeConn = OpenIfNeeded())
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = cmd.ExecuteReader(behavior);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+        private readonly Command<TArgs> command;
 
-            var results = new List<TRow>();
-            if (reader.Read())
-            {
-                int[]? leased = null;
-                var fieldCount = reader.FieldCount;
-                var readWriteTokens
-                    = fieldCount == 0 ? default
-                    : fieldCount <= MAX_STACK_TOKENS ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], fieldCount)
-                    : CommandUtils.UnsafeRent(out leased, fieldCount);
+        public TypedCommand(Command<TArgs> command) => this.command = command;
 
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, readWriteTokens, 0);
-                ReadOnlySpan<int> readOnlyTokens = readWriteTokens; // avoid multiple conversions
-                do
-                {
-                    results.Add(rowFactory.Read(reader, readOnlyTokens, 0));
-                }
-                while (reader.Read());
-                CommandUtils.Return(leased);
-            }
-            // consume entire results (avoid unobserved TDS error messages)
-            while (reader.NextResult()) { }
-            PostProcessCommand(ref cmd);
-            return results;
-        }
-        finally
-        {
-            CommandUtils.Cleanup(reader, cmd, connection, closeConn);
-        }
-    }
+        public override int Execute() => command.Execute();
 
-    /// <summary>
-    /// Reads buffered rows from a query
-    /// </summary>
-    public async Task<List<TRow>> QueryBufferedAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default)
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
-        try
-        {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if (closeConn = await OpenIfNeededAsync(cancellationToken))
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = await cmd.ExecuteReaderAsync(behavior, cancellationToken);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+        public override Task<int> ExecuteAsync(CancellationToken cancellationToken = default) => command.ExecuteAsync(cancellationToken);
 
-            var results = new List<TRow>();
-            if (await reader.ReadAsync(cancellationToken))
-            {
-                var fieldCount = reader.FieldCount;
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, CommandUtils.UnsafeRent(out var leased, fieldCount), 0);
-                do
-                {
-                    results.Add(rowFactory.Read(reader, CommandUtils.UnsafeReadOnlySpan(leased, fieldCount), 0));
-                }
-                while (await reader.ReadAsync(cancellationToken));
-                CommandUtils.Return(leased);
-            }
-            // consume entire results (avoid unobserved TDS error messages)
-            while (await reader.NextResultAsync(cancellationToken)) { }
-            PostProcessCommand(ref cmd);
-            return results;
-        }
-        finally
-        {
-            await CommandUtils.CleanupAsync(reader, cmd, connection, closeConn);
-        }
-    }
+        public override object? ExecuteScalar() => command.ExecuteScalar();
 
-    /// <summary>
-    /// Reads unbuffered rows from a query
-    /// </summary>
-    public async IAsyncEnumerable<TRow> QueryUnbufferedAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
-        try
-        {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if (closeConn = await OpenIfNeededAsync(cancellationToken))
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = await cmd.ExecuteReaderAsync(behavior, cancellationToken);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+        public override T ExecuteScalar<T>() => command.ExecuteScalar<T>();
 
-            if (await reader.ReadAsync(cancellationToken))
-            {
-                var fieldCount = reader.FieldCount;
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, CommandUtils.UnsafeRent(out var leased, fieldCount), 0);
-                do
-                {
-                    yield return rowFactory.Read(reader, CommandUtils.UnsafeReadOnlySpan(leased, fieldCount), 0);
-                }
-                while (await reader.ReadAsync(cancellationToken));
-                CommandUtils.Return(leased);
-            }
-            // consume entire results (avoid unobserved TDS error messages)
-            while (await reader.NextResultAsync(cancellationToken)) { }
-            PostProcessCommand(ref cmd);
-        }
-        finally
-        {
-            await CommandUtils.CleanupAsync(reader, cmd, connection, closeConn);
-        }
-    }
+        public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken = default) => command.ExecuteScalarAsync(cancellationToken);
 
-    /// <summary>
-    /// Reads unbuffered rows from a query
-    /// </summary>
-    public IEnumerable<TRow> QueryUnbuffered<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null)
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
-        try
-        {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if (closeConn = OpenIfNeeded())
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = cmd.ExecuteReader(behavior);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+        public override Task<T> ExecuteScalarAsync<T>(CancellationToken cancellationToken = default) => command.ExecuteScalarAsync<T>(cancellationToken);
 
-            if (reader.Read())
-            {
-                var fieldCount = reader.FieldCount;
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, CommandUtils.UnsafeRent(out var leased, fieldCount), 0);
-                do
-                {
-                    yield return rowFactory.Read(reader, CommandUtils.UnsafeReadOnlySpan(leased, fieldCount), 0);
-                }
-                while (reader.Read());
-                CommandUtils.Return(leased);
-            }
-            // consume entire results (avoid unobserved TDS error messages)
-            while (reader.NextResult()) { }
-            PostProcessCommand(ref cmd);
-        }
-        finally
-        {
-            CommandUtils.Cleanup(reader, cmd, connection, closeConn);
-        }
-    }
+        public override List<TRow> QueryBuffered<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null) => command.QueryBuffered(rowFactory);
 
-    const int MAX_STACK_TOKENS = 64;
+        public override Task<List<TRow>> QueryBufferedAsync<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default) => command.QueryBufferedAsync(rowFactory, cancellationToken);
 
-    private TRow? QueryOneRow<TRow>(
-        OneRowFlags oneRowFlags,
-        RowFactory<TRow>? rowFactory)
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
+        public override TRow QueryFirst<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null) => command.QueryFirst(rowFactory);
 
-        try
-        {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if ((oneRowFlags & OneRowFlags.ThrowIfMultiple) == 0)
-            {   // if we don't care if there's two rows, we can restrict to read one only
-                behavior |= CommandBehavior.SingleRow;
-            }
-            if (closeConn = OpenIfNeeded())
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = cmd.ExecuteReader(behavior);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+        public override Task<TRow> QueryFirstAsync<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default) => command.QueryFirstAsync(rowFactory, cancellationToken);
 
-            TRow? result = default;
-            if (reader.Read())
-            {
-                {   // extra scope level so the compiler can ensure we aren't using the lease beyond the expected lifetime
-                    int[]? leased = null;
-                    var fieldCount = reader.FieldCount;
-                    var readWriteTokens
-                        = fieldCount == 0 ? default
-                        : fieldCount <= MAX_STACK_TOKENS ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], fieldCount)
-                        : CommandUtils.UnsafeRent(out leased, fieldCount);
+        public override TRow? QueryFirstOrDefault<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null) where TRow : default => command.QueryFirstOrDefault(rowFactory);
 
-                    (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, readWriteTokens, 0);
-                    result = rowFactory.Read(reader, readWriteTokens, 0);
-                    CommandUtils.Return(leased);
-                }
+        public override Task<TRow?> QueryFirstOrDefaultAsync<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default) where TRow : default => command.QueryFirstOrDefaultAsync(rowFactory, cancellationToken);
 
-                if (reader.Read())
-                {
-                    if ((oneRowFlags & OneRowFlags.ThrowIfMultiple) != 0)
-                    {
-                        CommandUtils.ThrowMultiple();
-                    }
-                    while (reader.Read()) { }
-                }
-            }
-            else if ((oneRowFlags & OneRowFlags.ThrowIfNone) != 0)
-            {
-                CommandUtils.ThrowNone();
-            }
+        public override TRow QuerySingle<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null) => command.QuerySingle(rowFactory);
 
-            // consume entire results (avoid unobserved TDS error messages)
-            while (reader.NextResult()) { }
-            PostProcessCommand(ref cmd);
-            return result;
-        }
-        finally
-        {
-            CommandUtils.Cleanup(reader, cmd, connection, closeConn);
-        }
-    }
+        public override Task<TRow> QuerySingleAsync<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default) => command.QuerySingleAsync(rowFactory, cancellationToken);
 
-    private async Task<TRow?> QueryOneRowAsync<TRow>(
-        OneRowFlags oneRowFlags,
-        RowFactory<TRow>? rowFactory,
-        CancellationToken cancellationToken)
-    {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
+        public override TRow? QuerySingleOrDefault<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null) where TRow : default => command.QuerySingleOrDefault(rowFactory);
 
-        try
-        {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if ((oneRowFlags & OneRowFlags.ThrowIfMultiple) == 0)
-            {   // if we don't care if there's two rows, we can restrict to read one only
-                behavior |= CommandBehavior.SingleRow;
-            }
-            if (closeConn = await OpenIfNeededAsync(cancellationToken))
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = await cmd.ExecuteReaderAsync(behavior, cancellationToken);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+        public override Task<TRow?> QuerySingleOrDefaultAsync<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default) where TRow : default => command.QuerySingleOrDefaultAsync(rowFactory, cancellationToken);
 
-            TRow? result = default;
-            if (await reader.ReadAsync(cancellationToken))
-            {
-                {   // extra scope level so the compiler can ensure we aren't using the lease beyond the expected lifetime
-                    var fieldCount = reader.FieldCount;
-                    (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, CommandUtils.UnsafeRent(out var leased, fieldCount), 0);
+        public override IEnumerable<TRow> QueryUnbuffered<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null) => command.QueryUnbuffered(rowFactory);
 
-                    result = rowFactory.Read(reader, CommandUtils.UnsafeReadOnlySpan(leased, fieldCount), 0);
-                    CommandUtils.Return(leased);
-                }
-
-                if (await reader.ReadAsync(cancellationToken))
-                {
-                    if ((oneRowFlags & OneRowFlags.ThrowIfMultiple) != 0)
-                    {
-                        CommandUtils.ThrowMultiple();
-                    }
-                    while (await reader.ReadAsync(cancellationToken)) { }
-                }
-            }
-            else if ((oneRowFlags & OneRowFlags.ThrowIfNone) != 0)
-            {
-                CommandUtils.ThrowNone();
-            }
-
-            // consume entire results (avoid unobserved TDS error messages)
-            while (await reader.NextResultAsync(cancellationToken)) { }
-            PostProcessCommand(ref cmd);
-            return result;
-        }
-        finally
-        {
-            await CommandUtils.CleanupAsync(reader, cmd, connection, closeConn);
-        }
+        public override IAsyncEnumerable<TRow> QueryUnbufferedAsync<TRow>([DapperAot(true)] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default) => command.QueryUnbufferedAsync(rowFactory, cancellationToken);
     }
 }
