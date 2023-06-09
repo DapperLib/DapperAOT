@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ namespace Dapper;
 /// Represents the state required to perform an ADO.NET operation
 /// </summary>
 /// <typeparam name="TArgs">The type of data that holds the parameters for this command</typeparam>
+[SuppressMessage("Usage", "CA2231:Overload operator equals on overriding value type Equals", Justification = "Equality not actually supported")]
 public readonly struct Command<TArgs>
 #if DEBUG
     : Dapper.Internal.ICommandApi
@@ -27,6 +29,17 @@ public readonly struct Command<TArgs>
     private readonly CommandFactory<TArgs> commandFactory;
     private readonly TArgs args;
 
+    /// <inheritdoc/>
+    public override string ToString() => sql;
+
+    /// <inheritdoc/>
+    public override int GetHashCode()
+        => throw new NotSupportedException();
+
+    /// <inheritdoc/>
+    public override bool Equals(object? obj)
+        => throw new NotSupportedException();
+
     /// <summary>
     /// Allow this command to be referenced in a non-generic way
     /// </summary>
@@ -36,26 +49,51 @@ public readonly struct Command<TArgs>
     /// <summary>
     /// Create a new instance
     /// </summary>
-    public Command(IDbConnection connection, IDbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, [DapperAot] CommandFactory<TArgs>? commandFactory = null)
-        : this(CommandUtils.TypeCheck(connection), CommandUtils.TypeCheck(transaction), sql, args, commandType, timeout, commandFactory) {}
-
-    /// <summary>
-    /// Create a new instance
-    /// </summary>
-    public Command(DbConnection connection, DbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, [DapperAot] CommandFactory<TArgs>? commandFactory = null)
+    internal Command(DbConnection? connection, DbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, [DapperAot] CommandFactory<TArgs>? commandFactory = null)
     {
-        this.commandFactory = commandFactory ?? CommandFactory<TArgs>.Default;
-#if NET6_0_OR_GREATER
-        ArgumentNullException.ThrowIfNull(connection);
-#else
-        if (connection is null) throw new ArgumentNullException(nameof(connection));
-#endif
-        this.connection = connection;
+        if (connection is null)
+        {
+            if (transaction is null) ThrowNoConnection();
+            connection = transaction!.Connection;
+            if (connection is null) ThrowTransactionHasNoConnection();
+        }
+        else
+        {
+            if (transaction is not null && !ReferenceEquals(connection, transaction.Connection))
+            {
+                ThrowWrongTransactionConnection();
+            }
+        }
+
+        this.connection = connection!;
         this.transaction = transaction;
         this.sql = sql;
         this.args = args;
         this.commandType = commandType;
         this.timeout = timeout;
+        this.commandFactory = commandFactory ?? CommandFactory<TArgs>.Default;
+
+        static void ThrowTransactionHasNoConnection() => throw new ArgumentException("The transaction provided has no associated connection", nameof(transaction));
+        static void ThrowWrongTransactionConnection() => throw new ArgumentException("The transaction provided is not associated with the specified connection", nameof(transaction));
+        static void ThrowNoConnection() => throw new ArgumentNullException(nameof(connection));
+    }
+
+    /// <summary>
+    /// Create a new instance
+    /// </summary>
+    internal Command(DbConnection connection, string sql, TArgs args, CommandType commandType, int timeout, [DapperAot] CommandFactory<TArgs>? commandFactory = null)
+    {
+        if (connection is null) ThrowNoConnection();
+
+        this.connection = connection!;
+        this.transaction = null;
+        this.sql = sql;
+        this.args = args;
+        this.commandType = commandType;
+        this.timeout = timeout;
+        this.commandFactory = commandFactory ?? CommandFactory<TArgs>.Default;
+
+        static void ThrowNoConnection() => throw new ArgumentNullException(nameof(connection));
     }
 
     private void PostProcessCommand(ref DbCommand? command)

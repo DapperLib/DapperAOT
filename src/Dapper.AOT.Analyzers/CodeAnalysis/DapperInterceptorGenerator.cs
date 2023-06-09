@@ -525,7 +525,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
             // (DbConnection connection, DbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, CommandFactory<TArgs>? commandFactory)
-            sb.Append("return new global::Dapper.Command<");
+            sb.Append("return global::Dapper.DapperAotExtensions.Command<");
             if (parameterType is null || parameterType.IsAnonymousType)
             {
                 sb.Append("object?");

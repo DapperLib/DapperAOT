@@ -18,62 +18,6 @@ internal static class CommandUtils
     const MethodImplOptions AggressiveOptions = MethodImplOptions.AggressiveInlining;
 #endif
 
-    /// <summary>
-    /// Asserts that the connection provided is usable
-    /// </summary>
-    [MethodImpl(AggressiveOptions)]
-    public static DbConnection TypeCheck(DbConnection? cnn)
-    {
-#if NET6_0_OR_GREATER
-        ArgumentNullException.ThrowIfNull(cnn);
-#else
-        if (cnn is null)
-        {
-            Throw();
-        }
-        static void Throw() => throw new ArgumentNullException(nameof(cnn));
-#endif
-        return cnn!;
-    }
-
-    /// <summary>
-    /// Asserts that the connection provided is usable
-    /// </summary>
-    [MethodImpl(AggressiveOptions)]
-    public static DbConnection TypeCheck(IDbConnection cnn)
-    {
-        if (cnn is not DbConnection typed)
-        {
-            Throw(cnn);
-        }
-        return typed;
-        static void Throw(IDbConnection cnn)
-        {
-#if NET6_0_OR_GREATER
-            ArgumentNullException.ThrowIfNull(cnn);
-#else
-            if (cnn is null) throw new ArgumentNullException(nameof(cnn));
-#endif
-            throw new ArgumentException("The supplied connection must be a " + nameof(DbConnection), nameof(cnn));
-        }
-    }
-
-    /// <summary>
-    /// Asserts that the transaction provided is usable
-    /// </summary>
-    [MethodImpl(AggressiveOptions)]
-    public static DbTransaction? TypeCheck(IDbTransaction? transaction)
-    {
-        if (transaction is null) return null;
-        if (transaction is not DbTransaction typed)
-        {
-            Throw();
-        }
-        return typed;
-        static void Throw() => throw new ArgumentException("The supplied transaction must be a " + nameof(DbTransaction), nameof(transaction));
-    }
-
-
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void ThrowNone() => _ = System.Linq.Enumerable.First("");
 
