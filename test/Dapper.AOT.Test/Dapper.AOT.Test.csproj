@@ -1,23 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFrameworks>net6.0;net7.0</TargetFrameworks> <!-- net48;netcoreapp3.1 -->
+        <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+        <!-- net48;netcoreapp3.1 -->
         <NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
         <SignAssembly Condition="'$(TargetFramework)'=='net48'">false</SignAssembly>
     </PropertyGroup>
     <ItemGroup>
-        <Compile Remove="Samples/**/*.input.cs" />
-        <Compile Remove="Samples/**/*.output.cs" />
-        <Compile Remove="Samples/**/*.output.netfx.cs" />
-        <None Include="Samples/**/*.input.cs" CopyToOutputDirectory="PreserveNewest" />
-        <None Include="Samples/**/*.output.cs" CopyToOutputDirectory="PreserveNewest" />
-        <None Include="Samples/**/*.output.netfx.cs" CopyToOutputDirectory="PreserveNewest" />
-
-        <Compile Remove="Interceptors/**/*.input.cs" />
-        <Compile Remove="Interceptors/**/*.output.cs" />
-        <Compile Remove="Interceptors/**/*.output.netfx.cs" />
-        <None Include="Interceptors/**/*.input.cs" CopyToOutputDirectory="PreserveNewest" />
-        <None Include="Interceptors/**/*.output.cs" CopyToOutputDirectory="PreserveNewest" />
-        <None Include="Interceptors/**/*.output.netfx.cs" CopyToOutputDirectory="PreserveNewest" />
+        <Compile Remove="Interceptors/**/*.*.cs" />
+        <None Include="Interceptors/**/*.*" />
+        <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest"/>
+        <None Update="**/*.output.*">
+            <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>
+        </None>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" Version="2.0.123" />

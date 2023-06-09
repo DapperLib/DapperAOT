@@ -24,11 +24,15 @@ public class InterceptorTests : GeneratorTestBase
     {
         var sourceText = File.ReadAllText(path);
 #if NET48   // lots of deltas
-            var outputPath = Regex.Replace(path, @"\.input\.cs$", ".output.netfx.cs", RegexOptions.IgnoreCase);
+        var outputCodePath = Regex.Replace(path, @"\.input\.cs$", ".output.netfx.cs", RegexOptions.IgnoreCase);
 #else
-        var outputPath = Regex.Replace(path, @"\.input\.cs$", ".output.cs", RegexOptions.IgnoreCase);
+        var outputCodePath = Regex.Replace(path, @"\.input\.cs$", ".output.cs", RegexOptions.IgnoreCase);
 #endif
-        var expected = File.Exists(outputPath) ? File.ReadAllText(outputPath) : "";
+        var outputBuildPath = Path.ChangeExtension(outputCodePath, "txt");
+
+        var expectedCode = File.Exists(outputCodePath) ? File.ReadAllText(outputCodePath) : "";
+        var expectedBuildOutput = File.Exists(outputBuildPath) ? File.ReadAllText(outputBuildPath) : "";
+
         var sb = new StringBuilder();
         var result = Execute<DapperInterceptorGenerator>(sourceText, sb, fileName: path, initializer: g =>
         {
@@ -38,21 +42,32 @@ public class InterceptorTests : GeneratorTestBase
         Assert.Single(result.Result.GeneratedTrees);
         var generated = Assert.Single(Assert.Single(result.Result.Results).GeneratedSources);
 
-        string? code = generated.SourceText?.ToString();
-#if DEBUG
-        Log(code);
-#endif
-        sb.AppendLine().AppendLine(code);
+        string actualCode = generated.SourceText?.ToString() ?? "";
 
-        var actual = sb.ToString();
+        var buildOutput = sb.ToString();
         try // automatically overwrite test output, for git tracking
         {
             if (GetOriginCodeLocation() is string originFile
                 && Path.GetDirectoryName(originFile) is string originFolder)
             {
-                outputPath = Path.Combine(originFolder, outputPath);
-                File.WriteAllText(outputPath, actual);
-
+                outputCodePath = Path.Combine(originFolder, outputCodePath);
+                outputBuildPath = Path.ChangeExtension(outputCodePath, "txt");
+                if (string.IsNullOrWhiteSpace(buildOutput))
+                {
+                    try { File.Delete(outputBuildPath); } catch { }
+                }
+                else
+                {
+                    File.WriteAllText(outputBuildPath, buildOutput);
+                }
+                if (string.IsNullOrWhiteSpace(actualCode))
+                {
+                    try { File.Delete(outputCodePath); } catch { }
+                }
+                else
+                {
+                    File.WriteAllText(outputCodePath, actualCode);
+                }
             }
         }
         catch (Exception ex)
@@ -60,6 +75,7 @@ public class InterceptorTests : GeneratorTestBase
             Log(ex.Message);
         }
         Assert.Equal(0, result.ErrorCount);
-        Assert.Equal(expected.Trim(), actual.Trim(), ignoreLineEndingDifferences: true, ignoreWhiteSpaceDifferences: true);
+        Assert.Equal(expectedCode.Trim(), actualCode.Trim(), ignoreLineEndingDifferences: true, ignoreWhiteSpaceDifferences: true);
+        Assert.Equal(expectedBuildOutput.Trim(), buildOutput.Trim(), ignoreLineEndingDifferences: true, ignoreWhiteSpaceDifferences: true);
     }
 }

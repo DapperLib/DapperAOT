@@ -9,6 +9,7 @@ using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -45,12 +46,18 @@ namespace Dapper.AOT.Test
             Action<T>? initializer = null
             ) where T : class, new()
         {
-            void Output(string message)
+            void OutputDiagnostic(Diagnostic d)
             {
-                if (!string.IsNullOrWhiteSpace(message))
+                Output("", true);
+                Output($"{d.Severity} {d.Id} {d.Location}");
+                Output(d.GetMessage(CultureInfo.InvariantCulture));
+            }
+            void Output(string message, bool force = false)
+            {
+                if (force || !string.IsNullOrWhiteSpace(message))
                 {
                     _log?.WriteLine(message);
-                    diagnosticsTo?.Append("// ").AppendLine(message.Replace('\\', '/')); // need to normalize paths
+                    diagnosticsTo?.AppendLine(message.Replace('\\', '/')); // need to normalize paths
                 }
             }
             // Create the 'input' compilation that the generator will act on
@@ -88,7 +95,7 @@ namespace Dapper.AOT.Test
                 Output($"Generator produced {dn.Count} diagnostics:");
                 foreach (var d in dn)
                 {
-                    Output(d);
+                    OutputDiagnostic(d);
                 }
             }
 
@@ -99,12 +106,12 @@ namespace Dapper.AOT.Test
         int ShowDiagnostics(string caption, Compilation compilation, StringBuilder? diagnosticsTo, params string[] ignore)
         {
             if (_log is null && diagnosticsTo is null) return 0; // nothing useful to do!
-            void Output(string message)
+            void Output(string message, bool force = false)
             {
-                if (!string.IsNullOrWhiteSpace(message))
+                if (force || !string.IsNullOrWhiteSpace(message))
                 {
                     _log?.WriteLine(message);
-                    diagnosticsTo?.Append("// ").AppendLine(message.Replace('\\', '/')); // need to normalize paths
+                    diagnosticsTo?.AppendLine(message.Replace('\\', '/')); // need to normalize paths
                 }
             }
             int errorCountTotal = 0;
@@ -119,20 +126,26 @@ namespace Dapper.AOT.Test
                     Output($"{caption} has {diagnostics.Count} diagnostics from '{tree.FilePath}':");
                     foreach (var d in diagnostics)
                     {
-                        Output(d);
+                        OutputDiagnostic(d);
                     }
                 }
             }
             return errorCountTotal;
+
+            void OutputDiagnostic(Diagnostic d)
+            {
+                Output("", true);
+                Output($"{d.Severity} {d.Id} {d.Location}");
+                Output(d.GetMessage(CultureInfo.InvariantCulture));
+            }
         }
 
-        static List<string> Normalize(ImmutableArray<Diagnostic> diagnostics, string[] ignore) => (
+        static List<Diagnostic> Normalize(ImmutableArray<Diagnostic> diagnostics, string[] ignore) => (
             from d in diagnostics
             where !ignore.Contains(d.Id)
             let loc = d.Location
-            let msg = d.ToString()
-            orderby loc.SourceTree?.FilePath, loc.SourceSpan.Start, d.Id, msg
-            select msg).ToList();
+            orderby loc.SourceTree?.FilePath, loc.SourceSpan.Start, d.Id, d.ToString()
+            select d).ToList();
 
         static readonly CSharpParseOptions ParseOptionsLatestLangVer = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest);
 

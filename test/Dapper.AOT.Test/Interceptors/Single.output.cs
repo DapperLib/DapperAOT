@@ -1,4 +1,3 @@
-
 #nullable enable
 file static class DapperGeneratedInterceptors
 {
