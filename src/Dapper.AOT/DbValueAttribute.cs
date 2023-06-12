@@ -9,7 +9,8 @@ namespace Dapper;
 /// Specifies additional metadata to be used for columns and parameter handling; only explicitly specified values are used
 /// </summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = false)]
-public class DbAttribute : Attribute
+public class DbValueAttribute
+    : Attribute
 {
     /// <summary>
     /// Gets or sets whether to ignore this member
@@ -40,7 +41,7 @@ public class DbAttribute : Attribute
     public byte Scale { get; set; }
 
     /// <summary>
-    /// Gets or sets the <see cref="DbParameter.Size"/> for this value as a parameter
+    /// Gets or sets the <see cref="DbParameter.Size"/> (<b>in bytes</b>) for this value as a parameter
     /// </summary>
     public int Size { get; set; }
 }

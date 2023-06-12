@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Data.SqlClient;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
@@ -9,11 +10,26 @@ using Xunit;
 
 namespace Dapper.Integration;
 
-public class BatchTests
+public class Database : IDisposable
 {
-    private DbConnection Connection => throw new NotImplementedException(); // TODO: fixture
+    private readonly SqlConnection connection;
+    public Database()
+    {
+        connection = new("Server=.;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=True");
+        try { connection.Execute("drop table AotIntegrationBatchTests;"); } catch { }
+        connection.Execute("create table AotIntegrationBatchTests(Id int not null identity(1,1), Name nvarchar(200) not null);");
+    }
+    public void Dispose() => connection.Dispose();
 
-    private Batch<string> Batch => Connection.Batch("insert Foo (Name) values (@name)", handler: CustomHandler.Instance);
+    public DbConnection Connection => connection;
+}
+
+public class BatchTests : IClassFixture<Database>
+{
+    private readonly Database Database;
+    public BatchTests(Database database) => Database = database;
+
+    private Batch<string> Batch => Database.Connection.Batch("insert AotIntegrationBatchTests (Name) values (@name)", handler: CustomHandler.Instance);
 
     [Theory]
     [InlineData(-1)]
@@ -63,14 +79,17 @@ public class BatchTests
         if (valid)
         {
             Assert.Equal(count, Batch.Execute(data, offset, count));
-            Assert.Equal(count, Batch.Execute(new ArraySegment<string>(data, offset, count).AsSpan()));
-            Assert.Equal(count, Batch.Execute(new ArraySegment<string>(data, offset, count).AsEnumerable()));
+            if (data is not null)
+            {
+                Assert.Equal(count, Batch.Execute(new ArraySegment<string>(data, offset, count).AsSpan()));
+                Assert.Equal(count, Batch.Execute(new ArraySegment<string>(data, offset, count).AsEnumerable()));
+            }
         }
         else
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => Batch.Execute(data, offset, count));
-            Assert.Throws<ArgumentOutOfRangeException>(() => Batch.Execute(new ArraySegment<string>(data, offset, count).AsSpan()));
-            Assert.Throws<ArgumentOutOfRangeException>(() => Batch.Execute(new ArraySegment<string>(data, offset, count).AsEnumerable()));
+            Assert.ThrowsAny<ArgumentException>(() => Batch.Execute(data, offset, count));
+            Assert.ThrowsAny<ArgumentException>(() => Batch.Execute(new ArraySegment<string>(data, offset, count).AsSpan()));
+            Assert.ThrowsAny<ArgumentException>(() => Batch.Execute(new ArraySegment<string>(data, offset, count).AsEnumerable()));
         }
     }
 
@@ -130,13 +149,17 @@ public class BatchTests
             var p = command.CreateParameter();
             p.ParameterName = "name";
             p.DbType = DbType.String;
+            p.Size = 400;
             p.Value = AsValue(name);
+            command.Parameters.Add(p);
         }
 
         public override void UpdateParameters(DbCommand command, string name)
         {
             command.Parameters[0].Value = AsValue(name);
         }
+
+        public override bool CanPrepare => true;
     }
 }
 

@@ -178,7 +178,7 @@ public readonly struct Batch<TArgs>
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
     /// </summary>
-    public Task<int> ExecuteAsync(TArgs[] values, CancellationToken cancellationToken)
+    public Task<int> ExecuteAsync(TArgs[] values, CancellationToken cancellationToken = default)
     {
         if (values is null) return TaskZero;
         return values.Length switch
@@ -192,7 +192,7 @@ public readonly struct Batch<TArgs>
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
     /// </summary>
-    public Task<int> ExecuteAsync(List<TArgs> values, CancellationToken cancellationToken)
+    public Task<int> ExecuteAsync(List<TArgs> values, CancellationToken cancellationToken = default)
     {
         if (values is null) return TaskZero;
         return values.Count switch
@@ -206,7 +206,7 @@ public readonly struct Batch<TArgs>
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
     /// </summary>
-    public Task<int> ExecuteAsync(TArgs[] values, int offset, int count, CancellationToken cancellationToken)
+    public Task<int> ExecuteAsync(TArgs[] values, int offset, int count, CancellationToken cancellationToken = default)
     {
         Validate(values, offset, count);
         return count switch
@@ -250,7 +250,7 @@ public readonly struct Batch<TArgs>
         CommandState state = default;
         try
         {
-            state.PrepareBeforeExecute();
+            if (commandFactory.CanPrepare) state.PrepareBeforeExecute();
             int total = 0;
             var current = source[0];
 
@@ -287,7 +287,7 @@ public readonly struct Batch<TArgs>
             {
                 var current = iterator.Current;
                 bool haveMore = iterator.MoveNext();
-                if (haveMore) state.PrepareBeforeExecute();
+                if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
                 var local = state.ExecuteNonQuery(GetCommand(current));
                 commandFactory.PostProcess(state.Command, current, local);
                 total += local;
@@ -386,7 +386,7 @@ public readonly struct Batch<TArgs>
         CommandState state = default;
         try
         {
-            state.PrepareBeforeExecute();
+            if (commandFactory.CanPrepare) state.PrepareBeforeExecute();
             int total = 0;
             var current = source.Span[0];
 
@@ -423,7 +423,7 @@ public readonly struct Batch<TArgs>
             {
                 var current = iterator.Current;
                 bool haveMore = await iterator.MoveNextAsync();
-                if (haveMore) state.PrepareBeforeExecute();
+                if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
                 var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
                 commandFactory.PostProcess(state.Command, current, local);
                 total += local;
@@ -461,7 +461,7 @@ public readonly struct Batch<TArgs>
             {
                 var current = iterator.Current;
                 bool haveMore = iterator.MoveNext();
-                if (haveMore) state.PrepareBeforeExecute();
+                if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
                 var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
                 commandFactory.PostProcess(state.Command, current, local);
                 total += local;
@@ -496,7 +496,7 @@ public readonly struct Batch<TArgs>
             // count is now actually "end"
             count += offset;
 
-            state.PrepareBeforeExecute();
+            if (commandFactory.CanPrepare) state.PrepareBeforeExecute();
             int total = 0;
             var current = source[offset++];
 

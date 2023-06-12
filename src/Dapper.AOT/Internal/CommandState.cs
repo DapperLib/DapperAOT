@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
@@ -11,6 +12,7 @@ namespace Dapper.Internal
 
     internal struct CommandState // note mutable; deliberately not : IDisposable, as that creates a *copy*
     {
+        private DbConnection? connection;
         public DbCommand? Command;
         private int _flags;
 
@@ -65,11 +67,13 @@ namespace Dapper.Internal
         [MemberNotNull(nameof(Command))]
         private void OnBeforeExecute(DbCommand command)
         {
-            Command = command;
             Debug.Assert(command?.Connection is not null);
-            if (command!.Connection!.State != ConnectionState.Open)
+            Command = command;
+            connection = command.Connection;
+            
+            if (connection.State != ConnectionState.Open)
             {
-                command.Connection.Open();
+                connection.Open();
                 _flags |= FLAG_CLOSE_CONNECTION;
             }
             if ((_flags & FLAG_PREPARE_COMMMAND) != 0)
@@ -83,10 +87,11 @@ namespace Dapper.Internal
         private Task OnBeforeExecuteAsync(DbCommand command, CancellationToken cancellationToken)
         {
 #if NETCOREAPP3_1_OR_GREATER
-            Command = command;
             Debug.Assert(command?.Connection is not null);
+            Command = command;
+            connection = command.Connection;
 
-            if (command.Connection!.State == ConnectionState.Open)
+            if (connection.State == ConnectionState.Open)
             {
                 if ((_flags & FLAG_PREPARE_COMMMAND) == 0)
                 {
@@ -105,7 +110,7 @@ namespace Dapper.Internal
                 if ((_flags & FLAG_PREPARE_COMMMAND) == 0)
                 {
                     // just need to open
-                    return command.Connection.OpenAsync(cancellationToken);
+                    return connection.OpenAsync(cancellationToken);
                 }
                 else
                 {
@@ -149,15 +154,14 @@ namespace Dapper.Internal
         {
             var cmd = Command;
             Command = null;
-            if (cmd is not null)
+            cmd?.Dispose();
+
+            var conn = connection;
+            connection = null;
+            if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
             {
-                var connection = cmd.Connection;
-                cmd.Dispose();
-                if (connection is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
-                {
-                    _flags &= ~FLAG_CLOSE_CONNECTION;
-                    connection.Close();
-                }
+                _flags &= ~FLAG_CLOSE_CONNECTION;
+                conn.Close();
             }
         }
 
@@ -166,17 +170,20 @@ namespace Dapper.Internal
         {
             var cmd = Command;
             Command = null;
+
+            var conn = connection;
+            connection = null;
+
             if (cmd is not null)
             {
-                if (cmd.Connection is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
+                if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
                 {
                     // need to close the connection and dispose the command
                     _flags &= ~FLAG_CLOSE_CONNECTION;
-                    return DisposeCommandAndCloseConnectionAsync(cmd);
+                    return DisposeCommandAndCloseConnectionAsync(conn, cmd);
 
-                    static async Task DisposeCommandAndCloseConnectionAsync(DbCommand cmd)
+                    static async Task DisposeCommandAndCloseConnectionAsync(DbConnection conn, DbCommand cmd)
                     {
-                        var conn = cmd.Connection!;
                         await cmd.DisposeAsync();
                         await conn.CloseAsync();
                     }
@@ -189,8 +196,15 @@ namespace Dapper.Internal
             }
             else
             {
-                // nothing to do
-                return Task.CompletedTask;
+                if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
+                {
+                    return conn.CloseAsync();
+                }
+                else
+                {
+                    // nothing to do
+                    return Task.CompletedTask;
+                }
             }
         }
 #else

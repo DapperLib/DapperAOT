@@ -167,6 +167,10 @@ public class CommandFactory<T> : CommandFactory
         AddParameters(command, args);
     }
 
+    /// <summary>
+    /// Indicates whether this command is suitable for <see cref="DbCommand.Prepare"/> usage
+    /// </summary>
+    public virtual bool CanPrepare => false;
 
     /// <summary>
     /// Provides an opportunity to recycle and reuse command instances
