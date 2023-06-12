@@ -187,7 +187,7 @@ internal class CustomHandler : CommandFactory<Customer>
 
     private static DbCommand? _spareP, _spareU;
 
-    private ref DbCommand? Spare => ref _canPrepare ? ref _spareP : ref _spareU;
+    private ref DbCommand? Spare => ref (_canPrepare ? ref _spareP : ref _spareU);
 
     public override DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, Customer args)
     {
