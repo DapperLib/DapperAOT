@@ -6,6 +6,9 @@
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
     <ItemGroup>
+        <None Update="BatchInsertBenchmarks.txt" DependentUpon="BatchInsertBenchmarks.cs" />
+        <None Update="ListIterationBenchmarks.txt" DependentUpon="ListIterationBenchmarks.cs" />
+
         <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
         <PackageReference Include="Dapper" Version="2.0.123" />

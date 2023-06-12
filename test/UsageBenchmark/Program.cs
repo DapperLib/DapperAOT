@@ -10,7 +10,7 @@ static class Program
     public const string ConnectionString = "Server=.;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=True";
 
 #if RELEASE
-    static void Main() => BenchmarkRunner.Run(typeof(Program).Assembly);
+    static void Main(string[] args) => BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
 #else
     static async Task Main()
     {
