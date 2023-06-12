@@ -39,10 +39,9 @@ public class InterceptorTests : GeneratorTestBase
             g.OverrideFeatureEnabled = true;
             g.Log += (severity, message) => Log($"{severity}: {message}");
         });
-        Assert.Single(result.Result.GeneratedTrees);
-        var generated = Assert.Single(Assert.Single(result.Result.Results).GeneratedSources);
 
-        string actualCode = generated.SourceText?.ToString() ?? "";
+        var results = Assert.Single(result.Result.Results);
+        string actualCode = results.GeneratedSources.Any() ? results.GeneratedSources.Single().SourceText?.ToString() ?? "" : "";
 
         var buildOutput = sb.ToString();
         try // automatically overwrite test output, for git tracking

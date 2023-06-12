@@ -15,7 +15,9 @@ namespace Dapper;
 /// Represents the state required to perform an ADO.NET operation
 /// </summary>
 /// <typeparam name="TArgs">The type of data that holds the parameters for this command</typeparam>
+#if !NETSTANDARD
 [SuppressMessage("Usage", "CA2231:Overload operator equals on overriding value type Equals", Justification = "Equality not actually supported")]
+#endif
 public readonly struct Command<TArgs>
 #if DEBUG
     : Dapper.Internal.ICommandApi

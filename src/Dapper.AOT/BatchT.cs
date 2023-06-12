@@ -14,7 +14,9 @@ namespace Dapper;
 /// <summary>
 /// Represents a command that will be executed for a series of <typeparamref name="TArgs"/> values
 /// </summary>
+#if !NETSTANDARD
 [SuppressMessage("Usage", "CA2231:Overload operator equals on overriding value type Equals", Justification = "Equality not actually supported")]
+#endif
 public readonly struct Batch<TArgs>
 {
 
@@ -88,25 +90,114 @@ public readonly struct Batch<TArgs>
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
     /// </summary>
-    public int Execute(ReadOnlySpan<TArgs> values)
-        => values.IsEmpty ? 0 : Execute(new BatchSyncIterator<TArgs>(values));
+    public int Execute(ReadOnlySpan<TArgs> values) => values.Length switch
+    {
+        0 => 0,
+        1 => Execute(values[0]),
+        _ => ExecuteMulti(values),
+    };
 
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
     /// </summary>
-    public int Execute(IEnumerable<TArgs> values)
+    public int Execute(List<TArgs> values)
     {
-        return values switch
+        if (values is null) return 0;
+        return values.Count switch
         {
-            null => 0,
+            0 => 0,
+            1 => Execute(values[0]),
+            _ => ExecuteMulti(values),
+        };
+    }
+
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public int Execute(IEnumerable<TArgs> values) => values switch
+    {
+        null => 0,
 #if NET6_0_OR_GREATER
             List<TArgs> list => Execute(CollectionsMarshal.AsSpan(list)),
 #endif
-            TArgs[] arr => arr.Length == 0 ? 0 : Execute(new ReadOnlySpan<TArgs>(arr)),
-            ArraySegment<TArgs> segment => segment.Count == 0 ? 0 : Execute(new ReadOnlySpan<TArgs>(segment.Array!, segment.Offset, segment.Count)),
-            ICollection<TArgs> collection when collection.Count is 0 => 0,
-            IReadOnlyCollection<TArgs> collection when collection.Count is 0 => 0,
-            _ => Execute(new BatchSyncIterator<TArgs>(values)),
+        TArgs[] arr => Execute(arr),
+        ArraySegment<TArgs> segment => Execute(new ReadOnlySpan<TArgs>(segment.Array!, segment.Offset, segment.Count)),
+#if NETCOREAPP3_1_OR_GREATER
+        System.Collections.Immutable.ImmutableArray<TArgs> arr => Execute(arr),
+#endif
+        ICollection<TArgs> collection when collection.Count is 0 => 0, // note that IList<T> : ICollection<T>
+        IList<TArgs> collection when collection.Count is 1 => Execute(collection[0]),
+        IReadOnlyCollection<TArgs> collection when collection.Count is 0 => 0, // note that IReadOnlyList<T> : IReadOnlyCollection<T>
+        IReadOnlyList<TArgs> collection when collection.Count is 1 => Execute(collection[0]),
+        _ => ExecuteMulti(values),
+    };
+
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public int Execute(TArgs[] values)
+    {
+        if (values is null) return 0;
+        return values.Length switch
+        {
+            0 => 0,
+            1 => Execute(values[0]),
+            _ => ExecuteMulti(new ReadOnlySpan<TArgs>(values)),
+        };
+    }
+
+
+    static void Validate(TArgs[] values, int offset, int count)
+    {
+#if NET8_0_OR_GREATER
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(offset + count, values is null ? 0 : values.Length, nameof(count));
+#else
+        if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+        if (count < 0 || (offset + count) > (values is null ? 0 : values.Length)) throw new ArgumentOutOfRangeException(nameof(count));
+#endif
+    }
+
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public int Execute(TArgs[] values, int offset, int count)
+    {
+        Validate(values, offset, count);
+        return count switch
+        {
+            0 => 0,
+            1 => Execute(values[offset]),
+            _ => ExecuteMulti(new ReadOnlySpan<TArgs>(values, offset, count)),
+        };
+    }
+
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public Task<int> ExecuteAsync(TArgs[] values, CancellationToken cancellationToken)
+    {
+        if (values is null) return TaskZero;
+        return values.Length switch
+        {
+            0 => TaskZero,
+            1 => ExecuteAsync(values[0], cancellationToken),
+            _ => ExecuteMultiAsync(values, 0, values.Length, cancellationToken),
+        };
+    }
+
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public Task<int> ExecuteAsync(TArgs[] values, int offset, int count, CancellationToken cancellationToken)
+    {
+        Validate(values, offset, count);
+        return count switch
+        {
+            0 => TaskZero,
+            1 => ExecuteAsync(values[offset], cancellationToken),
+            _ => ExecuteMultiAsync(values, offset, count, cancellationToken),
         };
     }
 
@@ -131,28 +222,69 @@ public readonly struct Batch<TArgs>
         }
     }
 
-    private int Execute(BatchSyncIterator<TArgs> source)
+    private int Execute(TArgs value)
+        => new Command<TArgs>(connection, transaction, sql, value, commandType, timeout, commandFactory).Execute();
+
+    private Task<int> ExecuteAsync(TArgs value, CancellationToken cancellationToken)
+    => new Command<TArgs>(connection, transaction, sql, value, commandType, timeout, commandFactory).ExecuteAsync(cancellationToken);
+
+    private int ExecuteMulti(ReadOnlySpan<TArgs> source)
     {
+        Debug.Assert(source.Length > 1);
         CommandState state = default;
         try
         {
+            state.PrepareBeforeExecute();
             int total = 0;
-            if (source.MoveNext(out var value))
+            var current = source[0];
+
+            var local = state.ExecuteNonQuery(GetCommand(current));
+            commandFactory.PostProcess(state.Command, current, local);
+            total += local;
+
+            for (int i = 1; i < source.Length;i++)
             {
-                bool haveMore = source.MoveNext(out value);
+                current = source[i];
+                commandFactory.UpdateParameters(state.Command, current);
+                local = state.Command.ExecuteNonQuery();
+                commandFactory.PostProcess(state.Command, current, local);
+                total += local;
+            }
+
+            Recycle(ref state);
+            return total;
+        }
+        finally
+        {
+            state.Dispose();
+        }
+    }
+
+    private int ExecuteMulti(IEnumerable<TArgs> source)
+    {
+        CommandState state = default;
+        var iterator = source.GetEnumerator();
+        try
+        {
+            int total = 0;
+            if (iterator.MoveNext())
+            {
+                var current = iterator.Current;
+                bool haveMore = iterator.MoveNext();
                 if (haveMore) state.PrepareBeforeExecute();
-                var local = state.ExecuteNonQuery(GetCommand(value));
-                commandFactory.PostProcess(state.Command, value, local);
+                var local = state.ExecuteNonQuery(GetCommand(current));
+                commandFactory.PostProcess(state.Command, current, local);
                 total += local;
 
                 while (haveMore)
                 {
-                    commandFactory.UpdateParameters(state.Command, value);
-                    local = state.ExecuteNonQuery(state.Command);
-                    commandFactory.PostProcess(state.Command, value, local);
+                    current = iterator.Current;
+                    commandFactory.UpdateParameters(state.Command, current);
+                    local = state.Command.ExecuteNonQuery();
+                    commandFactory.PostProcess(state.Command, current, local);
                     total += local;
 
-                    haveMore = source.MoveNext(out value);
+                    haveMore = iterator.MoveNext();
                 }
                 Recycle(ref state);
                 return total;
@@ -161,24 +293,216 @@ public readonly struct Batch<TArgs>
         }
         finally
         {
-            source.Dispose();
+            iterator.Dispose();
             state.Dispose();
         }
     }
 
-    //public Task<int> ExecuteAsync(ReadOnlyMemory<TArgs> values, CancellationToken cancellationToken = default)
-    //{
-    //    throw new NotImplementedException();
-    //}
+    private static readonly Task<int> TaskZero = Task.FromResult(0);
 
-    //public Task<int> ExecuteAsync(IEnumerable<TArgs> values, CancellationToken cancellationToken = default)
-    //{
-    //    throw new NotImplementedException();
-    //}
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public Task<int> ExecuteAsync(ReadOnlyMemory<TArgs> values, CancellationToken cancellationToken = default) => values.Length switch
+    {
+        0 => TaskZero,
+        1 => ExecuteAsync(values.Span[0], cancellationToken),
+        _ => MemoryMarshal.TryGetArray(values, out var segment) ? ExecuteMultiAsync(segment.Array!, segment.Offset, segment.Count, cancellationToken) : ExecuteMultiAsync(values, cancellationToken),
+    };
 
-    //public Task<int> ExecuteAsync(IAsyncEnumerable<TArgs> values, CancellationToken cancellationToken = default)
-    //{
-    //    throw new NotImplementedException();
-    //}
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public Task<int> ExecuteAsync(IEnumerable<TArgs> values, CancellationToken cancellationToken = default) => values switch
+    {
+        null => TaskZero,
+        TArgs[] arr => ExecuteAsync(arr, cancellationToken),
+        ArraySegment<TArgs> segment => ExecuteMultiAsync(segment.Array!, segment.Offset, segment.Count, cancellationToken),
+#if NETCOREAPP3_1_OR_GREATER
+        System.Collections.Immutable.ImmutableArray<TArgs> arr => ExecuteAsync(arr, cancellationToken),
+#endif
+        ICollection<TArgs> collection when collection.Count is 0 => TaskZero, // note that IList<T> : ICollection<T>
+        IList<TArgs> collection when collection.Count is 1 => ExecuteAsync(collection[0], cancellationToken),
+        IReadOnlyCollection<TArgs> collection when collection.Count is 0 => TaskZero, // note that IReadOnlyList<T> : IReadOnlyCollection<T>
+        IReadOnlyList<TArgs> collection when collection.Count is 1 => ExecuteAsync(collection[0], cancellationToken),
+        _ => ExecuteMultiAsync(values, cancellationToken),
+    };
+
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public Task<int> ExecuteAsync(IAsyncEnumerable<TArgs> values, CancellationToken cancellationToken = default)
+        => values is null ? TaskZero : ExecuteMultiAsync(values, cancellationToken);
+
+#if NETCOREAPP3_1_OR_GREATER
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public int Execute(System.Collections.Immutable.ImmutableArray<TArgs> values)
+    {
+        if (values.IsDefaultOrEmpty) return 0;
+
+        return values.Length switch
+        {
+            1 => Execute(values[0]),
+            _ => ExecuteMulti(values.AsSpan()),
+        };
+    }
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public Task<int> ExecuteAsync(System.Collections.Immutable.ImmutableArray<TArgs> values, CancellationToken cancellationToken = default)
+    {
+        if (values.IsDefaultOrEmpty) return TaskZero;
+        
+        return values.Length switch
+        {
+            1 => ExecuteAsync(values[0], cancellationToken),
+            _ => ExecuteMultiAsync(values.AsMemory(), cancellationToken),
+        };
+    }
+#endif
+
+    private async Task<int> ExecuteMultiAsync(ReadOnlyMemory<TArgs> source, CancellationToken cancellationToken)
+    {
+        Debug.Assert(source.Length > 1);
+        CommandState state = default;
+        try
+        {
+            state.PrepareBeforeExecute();
+            int total = 0;
+            var current = source.Span[0];
+
+            var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
+            commandFactory.PostProcess(state.Command, current, local);
+            total += local;
+
+            for (int i = 1; i < source.Length; i++)
+            {
+                current = source.Span[i];
+                commandFactory.UpdateParameters(state.Command, current);
+                local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
+                commandFactory.PostProcess(state.Command, current, local);
+                total += local;
+            }
+
+            Recycle(ref state);
+            return total;
+        }
+        finally
+        {
+            state.Dispose();
+        }
+    }
+
+    private async Task<int> ExecuteMultiAsync(IAsyncEnumerable<TArgs> source, CancellationToken cancellationToken)
+    {
+        CommandState state = default;
+        var iterator = source.GetAsyncEnumerator(cancellationToken);
+        try
+        {
+            int total = 0;
+            if (await iterator.MoveNextAsync())
+            {
+                var current = iterator.Current;
+                bool haveMore = await iterator.MoveNextAsync();
+                if (haveMore) state.PrepareBeforeExecute();
+                var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
+                commandFactory.PostProcess(state.Command, current, local);
+                total += local;
+
+                while (haveMore)
+                {
+                    current = iterator.Current;
+                    commandFactory.UpdateParameters(state.Command, current);
+                    local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
+                    commandFactory.PostProcess(state.Command, current, local);
+                    total += local;
+
+                    haveMore = await iterator.MoveNextAsync();
+                }
+                Recycle(ref state);
+                return total;
+            }
+            return total;
+        }
+        finally
+        {
+            await iterator.DisposeAsync();
+            await state.DisposeAsync();
+        }
+    }
+
+    private async Task<int> ExecuteMultiAsync(IEnumerable<TArgs> source, CancellationToken cancellationToken)
+    {
+        CommandState state = default;
+        var iterator = source.GetEnumerator();
+        try
+        {
+            int total = 0;
+            if (iterator.MoveNext())
+            {
+                var current = iterator.Current;
+                bool haveMore = iterator.MoveNext();
+                if (haveMore) state.PrepareBeforeExecute();
+                var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
+                commandFactory.PostProcess(state.Command, current, local);
+                total += local;
+
+                while (haveMore)
+                {
+                    current = iterator.Current;
+                    commandFactory.UpdateParameters(state.Command, current);
+                    local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
+                    commandFactory.PostProcess(state.Command, current, local);
+                    total += local;
+
+                    haveMore = iterator.MoveNext();
+                }
+                Recycle(ref state);
+                return total;
+            }
+            return total;
+        }
+        finally
+        {
+            iterator.Dispose();
+            await state.DisposeAsync();
+        }
+    }
+
+    private async Task<int> ExecuteMultiAsync(TArgs[] source, int offset, int count, CancellationToken cancellationToken)
+    {
+        CommandState state = default;
+        try
+        {
+            // count is now actually "end"
+            count += offset;
+
+            state.PrepareBeforeExecute();
+            int total = 0;
+            var current = source[offset++];
+
+            var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
+            commandFactory.PostProcess(state.Command, current, local);
+            total += local;
+
+            while (offset < count) // actually "offset < end"
+            {
+                current = source[offset++];
+                commandFactory.UpdateParameters(state.Command, current);
+                local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
+                commandFactory.PostProcess(state.Command, current, local);
+                total += local;
+            }
+
+            Recycle(ref state);
+            return total;
+        }
+        finally
+        {
+            state.Dispose();
+        }
+    }
 
 }
