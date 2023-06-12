@@ -107,7 +107,11 @@ public readonly struct Batch<TArgs>
         {
             0 => 0,
             1 => Execute(values[0]),
+#if NET6_0_OR_GREATER
+            _ => ExecuteMulti(CollectionsMarshal.AsSpan(values)),
+#else
             _ => ExecuteMulti(values),
+#endif
         };
     }
 
@@ -117,9 +121,7 @@ public readonly struct Batch<TArgs>
     public int Execute(IEnumerable<TArgs> values) => values switch
     {
         null => 0,
-#if NET6_0_OR_GREATER
-            List<TArgs> list => Execute(CollectionsMarshal.AsSpan(list)),
-#endif
+        List<TArgs> list => Execute(list),
         TArgs[] arr => Execute(arr),
         ArraySegment<TArgs> segment => Execute(new ReadOnlySpan<TArgs>(segment.Array!, segment.Offset, segment.Count)),
 #if NETCOREAPP3_1_OR_GREATER
@@ -184,6 +186,20 @@ public readonly struct Batch<TArgs>
             0 => TaskZero,
             1 => ExecuteAsync(values[0], cancellationToken),
             _ => ExecuteMultiAsync(values, 0, values.Length, cancellationToken),
+        };
+    }
+
+    /// <summary>
+    /// Execute an operation against a batch of inputs, returning the sum of all results
+    /// </summary>
+    public Task<int> ExecuteAsync(List<TArgs> values, CancellationToken cancellationToken)
+    {
+        if (values is null) return TaskZero;
+        return values.Count switch
+        {
+            0 => TaskZero,
+            1 => ExecuteAsync(values[0], cancellationToken),
+            _ => ExecuteMultiAsync(values, cancellationToken),
         };
     }
 
@@ -316,6 +332,7 @@ public readonly struct Batch<TArgs>
     public Task<int> ExecuteAsync(IEnumerable<TArgs> values, CancellationToken cancellationToken = default) => values switch
     {
         null => TaskZero,
+        List<TArgs> list => ExecuteAsync(list, cancellationToken),
         TArgs[] arr => ExecuteAsync(arr, cancellationToken),
         ArraySegment<TArgs> segment => ExecuteMultiAsync(segment.Array!, segment.Offset, segment.Count, cancellationToken),
 #if NETCOREAPP3_1_OR_GREATER
