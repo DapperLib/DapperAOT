@@ -45,6 +45,42 @@ public static class DapperAotExtensions
         => new(null, (DbTransaction)transaction, sql, args, commandType, timeout, handler);
 
     /// <summary>
+    /// Create a batch that takes parameters from <typeparamref name="T"/>
+    /// </summary>
+    public static Batch<T> Batch<T>(this DbConnection connection, string sql, CommandType commandType = 0, int timeout = 0, [DapperAot] CommandFactory<T>? handler = null)
+        => new(connection, null, sql, commandType, timeout, handler);
+
+    /// <summary>
+    /// Create a batch that takes parameters from <typeparamref name="T"/>
+    /// </summary>
+    public static Batch<T> Batch<T>(this DbTransaction transaction, string sql, CommandType commandType = 0, int timeout = 0, [DapperAot] CommandFactory<T>? handler = null)
+        => new(null, transaction, sql, commandType, timeout, handler);
+
+    /// <summary>
+    /// Create a batch that takes parameters from <typeparamref name="T"/>
+    /// </summary>
+    public static Batch<T> Batch<T>(DbConnection connection, DbTransaction? transaction, string sql, CommandType commandType = 0, int timeout = 0, [DapperAot] CommandFactory<T>? handler = null)
+        => new(connection, transaction, sql, commandType, timeout, handler);
+
+    /// <summary>
+    /// Create a batch that takes parameters from <typeparamref name="T"/>
+    /// </summary>
+    public static Batch<T> Batch<T>(IDbConnection connection, IDbTransaction? transaction, string sql, CommandType commandType = 0, int timeout = 0, [DapperAot] CommandFactory<T>? handler = null)
+        => new((DbConnection)connection, (DbTransaction?)transaction, sql, commandType, timeout, handler);
+
+    /// <summary>
+    /// Create a batch that takes parameters from <typeparamref name="T"/>
+    /// </summary>
+    public static Batch<T> Batch<T>(this IDbConnection connection, string sql, CommandType commandType = 0, int timeout = 0, [DapperAot] CommandFactory<T>? handler = null)
+        => new((DbConnection)connection, null, sql, commandType, timeout, handler);
+
+    /// <summary>
+    /// Create a batch that takes parameters from <typeparamref name="T"/>
+    /// </summary>
+    public static Batch<T> Batch<T>(this IDbTransaction transaction, string sql, CommandType commandType = 0, int timeout = 0, [DapperAot] CommandFactory<T>? handler = null)
+        => new(null, (DbTransaction)transaction, sql, commandType, timeout, handler);
+
+    /// <summary>
     /// Create a command that does not take parameters
     /// </summary>
     public static Command<object> Command(this DbConnection connection, string sql, CommandType commandType = 0, int timeout = 0, [DapperAot] CommandFactory<object>? handler = null)

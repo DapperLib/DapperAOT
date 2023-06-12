@@ -74,9 +74,9 @@ file static class DapperGeneratedInterceptors
 
     private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
     {
-        public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
+        public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
         {
-            var cmd = base.Prepare(connection, sql, commandType, args);
+            var cmd = base.GetCommand(connection, sql, commandType, args);
             // apply special per-provider command initialization logic for OracleCommand
             if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
             {
@@ -95,12 +95,13 @@ file static class DapperGeneratedInterceptors
     {
         internal static readonly CommandFactory0 Instance = new();
         private CommandFactory0() {}
-        public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, object? args)
+        public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
-            var cmd = base.Prepare(connection, sql, commandType, args);
+            // var sql = cmd.CommandText;
+            // var commandType = cmd.CommandType;
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
             global::System.Data.Common.DbParameter p;
-            if (Include(sql, commandType, "Foo"))
+            // if (Include(sql, commandType, "Foo"))
             {
                 p = cmd.CreateParameter();
                 p.ParameterName = "Foo";
@@ -108,7 +109,7 @@ file static class DapperGeneratedInterceptors
                 p.Value = AsValue(typed.Foo);
                 cmd.Parameters.Add(p);
             }
-            if (Include(sql, commandType, "bar"))
+            // if (Include(sql, commandType, "bar"))
             {
                 p = cmd.CreateParameter();
                 p.ParameterName = "bar";
@@ -116,7 +117,24 @@ file static class DapperGeneratedInterceptors
                 p.Value = AsValue(typed.bar);
                 cmd.Parameters.Add(p);
             }
-            return cmd;
+
+        }
+        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
+        {
+            var sql = cmd.CommandText;
+            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            var ps = cmd.Parameters;
+            // if (Include(sql, commandType, "Foo"))
+            {
+                ps["Foo"].Value = AsValue(typed.Foo);
+
+            }
+            // if (Include(sql, commandType, "bar"))
+            {
+                ps["bar"].Value = AsValue(typed.bar);
+
+            }
+
         }
 
     }

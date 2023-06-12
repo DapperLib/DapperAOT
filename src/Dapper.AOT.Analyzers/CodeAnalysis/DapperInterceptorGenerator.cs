@@ -44,10 +44,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             // only even test this for things that look interesting
             => OverrideFeatureEnabled || syntaxTree.Options.Features.ContainsKey("interceptors");
 
-    private bool PreFilter(SyntaxNode node, CancellationToken cancellation)
+    private bool PreFilter(SyntaxNode node, CancellationToken cancellationToken)
     {
-
-
         if (node is InvocationExpressionSyntax ie && ie.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
         {
             var name = ma.Name.ToString();
@@ -75,12 +73,12 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
     // support the fact that [DapperAot(bool)] can enable/disable generation at any level
     // including method, type, module and assembly; first attribute found (walking up the tree): wins
-    static bool IsEnabled(in GeneratorSyntaxContext ctx, IOperation op, CancellationToken cancellation)
+    static bool IsEnabled(in GeneratorSyntaxContext ctx, IOperation op, CancellationToken cancellationToken)
     {
         var method = GetContainingMethodSyntax(op);
         if (method is not null)
         {
-            var symbol = ctx.SemanticModel.GetDeclaredSymbol(method, cancellation);
+            var symbol = ctx.SemanticModel.GetDeclaredSymbol(method, cancellationToken);
             while (symbol is not null)
             {
                 if (HasDapperAotAttribute(symbol, out bool enabled))
@@ -136,7 +134,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         }
     }
 
-    private SourceState? Parse(GeneratorSyntaxContext ctx, CancellationToken cancellation)
+    private SourceState? Parse(GeneratorSyntaxContext ctx, CancellationToken cancellationToken)
     {
         if (ctx.Node is not InvocationExpressionSyntax ie
             || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op
@@ -147,7 +145,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
         Location? loc = null;
 
-        if (!IsEnabled(ctx, op, cancellation))
+        if (!IsEnabled(ctx, op, cancellationToken))
         {
             Log?.Invoke(DiagnosticSeverity.Hidden, $"Generation disabled by attribute");
             return null;
@@ -649,8 +647,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             sb.Append("private class CommonCommandFactory<T> : ").Append(baseCommandFactory).Append("<T>").Indent().NewLine();
             if (needsCommandPrep)
             {
-                sb.Append("public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)").Indent().NewLine()
-                .Append("var cmd = base.Prepare(connection, sql, commandType, args);");
+                sb.Append("public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)").Indent().NewLine()
+                .Append("var cmd = base.GetCommand(connection, sql, commandType, args);");
                 int cmdTypeIndex = 0;
                 foreach (var type in dbCommandTypes)
                 {
@@ -723,17 +721,32 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         sb.Indent().NewLine()
             .Append("internal static readonly CommandFactory").Append(index).Append(" Instance = new();").NewLine()
             .Append("private CommandFactory").Append(index).Append("() {}").NewLine()
-            .Append("public override global::System.Data.Common.DbCommand Prepare(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, ").Append(declaredType).Append(" args)").Indent().NewLine().Append("var cmd = base.Prepare(connection, sql, commandType, args);").NewLine();
+            .Append("public override void AddParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine()
+            .Append("// var sql = cmd.CommandText;").NewLine()
+            .Append("// var commandType = cmd.CommandType;").NewLine();
         var argSource = "args";
         if (type.IsAnonymousType)
         {
-            sb.Append("var typed = Cast(").Append(argSource).Append(", ");
+            sb.Append("var typed = Cast(args, ");
             AppendShapeLambda(sb, type);
             sb.Append("); // expected shape").NewLine();
             argSource = "typed";
         }
-        WriteArgs(type, sb, argSource);
-        sb.Append("return cmd;").Outdent().NewLine();
+        WriteArgs(type, sb, argSource, true);
+        sb.Outdent().NewLine();
+
+        sb.Append("public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine().Append("var sql = cmd.CommandText;").NewLine();
+        if (type.IsAnonymousType)
+        {
+            sb.Append("var typed = Cast(args, ");
+            AppendShapeLambda(sb, type);
+            sb.Append("); // expected shape").NewLine();
+            argSource = "typed";
+        }
+        WriteArgs(type, sb, argSource, false);
+        sb.Outdent().NewLine();
+
+
         sb.Outdent().NewLine().NewLine();
     }
 
@@ -837,7 +850,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             : symbol.NullableAnnotation != NullableAnnotation.None;
     }
 
-    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, string source)
+    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, string source, bool add)
     {
         if (parameterType is null)
         {
@@ -852,20 +865,35 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 var name = member.Name; // TODO use [Column] here?
                 if (first)
                 {
-                    sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
+                    if (add)
+                    {
+                        sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
+                    }
+                    else
+                    {
+                        sb.Append("var ps = cmd.Parameters;").NewLine();
+                    }
+                    
                     first = false;
                 }
-                sb.Append("if (Include(sql, commandType, ").AppendVerbatimLiteral(name).Append("))").Indent().NewLine()
-                    .Append("p = cmd.CreateParameter();").NewLine()
-                    .Append("p.ParameterName = ").AppendVerbatimLiteral(name).Append(";").NewLine();
-                var dbType = IdentifyDbType(type, out _);
-                if (dbType is not null)
+                sb.Append("// if (Include(sql, commandType, ").AppendVerbatimLiteral(name).Append("))").Indent().NewLine();
+                if (add)
                 {
-                    sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.ToString()).Append(";").NewLine();
+                    sb.Append("p = cmd.CreateParameter();").NewLine()
+                        .Append("p.ParameterName = ").AppendVerbatimLiteral(name).Append(";").NewLine();
+                    var dbType = IdentifyDbType(type, out _);
+                    if (dbType is not null)
+                    {
+                        sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.ToString()).Append(";").NewLine();
+                    }
+                    sb.Append("p.Value = AsValue(").Append(source).Append(".").Append(member.Name).Append(");").NewLine()
+                        .Append("cmd.Parameters.Add(p);");
                 }
-                sb.Append("p.Value = AsValue(").Append(source).Append(".").Append(member.Name);
-                sb.Append(");").NewLine()
-                    .Append("cmd.Parameters.Add(p);").Outdent().NewLine();
+                else
+                {
+                    sb.Append("ps[").AppendVerbatimLiteral(name).Append("].Value = AsValue(").Append(source).Append(".").Append(member.Name).Append(");").NewLine();
+                }
+                sb.Outdent().NewLine();
             }
         }
     }

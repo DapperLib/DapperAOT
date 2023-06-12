@@ -18,16 +18,16 @@ namespace SomethingAwkward
 {
     abstract class MyCommandFactory<T> : CommandFactory<T>
     {
-        public override DbCommand Prepare(DbConnection connection, string sql, CommandType commandType, T args)
+        public override DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, T args)
         {
-            Console.WriteLine(nameof(Prepare));
-            return base.Prepare(connection, sql, commandType, args);
+            Console.WriteLine(nameof(GetCommand));
+            return base.GetCommand(connection, sql, commandType, args);
         }
 
-        public override bool PostProcess(DbCommand command, T args)
+        public override void PostProcess(DbCommand command, T args)
         {
             Console.WriteLine(nameof(PostProcess));
-            return base.PostProcess(command, args);
+            base.PostProcess(command, args);
         }
     }
 }

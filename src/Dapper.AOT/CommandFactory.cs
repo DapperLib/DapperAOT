@@ -130,18 +130,44 @@ public class CommandFactory<T> : CommandFactory
     /// Provide and configure an ADO.NET command that can perform the requested operation
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2249:Consider using 'string.Contains' instead of 'string.IndexOf'", Justification = "Not available in all target frameworks; readability is fine")]
-    public virtual DbCommand Prepare(DbConnection connection, string sql, CommandType commandType, T args)
+    public virtual DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, T args)
     {
         // default behavior assumes no args, no special logic
         var cmd = connection.CreateCommand();
         cmd.CommandText = sql;
         cmd.CommandType = commandType != 0 ? commandType : sql.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure; // assume text if at least one space
+        AddParameters(cmd, args);
         return cmd;
     }
     /// <summary>
-    /// Allows an implementation to process output parameters etc after an operation has completed; additionally, 
-    /// if the implementation returns <c>false</c>, it is disposed automatically; returning <c>true</c> can
-    /// allow a command to be recycled (if the connection is managed appropriately)
+    /// Allows an implementation to process output parameters etc after an operation has completed
     /// </summary>
-    public virtual bool PostProcess(DbCommand command, T args) => false; // nothing to do
+    public virtual void PostProcess(DbCommand command, T args) { }
+
+    /// <summary>
+    /// Allows an implementation to process output parameters etc after an operation has completed
+    /// </summary>
+    public virtual void PostProcess(DbCommand command, T args, int rowCount) => PostProcess(command, args);
+
+    /// <summary>
+    /// Add parameters with values
+    /// </summary>
+    public virtual void AddParameters(DbCommand command, T args)
+    {
+    }
+
+    /// <summary>
+    /// Update parameter values
+    /// </summary>
+    public virtual void UpdateParameters(DbCommand command, T args)
+    {
+        command.Parameters.Clear();
+        AddParameters(command, args);
+    }
+
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse command instances
+    /// </summary>
+    public virtual bool TryRecycle(DbCommand command) => false;
 }

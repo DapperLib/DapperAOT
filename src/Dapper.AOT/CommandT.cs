@@ -96,18 +96,39 @@ public readonly struct Command<TArgs>
         static void ThrowNoConnection() => throw new ArgumentNullException(nameof(connection));
     }
 
-    private void PostProcessCommand(ref DbCommand? command)
+    internal void PostProcessAndRecycle(ref CommandState state)
     {
-        Debug.Assert(command is not null);
-        if (commandFactory.PostProcess(command!, args))
+        Debug.Assert(state.Command is not null);
+        commandFactory.PostProcess(state.Command!, args);
+        if (commandFactory.TryRecycle(state.Command!))
         {
-            command = null;
+            state.Command = null;
         }
     }
 
-    private DbCommand GetCommand()
+    internal void PostProcessAndRecycle(ref QueryState state)
     {
-        var cmd = commandFactory.Prepare(connection!, sql, commandType, args);
+        Debug.Assert(state.Command is not null);
+        commandFactory.PostProcess(state.Command!, args);
+        if (commandFactory.TryRecycle(state.Command!))
+        {
+            state.Command = null;
+        }
+    }
+
+    internal void PostProcessAndRecycle(ref CommandState state, int rowCount)
+    {
+        Debug.Assert(state.Command is not null);
+        commandFactory.PostProcess(state.Command!, args, rowCount);
+        if (commandFactory.TryRecycle(state.Command!))
+        {
+            state.Command = null;
+        }
+    }
+
+    internal DbCommand GetCommand()
+    {
+        var cmd = commandFactory.GetCommand(connection!, sql, commandType, args);
         cmd.Connection = connection;
         cmd.Transaction = transaction;
         if (timeout >= 0)
@@ -115,39 +136,6 @@ public readonly struct Command<TArgs>
             cmd.CommandTimeout = timeout;
         }
         return cmd;
-    }
-
-    private bool OpenIfNeeded()
-    {
-        if (connection.State == ConnectionState.Open)
-        {
-            return false;
-        }
-        else
-        {
-            connection.Open();
-            return true;
-        }
-    }
-
-    private ValueTask<bool> OpenIfNeededAsync(CancellationToken cancellationToken)
-    {
-        if (connection.State == ConnectionState.Open)
-        {
-            return default;
-        }
-        else
-        {
-            var pending = connection.OpenAsync(cancellationToken);
-            return pending.IsCompletedSuccessfully()
-                ? new(true) : Awaited(pending);
-
-            static async ValueTask<bool> Awaited(Task pending)
-            {
-                await pending;
-                return true;
-            }
-        }
     }
 
     /// <summary>
@@ -203,19 +191,16 @@ public readonly struct Command<TArgs>
     /// </summary>
     public int Execute()
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
+        CommandState state = default;
         try
         {
-            closeConn = OpenIfNeeded();
-            cmd = GetCommand();
-            var result = cmd.ExecuteNonQuery();
-            PostProcessCommand(ref cmd);
+            var result = state.ExecuteNonQuery(GetCommand());
+            PostProcessAndRecycle(ref state, result);
             return result;
         }
         finally
         {
-            CommandUtils.Cleanup(null, cmd, connection, closeConn);
+            state.Dispose();
         }
     }
 
@@ -224,19 +209,16 @@ public readonly struct Command<TArgs>
     /// </summary>
     public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
+        CommandState state = default;
         try
         {
-            closeConn = await OpenIfNeededAsync(cancellationToken);
-            cmd = GetCommand();
-            var result = await cmd.ExecuteNonQueryAsync(cancellationToken);
-            PostProcessCommand(ref cmd);
+            var result = await state.ExecuteNonQueryAsync(GetCommand(), cancellationToken);
+            PostProcessAndRecycle(ref state, result);
             return result;
         }
         finally
         {
-            await CommandUtils.CleanupAsync(null, cmd, connection, closeConn);
+            await state.DisposeAsync();
         }
     }
 
@@ -245,19 +227,16 @@ public readonly struct Command<TArgs>
     /// </summary>
     public object? ExecuteScalar()
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
+        CommandState state = default;
         try
         {
-            closeConn = OpenIfNeeded();
-            cmd = GetCommand();
-            var result = cmd.ExecuteScalar();
-            PostProcessCommand(ref cmd);
+            var result = state.ExecuteScalar(GetCommand());
+            PostProcessAndRecycle(ref state);
             return result;
         }
         finally
         {
-            CommandUtils.Cleanup(null, cmd, connection, closeConn);
+            state.Dispose();
         }
     }
 
@@ -266,19 +245,16 @@ public readonly struct Command<TArgs>
     /// </summary>
     public async Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken = default)
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
+        CommandState state = default;
         try
         {
-            closeConn = await OpenIfNeededAsync(cancellationToken);
-            cmd = GetCommand();
-            var result = await cmd.ExecuteScalarAsync(cancellationToken);
-            PostProcessCommand(ref cmd);
+            var result = await state.ExecuteScalarAsync(GetCommand(), cancellationToken);
+            PostProcessAndRecycle(ref state);
             return result;
         }
         finally
         {
-            await CommandUtils.CleanupAsync(null, cmd, connection, closeConn);
+            await state.DisposeAsync();
         }
     }
 
@@ -287,19 +263,16 @@ public readonly struct Command<TArgs>
     /// </summary>
     public T ExecuteScalar<T>()
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
+        CommandState state = default;
         try
         {
-            closeConn = OpenIfNeeded();
-            cmd = GetCommand();
-            var result = cmd.ExecuteScalar();
-            PostProcessCommand(ref cmd);
+            var result = state.ExecuteScalar(GetCommand());
+            PostProcessAndRecycle(ref state);
             return CommandUtils.As<T>(result);
         }
         finally
         {
-            CommandUtils.Cleanup(null, cmd, connection, closeConn);
+            state.Dispose();
         }
     }
 
@@ -308,19 +281,16 @@ public readonly struct Command<TArgs>
     /// </summary>
     public async Task<T> ExecuteScalarAsync<T>(CancellationToken cancellationToken = default)
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
+        CommandState state = default;
         try
         {
-            closeConn = await OpenIfNeededAsync(cancellationToken);
-            cmd = GetCommand();
-            var result = await cmd.ExecuteScalarAsync(cancellationToken);
-            PostProcessCommand(ref cmd);
+            var result = await state.ExecuteScalarAsync(GetCommand(), cancellationToken);
+            PostProcessAndRecycle(ref state);
             return CommandUtils.As<T>(result);
         }
         finally
         {
-            await CommandUtils.CleanupAsync(null, cmd, connection, closeConn);
+            await state.DisposeAsync();
         }
     }
 
@@ -335,47 +305,35 @@ public readonly struct Command<TArgs>
     /// </summary>
     public List<TRow> QueryBuffered<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null)
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
+        QueryState state = default;
         try
         {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if (closeConn = OpenIfNeeded())
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = cmd.ExecuteReader(behavior);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+            state.ExecuteReader(GetCommand(), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
 
             var results = new List<TRow>();
-            if (reader.Read())
+            if (state.Reader.Read())
             {
-                int[]? leased = null;
-                var fieldCount = reader.FieldCount;
-                var readWriteTokens
-                    = fieldCount == 0 ? default
-                    : fieldCount <= MAX_STACK_TOKENS ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], fieldCount)
-                    : CommandUtils.UnsafeRent(out leased, fieldCount);
+                var readWriteTokens = state.Reader.FieldCount <= MAX_STACK_TOKENS
+                    ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], state.Reader.FieldCount)
+                    : state.Lease();
 
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, readWriteTokens, 0);
+                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
                 ReadOnlySpan<int> readOnlyTokens = readWriteTokens; // avoid multiple conversions
                 do
                 {
-                    results.Add(rowFactory.Read(reader, readOnlyTokens, 0));
+                    results.Add(rowFactory.Read(state.Reader, readOnlyTokens, 0));
                 }
-                while (reader.Read());
-                CommandUtils.Return(leased);
+                while (state.Reader.Read());
+                state.Return();
             }
             // consume entire results (avoid unobserved TDS error messages)
-            while (reader.NextResult()) { }
-            PostProcessCommand(ref cmd);
+            while (state.Reader.NextResult()) { }
+            PostProcessAndRecycle(ref state);
             return results;
         }
         finally
         {
-            CommandUtils.Cleanup(reader, cmd, connection, closeConn);
+            state.Dispose();
         }
     }
 
@@ -384,40 +342,30 @@ public readonly struct Command<TArgs>
     /// </summary>
     public async Task<List<TRow>> QueryBufferedAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default)
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
+        QueryState state = default;
         try
         {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if (closeConn = await OpenIfNeededAsync(cancellationToken))
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = await cmd.ExecuteReaderAsync(behavior, cancellationToken);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+            await state.ExecuteReaderAsync(GetCommand(), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
 
             var results = new List<TRow>();
-            if (await reader.ReadAsync(cancellationToken))
+            if (await state.Reader.ReadAsync(cancellationToken))
             {
-                var fieldCount = reader.FieldCount;
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, CommandUtils.UnsafeRent(out var leased, fieldCount), 0);
+                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
                 do
                 {
-                    results.Add(rowFactory.Read(reader, CommandUtils.UnsafeReadOnlySpan(leased, fieldCount), 0));
+                    results.Add(rowFactory.Read(state.Reader, state.Tokens, 0));
                 }
-                while (await reader.ReadAsync(cancellationToken));
-                CommandUtils.Return(leased);
+                while (await state.Reader.ReadAsync(cancellationToken));
+                state.Return();
             }
             // consume entire results (avoid unobserved TDS error messages)
-            while (await reader.NextResultAsync(cancellationToken)) { }
-            PostProcessCommand(ref cmd);
+            while (await state.Reader.NextResultAsync(cancellationToken)) { }
+            PostProcessAndRecycle(ref state);
             return results;
         }
         finally
         {
-            await CommandUtils.CleanupAsync(reader, cmd, connection, closeConn);
+            await state.DisposeAsync();
         }
     }
 
@@ -427,38 +375,28 @@ public readonly struct Command<TArgs>
     public async IAsyncEnumerable<TRow> QueryUnbufferedAsync<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
+        QueryState state = default;
         try
         {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if (closeConn = await OpenIfNeededAsync(cancellationToken))
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = await cmd.ExecuteReaderAsync(behavior, cancellationToken);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+            await state.ExecuteReaderAsync(GetCommand(), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
 
-            if (await reader.ReadAsync(cancellationToken))
+            if (await state.Reader.ReadAsync(cancellationToken))
             {
-                var fieldCount = reader.FieldCount;
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, CommandUtils.UnsafeRent(out var leased, fieldCount), 0);
+                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
                 do
                 {
-                    yield return rowFactory.Read(reader, CommandUtils.UnsafeReadOnlySpan(leased, fieldCount), 0);
+                    yield return rowFactory.Read(state.Reader, state.Tokens, 0);
                 }
-                while (await reader.ReadAsync(cancellationToken));
-                CommandUtils.Return(leased);
+                while (await state.Reader.ReadAsync(cancellationToken));
+                state.Return();
             }
             // consume entire results (avoid unobserved TDS error messages)
-            while (await reader.NextResultAsync(cancellationToken)) { }
-            PostProcessCommand(ref cmd);
+            while (await state.Reader.NextResultAsync(cancellationToken)) { }
+            PostProcessAndRecycle(ref state);
         }
         finally
         {
-            await CommandUtils.CleanupAsync(reader, cmd, connection, closeConn);
+            await state.DisposeAsync();
         }
     }
 
@@ -467,164 +405,125 @@ public readonly struct Command<TArgs>
     /// </summary>
     public IEnumerable<TRow> QueryUnbuffered<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null)
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
+        QueryState state = default;
         try
         {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if (closeConn = OpenIfNeeded())
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = cmd.ExecuteReader(behavior);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+            state.ExecuteReader(GetCommand(), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
 
-            if (reader.Read())
+            if (state.Reader.Read())
             {
-                var fieldCount = reader.FieldCount;
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, CommandUtils.UnsafeRent(out var leased, fieldCount), 0);
+                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
                 do
                 {
-                    yield return rowFactory.Read(reader, CommandUtils.UnsafeReadOnlySpan(leased, fieldCount), 0);
+                    yield return rowFactory.Read(state.Reader, state.Tokens, 0);
                 }
-                while (reader.Read());
-                CommandUtils.Return(leased);
+                while (state.Reader.Read());
+                state.Return();
             }
             // consume entire results (avoid unobserved TDS error messages)
-            while (reader.NextResult()) { }
-            PostProcessCommand(ref cmd);
+            while (state.Reader.NextResult()) { }
+            PostProcessAndRecycle(ref state);
         }
         finally
         {
-            CommandUtils.Cleanup(reader, cmd, connection, closeConn);
+            state.Dispose();
         }
     }
 
     const int MAX_STACK_TOKENS = 64;
 
+    // if we don't care if there's two rows, we can restrict to read one only
+    static CommandBehavior SingleFlags(OneRowFlags flags)
+        => (flags & OneRowFlags.ThrowIfMultiple) == 0
+            ? CommandBehavior.SingleResult | CommandBehavior.SequentialAccess | CommandBehavior.SingleRow
+            : CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
+
     private TRow? QueryOneRow<TRow>(
-        OneRowFlags oneRowFlags,
+        OneRowFlags flags,
         RowFactory<TRow>? rowFactory)
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
-
+        QueryState state = default;
         try
         {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if ((oneRowFlags & OneRowFlags.ThrowIfMultiple) == 0)
-            {   // if we don't care if there's two rows, we can restrict to read one only
-                behavior |= CommandBehavior.SingleRow;
-            }
-            if (closeConn = OpenIfNeeded())
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = cmd.ExecuteReader(behavior);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+            state.ExecuteReader(GetCommand(), SingleFlags(flags));
 
             TRow? result = default;
-            if (reader.Read())
+            if (state.Reader.Read())
             {
-                {   // extra scope level so the compiler can ensure we aren't using the lease beyond the expected lifetime
-                    int[]? leased = null;
-                    var fieldCount = reader.FieldCount;
-                    var readWriteTokens
-                        = fieldCount == 0 ? default
-                        : fieldCount <= MAX_STACK_TOKENS ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], fieldCount)
-                        : CommandUtils.UnsafeRent(out leased, fieldCount);
+                var readWriteTokens = state.Reader.FieldCount <= MAX_STACK_TOKENS
+                    ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], state.Reader.FieldCount)
+                    : state.Lease();
 
-                    (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, readWriteTokens, 0);
-                    result = rowFactory.Read(reader, readWriteTokens, 0);
-                    CommandUtils.Return(leased);
-                }
+                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
+                result = rowFactory.Read(state.Reader, readWriteTokens, 0);
+                state.Return();
 
-                if (reader.Read())
+                if (state.Reader.Read())
                 {
-                    if ((oneRowFlags & OneRowFlags.ThrowIfMultiple) != 0)
+                    if ((flags & OneRowFlags.ThrowIfMultiple) != 0)
                     {
                         CommandUtils.ThrowMultiple();
                     }
-                    while (reader.Read()) { }
+                    while (state.Reader.Read()) { }
                 }
             }
-            else if ((oneRowFlags & OneRowFlags.ThrowIfNone) != 0)
+            else if ((flags & OneRowFlags.ThrowIfNone) != 0)
             {
                 CommandUtils.ThrowNone();
             }
 
             // consume entire results (avoid unobserved TDS error messages)
-            while (reader.NextResult()) { }
-            PostProcessCommand(ref cmd);
+            while (state.Reader.NextResult()) { }
+            PostProcessAndRecycle(ref state);
             return result;
         }
         finally
         {
-            CommandUtils.Cleanup(reader, cmd, connection, closeConn);
+            state.Dispose();
         }
     }
 
     private async Task<TRow?> QueryOneRowAsync<TRow>(
-        OneRowFlags oneRowFlags,
+        OneRowFlags flags,
         RowFactory<TRow>? rowFactory,
         CancellationToken cancellationToken)
     {
-        bool closeConn = false;
-        DbCommand? cmd = null;
-        DbDataReader? reader = null;
+        QueryState state = default;
 
         try
         {
-            var behavior = CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
-            if ((oneRowFlags & OneRowFlags.ThrowIfMultiple) == 0)
-            {   // if we don't care if there's two rows, we can restrict to read one only
-                behavior |= CommandBehavior.SingleRow;
-            }
-            if (closeConn = await OpenIfNeededAsync(cancellationToken))
-            {
-                behavior |= CommandBehavior.CloseConnection;
-            }
-            cmd = GetCommand();
-            reader = await cmd.ExecuteReaderAsync(behavior, cancellationToken);
-            closeConn = false; // handled by CommandBehavior.CloseConnection
+            await state.ExecuteReaderAsync(GetCommand(), SingleFlags(flags), cancellationToken);
 
             TRow? result = default;
-            if (await reader.ReadAsync(cancellationToken))
+            if (await state.Reader.ReadAsync(cancellationToken))
             {
-                {   // extra scope level so the compiler can ensure we aren't using the lease beyond the expected lifetime
-                    var fieldCount = reader.FieldCount;
-                    (rowFactory ??= RowFactory<TRow>.Default).Tokenize(reader, CommandUtils.UnsafeRent(out var leased, fieldCount), 0);
+                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
 
-                    result = rowFactory.Read(reader, CommandUtils.UnsafeReadOnlySpan(leased, fieldCount), 0);
-                    CommandUtils.Return(leased);
-                }
+                result = rowFactory.Read(state.Reader, state.Tokens, 0);
+                state.Return();
 
-                if (await reader.ReadAsync(cancellationToken))
+                if (await state.Reader.ReadAsync(cancellationToken))
                 {
-                    if ((oneRowFlags & OneRowFlags.ThrowIfMultiple) != 0)
+                    if ((flags & OneRowFlags.ThrowIfMultiple) != 0)
                     {
                         CommandUtils.ThrowMultiple();
                     }
-                    while (await reader.ReadAsync(cancellationToken)) { }
+                    while (await state.Reader.ReadAsync(cancellationToken)) { }
                 }
             }
-            else if ((oneRowFlags & OneRowFlags.ThrowIfNone) != 0)
+            else if ((flags & OneRowFlags.ThrowIfNone) != 0)
             {
                 CommandUtils.ThrowNone();
             }
 
             // consume entire results (avoid unobserved TDS error messages)
-            while (await reader.NextResultAsync(cancellationToken)) { }
-            PostProcessCommand(ref cmd);
+            while (await state.Reader.NextResultAsync(cancellationToken)) { }
+            PostProcessAndRecycle(ref state);
             return result;
         }
         finally
         {
-            await CommandUtils.CleanupAsync(reader, cmd, connection, closeConn);
+            await state.DisposeAsync();
         }
     }
 }

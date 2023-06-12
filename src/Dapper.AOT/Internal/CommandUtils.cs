@@ -29,7 +29,7 @@ internal static class CommandUtils
     {
         Debug.Assert(value is not null);
         Debug.Assert(length >= 0 && length <= value!.Length);
-#if NET8_0_OR_GREATER && !DEBUG
+#if NET8_0_OR_GREATER
         return MemoryMarshal.CreateReadOnlySpan(ref MemoryMarshal.GetArrayDataReference(value), length);
 #else
         return new ReadOnlySpan<int>(value, 0, length);
@@ -40,69 +40,12 @@ internal static class CommandUtils
     internal static Span<int> UnsafeSlice(Span<int> value, int length)
     {
         Debug.Assert(length >= 0 && length <= value.Length);
-#if NETCOREAPP3_1_OR_GREATER && !DEBUG
+#if NETCOREAPP3_1_OR_GREATER
         return MemoryMarshal.CreateSpan(ref MemoryMarshal.GetReference(value), length);
 #else
         return value.Slice(0, length);
 #endif
     }
-
-    [MethodImpl(AggressiveOptions)]
-    internal static Span<int> UnsafeRent(out int[] leased, int length)
-    {
-        Debug.Assert(length >= 0);
-        leased = ArrayPool<int>.Shared.Rent(length);
-#if NET8_0_OR_GREATER && !DEBUG
-        return MemoryMarshal.CreateSpan(ref MemoryMarshal.GetArrayDataReference(leased), length);
-#else
-        return new Span<int>(leased, 0, length);
-#endif
-    }
-
-    [MethodImpl(AggressiveOptions)]
-    internal static void Return(int[]? leased)
-    {
-        if (leased is not null)
-        {
-            ArrayPool<int>.Shared.Return(leased);
-        }
-    }
-
-    [MethodImpl(AggressiveOptions)]
-    internal static void Cleanup(DbDataReader? reader, DbCommand? command, DbConnection connection, bool closeConnection)
-    {
-        reader?.Dispose();
-        command?.Dispose();
-        if (closeConnection)
-        {
-            connection.Close();
-        }
-    }
-
-#if NETCOREAPP3_1_OR_GREATER
-    internal static async ValueTask CleanupAsync(DbDataReader? reader, DbCommand? command, DbConnection connection, bool closeConnection)
-    {
-        if (reader is not null)
-        {
-            await reader.DisposeAsync();
-        }
-        if (command is not null)
-        {
-            await command.DisposeAsync();
-        }
-        if (closeConnection)
-        {
-            await connection.CloseAsync();
-        }
-    }
-#else
-    [MethodImpl(AggressiveOptions)]
-    internal static ValueTask CleanupAsync(DbDataReader? reader, DbCommand? command, DbConnection connection, bool closeConnection)
-    {
-        Cleanup(reader, command, connection, closeConnection);
-        return default;
-    }
-#endif
 
     [MethodImpl(AggressiveOptions)]
     internal static bool IsCompletedSuccessfully(this Task task)
