@@ -11,7 +11,7 @@ using UsageBenchmark;
 
 namespace Dapper;
 
-[ShortRunJob, MemoryDiagnoser, GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
+[ShortRunJob, MemoryDiagnoser, GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory), CategoriesColumn]
 public class BatchInsertBenchmarks : IDisposable
 {
     public SqlConnection connection = new(Program.ConnectionString);
@@ -49,7 +49,7 @@ public class BatchInsertBenchmarks : IDisposable
         connection.Execute("truncate table BenchmarkBatchInsert;");
     }
 
-    [Benchmark(Baseline = true), BenchmarkCategory("Sync")]
+    [Benchmark, BenchmarkCategory("Sync")]
     public int Dapper() => connection.Execute("insert BenchmarkBatchInsert (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Sync")]
@@ -60,7 +60,7 @@ public class BatchInsertBenchmarks : IDisposable
     public int DapperAot_Prepared() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Prepared).Execute(customers);
 
-    [Benchmark, BenchmarkCategory("Sync")]
+    [Benchmark(Baseline = true), BenchmarkCategory("Sync")]
     public int Manual()
     {
         if (customers.Length == 0) return 0;
@@ -117,7 +117,7 @@ public class BatchInsertBenchmarks : IDisposable
     private static bool RecycleManual(DbCommand cmd)
         => Interlocked.CompareExchange(ref _spare, cmd, null) is null;
 
-    [Benchmark(Baseline = true), BenchmarkCategory("Async")]
+    [Benchmark, BenchmarkCategory("Async")]
     public Task<int> DapperAsync() => connection.ExecuteAsync("insert BenchmarkBatchInsert (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Async")]
@@ -128,7 +128,7 @@ public class BatchInsertBenchmarks : IDisposable
     public Task<int> DapperAot_PreparedAsync() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Prepared).ExecuteAsync(customers);
 
-    [Benchmark, BenchmarkCategory("Async")]
+    [Benchmark(Baseline = true), BenchmarkCategory("Async")]
     public async Task<int> ManualAsync()
     {
         if (customers.Length == 0) return 0;
@@ -168,7 +168,17 @@ public class BatchInsertBenchmarks : IDisposable
         }
     }
 
-    // [Benchmark, BenchmarkCategory("Sync")]
+    [RunOncePerIteration]
+    public void ResetIds()
+    {   // this is mostly because EF is going to update the values,
+        // triggering identity-insert violations on the *next* attempt
+        foreach (var customer in customers)
+        {
+            customer.Id = 0;
+        }
+    }
+
+    [Benchmark, BenchmarkCategory("Sync")]
     public int EntityFramework()
     {
         using var ctx = new MyContext();
@@ -176,12 +186,70 @@ public class BatchInsertBenchmarks : IDisposable
         return ctx.SaveChanges();
     }
 
-    // [Benchmark, BenchmarkCategory("Async")]
+    [Benchmark, BenchmarkCategory("Async")]
     public async Task<int> EntityFrameworkAsync()
     {
         using var ctx = new MyContext();
         ctx.Customers.AddRange(customers);
         return await ctx.SaveChangesAsync();
+    }
+
+    [Benchmark, BenchmarkCategory("Sync")]
+    public int SqlBulkCopyFastMember()
+    {
+        bool close = false;
+        try
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+                close = true;
+            }
+            using var table = new SqlBulkCopy(connection)
+            {
+                DestinationTableName = "BenchmarkBatchInsert",
+                ColumnMappings =
+            {
+                { nameof(Customer.Name), nameof(Customer.Name) }
+            }
+            };
+            table.EnableStreaming = true;
+            table.WriteToServer(FastMember.ObjectReader.Create(customers, nameof(Customer.Name)));
+            return table.RowsCopied;
+        }
+        finally
+        {
+            if (close) connection.Close();
+        }
+    }
+
+    [Benchmark, BenchmarkCategory("Async")]
+    public async Task<int> SqlBulkCopyFastMemberAsync()
+    {
+        bool close = false;
+        try
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+                close = true;
+            }
+            using var table = new SqlBulkCopy(connection)
+            {
+                DestinationTableName = "BenchmarkBatchInsert",
+                ColumnMappings =
+            {
+                { nameof(Customer.Name), nameof(Customer.Name) }
+            }
+            };
+            table.EnableStreaming = true;
+            await table.WriteToServerAsync(FastMember.ObjectReader.Create(customers, nameof(Customer.Name)));
+            return table.RowsCopied;
+        }
+        finally
+        {
+            if (close) await connection.CloseAsync();
+        }
     }
 
     public void Dispose() => connection.Dispose();
