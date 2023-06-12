@@ -1,5 +1,6 @@
 ﻿using BenchmarkDotNet.Running;
 using Dapper;
+using System;
 using System.Threading.Tasks;
 
 namespace UsageBenchmark;
@@ -23,17 +24,20 @@ static class Program
             obj.IsOpen = isOpen;
             obj.Setup();
 
-            obj.Manual();
-            await obj.ManualAsync();
+            Console.WriteLine(obj.Manual());
+            Console.WriteLine(await obj.ManualAsync());
 
-            obj.Dapper();
-            await obj.DapperAsync();
+            Console.WriteLine(obj.Dapper());
+            Console.WriteLine(await obj.DapperAsync());
 
-            obj.DapperAot();
-            await obj.DapperAotAsync();
+            Console.WriteLine(obj.DapperAot());
+            Console.WriteLine(await obj.DapperAotAsync());
 
-            obj.DapperAot_Prepared();
-            await obj.DapperAot_PreparedAsync();
+            Console.WriteLine(obj.DapperAot_Prepared());
+            Console.WriteLine(await obj.DapperAot_PreparedAsync());
+
+            Console.WriteLine(obj.EntityFramework());
+            Console.WriteLine(await obj.EntityFrameworkAsync());
         }
     }
 #endif

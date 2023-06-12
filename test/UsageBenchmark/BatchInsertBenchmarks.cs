@@ -1,6 +1,7 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Data;
 using System.Data.Common;
@@ -49,43 +50,43 @@ public class BatchInsertBenchmarks : IDisposable
     }
 
     [Benchmark(Baseline = true), BenchmarkCategory("Sync")]
-    public void Dapper() => connection.Execute("insert BenchmarkBatchInsert (Name) values (@name)", customers);
+    public int Dapper() => connection.Execute("insert BenchmarkBatchInsert (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Sync")]
-    public void DapperAot() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
+    public int DapperAot() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Unprepared).Execute(customers);
 
     [Benchmark, BenchmarkCategory("Sync")]
-    public void DapperAot_Prepared() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
+    public int DapperAot_Prepared() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Prepared).Execute(customers);
 
     [Benchmark, BenchmarkCategory("Sync")]
-    public void Manual()
+    public int Manual()
     {
-        if (customers.Length != 0)
+        if (customers.Length == 0) return 0;
+        bool close = false;
+        try
         {
-            bool close = false;
-            try
+            if (connection.State != ConnectionState.Open)
             {
-                if (connection.State != ConnectionState.Open)
-                {
-                    connection.Open();
-                    close = true;
-                }
-                var cmd = GetManualCommand(connection, out var name);
-                if (customers.Length != 1) cmd.Prepare();
+                connection.Open();
+                close = true;
+            }
+            var cmd = GetManualCommand(connection, out var name);
+            if (customers.Length != 1) cmd.Prepare();
 
-                foreach (var customer in customers)
-                {
-                    name.Value = customer.Name ?? (object)DBNull.Value;
-                    cmd.ExecuteNonQuery();
-                }
-                if (!RecycleManual(cmd)) cmd.Dispose();
-            }
-            finally
+            int total = 0;
+            foreach (var customer in customers)
             {
-                if (close) connection.Close();
+                name.Value = customer.Name ?? (object)DBNull.Value;
+                total += cmd.ExecuteNonQuery();
             }
+            if (!RecycleManual(cmd)) cmd.Dispose();
+            return total;
+        }
+        finally
+        {
+            if (close) connection.Close();
         }
     }
 
@@ -117,59 +118,74 @@ public class BatchInsertBenchmarks : IDisposable
         => Interlocked.CompareExchange(ref _spare, cmd, null) is null;
 
     [Benchmark(Baseline = true), BenchmarkCategory("Async")]
-    public Task DapperAsync() => connection.ExecuteAsync("insert BenchmarkBatchInsert (Name) values (@name)", customers);
+    public Task<int> DapperAsync() => connection.ExecuteAsync("insert BenchmarkBatchInsert (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Async")]
-    public Task DapperAotAsync() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
+    public Task<int> DapperAotAsync() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Unprepared).ExecuteAsync(customers);
 
     [Benchmark, BenchmarkCategory("Async")]
-    public Task DapperAot_PreparedAsync() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
+    public Task<int> DapperAot_PreparedAsync() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Prepared).ExecuteAsync(customers);
 
     [Benchmark, BenchmarkCategory("Async")]
-    public async Task ManualAsync()
+    public async Task<int> ManualAsync()
     {
-        if (customers.Length != 0)
+        if (customers.Length == 0) return 0;
+        bool close = false;
+        try
         {
-            bool close = false;
-            try
+            if (connection.State != ConnectionState.Open)
             {
-                if (connection.State != ConnectionState.Open)
-                {
-                    await connection.OpenAsync();
-                    close = true;
-                }
-                var cmd = GetManualCommand(connection, out var name);
-                if (customers.Length != 1)
-                {
-                    await cmd.PrepareAsync();
-                }
-
-                foreach (var customer in customers)
-                {
-                    name.Value = customer.Name ?? (object)DBNull.Value;
-                    await cmd.ExecuteNonQueryAsync();
-                }
-
-                if (!RecycleManual(cmd))
-                {
-                    await cmd.DisposeAsync();
-                }
+                await connection.OpenAsync();
+                close = true;
             }
-            finally
+            var cmd = GetManualCommand(connection, out var name);
+            if (customers.Length != 1)
             {
-                if (close)
-                {
-                    await connection.CloseAsync();
-                }
+                await cmd.PrepareAsync();
+            }
+
+            int total = 0;
+            foreach (var customer in customers)
+            {
+                name.Value = customer.Name ?? (object)DBNull.Value;
+                total += await cmd.ExecuteNonQueryAsync();
+            }
+
+            if (!RecycleManual(cmd))
+            {
+                await cmd.DisposeAsync();
+            }
+            return total;
+        }
+        finally
+        {
+            if (close)
+            {
+                await connection.CloseAsync();
             }
         }
     }
 
+    // [Benchmark, BenchmarkCategory("Sync")]
+    public int EntityFramework()
+    {
+        using var ctx = new MyContext();
+        ctx.Customers.AddRange(customers);
+        return ctx.SaveChanges();
+    }
+
+    // [Benchmark, BenchmarkCategory("Async")]
+    public async Task<int> EntityFrameworkAsync()
+    {
+        using var ctx = new MyContext();
+        ctx.Customers.AddRange(customers);
+        return await ctx.SaveChangesAsync();
+    }
+
     public void Dispose() => connection.Dispose();
 }
-
 
 public class Customer
 {
@@ -177,6 +193,22 @@ public class Customer
 
     [DbValue(Size = 400)]
     public string Name { get; set; }
+}
+
+public class MyContext : DbContext
+{
+    public DbSet<Customer> Customers { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        => optionsBuilder.UseSqlServer(Program.ConnectionString);
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+        => modelBuilder.Entity<Customer>(entity =>
+        {
+            entity.ToTable("BenchmarkBatchInsert");
+            entity.Property<int>(nameof(Customer.Id)).ValueGeneratedOnAdd().UseIdentityColumn(1, 1);
+            entity.Property<string>(nameof(Customer.Name));
+        });
 }
 
 internal class CustomHandler : CommandFactory<Customer>
