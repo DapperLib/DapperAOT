@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Dapper.Integration;
 
-public class Database : IDisposable
+public sealed class Database : IDisposable
 {
     private readonly SqlConnection connection;
     public Database()

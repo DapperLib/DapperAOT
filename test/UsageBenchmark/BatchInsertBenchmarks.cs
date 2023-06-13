@@ -252,7 +252,11 @@ public class BatchInsertBenchmarks : IDisposable
         }
     }
 
-    public void Dispose() => connection.Dispose();
+    public void Dispose()
+    {
+        connection.Dispose();
+        GC.SuppressFinalize(this);
+    }
 }
 
 public class Customer
@@ -260,7 +264,7 @@ public class Customer
     public int Id { get; set; }
 
     [DbValue(Size = 400)]
-    public string Name { get; set; }
+    public string Name { get; set; } = "";
 }
 
 public class MyContext : DbContext

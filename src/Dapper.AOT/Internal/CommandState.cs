@@ -68,8 +68,8 @@ namespace Dapper.Internal
         private void OnBeforeExecute(DbCommand command)
         {
             Debug.Assert(command?.Connection is not null);
-            Command = command;
-            connection = command.Connection;
+            Command = command!;
+            connection = command!.Connection;
             
             if (connection.State != ConnectionState.Open)
             {
