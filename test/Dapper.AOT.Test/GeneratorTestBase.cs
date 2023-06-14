@@ -47,7 +47,8 @@ namespace Dapper.AOT.Test
             void OutputDiagnostic(Diagnostic d)
             {
                 Output("", true);
-                Output($"{d.Severity} {d.Id} {d.Location}");
+                var loc = d.Location.GetMappedLineSpan();
+                Output($"{d.Severity} {d.Id} {loc.Path} L{loc.StartLinePosition.Line} C{loc.StartLinePosition.Character}");
                 Output(d.GetMessage(CultureInfo.InvariantCulture));
             }
             void Output(string message, bool force = false)

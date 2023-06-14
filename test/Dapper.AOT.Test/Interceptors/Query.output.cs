@@ -71,25 +71,52 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 19, 30)]
     internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Customer>> QueryAsync5(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, Async, TypedResult
+        // Query, Async, TypedResult, Buffered
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType is null);
         global::System.Diagnostics.Debug.Assert(param is null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, DefaultCommandFactory).QueryAsync<global::Foo.Customer>(default, RowFactory0.Instance, default);
+        return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
+            global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, DefaultCommandFactory).QueryBufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default));
 
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 20, 30)]
     internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Customer>> QueryAsync6(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, Async, TypedResult, HasParameters
+        // Query, Async, TypedResult, HasParameters, Buffered
         // takes parameter: <anonymous type: int Foo, string bar>
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType is null);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory1.Instance).QueryAsync<global::Foo.Customer>(default, RowFactory0.Instance, default);
+        return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
+            global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory1.Instance).QueryBufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default));
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 21, 47)]
+    internal static global::System.Collections.Generic.IAsyncEnumerable<global::Foo.Customer> QueryUnbufferedAsync7(this global::System.Data.Common.DbConnection cnn, string sql, object param, global::System.Data.Common.DbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, Async, TypedResult, Unbuffered, StoredProcedure
+        // returns data: global::Foo.Customer
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(param is null);
+
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryUnbufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 22, 47)]
+    internal static global::System.Collections.Generic.IAsyncEnumerable<global::Foo.Customer> QueryUnbufferedAsync8(this global::System.Data.Common.DbConnection cnn, string sql, object param, global::System.Data.Common.DbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, Async, TypedResult, HasParameters, Unbuffered, Text
+        // takes parameter: <anonymous type: int Foo, string bar>
+        // returns data: global::Foo.Customer
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(param is not null);
+
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).QueryUnbufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default);
 
     }
 

@@ -330,9 +330,12 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         switch (method.Name)
         {
             case "Query":
-            case "QueryAsync":
                 flags |= OperationFlags.Query;
                 return method.Arity == 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+            case "QueryAsync":
+            case "QueryUnbufferedAsync":
+                flags |= method.Name.Contains("Unbuffered") ? OperationFlags.Unbuffered : OperationFlags.Buffered;
+                goto case "Query";
             case "QueryFirst":
             case "QueryFirstAsync":
                 flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne;
@@ -362,8 +365,9 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         }
     }
 
-    static bool HasAny(OperationFlags value, OperationFlags testFor)
-        => (value & testFor) != 0;
+    static bool HasAny(OperationFlags value, OperationFlags testFor) => (value & testFor) != 0;
+    static bool HasAll(OperationFlags value, OperationFlags testFor) => (value & testFor) == testFor;
+
     [Flags]
     enum OperationFlags
     {
@@ -419,6 +423,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         return null;
     }
 
+    private static string GetSignature(IMethodSymbol method, bool deconstruct = true)
+    {
+        if (deconstruct && method.IsGenericMethod) method = method.ConstructedFrom ?? method;
+        return method.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat);
+    }
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
     {
         if (state.Nodes.IsDefaultOrEmpty)
@@ -430,7 +439,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         int unsupportedCount = 0;
         foreach (var node in state.Nodes.Where(x => HasAny(x.Flags, OperationFlags.Unsupported)))
         {
-            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnsupportedMethod, node.Location, node.Method.Name));
+            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnsupportedMethod, node.Location, GetSignature(node.Method)));
             unsupportedCount++;
         }
 
@@ -540,15 +549,20 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 }
             }
 
-            if (HasAny(flags, OperationFlags.Buffered | OperationFlags.Unbuffered))
+            if (HasAny(flags, OperationFlags.Buffered | OperationFlags.Unbuffered) && HasParam(methodParameters, "buffered"))
             {
                 sb.Append("global::System.Diagnostics.Debug.Assert(buffered is ").Append((flags & OperationFlags.Buffered) != 0).Append(");").NewLine();
             }
 
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
+            sb.Append("return ");
+            if (HasAll(flags, OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
+            {
+                sb.Append("global::Dapper.DapperAotExtensions.AsEnumerableAsync(").Indent(false).NewLine();
+            }
             // (DbConnection connection, DbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, CommandFactory<TArgs>? commandFactory)
-            sb.Append("return global::Dapper.DapperAotExtensions.Command<");
+            sb.Append("global::Dapper.DapperAotExtensions.Command<");
             if (parameterType is null || parameterType.IsAnonymousType)
             {
                 sb.Append("object?");
@@ -634,7 +648,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 sb.Append(isAsync ? "Async" : "");
                 if (method.Arity == 1)
                 {
-                    sb.Append("<").Append(method.ReturnType).Append(">");
+                    sb.Append("<").Append(resultType).Append(">");
                 }
                 sb.Append("(");
             }
@@ -645,6 +659,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             if (isAsync)
             {
                 sb.Append(Forward(methodParameters, "cancellationToken"));
+            }
+            if (HasAll(flags, OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
+            {
+                sb.Append(")").Outdent(false);
             }
             sb.Append(");");
             sb.NewLine().Outdent().NewLine().NewLine();

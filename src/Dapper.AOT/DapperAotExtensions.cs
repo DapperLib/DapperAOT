@@ -1,5 +1,8 @@
-﻿using System.Data;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
+using System.Threading.Tasks;
 
 namespace Dapper;
 
@@ -13,6 +16,11 @@ public static class DapperAotExtensions
     /// </summary>
     public static Command<T> Command<T>(this DbConnection connection, string sql, T args, CommandType commandType = 0, int timeout = 0, [DapperAot] CommandFactory<T>? handler = null)
         => new(connection, null, sql, args, commandType, timeout, handler);
+
+    /// <summary>
+    /// Coerce a pending sequence of values to <see cref="IEnumerable{T}"/>
+    /// </summary>
+    public static async Task<IEnumerable<TValue>> AsEnumerableAsync<TValue>(Task<List<TValue>> values) => await values;
 
     /// <summary>
     /// Create a command that takes parameters from <typeparamref name="T"/>
