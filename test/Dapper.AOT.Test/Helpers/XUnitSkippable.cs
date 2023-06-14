@@ -9,6 +9,8 @@ using Xunit.Sdk;
 
 namespace Dapper.AOT.Test;
 
+#pragma warning disable IDE0079
+
 /// <inheritdoc/>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 [XunitTestCaseDiscoverer("Dapper.AOT.Test.FactDiscoverer", "Dapper.AOT.Test")]
@@ -77,7 +79,7 @@ public class SkippableTestCase : XunitTestCase
     [Obsolete("Called by the de-serializer; should only be called by deriving classes for de-serialization purposes")]
     public SkippableTestCase() { }
 
-    public SkippableTestCase(IMessageSink diagnosticMessageSink, TestMethodDisplay defaultMethodDisplay, TestMethodDisplayOptions defaultMethodDisplayOptions, ITestMethod testMethod, object[] testMethodArguments = null)
+    public SkippableTestCase(IMessageSink diagnosticMessageSink, TestMethodDisplay defaultMethodDisplay, TestMethodDisplayOptions defaultMethodDisplayOptions, ITestMethod testMethod, object[]? testMethodArguments = null)
         : base(diagnosticMessageSink, defaultMethodDisplay, defaultMethodDisplayOptions, testMethod, testMethodArguments)
     {
     }
@@ -138,7 +140,7 @@ public class SkippableMessageBus : IMessageBus
 
     public int DynamicallySkippedTestCount { get; private set; }
 
-    public void Dispose() { }
+    public void Dispose() => GC.SuppressFinalize(this);
 
     public bool QueueMessage(IMessageSinkMessage message)
     {

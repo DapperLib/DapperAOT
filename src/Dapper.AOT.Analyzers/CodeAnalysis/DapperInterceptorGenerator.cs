@@ -16,7 +16,7 @@ using System.Threading;
 namespace Dapper.CodeAnalysis;
 
 /// <summary>
-/// Analyzes source for Dapper syntax and generates suitable interceptors where possible.
+/// Analyses source for Dapper syntax and generates suitable interceptors where possible.
 /// </summary>
 [Generator(LanguageNames.CSharp)]
 public sealed class DapperInterceptorGenerator : IIncrementalGenerator
