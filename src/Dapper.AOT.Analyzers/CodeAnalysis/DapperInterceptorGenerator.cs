@@ -813,7 +813,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 if (CodeWriter.IsSettableInstanceMember(member, out var memberType))
                 {
                     IdentifyDbType(memberType, out var readerMethod);
-                    var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType)})null : " : "";
+                    var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetNullableTypeName(memberType)})null : " : "";
                     sb.Append("case ").Append(token).Append(":").NewLine().Indent(false)
                         .Append("result.").Append(member.Name).Append(" = ").Append(nullCheck);
 

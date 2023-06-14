@@ -63,6 +63,13 @@ internal sealed class CodeWriter
         => value.IsAnonymousType ? value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
         : value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
+    public static string GetNullableTypeName(ITypeSymbol value)
+    {
+        var name = GetTypeName(value);
+        return value.IsValueType && value.NullableAnnotation == NullableAnnotation.Annotated
+            ? name : (name + "?");
+    }
+
     public CodeWriter Append(ITypeSymbol? value, bool anonToTuple = false)
     {
         if (value is null)

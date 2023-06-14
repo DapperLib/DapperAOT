@@ -14,24 +14,23 @@
         </None>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Dapper" Version="2.0.123" />
-        <PackageReference Include="Microsoft.Build" Version="17.4.0" />
-        <PackageReference Include="Microsoft.Build.Utilities.Core" Version="17.4.0" />
-        <PackageReference Include="Oracle.ManagedDataAccess" Version="21.8.0" Condition="'$(TargetFramework)'=='net48'" />
-        <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" Condition="'$(TargetFramework)'=='net48'" />
-        <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="3.21.80" Condition="'$(TargetFramework)'!='net48'" />
-        <PackageReference Include="System.Collections.Immutable" Version="7.0.0" />
-        <PackageReference Include="System.Data.Common" Version="4.3.0" />
-        <PackageReference Include="System.Data.SqlClient" Version="4.8.5" />
-        <PackageReference Include="Microsoft.Data.SqlClient" Version="5.0.1" />
-        <PackageReference Include="PooledAwait" Version="1.0.49" />
-        <PackageReference Include="xunit" Version="2.4.2" />
-        <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
+        <PackageReference Include="Dapper" />
+        <PackageReference Include="Microsoft.Build" />
+        <PackageReference Include="Microsoft.Build.Utilities.Core" />
+        <PackageReference Include="Oracle.ManagedDataAccess" Condition="'$(TargetFramework)'=='net48'" />
+        <!--<PackageReference Include="System.Threading.Tasks.Extensions" Condition="'$(TargetFramework)'=='net48'" />-->
+        <PackageReference Include="Oracle.ManagedDataAccess.Core" Condition="'$(TargetFramework)'!='net48'" />
+        <PackageReference Include="System.Collections.Immutable" />
+        <PackageReference Include="System.Data.Common" />
+        <PackageReference Include="System.Data.SqlClient" />
+        <PackageReference Include="Microsoft.Data.SqlClient" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.4.0" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.4.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
         <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
     </ItemGroup>
