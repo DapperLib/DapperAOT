@@ -5,13 +5,15 @@
         <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">true</GeneratePackageOnBuild>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <WarningsAsErrors>true</WarningsAsErrors>
+        <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
         <PackageReference Include="System.Memory" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
-        <PackageReference Include="System.Threading.Tasks.Extensions" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
         <PackageReference Include="Dapper" />
+        <!-- we don't *super* need this (although it is nice to have) - mostly it fixes a generator init glitch -->
+        <PackageReference Include="System.Collections.Immutable" />
 
         <None Include="../Dapper.AOT.Analyzers/bin/Release/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
     </ItemGroup>

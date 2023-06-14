@@ -6,6 +6,7 @@
         <NoPackageAnalysis>true</NoPackageAnalysis>
         <DevelopmentDependency>true</DevelopmentDependency>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     </PropertyGroup>
 
     <ItemGroup>

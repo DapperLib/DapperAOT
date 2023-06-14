@@ -15,12 +15,11 @@
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" />
-        <PackageReference Include="Microsoft.Build" />
+        <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net6.0'"/>
+        <PackageReference Include="Microsoft.Build" VersionOverride="17.3.2" Condition="'$(TargetFramework)'=='net6.0'" />
         <PackageReference Include="Microsoft.Build.Utilities.Core" />
         <PackageReference Include="Oracle.ManagedDataAccess" Condition="'$(TargetFramework)'=='net48'" />
-        <!--<PackageReference Include="System.Threading.Tasks.Extensions" Condition="'$(TargetFramework)'=='net48'" />-->
         <PackageReference Include="Oracle.ManagedDataAccess.Core" Condition="'$(TargetFramework)'!='net48'" />
-        <PackageReference Include="System.Collections.Immutable" />
         <PackageReference Include="System.Data.Common" />
         <PackageReference Include="System.Data.SqlClient" />
         <PackageReference Include="Microsoft.Data.SqlClient" />

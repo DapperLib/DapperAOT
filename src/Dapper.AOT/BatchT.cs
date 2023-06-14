@@ -1,6 +1,7 @@
 ﻿using Dapper.Internal;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
@@ -124,9 +125,7 @@ public readonly struct Batch<TArgs>
         List<TArgs> list => Execute(list),
         TArgs[] arr => Execute(arr),
         ArraySegment<TArgs> segment => Execute(new ReadOnlySpan<TArgs>(segment.Array!, segment.Offset, segment.Count)),
-#if NETCOREAPP3_1_OR_GREATER
-        System.Collections.Immutable.ImmutableArray<TArgs> arr => Execute(arr),
-#endif
+        ImmutableArray<TArgs> arr => Execute(arr),
         ICollection<TArgs> collection when collection.Count is 0 => 0, // note that IList<T> : ICollection<T>
         IList<TArgs> collection when collection.Count is 1 => Execute(collection[0]),
         IReadOnlyCollection<TArgs> collection when collection.Count is 0 => 0, // note that IReadOnlyList<T> : IReadOnlyCollection<T>
@@ -335,9 +334,7 @@ public readonly struct Batch<TArgs>
         List<TArgs> list => ExecuteAsync(list, cancellationToken),
         TArgs[] arr => ExecuteAsync(arr, cancellationToken),
         ArraySegment<TArgs> segment => ExecuteMultiAsync(segment.Array!, segment.Offset, segment.Count, cancellationToken),
-#if NETCOREAPP3_1_OR_GREATER
-        System.Collections.Immutable.ImmutableArray<TArgs> arr => ExecuteAsync(arr, cancellationToken),
-#endif
+        ImmutableArray<TArgs> arr => ExecuteAsync(arr, cancellationToken),
         ICollection<TArgs> collection when collection.Count is 0 => TaskZero, // note that IList<T> : ICollection<T>
         IList<TArgs> collection when collection.Count is 1 => ExecuteAsync(collection[0], cancellationToken),
         IReadOnlyCollection<TArgs> collection when collection.Count is 0 => TaskZero, // note that IReadOnlyList<T> : IReadOnlyCollection<T>
@@ -351,11 +348,10 @@ public readonly struct Batch<TArgs>
     public Task<int> ExecuteAsync(IAsyncEnumerable<TArgs> values, CancellationToken cancellationToken = default)
         => values is null ? TaskZero : ExecuteMultiAsync(values, cancellationToken);
 
-#if NETCOREAPP3_1_OR_GREATER
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
     /// </summary>
-    public int Execute(System.Collections.Immutable.ImmutableArray<TArgs> values)
+    public int Execute(ImmutableArray<TArgs> values)
     {
         if (values.IsDefaultOrEmpty) return 0;
 
@@ -368,7 +364,7 @@ public readonly struct Batch<TArgs>
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
     /// </summary>
-    public Task<int> ExecuteAsync(System.Collections.Immutable.ImmutableArray<TArgs> values, CancellationToken cancellationToken = default)
+    public Task<int> ExecuteAsync(ImmutableArray<TArgs> values, CancellationToken cancellationToken = default)
     {
         if (values.IsDefaultOrEmpty) return TaskZero;
         
@@ -378,7 +374,6 @@ public readonly struct Batch<TArgs>
             _ => ExecuteMultiAsync(values.AsMemory(), cancellationToken),
         };
     }
-#endif
 
     private async Task<int> ExecuteMultiAsync(ReadOnlyMemory<TArgs> source, CancellationToken cancellationToken)
     {
