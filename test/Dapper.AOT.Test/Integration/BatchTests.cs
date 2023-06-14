@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Dapper.AOT.Test;
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -10,28 +11,43 @@ using Xunit;
 
 namespace Dapper.Integration;
 
-public sealed class Database : IDisposable
+public sealed class SqlClientDatabase : IDisposable
 {
-    private readonly SqlConnection connection;
-    public Database()
+    private readonly SqlConnection? connection;
+    public SqlClientDatabase()
     {
-        connection = new("Server=.;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=True");
-        try { connection.Execute("drop table AotIntegrationBatchTests;"); } catch { }
-        connection.Execute("create table AotIntegrationBatchTests(Id int not null identity(1,1), Name nvarchar(200) not null);");
+        try
+        {
+            connection = new("Server=.;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=True;Connection Timeout=2");
+            try { connection.Execute("drop table AotIntegrationBatchTests;"); } catch { }
+            connection.Execute("create table AotIntegrationBatchTests(Id int not null identity(1,1), Name nvarchar(200) not null);");
+        }
+        catch
+        {
+            // unable to guarantee working fixture
+            connection?.Dispose();
+            connection = null;
+        }
     }
-    public void Dispose() => connection.Dispose();
+    public void Dispose() => connection?.Dispose();
 
-    public DbConnection Connection => connection;
+    public DbConnection Connection => connection ?? SkipTest();
+
+    private static DbConnection SkipTest()
+    {
+        Skip.Inconclusive("Database unavailable");
+        return null!;
+    }
 }
 
-public class BatchTests : IClassFixture<Database>
+public class BatchTests : IClassFixture<SqlClientDatabase>
 {
-    private readonly Database Database;
-    public BatchTests(Database database) => Database = database;
+    private readonly SqlClientDatabase Database;
+    public BatchTests(SqlClientDatabase database) => Database = database;
 
     private Batch<string> Batch => Database.Connection.Batch("insert AotIntegrationBatchTests (Name) values (@name)", handler: CustomHandler.Instance);
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
@@ -43,7 +59,7 @@ public class BatchTests : IClassFixture<Database>
         Assert.Equal(count < 0 ? 0 : count, Batch.Execute((IEnumerable<string>)data));
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(-1, 0, 0, true)]
     [InlineData(-1, -1, 0, false)]
     [InlineData(-1, 0, -1, false)]
@@ -75,6 +91,7 @@ public class BatchTests : IClassFixture<Database>
     [InlineData(5, 1, 3, true)]
     public void BasicBatchUsage_ArraySegment(int size, int offset, int count, bool valid)
     {
+        Assert.NotNull(Database.Connection);
         string[] data = size < 0 ? null! : Enumerable.Repeat("bar", size).ToArray();
         if (valid)
         {
@@ -93,7 +110,7 @@ public class BatchTests : IClassFixture<Database>
         }
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
@@ -104,7 +121,7 @@ public class BatchTests : IClassFixture<Database>
         Assert.Equal(count < 0 ? 0 : count, Batch.Execute(data));
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
@@ -116,7 +133,7 @@ public class BatchTests : IClassFixture<Database>
         Assert.Equal(count < 0 ? 0 : count, Batch.Execute((IEnumerable<string>)data));
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
@@ -127,7 +144,7 @@ public class BatchTests : IClassFixture<Database>
         Assert.Equal(count < 0 ? 0 : count, Batch.Execute(data));
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
