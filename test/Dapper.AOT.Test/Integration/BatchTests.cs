@@ -9,7 +9,7 @@ using System.Data.Common;
 using System.Linq;
 using Xunit;
 
-namespace Dapper.Integration;
+namespace Dapper.AOT.Test.Integration;
 
 public sealed class SqlClientDatabase : IDisposable
 {
