@@ -4,6 +4,7 @@
         <!-- net48;netcoreapp3.1 -->
         <NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
         <SignAssembly Condition="'$(TargetFramework)'=='net48'">false</SignAssembly>
+        <RootNamespace>Dapper.AOT.Test</RootNamespace>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="Interceptors/**/*.*.cs" />

@@ -1,0 +1,19 @@
+Output code has 6 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+
+Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L82 C15
+Nullability of reference types in value of type 'Task<object?>' doesn't match target type 'Task<object>'.
+
+Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L93 C15
+Nullability of reference types in value of type 'Task<object?>' doesn't match target type 'Task<object>'.
+
+Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L104 C15
+Nullability of reference types in value of type 'Task<object?>' doesn't match target type 'Task<object>'.
+
+Error CS0029 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L117 C15
+Cannot implicitly convert type 'System.Threading.Tasks.Task<System.Threading.Tasks.Task<float>>' to 'System.Threading.Tasks.Task<float>'
+
+Error CS0029 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L129 C15
+Cannot implicitly convert type 'System.Threading.Tasks.Task<System.Threading.Tasks.Task<float>>' to 'System.Threading.Tasks.Task<float>'
+
+Error CS0029 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L141 C15
+Cannot implicitly convert type 'System.Threading.Tasks.Task<System.Threading.Tasks.Task<float>>' to 'System.Threading.Tasks.Task<float>'

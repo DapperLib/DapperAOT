@@ -44,28 +44,15 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             // only even test this for things that look interesting
             => OverrideFeatureEnabled || syntaxTree.Options.Features.ContainsKey("interceptors");
 
+    // very fast and light-weight; we'll worry about the rest later from the semantic tree
+    internal static bool IsCandidate(string methodName) => methodName.StartsWith("Execute") || methodName.StartsWith("Query");
+
     private bool PreFilter(SyntaxNode node, CancellationToken cancellationToken)
     {
         if (node is InvocationExpressionSyntax ie && ie.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
         {
             var name = ma.Name.ToString();
-            if (name is "Execute" or "ExecuteAsync"
-                or "ExecuteScalar" or "ExecuteScalarAsync")
-            {
-                Log?.Invoke(DiagnosticSeverity.Info, $"Discovered possible execution: {node}");
-                return InterceptorsEnabled(node.SyntaxTree);
-            }
-            if (name.StartsWith("Query<") || name.StartsWith("QueryAsync<")
-                || name.StartsWith("QueryFirst<") || name.StartsWith("QueryFirstAsync<")
-                || name.StartsWith("QueryFirstOrDefault<") || name.StartsWith("QueryFirstOrDefaultAsync<")
-                || name.StartsWith("QuerySingle<") || name.StartsWith("QuerySingleAsync<")
-                || name.StartsWith("QuerySingleOrDefault<") || name.StartsWith("QuerySingleOrDefaultAsync<")
-                || name.StartsWith("ExecuteScalar<") || name.StartsWith("ExecuteScalarAsync<")
-                )
-            {
-                Log?.Invoke(DiagnosticSeverity.Info, $"Discovered possible <T> query: {node}");
-                return InterceptorsEnabled(node.SyntaxTree);
-            }
+            return IsCandidate(name) && InterceptorsEnabled(node.SyntaxTree);
         }
 
         return false;
@@ -89,8 +76,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             }
         }
 
-        // enabled globally by default
-        return true;
+        // disabled globally by default
+        return false;
 
         static SyntaxNode? GetContainingMethodSyntax(IOperation op)
         {
@@ -137,10 +124,20 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
     private SourceState? Parse(GeneratorSyntaxContext ctx, CancellationToken cancellationToken)
     {
         if (ctx.Node is not InvocationExpressionSyntax ie
-            || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op
-            || !IsSupportedDapperMethod(op, out var flags))
+            || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op)
         {
             return null;
+        }
+        var methodKind = IsSupportedDapperMethod(op, out var flags);
+        switch (methodKind)
+        {
+            case DapperMethodKind.DapperUnsupported:
+                flags |= OperationFlags.Unsupported;
+                break;
+            case DapperMethodKind.DapperSupported:
+                break;
+            default: // includes NotDapper
+                return null;
         }
 
         Location? loc = null;
@@ -156,6 +153,12 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             loc = ma.ChildNodes().Skip(1).FirstOrDefault()?.GetLocation();
         }
         loc ??= op.Syntax.GetLocation();
+
+        if (methodKind == DapperMethodKind.DapperUnsupported)
+        {
+            return new SourceState(loc, op.TargetMethod, flags, null, null, null, "");
+        }
+
         if (loc is null)
         {
             Log?.Invoke(DiagnosticSeverity.Hidden, $"No location found; cannot intercept");
@@ -294,61 +297,68 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             value = default!;
             return false;
         }
+    }
 
-        static bool IsSupportedDapperMethod(IInvocationOperation operation, out OperationFlags flags)
+    enum DapperMethodKind
+    {
+        NotDapper,
+        DapperUnsupported,
+        DapperSupported,
+    }
+
+    static DapperMethodKind IsSupportedDapperMethod(IInvocationOperation operation, out OperationFlags flags)
+    {
+        flags = OperationFlags.None;
+        var method = operation?.TargetMethod;
+        if (method is null || !method.IsExtensionMethod)
         {
-            flags = OperationFlags.None;
-            var method = operation?.TargetMethod;
-            if (method is null || !method.IsExtensionMethod)
-            {
-                return false;
-            }
-            var type = method.ContainingType;
-            if (type is not { Name: "SqlMapper", ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } })
-            {
-                return false;
-            }
-            if (method.Name.EndsWith("Async"))
-            {
-                flags |= OperationFlags.Async;
-            }
-            if (method.IsGenericMethod)
-            {
-                flags |= OperationFlags.TypedResult;
-            }
-            switch (method.Name)
-            {
-                case "Query":
-                case "QueryAsync":
-                    flags |= OperationFlags.Query;
-                    return method.Arity == 1;
-                case "QueryFirst":
-                case "QueryFirstAsync":
-                    flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne;
-                    goto case "Query";
-                case "QueryFirstOrDefault":
-                case "QueryFirstOrDefaultAsync":
-                    flags |= OperationFlags.SingleRow;
-                    goto case "Query";
-                case "QuerySingle":
-                case "QuerySingleAsync":
-                    flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne | OperationFlags.AtMostOne;
-                    goto case "Query";
-                case "QuerySingleOrDefault":
-                case "QuerySingleOrDefaultAsync":
-                    flags |= OperationFlags.SingleRow | OperationFlags.AtMostOne;
-                    goto case "Query";
-                case "Execute":
-                case "ExecuteAsync":
-                    flags |= OperationFlags.Execute;
-                    return method.Arity == 0;
-                case "ExecuteScalar":
-                case "ExecuteScalarAsync":
-                    flags |= OperationFlags.Execute | OperationFlags.Scalar;
-                    return method.Arity is 0 or 1;
-                default:
-                    return false;
-            }
+            return DapperMethodKind.NotDapper;
+        }
+        var type = method.ContainingType;
+        if (type is not { Name: "SqlMapper", ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } })
+        {
+            return DapperMethodKind.NotDapper;
+        }
+        if (method.Name.EndsWith("Async"))
+        {
+            flags |= OperationFlags.Async;
+        }
+        if (method.IsGenericMethod)
+        {
+            flags |= OperationFlags.TypedResult;
+        }
+        switch (method.Name)
+        {
+            case "Query":
+            case "QueryAsync":
+                flags |= OperationFlags.Query;
+                return method.Arity == 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+            case "QueryFirst":
+            case "QueryFirstAsync":
+                flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne;
+                goto case "Query";
+            case "QueryFirstOrDefault":
+            case "QueryFirstOrDefaultAsync":
+                flags |= OperationFlags.SingleRow;
+                goto case "Query";
+            case "QuerySingle":
+            case "QuerySingleAsync":
+                flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne | OperationFlags.AtMostOne;
+                goto case "Query";
+            case "QuerySingleOrDefault":
+            case "QuerySingleOrDefaultAsync":
+                flags |= OperationFlags.SingleRow | OperationFlags.AtMostOne;
+                goto case "Query";
+            case "Execute":
+            case "ExecuteAsync":
+                flags |= OperationFlags.Execute;
+                return method.Arity == 0 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+            case "ExecuteScalar":
+            case "ExecuteScalarAsync":
+                flags |= OperationFlags.Execute | OperationFlags.Scalar;
+                return method.Arity is 0 or 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+            default:
+                return DapperMethodKind.DapperUnsupported;
         }
     }
 
@@ -372,6 +382,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         AtLeastOne = 1 << 11,
         AtMostOne = 1 << 12,
         Scalar = 1 << 13,
+        Unsupported = 1 << 14,
     }
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
@@ -407,11 +418,25 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         canConstruct = true; // we mean the default Dapper one, which can be constructed
         return null;
     }
+
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
     {
         if (state.Nodes.IsDefaultOrEmpty)
         {
             // nothing to generate
+            return;
+        }
+
+        int unsupportedCount = 0;
+        foreach (var node in state.Nodes.Where(x => HasAny(x.Flags, OperationFlags.Unsupported)))
+        {
+            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnsupportedMethod, node.Location, node.Method.Name));
+            unsupportedCount++;
+        }
+
+        if (unsupportedCount == state.Nodes.Length)
+        {
+            // nothing supported left to process
             return;
         }
 
@@ -425,7 +450,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         var resultTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
         var parameterTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
 
-        foreach (var grp in state.Nodes.GroupBy(x => x.Group(), CommonComparer.Instance))
+        foreach (var grp in state.Nodes.Where(x => !HasAny(x.Flags, OperationFlags.Unsupported)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
             // first, try to resolve the helper method that we're going to use for this
             var (flags, method, parameterType, parameterMap) = grp.Key;

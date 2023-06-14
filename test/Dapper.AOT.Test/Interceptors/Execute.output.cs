@@ -1,7 +1,7 @@
 #nullable enable
 file static class DapperGeneratedInterceptors
 {
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 10, 24)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 13, 24)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters
@@ -13,7 +13,7 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 11, 24)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 14, 24)]
     internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, StoredProcedure
@@ -24,7 +24,7 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 12, 24)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 15, 24)]
     internal static int Execute2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, Text
@@ -32,6 +32,40 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, DefaultCommandFactory).Execute();
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 17, 30)]
+    internal static global::System.Threading.Tasks.Task<int> ExecuteAsync3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Execute, Async, HasParameters
+        // takes parameter: <anonymous type: int Foo, string bar>
+        global::System.Diagnostics.Debug.Assert(commandType is null);
+        global::System.Diagnostics.Debug.Assert(param is not null);
+
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).ExecuteAsync(default);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 18, 30)]
+    internal static global::System.Threading.Tasks.Task<int> ExecuteAsync4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Execute, Async, StoredProcedure
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(param is null);
+
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).ExecuteAsync(default);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 19, 30)]
+    internal static global::System.Threading.Tasks.Task<int> ExecuteAsync5(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Execute, Async, Text
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(param is null);
+
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, DefaultCommandFactory).ExecuteAsync(default);
 
     }
 

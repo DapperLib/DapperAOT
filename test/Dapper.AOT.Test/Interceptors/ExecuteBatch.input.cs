@@ -2,7 +2,9 @@
 //using System.Collections.Immutable;
 //using System.Data;
 //using System.Data.Common;
-
+//
+//[module: DapperAot]
+//
 //public static class Foo
 //{
 //    static void SomeCode(DbConnection connection, string bar)

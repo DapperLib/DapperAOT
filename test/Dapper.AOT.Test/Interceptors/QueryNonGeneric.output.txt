@@ -1,0 +1,19 @@
+Generator produced 6 diagnostics:
+
+Info DA0001 SourceFile(Interceptors/QueryNonGeneric.input.cs[304..309))
+The Dapper method 'Query' is not currently supported by Dapper.AOT
+
+Info DA0001 SourceFile(Interceptors/QueryNonGeneric.input.cs[347..352))
+The Dapper method 'Query' is not currently supported by Dapper.AOT
+
+Info DA0001 SourceFile(Interceptors/QueryNonGeneric.input.cs[412..417))
+The Dapper method 'Query' is not currently supported by Dapper.AOT
+
+Info DA0001 SourceFile(Interceptors/QueryNonGeneric.input.cs[509..514))
+The Dapper method 'Query' is not currently supported by Dapper.AOT
+
+Info DA0001 SourceFile(Interceptors/QueryNonGeneric.input.cs[607..617))
+The Dapper method 'QueryAsync' is not currently supported by Dapper.AOT
+
+Info DA0001 SourceFile(Interceptors/QueryNonGeneric.input.cs[656..666))
+The Dapper method 'QueryAsync' is not currently supported by Dapper.AOT

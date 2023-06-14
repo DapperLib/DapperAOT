@@ -1,10 +1,13 @@
 ﻿using Dapper;
 using System.Data;
 using System.Data.Common;
+using System.Threading.Tasks;
+
+[module: DapperAot]
 
 public static class Foo
 {
-    static void SomeCode(DbConnection connection, string bar)
+    static async Task SomeCode(DbConnection connection, string bar)
     {
         var obj = new { Foo = 12, bar };
         _ = connection.ExecuteScalar("def", obj);
@@ -14,11 +17,13 @@ public static class Foo
         _ = connection.ExecuteScalar<float>("def", obj);
         _ = connection.ExecuteScalar<float>("def", commandType: CommandType.StoredProcedure);
         _ = connection.ExecuteScalar<float>("def", commandType: CommandType.Text);
-    }
-    public class Customer
-    {
-        public int X { get; set; }
-        public string Y;
-        public double? Z { get; set; }
+
+        _ = await connection.ExecuteScalarAsync("def", obj);
+        _ = await connection.ExecuteScalarAsync("def", commandType: CommandType.StoredProcedure);
+        _ = await connection.ExecuteScalarAsync("def", commandType: CommandType.Text);
+
+        _ = await connection.ExecuteScalarAsync<float>("def", obj);
+        _ = await connection.ExecuteScalarAsync<float>("def", commandType: CommandType.StoredProcedure);
+        _ = await connection.ExecuteScalarAsync<float>("def", commandType: CommandType.Text);
     }
 }

@@ -3,6 +3,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 
+[module: DapperAot]
 [module: CommandFactory<SomethingAwkward.MyCommandFactory<object>>]
 
 public static class Foo
