@@ -890,7 +890,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
         static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
             ? symbol.NullableAnnotation == NullableAnnotation.Annotated
-            : symbol.NullableAnnotation != NullableAnnotation.None;
+            : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
     }
 
     private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, string source, bool add)

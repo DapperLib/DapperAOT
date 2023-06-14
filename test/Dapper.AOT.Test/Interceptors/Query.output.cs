@@ -183,10 +183,10 @@ file static class DapperGeneratedInterceptors
                         result.X = GetValue<int>(reader, columnOffset);
                         break;
                     case 1:
-                        result.Y = reader.GetString(columnOffset);
+                        result.Y = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
                         break;
                     case 4:
-                        result.Y = GetValue<string>(reader, columnOffset);
+                        result.Y = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
                         break;
                     case 2:
                         result.Z = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
