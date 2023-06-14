@@ -1,8 +1,6 @@
-﻿using Dapper.Internal;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Oracle.ManagedDataAccess.Client;
-using PooledAwait;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -20,7 +18,7 @@ using Xunit.Abstractions;
 
 namespace Dapper.AOT.Test
 {
-	public abstract partial class GeneratorTestBase
+    public abstract partial class GeneratorTestBase
     {
         private readonly ITestOutputHelper? _log;
         protected GeneratorTestBase(ITestOutputHelper? log)
@@ -174,7 +172,6 @@ namespace Dapper.AOT.Test
                    MetadataReference.CreateFromFile(typeof(ImmutableArray<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(IAsyncEnumerable<int>).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(PooledValueTask).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Span<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(IgnoreDataMemberAttribute).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
