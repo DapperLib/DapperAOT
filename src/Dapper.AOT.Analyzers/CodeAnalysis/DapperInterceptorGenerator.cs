@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
+using Microsoft.CodeAnalysis.Options;
 using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Xml.Linq;
 
 namespace Dapper.CodeAnalysis;
 
@@ -40,10 +42,6 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         context.RegisterImplementationSourceOutput(combined, Generate);
     }
 
-    private bool InterceptorsEnabled(SyntaxTree syntaxTree)
-            // only even test this for things that look interesting
-            => OverrideFeatureEnabled || syntaxTree.Options.Features.ContainsKey("interceptors");
-
     // very fast and light-weight; we'll worry about the rest later from the semantic tree
     internal static bool IsCandidate(string methodName) => methodName.StartsWith("Execute") || methodName.StartsWith("Query");
 
@@ -51,8 +49,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
     {
         if (node is InvocationExpressionSyntax ie && ie.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
         {
-            var name = ma.Name.ToString();
-            return IsCandidate(name) && InterceptorsEnabled(node.SyntaxTree);
+            return IsCandidate(ma.Name.ToString());
         }
 
         return false;
@@ -140,31 +137,33 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 return null;
         }
 
+        // everything requires location
         Location? loc = null;
-
-        if (!IsEnabled(ctx, op, cancellationToken))
-        {
-            Log?.Invoke(DiagnosticSeverity.Hidden, $"Generation disabled by attribute");
-            return null;
-        }
-
         if (op.Syntax.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
         {
             loc = ma.ChildNodes().Skip(1).FirstOrDefault()?.GetLocation();
         }
         loc ??= op.Syntax.GetLocation();
-
-        if (methodKind == DapperMethodKind.DapperUnsupported)
-        {
-            return new SourceState(Diagnostic.Create(Diagnostics.UnsupportedMethod, loc, GetSignature(op.TargetMethod)));
-        }
-
-        object? diagnostics = null;
         if (loc is null)
         {
             Log?.Invoke(DiagnosticSeverity.Hidden, $"No location found; cannot intercept");
             return null;
         }
+
+        // check whether we can use this method
+        if (!IsEnabled(ctx, op, cancellationToken))
+        {
+            // no diagnostic per-item; the generator will emit a single diagnostic if everything is disabled
+            return new SourceState(loc, null, OperationFlags.AotNotEnabled);
+        }
+
+        if (methodKind == DapperMethodKind.DapperUnsupported)
+        {
+            return new SourceState(loc, Diagnostic.Create(Diagnostics.UnsupportedMethod, loc, GetSignature(op.TargetMethod)));
+        }
+
+        object? diagnostics = null;
+
         Log?.Invoke(DiagnosticSeverity.Hidden, $"Found {op.TargetMethod.Name}: {flags} at {loc}");
 
         ITypeSymbol? resultType = null, paramType = null;
@@ -181,7 +180,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         {
             if (resultType is null || resultType.SpecialType == SpecialType.System_Object || resultType.TypeKind == TypeKind.Dynamic)
             {
-                return new SourceState(Diagnostic.Create(Diagnostics.UntypedResults, loc));
+                return new SourceState(loc, Diagnostic.Create(Diagnostics.UntypedResults, loc));
             }
         }
 
@@ -415,6 +414,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         AtMostOne = 1 << 12,
         Scalar = 1 << 13,
         DoNotGenerate = 1 << 14,
+        AotNotEnabled = 1 << 15,
     }
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
@@ -456,11 +456,52 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         if (deconstruct && method.IsGenericMethod) method = method.ConstructedFrom ?? method;
         return method.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat);
     }
+
+    private bool CheckPrerequisites(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+    {
+        if (!state.Nodes.IsDefaultOrEmpty)
+        {
+            int errorCount = 0, disabledCount = 0;
+            bool checkParseOptions = true;
+            foreach (var node in state.Nodes)
+            {
+                if ((node.Flags & OperationFlags.AotNotEnabled) != 0)
+                {
+                    disabledCount++;
+                }
+                // find the first thing with a C# parse options
+                if (checkParseOptions && node.Location.SourceTree?.Options is CSharpParseOptions options)
+                {
+                    checkParseOptions = false; // only do this once
+                    if (!(OverrideFeatureEnabled || options.Features.ContainsKey("interceptors")))
+                    {
+                        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsNotEnabled, null));
+                        errorCount++;
+                    }
+                    
+                    var version = options.LanguageVersion;
+                    if (version != LanguageVersion.Default && version < LanguageVersion.CSharp11)
+                    {
+                        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.LanguageVersionTooLow, null));
+                        errorCount++;
+                    }
+                }
+            }
+            if (disabledCount == state.Nodes.Length)
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.DapperAotNotEnabled, null));
+                errorCount++;
+            }
+            return errorCount == 0;
+        }
+        return false; // nothing to validate - so: nothing to do, quick exit
+    }
+
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
     {
-        if (state.Nodes.IsDefaultOrEmpty)
+        if (!CheckPrerequisites(ctx, state))
         {
-            // nothing to generate
+            // failed checks; do nothing
             return;
         }
 
@@ -1212,14 +1253,14 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             ParameterMap = parameterMap;
             this.diagnostics = diagnostics;
         }
-        public SourceState(object diagnostics)
+        public SourceState(Location location, object? diagnostics, OperationFlags flags = OperationFlags.None)
         {
-            Location = Location.None;
-            Flags = OperationFlags.DoNotGenerate;
+            Location = location;
+            Flags = OperationFlags.DoNotGenerate | flags;
             ParameterMap = Sql = "";
             ResultType = ParameterType = null;
             Method = null!;
-            this.diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics));
+            this.diagnostics = diagnostics;
         }
 
         public int DiagnosticCount => diagnostics switch
