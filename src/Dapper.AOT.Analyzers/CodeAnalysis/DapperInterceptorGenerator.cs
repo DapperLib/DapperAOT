@@ -269,7 +269,9 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
         return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, "?", diagnostics);
 
+#pragma warning disable CS8321 // Local function is declared but never used -
         static void AddDiagnostic(ref object? diagnostics, Diagnostic diagnostic)
+#pragma warning restore CS8321 // Local function is declared but never used
         {
             if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
             switch (diagnostics)
@@ -280,8 +282,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 case Diagnostic d:
                     diagnostics = new List<Diagnostic> { d, diagnostic };
                     break;
-                case IList<Diagnostic> list:
+                case IList<Diagnostic> list when !list.IsReadOnly:
                     list.Add(diagnostic);
+                    break;
+                case IEnumerable<Diagnostic> list:
+                    diagnostics = new List<Diagnostic>(list) { diagnostic };
                     break;
                 default:
                     throw new ArgumentException(nameof(diagnostics));
@@ -1185,7 +1190,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
     sealed class SourceState
     {
-        private object? diagnostics;
+        private readonly object? diagnostics;
 
         public Location Location { get; }
         public OperationFlags Flags { get; }

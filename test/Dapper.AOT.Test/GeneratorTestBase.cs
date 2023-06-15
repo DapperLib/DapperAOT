@@ -116,9 +116,9 @@ namespace Dapper.AOT.Test
             int errorCountTotal = 0;
             foreach (var tree in compilation.SyntaxTrees)
             {
-                var rawDiags = compilation.GetSemanticModel(tree).GetDiagnostics();
-                var diagnostics = Normalize(rawDiags, ignore);
-                errorCountTotal += rawDiags.Count(x => x.Severity == DiagnosticSeverity.Error);
+                var rawDiagnostics = compilation.GetSemanticModel(tree).GetDiagnostics();
+                var diagnostics = Normalize(rawDiagnostics, ignore);
+                errorCountTotal += rawDiagnostics.Count(x => x.Severity == DiagnosticSeverity.Error);
 
                 if (diagnostics.Any())
                 {
