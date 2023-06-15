@@ -6,6 +6,7 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <WarningsAsErrors>true</WarningsAsErrors>
         <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+        <PackageReadmeFile>readme.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -16,5 +17,7 @@
         <PackageReference Include="System.Collections.Immutable" />
 
         <None Include="../Dapper.AOT.Analyzers/bin/Release/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
+
+        <None Include="../../docs/readme.md" Link="readme.md" Pack="true" PackagePath="/" />
     </ItemGroup>
 </Project>
