@@ -6,16 +6,23 @@
         <NoPackageAnalysis>true</NoPackageAnalysis>
         <DevelopmentDependency>true</DevelopmentDependency>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <AllowUnsafeBlocks Condition="'$(TargetFramework)'=='netstandard2.0'">true</AllowUnsafeBlocks>
-        <LangVersion>10</LangVersion>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Include="..\Dapper.AOT\Internal\InternalUtilities.StringHash.cs" Link="Internal\InternalUtilities.StringHash.cs" />
+      <Compile Remove="InterceptsLocationAttribute.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Include="..\Dapper.AOT\Internal\StringHashing.cs" Link="Internal\StringHashing.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Include="InterceptsLocationAttribute.cs" />
     </ItemGroup>
 
     <ItemGroup>
         <!-- build time deps -->
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.4.0" Pack="false" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Pack="false" PrivateAssets="all" />
     </ItemGroup>
 </Project>

@@ -1,17 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <SignAssembly>False</SignAssembly>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
     <ItemGroup>
+        <None Update="BatchInsertBenchmarks.txt" DependentUpon="BatchInsertBenchmarks.cs" />
+        <None Update="ListIterationBenchmarks.txt" DependentUpon="ListIterationBenchmarks.cs" />
+
         <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
-        <PackageReference Include="Dapper" Version="2.0.123" />
-        <PackageReference Include="PooledAwait" Version="1.0.49" />
-        <PackageReference Include="Microsoft.Data.SqlClient" Version="5.0.1" />
-        <PackageReference Include="System.Data.SqlClient" Version="4.8.5" />
-        <PackageReference Include="BenchmarkDotNet" Version="0.13.2" />
+        <PackageReference Include="Dapper" />
+        <PackageReference Include="FastMember" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+        <PackageReference Include="Microsoft.Data.SqlClient" />
+        <PackageReference Include="System.Data.SqlClient" />
+        <PackageReference Include="BenchmarkDotNet" />
     </ItemGroup>
 </Project>

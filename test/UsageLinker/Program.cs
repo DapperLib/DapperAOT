@@ -1,31 +1,32 @@
-﻿using Dapper;
-using Microsoft.Data.SqlClient;
-using System;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
 using System.Data.Common;
+using System.Diagnostics;
+using UsageLinker;
 
-[module: LegacyMaterializer(false)]
-namespace UsageLinker
+try
 {
-	static class Program
-	{
-		static void Main()
-		{
-            using var conn = new SqlConnection("gibberish");
-			var c = Customer.GetCustomer(conn, 42, "South");
-			Console.WriteLine(c.Name);
-		}
-	}
-	public sealed partial class Customer
-	{
-		[Command(@"select * from DapperCustomers where Id=@id and Region=@region")]
-		[SingleRow(SingleRowKind.FirstOrDefault)] // entirely optional; to influence what happens when zero/multiple rows returned
-		public static partial Customer GetCustomer(DbConnection connection, int id, string region);
+    using DbConnection conn = new Microsoft.Data.SqlClient.SqlConnection("Server=.;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=True");
+    conn.Open();
+    var watch = Stopwatch.StartNew();
+    var obj = Product.GetProduct(conn, 752);
+    watch.Stop();
+    Console.WriteLine($"First time: {watch.ElapsedMilliseconds}ms");
+    Console.WriteLine($"{obj.ProductID}: {obj.Name} ({obj.ProductNumber})");
 
-
-		[Column("CustomerId")]
-		public int Id { get; set; }
-		public string? Name { get; set; }
-		public string? Region { get; set; }
+    watch.Restart();
+    const int LOOP = 2000;
+    for (int i = 0; i < LOOP; i++)
+    {
+        obj = Product.GetProduct(conn, 752);
     }
+    watch.Stop();
+    Console.WriteLine($"Next {LOOP} times: {watch.ElapsedMilliseconds}ms");
+    Console.WriteLine($"{obj.ProductID}: {obj.Name} ({obj.ProductNumber})");
+
+    return 0;
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine(ex.Message);
+    return -1;
 }

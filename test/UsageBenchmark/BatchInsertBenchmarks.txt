@@ -1,0 +1,141 @@
+﻿|                     Method | Categories | Count | IsOpen |                Mean |               Error |             StdDev |     Ratio |  RatioSD |    Gen0 |   Gen1 | Allocated | Alloc Ratio |
+|--------------------------- |----------- |------ |------- |--------------------:|--------------------:|-------------------:|----------:|---------:|--------:|-------:|----------:|------------:|
+|                DapperAsync |      Async |     0 |  False |       8,121.1950 ns |       1,884.2487 ns |        103.2820 ns |    731.18 |     8.86 |  0.1526 |      - |    1344 B |          NA |
+|             DapperAotAsync |      Async |     0 |  False |          15.1765 ns |           0.6666 ns |          0.0365 ns |      1.37 |     0.00 |       - |      - |         - |          NA |
+|    DapperAot_PreparedAsync |      Async |     0 |  False |          15.1907 ns |           0.6531 ns |          0.0358 ns |      1.37 |     0.00 |       - |      - |         - |          NA |
+|                ManualAsync |      Async |     0 |  False |          11.1069 ns |           0.3880 ns |          0.0213 ns |      1.00 |     0.00 |       - |      - |         - |          NA |
+|       EntityFrameworkAsync |      Async |     0 |  False |      81,548.4131 ns |      12,747.1175 ns |        698.7125 ns |  7,342.11 |    53.58 |  7.8125 | 0.6104 |   65802 B |          NA |
+| SqlBulkCopyFastMemberAsync |      Async |     0 |  False |      26,119.5658 ns |       8,861.2169 ns |        485.7132 ns |  2,351.68 |    45.16 |  0.7629 |      - |    6454 B |          NA |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                DapperAsync |      Async |     0 |   True |         175.6700 ns |          60.2217 ns |          3.3010 ns |     15.08 |     0.28 |  0.0391 |      - |     328 B |          NA |
+|             DapperAotAsync |      Async |     0 |   True |          15.1730 ns |           1.2404 ns |          0.0680 ns |      1.30 |     0.01 |       - |      - |         - |          NA |
+|    DapperAot_PreparedAsync |      Async |     0 |   True |          15.1567 ns |           0.6286 ns |          0.0345 ns |      1.30 |     0.00 |       - |      - |         - |          NA |
+|                ManualAsync |      Async |     0 |   True |          11.6505 ns |           0.1321 ns |          0.0072 ns |      1.00 |     0.00 |       - |      - |         - |          NA |
+|       EntityFrameworkAsync |      Async |     0 |   True |      81,872.2290 ns |      17,851.6310 ns |        978.5081 ns |  7,027.32 |    81.07 |  7.8125 | 0.6104 |   65802 B |          NA |
+| SqlBulkCopyFastMemberAsync |      Async |     0 |   True |       9,460.3572 ns |       1,188.6807 ns |         65.1556 ns |    812.01 |     5.72 |  0.6409 |      - |    5433 B |          NA |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                DapperAsync |      Async |     1 |  False |     260,926.1393 ns |      86,804.7326 ns |      4,758.0603 ns |      1.02 |     0.02 |  0.4883 |      - |    4592 B |        1.45 |
+|             DapperAotAsync |      Async |     1 |  False |     253,833.0892 ns |     128,683.2028 ns |      7,053.5606 ns |      0.99 |     0.02 |       - |      - |    3192 B |        1.01 |
+|    DapperAot_PreparedAsync |      Async |     1 |  False |     254,843.0990 ns |     130,485.0546 ns |      7,152.3261 ns |      0.99 |     0.03 |       - |      - |    3192 B |        1.01 |
+|                ManualAsync |      Async |     1 |  False |     256,180.1595 ns |      14,012.3150 ns |        768.0623 ns |      1.00 |     0.00 |       - |      - |    3176 B |        1.00 |
+|       EntityFrameworkAsync |      Async |     1 |  False |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+| SqlBulkCopyFastMemberAsync |      Async |     1 |  False |   1,312,030.4036 ns |     170,983.3461 ns |      9,372.1742 ns |      5.12 |     0.02 |       - |      - |   15255 B |        4.80 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                DapperAsync |      Async |     1 |   True |     225,040.5111 ns |      18,299.2146 ns |      1,003.0417 ns |      0.99 |     0.01 |  0.2441 |      - |    3392 B |        1.72 |
+|             DapperAotAsync |      Async |     1 |   True |     221,289.1602 ns |      35,385.7889 ns |      1,939.6145 ns |      0.97 |     0.01 |       - |      - |    1992 B |        1.01 |
+|    DapperAot_PreparedAsync |      Async |     1 |   True |     221,813.0290 ns |      54,610.5298 ns |      2,993.3874 ns |      0.97 |     0.02 |       - |      - |    1992 B |        1.01 |
+|                ManualAsync |      Async |     1 |   True |     227,772.7539 ns |      37,164.6674 ns |      2,037.1208 ns |      1.00 |     0.00 |       - |      - |    1976 B |        1.00 |
+|       EntityFrameworkAsync |      Async |     1 |   True |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+| SqlBulkCopyFastMemberAsync |      Async |     1 |   True |   1,215,880.5339 ns |     826,827.6762 ns |     45,321.2149 ns |      5.34 |     0.25 |       - |      - |   14057 B |        7.11 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                DapperAsync |      Async |    10 |  False |   2,135,963.9323 ns |     694,430.6667 ns |     38,064.0881 ns |      1.01 |     0.02 |       - |      - |   21588 B |        1.36 |
+|             DapperAotAsync |      Async |    10 |  False |   2,160,731.6406 ns |     290,647.4665 ns |     15,931.3684 ns |      1.03 |     0.02 |       - |      - |   18740 B |        1.18 |
+|    DapperAot_PreparedAsync |      Async |    10 |  False |   2,091,742.3177 ns |     855,176.8387 ns |     46,875.1282 ns |      0.99 |     0.03 |       - |      - |   15916 B |        1.00 |
+|                ManualAsync |      Async |    10 |  False |   2,108,143.3594 ns |     495,587.1878 ns |     27,164.8060 ns |      1.00 |     0.00 |       - |      - |   15908 B |        1.00 |
+|       EntityFrameworkAsync |      Async |    10 |  False |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+| SqlBulkCopyFastMemberAsync |      Async |    10 |  False |   1,380,058.2682 ns |     484,543.3834 ns |     26,559.4579 ns |      0.65 |     0.02 |  1.9531 |      - |   20170 B |        1.27 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                DapperAsync |      Async |    10 |   True |   2,114,031.9010 ns |     468,736.3034 ns |     25,693.0185 ns |      1.00 |     0.01 |       - |      - |   20388 B |        1.44 |
+|             DapperAotAsync |      Async |    10 |   True |   2,128,270.0521 ns |     507,412.4346 ns |     27,812.9877 ns |      1.01 |     0.01 |       - |      - |   17540 B |        1.24 |
+|    DapperAot_PreparedAsync |      Async |    10 |   True |   2,063,326.9531 ns |     241,086.3013 ns |     13,214.7537 ns |      0.98 |     0.00 |       - |      - |   14180 B |        1.00 |
+|                ManualAsync |      Async |    10 |   True |   2,107,939.8438 ns |      92,416.5014 ns |      5,065.6603 ns |      1.00 |     0.00 |       - |      - |   14172 B |        1.00 |
+|       EntityFrameworkAsync |      Async |    10 |   True |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+| SqlBulkCopyFastMemberAsync |      Async |    10 |   True |   1,331,852.9297 ns |     129,497.3306 ns |      7,098.1857 ns |      0.63 |     0.00 |  1.9531 |      - |   18970 B |        1.34 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                DapperAsync |      Async |   100 |  False |  21,441,097.9167 ns |   1,050,522.4731 ns |     57,582.6816 ns |      1.03 |     0.03 |       - |      - |  191534 B |        1.36 |
+|             DapperAotAsync |      Async |   100 |  False |  20,900,296.8750 ns |   5,119,043.5616 ns |    280,592.0510 ns |      1.01 |     0.03 |       - |      - |  174286 B |        1.23 |
+|    DapperAot_PreparedAsync |      Async |   100 |  False |  20,576,431.2500 ns |   2,397,174.1689 ns |    131,397.2051 ns |      0.99 |     0.03 |       - |      - |  141222 B |        1.00 |
+|                ManualAsync |      Async |   100 |  False |  20,797,761.4583 ns |  12,024,048.6072 ns |    659,078.6775 ns |      1.00 |     0.00 |       - |      - |  141214 B |        1.00 |
+|       EntityFrameworkAsync |      Async |   100 |  False |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+| SqlBulkCopyFastMemberAsync |      Async |   100 |  False |   1,667,992.0573 ns |     681,775.3543 ns |     37,370.4077 ns |      0.08 |     0.00 |  7.8125 |      - |   69163 B |        0.49 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                DapperAsync |      Async |   100 |   True |  20,963,698.9583 ns |   2,694,337.0210 ns |    147,685.7038 ns |      1.02 |     0.02 |       - |      - |  190334 B |        1.36 |
+|             DapperAotAsync |      Async |   100 |   True |  20,902,609.3750 ns |  12,008,673.5340 ns |    658,235.9179 ns |      1.02 |     0.05 |       - |      - |  173086 B |        1.24 |
+|    DapperAot_PreparedAsync |      Async |   100 |   True |  20,403,641.6667 ns |   3,086,626.1808 ns |    169,188.3963 ns |      0.99 |     0.01 |       - |      - |  139486 B |        1.00 |
+|                ManualAsync |      Async |   100 |   True |  20,548,645.8333 ns |   8,088,473.6488 ns |    443,356.5340 ns |      1.00 |     0.00 |       - |      - |  139478 B |        1.00 |
+|       EntityFrameworkAsync |      Async |   100 |   True |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+| SqlBulkCopyFastMemberAsync |      Async |   100 |   True |   1,592,285.0911 ns |     146,600.0181 ns |      8,035.6417 ns |      0.08 |     0.00 |  7.8125 |      - |   67961 B |        0.49 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                DapperAsync |      Async |  1000 |  False | 213,876,433.3333 ns |  54,160,480.1893 ns |  2,968,718.6755 ns |      1.04 |     0.03 |       - |      - | 1891072 B |        1.36 |
+|             DapperAotAsync |      Async |  1000 |  False | 207,014,488.8889 ns |  41,882,587.8469 ns |  2,295,725.9664 ns |      1.00 |     0.02 |       - |      - | 1729824 B |        1.24 |
+|    DapperAot_PreparedAsync |      Async |  1000 |  False | 202,722,800.0000 ns |  54,766,339.4555 ns |  3,001,927.8663 ns |      0.98 |     0.02 |       - |      - | 1394360 B |        1.00 |
+|                ManualAsync |      Async |  1000 |  False | 206,042,511.1111 ns |  65,200,475.6074 ns |  3,573,858.0772 ns |      1.00 |     0.00 |       - |      - | 1394352 B |        1.00 |
+|       EntityFrameworkAsync |      Async |  1000 |  False |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+| SqlBulkCopyFastMemberAsync |      Async |  1000 |  False |   4,455,957.8125 ns |      89,460.0649 ns |      4,903.6080 ns |      0.02 |     0.00 | 62.5000 |      - |  559321 B |        0.40 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                DapperAsync |      Async |  1000 |   True | 219,932,277.7778 ns | 208,078,856.4901 ns | 11,405,504.2549 ns |      0.98 |     0.04 |       - |      - | 1889824 B |        1.36 |
+|             DapperAotAsync |      Async |  1000 |   True | 228,504,488.8889 ns | 148,465,632.1028 ns |  8,137,902.2704 ns |      1.02 |     0.08 |       - |      - | 1728576 B |        1.24 |
+|    DapperAot_PreparedAsync |      Async |  1000 |   True | 206,092,333.3333 ns |  20,524,848.4472 ns |  1,125,036.2014 ns |      0.92 |     0.05 |       - |      - | 1392576 B |        1.00 |
+|                ManualAsync |      Async |  1000 |   True | 224,849,477.7778 ns | 221,981,888.8009 ns | 12,167,576.3695 ns |      1.00 |     0.00 |       - |      - | 1392568 B |        1.00 |
+|       EntityFrameworkAsync |      Async |  1000 |   True |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+| SqlBulkCopyFastMemberAsync |      Async |  1000 |   True |   4,431,620.0521 ns |   1,251,644.5590 ns |     68,606.8618 ns |      0.02 |     0.00 | 62.5000 |      - |  558128 B |        0.40 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                     Dapper |       Sync |     0 |  False |       7,903.7847 ns |       1,456.1306 ns |         79.8154 ns |  7,841.92 |   222.35 |  0.1373 |      - |    1152 B |          NA |
+|                  DapperAot |       Sync |     0 |  False |          12.0525 ns |           0.7243 ns |          0.0397 ns |     11.96 |     0.47 |       - |      - |         - |          NA |
+|         DapperAot_Prepared |       Sync |     0 |  False |          12.1749 ns |           0.6474 ns |          0.0355 ns |     12.08 |     0.45 |       - |      - |         - |          NA |
+|                     Manual |       Sync |     0 |  False |           1.0086 ns |           0.6925 ns |          0.0380 ns |      1.00 |     0.00 |       - |      - |         - |          NA |
+|            EntityFramework |       Sync |     0 |  False |      81,282.7230 ns |       3,498.3961 ns |        191.7589 ns | 80,662.93 | 2,923.75 |  7.8125 | 0.6104 |   65802 B |          NA |
+|      SqlBulkCopyFastMember |       Sync |     0 |  False |      17,022.2900 ns |       2,799.9082 ns |        153.4724 ns | 16,891.37 |   585.70 |  0.6104 |      - |    5121 B |          NA |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                     Dapper |       Sync |     0 |   True |         150.4443 ns |          82.7556 ns |          4.5361 ns |    157.22 |     5.16 |  0.0391 |      - |     328 B |          NA |
+|                  DapperAot |       Sync |     0 |   True |          12.2705 ns |           2.6446 ns |          0.1450 ns |     12.82 |     0.11 |       - |      - |         - |          NA |
+|         DapperAot_Prepared |       Sync |     0 |   True |          12.1469 ns |           1.5046 ns |          0.0825 ns |     12.69 |     0.06 |       - |      - |         - |          NA |
+|                     Manual |       Sync |     0 |   True |           0.9570 ns |           0.0846 ns |          0.0046 ns |      1.00 |     0.00 |       - |      - |         - |          NA |
+|            EntityFramework |       Sync |     0 |   True |      81,541.1580 ns |       4,361.8756 ns |        239.0891 ns | 85,210.00 |   612.20 |  7.8125 | 0.6104 |   65802 B |          NA |
+|      SqlBulkCopyFastMember |       Sync |     0 |   True |       6,560.9591 ns |         812.5540 ns |         44.5388 ns |  6,856.27 |    79.96 |  0.5112 | 0.0076 |    4296 B |          NA |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                     Dapper |       Sync |     1 |  False |     221,010.7015 ns |      51,565.3466 ns |      2,826.4706 ns |      0.95 |     0.02 |  0.2441 |      - |    2648 B |        1.92 |
+|                  DapperAot |       Sync |     1 |  False |     221,397.2249 ns |      28,392.0089 ns |      1,556.2618 ns |      0.95 |     0.01 |       - |      - |    1376 B |        1.00 |
+|         DapperAot_Prepared |       Sync |     1 |  False |     233,384.4808 ns |      37,970.0555 ns |      2,081.2669 ns |      1.01 |     0.01 |       - |      - |    1376 B |        1.00 |
+|                     Manual |       Sync |     1 |  False |     232,008.0648 ns |      58,221.5791 ns |      3,191.3212 ns |      1.00 |     0.00 |       - |      - |    1376 B |        1.00 |
+|            EntityFramework |       Sync |     1 |  False |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+|      SqlBulkCopyFastMember |       Sync |     1 |  False |   1,196,390.1042 ns |     659,378.8685 ns |     36,142.7808 ns |      5.16 |     0.15 |       - |      - |   12478 B |        9.07 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                     Dapper |       Sync |     1 |   True |     192,313.8509 ns |      12,206.5393 ns |        669.0816 ns |      0.94 |     0.02 |       - |      - |    1640 B |        4.46 |
+|                  DapperAot |       Sync |     1 |   True |     192,857.2998 ns |      48,397.1311 ns |      2,652.8101 ns |      0.94 |     0.02 |       - |      - |     368 B |        1.00 |
+|         DapperAot_Prepared |       Sync |     1 |   True |     199,363.0208 ns |      28,804.2332 ns |      1,578.8572 ns |      0.98 |     0.02 |       - |      - |     368 B |        1.00 |
+|                     Manual |       Sync |     1 |   True |     204,161.2793 ns |      92,211.9577 ns |      5,054.4486 ns |      1.00 |     0.00 |       - |      - |     368 B |        1.00 |
+|            EntityFramework |       Sync |     1 |   True |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+|      SqlBulkCopyFastMember |       Sync |     1 |   True |   1,120,835.0911 ns |     394,061.8313 ns |     21,599.8587 ns |      5.49 |     0.06 |       - |      - |   11470 B |       31.17 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                     Dapper |       Sync |    10 |  False |   1,978,139.3229 ns |   1,382,455.0350 ns |     75,777.0254 ns |      1.03 |     0.04 |       - |      - |    7403 B |        3.97 |
+|                  DapperAot |       Sync |    10 |  False |   1,990,212.4023 ns |     132,605.5024 ns |      7,268.5550 ns |      1.04 |     0.01 |       - |      - |    4689 B |        2.51 |
+|         DapperAot_Prepared |       Sync |    10 |  False |   1,926,515.5599 ns |     310,353.7044 ns |     17,011.5338 ns |      1.00 |     0.01 |       - |      - |    1865 B |        1.00 |
+|                     Manual |       Sync |    10 |  False |   1,920,558.5286 ns |     173,194.2472 ns |      9,493.3611 ns |      1.00 |     0.00 |       - |      - |    1867 B |        1.00 |
+|            EntityFramework |       Sync |    10 |  False |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+|      SqlBulkCopyFastMember |       Sync |    10 |  False |   1,219,800.5859 ns |     589,286.5613 ns |     32,300.7849 ns |      0.64 |     0.01 |       - |      - |   12478 B |        6.68 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                     Dapper |       Sync |    10 |   True |   1,952,304.2969 ns |     183,460.7059 ns |     10,056.1004 ns |      1.05 |     0.01 |       - |      - |    6395 B |       19.92 |
+|                  DapperAot |       Sync |    10 |   True |   1,945,141.5365 ns |     361,301.8654 ns |     19,804.1744 ns |      1.05 |     0.02 |       - |      - |    3683 B |       11.47 |
+|         DapperAot_Prepared |       Sync |    10 |   True |   1,865,769.7266 ns |     204,328.0720 ns |     11,199.9111 ns |      1.01 |     0.01 |       - |      - |     321 B |        1.00 |
+|                     Manual |       Sync |    10 |   True |   1,854,322.1354 ns |     213,644.9504 ns |     11,710.6006 ns |      1.00 |     0.00 |       - |      - |     321 B |        1.00 |
+|            EntityFramework |       Sync |    10 |   True |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+|      SqlBulkCopyFastMember |       Sync |    10 |   True |   1,089,936.3281 ns |     339,935.3483 ns |     18,633.0035 ns |      0.59 |     0.01 |       - |      - |   11470 B |       35.73 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                     Dapper |       Sync |   100 |  False |  18,954,120.8333 ns |   3,985,389.4604 ns |    218,452.6444 ns |      1.01 |     0.00 |       - |      - |   54941 B |       11.53 |
+|                  DapperAot |       Sync |   100 |  False |  19,266,117.7083 ns |   2,017,996.9200 ns |    110,613.2206 ns |      1.03 |     0.01 |       - |      - |   37829 B |        7.94 |
+|         DapperAot_Prepared |       Sync |   100 |  False |  18,947,792.7083 ns |   2,677,091.9441 ns |    146,740.4429 ns |      1.01 |     0.00 |       - |      - |    4765 B |        1.00 |
+|                     Manual |       Sync |   100 |  False |  18,739,771.8750 ns |   2,573,440.0538 ns |    141,058.9330 ns |      1.00 |     0.00 |       - |      - |    4765 B |        1.00 |
+|            EntityFramework |       Sync |   100 |  False |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+|      SqlBulkCopyFastMember |       Sync |   100 |  False |   1,442,990.9505 ns |     145,702.1002 ns |      7,986.4238 ns |      0.08 |     0.00 |       - |      - |   12478 B |        2.62 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                     Dapper |       Sync |   100 |   True |  18,902,367.7083 ns |     489,950.5081 ns |     26,855.8406 ns |      0.99 |     0.02 |       - |      - |   53933 B |       16.74 |
+|                  DapperAot |       Sync |   100 |   True |  19,079,340.6250 ns |   1,572,011.0168 ns |     86,167.2283 ns |      0.99 |     0.02 |       - |      - |   36821 B |       11.43 |
+|         DapperAot_Prepared |       Sync |   100 |   True |  18,732,453.1250 ns |   2,951,565.8376 ns |    161,785.2832 ns |      0.98 |     0.03 |       - |      - |    3221 B |        1.00 |
+|                     Manual |       Sync |   100 |   True |  19,190,822.9167 ns |   8,771,720.4909 ns |    480,807.5990 ns |      1.00 |     0.00 |       - |      - |    3221 B |        1.00 |
+|            EntityFramework |       Sync |   100 |   True |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+|      SqlBulkCopyFastMember |       Sync |   100 |   True |   1,357,357.8125 ns |     162,883.2162 ns |      8,928.1787 ns |      0.07 |     0.00 |       - |      - |   11470 B |        3.56 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                     Dapper |       Sync |  1000 |  False | 194,548,855.5556 ns |  64,972,210.5505 ns |  3,561,346.0992 ns |      0.98 |     0.02 |       - |      - |  530392 B |       15.68 |
+|                  DapperAot |       Sync |  1000 |  False | 190,902,300.0000 ns |  17,169,100.6606 ns |    941,096.3417 ns |      0.96 |     0.00 |       - |      - |  369280 B |       10.92 |
+|         DapperAot_Prepared |       Sync |  1000 |  False | 193,677,177.7778 ns |  31,448,680.6054 ns |  1,723,808.3028 ns |      0.98 |     0.02 |       - |      - |   33816 B |        1.00 |
+|                     Manual |       Sync |  1000 |  False | 198,167,277.7778 ns |  34,619,639.0775 ns |  1,897,619.2366 ns |      1.00 |     0.00 |       - |      - |   33816 B |        1.00 |
+|            EntityFramework |       Sync |  1000 |  False |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+|      SqlBulkCopyFastMember |       Sync |  1000 |  False |   3,810,317.9688 ns |   4,952,775.7784 ns |    271,478.3528 ns |      0.02 |     0.00 |       - |      - |   12500 B |        0.37 |
+|                            |            |       |        |                     |                     |                    |           |          |         |        |           |             |
+|                     Dapper |       Sync |  1000 |   True | 187,374,722.2222 ns |  31,034,928.8237 ns |  1,701,129.1715 ns |      1.00 |     0.01 |       - |      - |  529336 B |       16.43 |
+|                  DapperAot |       Sync |  1000 |   True | 189,848,900.0000 ns |  43,257,055.3612 ns |  2,371,065.1687 ns |      1.02 |     0.01 |       - |      - |  368224 B |       11.43 |
+|         DapperAot_Prepared |       Sync |  1000 |   True | 184,528,788.8889 ns |  17,896,373.3025 ns |    980,960.6093 ns |      0.99 |     0.00 |       - |      - |   32224 B |        1.00 |
+|                     Manual |       Sync |  1000 |   True | 186,788,300.0000 ns |   6,223,904.4184 ns |    341,153.2028 ns |      1.00 |     0.00 |       - |      - |   32224 B |        1.00 |
+|            EntityFramework |       Sync |  1000 |   True |                  NA |                  NA |                 NA |         ? |        ? |       - |      - |         - |           ? |
+|      SqlBulkCopyFastMember |       Sync |  1000 |   True |   3,533,560.5469 ns |      64,995.2886 ns |      3,562.6111 ns |      0.02 |     0.00 |       - |      - |   11492 B |        0.36 |

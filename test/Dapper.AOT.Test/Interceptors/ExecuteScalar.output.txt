@@ -1,0 +1,10 @@
+Output code has 3 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+
+Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L82 C15
+Nullability of reference types in value of type 'Task<object?>' doesn't match target type 'Task<object>'.
+
+Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L93 C15
+Nullability of reference types in value of type 'Task<object?>' doesn't match target type 'Task<object>'.
+
+Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L104 C15
+Nullability of reference types in value of type 'Task<object?>' doesn't match target type 'Task<object>'.

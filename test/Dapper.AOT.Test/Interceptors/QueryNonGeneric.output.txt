@@ -1,0 +1,19 @@
+Generator produced 6 diagnostics:
+
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L12 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L13 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L14 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L15 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L17 C29
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L18 C29
+Dapper.AOT does not currently support untyped/dynamic results

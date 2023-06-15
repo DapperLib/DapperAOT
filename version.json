@@ -1,8 +1,10 @@
 {
-  "version": "0.1",
+  "$schema": "https://raw.githubusercontent.com/dotnet/Nerdbank.GitVersioning/main/src/NerdBank.GitVersioning/version.schema.json",
+  "version": "0.5-beta.{height}",
   "assemblyVersion": "0.1.0.0",
   "publicReleaseRefSpec": [
     "^refs/heads/main$",
+    "^refs/heads/interceptors$",
     "^refs/tags/v\\d+\\.\\d+"
   ],
   "nugetPackageVersion": {

@@ -1,5 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using System;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -29,17 +31,24 @@ internal sealed class CodeWriter
         set => _sb.Length = value;
     }
     private StringBuilder Core
-		{
+    {
         get
         {
             if (_isLineEmpty)
             {
-                _sb.Append('\t', _indent);
+                for (int i = 0; i < _indent; i++)
+                {
+                    _sb.Append(Tab);
+                }
                 _isLineEmpty = false;
             }
             return _sb;
         }
-		}
+    }
+
+    public string Tab { get; set; } = "    "; // "\t"
+
+    public CodeWriter Append(bool value) => Append(value ? "true" : "false");
 
     public CodeWriter Append(string? value)
     {
@@ -50,27 +59,133 @@ internal sealed class CodeWriter
         return this;
     }
 
-    public CodeWriter Append(ITypeSymbol? value)
-        => Append(value?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+    public static string GetTypeName(ITypeSymbol value)
+        => value.IsAnonymousType ? value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+        : value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+    public static string GetNullableTypeName(ITypeSymbol value)
+    {
+        var name = GetTypeName(value);
+        return value.IsValueType && value.NullableAnnotation == NullableAnnotation.Annotated
+            ? name : (name + "?");
+    }
+
+    public CodeWriter Append(ITypeSymbol? value, bool anonToTuple = false)
+    {
+        if (value is null)
+        { }
+        else if (value.IsAnonymousType)
+        {
+            if (anonToTuple)
+            {
+                AppendAsValueTuple(value);
+            }
+            else
+            {
+                Append(value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+            }
+        }
+        else
+        {
+            Append(value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+        }
+        return this;
+    }
+
+    private void AppendAsValueTuple(ITypeSymbol value)
+    {
+        var members = value.GetMembers();
+        int count = CountGettableInstanceMembers(members);
+        Append(count switch
+        {
+            0 => "object?",
+            1 => "",
+            _ => "("
+        });
+        bool isFirst = true;
+        foreach (var member in members)
+        {
+            if (IsGettableInstanceMember(member, out var memberType))
+            {
+                if (!isFirst)
+                {
+                    Append(", ");
+                }
+                isFirst = false;
+                Append(memberType, true);
+                if (count != 1)
+                {
+                    Append(" ").Append(member.Name);
+                }
+            }
+        }
+        if (count > 1)
+        {
+            Append(")");
+        }
+    }
+
+    public static int CountGettableInstanceMembers(ImmutableArray<ISymbol> members)
+    {
+        int count = 0;
+        foreach (var member in members)
+        {
+            if (IsGettableInstanceMember(member, out _)) count++;
+        }
+        return count;
+    }
+
+    public static bool IsGettableInstanceMember(ISymbol symbol, out ITypeSymbol type)
+    {
+        if (symbol.DeclaredAccessibility == Accessibility.Public && !symbol.IsStatic)
+        {
+            switch (symbol)
+            {
+                case IPropertySymbol prop when !prop.IsIndexer && prop.GetMethod is { DeclaredAccessibility: Accessibility.Public }:
+                    type = prop.Type;
+                    return true;
+                case IFieldSymbol field:
+                    type = field.Type;
+                    return true;
+            }
+        }
+        type = default!;
+        return false;
+    }
+
+    public static bool IsSettableInstanceMember(ISymbol symbol, out ITypeSymbol type)
+    {
+        if (symbol.DeclaredAccessibility == Accessibility.Public && !symbol.IsStatic)
+        {
+            switch (symbol)
+            {
+                case IPropertySymbol prop when !prop.IsIndexer && prop.SetMethod is { DeclaredAccessibility: Accessibility.Public }:
+                    type = prop.Type;
+                    return true;
+                case IFieldSymbol field when !field.IsReadOnly:
+                    type = field.Type;
+                    return true;
+            }
+        }
+        type = default!;
+        return false;
+    }
 
     public CodeWriter AppendEnumLiteral(ITypeSymbol enumType, int value)
-		{
+    {
         foreach (var member in enumType.GetMembers())
-			{
+        {
             if (member is IFieldSymbol field && field.IsStatic && field.HasConstantValue && field.ConstantValue is int test
                 && test == value)
-				{
+            {
                 return Append(enumType).Append(".").Append(field.Name);
-				}
-			}
+            }
+        }
         return Append("(").Append(enumType).Append(")").Append(value).Append("); ");
 
     }
-    public CodeWriter AppendVerbatimLiteral(string? value)
-    {
-        if (value is null) return Append("null");
-        return Append("@\"").Append(value.Replace("\"", "\"\"")).Append("\"");
-    }
+    public CodeWriter AppendVerbatimLiteral(string? value) => Append(
+        value is null ? "null" : SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(value)).ToFullString());
     public CodeWriter Append(char value)
     {
         Core.Append(value);
