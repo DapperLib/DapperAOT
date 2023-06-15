@@ -132,7 +132,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         switch (methodKind)
         {
             case DapperMethodKind.DapperUnsupported:
-                flags |= OperationFlags.Unsupported;
+                flags |= OperationFlags.DoNotGenerate;
                 break;
             case DapperMethodKind.DapperSupported:
                 break;
@@ -156,9 +156,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
         if (methodKind == DapperMethodKind.DapperUnsupported)
         {
-            return new SourceState(loc, op.TargetMethod, flags, null, null, null, "");
+            return new SourceState(Diagnostic.Create(Diagnostics.UnsupportedMethod, loc, GetSignature(op.TargetMethod)));
         }
 
+        object? diagnostics = null;
         if (loc is null)
         {
             Log?.Invoke(DiagnosticSeverity.Hidden, $"No location found; cannot intercept");
@@ -263,7 +264,26 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         }
         Log?.Invoke(DiagnosticSeverity.Hidden, $"OK, {flags}, result-type: {resultType}, param-type: {paramType}");
 
-        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, "?");
+        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, "?", diagnostics);
+
+        static void AddDiagnostic(ref object? diagnostics, Diagnostic diagnostic)
+        {
+            if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
+            switch (diagnostics)
+            {   // single
+                case null:
+                    diagnostics = diagnostic;
+                    break;
+                case Diagnostic d:
+                    diagnostics = new List<Diagnostic> { d, diagnostic };
+                    break;
+                case IList<Diagnostic> list:
+                    list.Add(diagnostic);
+                    break;
+                default:
+                    throw new ArgumentException(nameof(diagnostics));
+            }
+        }
 
         static bool TryGetConstantValue<T>(IArgumentOperation op, out T? value)
         {
@@ -386,7 +406,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         AtLeastOne = 1 << 11,
         AtMostOne = 1 << 12,
         Scalar = 1 << 13,
-        Unsupported = 1 << 14,
+        DoNotGenerate = 1 << 14,
     }
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
@@ -436,16 +456,20 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             return;
         }
 
-        int unsupportedCount = 0;
-        foreach (var node in state.Nodes.Where(x => HasAny(x.Flags, OperationFlags.Unsupported)))
+        int doNotGenerateCount = 0;
+        foreach (var node in state.Nodes)
         {
-            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnsupportedMethod, node.Location, GetSignature(node.Method)));
-            unsupportedCount++;
+            var count = node.DiagnosticCount;
+            for (int i = 0; i < count; i++)
+            {
+                ctx.ReportDiagnostic(node.GetDiagnostic(i));
+            }
+            if (HasAny(node.Flags, OperationFlags.DoNotGenerate)) doNotGenerateCount++;
         }
 
-        if (unsupportedCount == state.Nodes.Length)
+        if (doNotGenerateCount == state.Nodes.Length)
         {
-            // nothing supported left to process
+            // nothing but nope
             return;
         }
 
@@ -459,7 +483,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         var resultTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
         var parameterTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
 
-        foreach (var grp in state.Nodes.Where(x => !HasAny(x.Flags, OperationFlags.Unsupported)).GroupBy(x => x.Group(), CommonComparer.Instance))
+        foreach (var grp in state.Nodes.Where(x => !HasAny(x.Flags, OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
             // first, try to resolve the helper method that we're going to use for this
             var (flags, method, parameterType, parameterMap) = grp.Key;
@@ -1158,6 +1182,8 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
 
     sealed class SourceState
     {
+        private object? diagnostics;
+
         public Location Location { get; }
         public OperationFlags Flags { get; }
         public string? Sql { get; }
@@ -1165,8 +1191,9 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         public IMethodSymbol Method { get; }
         public ITypeSymbol? ResultType { get; }
         public ITypeSymbol? ParameterType { get; }
+
         public SourceState(Location location, IMethodSymbol method, OperationFlags flags, string? sql,
-            ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap)
+            ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap, object? diagnostics = null)
         {
             Location = location;
             Flags = flags;
@@ -1175,11 +1202,34 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             ParameterType = parameterType;
             Method = method;
             ParameterMap = parameterMap;
+            this.diagnostics = diagnostics;
+        }
+        public SourceState(object diagnostics)
+        {
+            Location = Location.None;
+            Flags = OperationFlags.DoNotGenerate;
+            ParameterMap = Sql = "";
+            ResultType = ParameterType = null;
+            Method = null!;
+            this.diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics));
         }
 
+        public int DiagnosticCount => diagnostics switch
+        {
+            null => 0,
+            Diagnostic => 1,
+            IReadOnlyList<Diagnostic> list => list.Count,
+            _ => -1
+        };
+
+        public Diagnostic GetDiagnostic(int index) => diagnostics switch
+        {
+            Diagnostic d when index is 0 => d,
+            IReadOnlyList<Diagnostic> list => list[index],
+            _ => throw new IndexOutOfRangeException(nameof(index)),
+        };
+
         public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap) Group() => new(Flags, Method, ParameterType, ParameterMap);
-
-
     }
     private sealed class CommonComparer : IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap)>, IComparer<Location>
     {
