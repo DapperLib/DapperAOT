@@ -1,0 +1,20 @@
+Input code has 3 diagnostics from 'Interceptors/ExecuteBatch.input.cs':
+
+Hidden CS8019 Interceptors/ExecuteBatch.input.cs L1 C0
+Unnecessary using directive.
+
+Hidden CS8019 Interceptors/ExecuteBatch.input.cs L2 C0
+Unnecessary using directive.
+
+Error CS0246 Interceptors/ExecuteBatch.input.cs L11 C42
+The type or namespace name 'List<>' could not be found (are you missing a using directive or an assembly reference?)
+Output code has 3 diagnostics from 'Interceptors/ExecuteBatch.input.cs':
+
+Hidden CS8019 Interceptors/ExecuteBatch.input.cs L1 C0
+Unnecessary using directive.
+
+Hidden CS8019 Interceptors/ExecuteBatch.input.cs L2 C0
+Unnecessary using directive.
+
+Error CS0246 Interceptors/ExecuteBatch.input.cs L11 C42
+The type or namespace name 'List<>' could not be found (are you missing a using directive or an assembly reference?)
