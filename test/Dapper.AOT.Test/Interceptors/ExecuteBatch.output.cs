@@ -21,7 +21,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(commandType is null);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Batch<object?>(cnn, transaction, sql, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.List<object?>)param);
+        return global::Dapper.DapperAotExtensions.Batch<object?>(cnn, transaction, sql, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory1.Instance).Execute((global::System.Collections.Generic.List<object?>)param);
 
     }
 
@@ -187,10 +187,10 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
+    private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
     {
-        internal static readonly CommandFactory0 Instance = new();
-        private CommandFactory0() {}
+        internal static readonly CommandFactory1 Instance = new();
+        private CommandFactory1() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
             // var sql = cmd.CommandText;

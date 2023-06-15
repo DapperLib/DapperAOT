@@ -66,7 +66,7 @@ public sealed partial class DapperInterceptorGenerator
         {
             if (!parameterTypes.TryGetValue(parameterType!, out var parameterTypeIndex))
             {
-                parameterTypes.Add(parameterType!, parameterTypeIndex = resultTypes.Count);
+                parameterTypes.Add(parameterType!, parameterTypeIndex = parameterTypes.Count);
             }
             sb.Append("CommandFactory").Append(parameterTypeIndex).Append(".Instance");
         }

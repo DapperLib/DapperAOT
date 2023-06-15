@@ -24,7 +24,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory1.Instance).QueryBuffered<global::Foo.Customer>(RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).QueryBuffered<global::Foo.Customer>(RowFactory0.Instance);
 
     }
 
@@ -37,7 +37,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(commandType is null);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory1.Instance).Query<global::Foo.Customer>(buffered, RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).Query<global::Foo.Customer>(buffered, RowFactory0.Instance);
 
     }
 
@@ -64,7 +64,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).QueryBuffered<global::Foo.Customer>(RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).QueryBuffered<global::Foo.Customer>(RowFactory0.Instance);
 
     }
 
@@ -91,7 +91,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
-            global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory1.Instance).QueryBufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default));
+            global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).QueryBufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default));
 
     }
 
@@ -116,7 +116,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).QueryUnbufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).QueryUnbufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default);
 
     }
 
@@ -205,10 +205,10 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
+    private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
     {
-        internal static readonly CommandFactory1 Instance = new();
-        private CommandFactory1() {}
+        internal static readonly CommandFactory0 Instance = new();
+        private CommandFactory0() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
             // var sql = cmd.CommandText;
