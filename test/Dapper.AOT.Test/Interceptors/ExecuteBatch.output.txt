@@ -1,20 +1,64 @@
-Input code has 3 diagnostics from 'Interceptors/ExecuteBatch.input.cs':
+Output code has 21 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
 
-Hidden CS8019 Interceptors/ExecuteBatch.input.cs L1 C0
-Unnecessary using directive.
+Error CS0229 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L11 C172
+Ambiguity between 'DapperGeneratedInterceptors.CommandFactory0.Instance' and 'DapperGeneratedInterceptors.CommandFactory0.Instance'
 
-Hidden CS8019 Interceptors/ExecuteBatch.input.cs L2 C0
-Unnecessary using directive.
+Error CS0229 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L23 C159
+Ambiguity between 'DapperGeneratedInterceptors.CommandFactory0.Instance' and 'DapperGeneratedInterceptors.CommandFactory0.Instance'
 
-Error CS0246 Interceptors/ExecuteBatch.input.cs L11 C42
-The type or namespace name 'List<>' could not be found (are you missing a using directive or an assembly reference?)
-Output code has 3 diagnostics from 'Interceptors/ExecuteBatch.input.cs':
+Error CS0229 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L35 C188
+Ambiguity between 'DapperGeneratedInterceptors.CommandFactory0.Instance' and 'DapperGeneratedInterceptors.CommandFactory0.Instance'
 
-Hidden CS8019 Interceptors/ExecuteBatch.input.cs L1 C0
-Unnecessary using directive.
+Error CS0229 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L47 C177
+Ambiguity between 'DapperGeneratedInterceptors.CommandFactory0.Instance' and 'DapperGeneratedInterceptors.CommandFactory0.Instance'
 
-Hidden CS8019 Interceptors/ExecuteBatch.input.cs L2 C0
-Unnecessary using directive.
+Error CS0263 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L70 C25
+Partial declarations of 'DapperGeneratedInterceptors.CommandFactory0' must not specify different base classes
 
-Error CS0246 Interceptors/ExecuteBatch.input.cs L11 C42
-The type or namespace name 'List<>' could not be found (are you missing a using directive or an assembly reference?)
+Error CS0121 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L72 C60
+The call is ambiguous between the following methods or properties: 'DapperGeneratedInterceptors.CommandFactory0.CommandFactory0()' and 'DapperGeneratedInterceptors.CommandFactory0.CommandFactory0()'
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L84 C26
+The name 'AsValue' does not exist in the current context
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L92 C26
+The name 'AsValue' does not exist in the current context
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L100 C26
+The name 'AsValue' does not exist in the current context
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L111 C32
+The name 'AsValue' does not exist in the current context
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L116 C32
+The name 'AsValue' does not exist in the current context
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L121 C32
+The name 'AsValue' does not exist in the current context
+
+Error CS0102 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L129 C25
+The type 'DapperGeneratedInterceptors' already contains a definition for 'CommandFactory0'
+
+Error CS0121 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L131 C60
+The call is ambiguous between the following methods or properties: 'DapperGeneratedInterceptors.CommandFactory0.CommandFactory0()' and 'DapperGeneratedInterceptors.CommandFactory0.CommandFactory0()'
+
+Error CS0111 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L132 C16
+Type 'DapperGeneratedInterceptors.CommandFactory0' already defines a member called 'CommandFactory0' with the same parameter types
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L137 C24
+The name 'Cast' does not exist in the current context
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L144 C26
+The name 'AsValue' does not exist in the current context
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L152 C26
+The name 'AsValue' does not exist in the current context
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L160 C24
+The name 'Cast' does not exist in the current context
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L164 C34
+The name 'AsValue' does not exist in the current context
+
+Error CS0103 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L169 C34
+The name 'AsValue' does not exist in the current context

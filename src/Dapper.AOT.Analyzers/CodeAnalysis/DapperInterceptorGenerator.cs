@@ -588,7 +588,10 @@ public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
 
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
-            WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, methodParameters, parameterTypes, resultTypes);
+            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, methodParameters, parameterTypes, resultTypes))
+            {
+                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, methodParameters, parameterTypes, resultTypes);
+            }
         }
 
         const string DapperBaseCommandFactory = "global::Dapper.CommandFactory";

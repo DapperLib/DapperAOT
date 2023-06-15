@@ -6,9 +6,7 @@ using System.Collections.Immutable;
 
 namespace Dapper.Internal.Roslyn;
 
-// TODO deaglegross: fix the public modifier
-// probably need to sign test with sn.exe
-public static class TypeSymbolExtensions
+internal static class TypeSymbolExtensions
 {
     public static bool InNamespace(this ITypeSymbol? typeSymbol, string @namespace)
     {
@@ -16,7 +14,13 @@ public static class TypeSymbolExtensions
         return typeSymbol.ContainingNamespace?.ToDisplayString() == @namespace;
     }
 
-    public static string? GetContainingTypeFullName(this ITypeSymbol? typeSymbol, int typeArgIndex = 0) => typeSymbol.GetContainingTypeSymbol(typeArgIndex)?.ToDisplayString();
+    public static string? GetContainingTypeFullName(this ITypeSymbol? typeSymbol, int typeArgIndex = 0)
+    {
+        var containingTypeSymbol = typeSymbol.GetContainingTypeSymbol(typeArgIndex);
+        if (containingTypeSymbol is null) return null;
+        if (containingTypeSymbol.IsAnonymousType == true) return "object?";
+        return "global::" + containingTypeSymbol.ToDisplayString();
+    }
     public static ITypeSymbol? GetContainingTypeSymbol(this ITypeSymbol? typeSymbol, int typeArgIndex = 0)
     {
         if (typeSymbol is null) return null;
