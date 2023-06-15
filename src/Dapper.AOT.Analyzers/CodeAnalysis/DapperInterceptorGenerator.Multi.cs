@@ -26,52 +26,57 @@ public sealed partial class DapperInterceptorGenerator
         if (parameterType.IsArray())
         {
             var containingType = parameterType.GetContainingTypeSymbol();
-            var castType = parameterType.GetContainingTypeFullName() + "[]";
+            var castType = containingType.GetTypeDisplayName() + "[]";
             return WriteMultiExecExpression(containingType!, castType);
         }
 
         if (parameterType.IsList())
         {
             var containingType = parameterType.GetContainingTypeSymbol();
-            var castType = "global::System.Collections.Generic.List<" + parameterType.GetContainingTypeFullName() + ">";
+            var castType = "global::System.Collections.Generic.List<" + containingType.GetTypeDisplayName() + ">";
             return WriteMultiExecExpression(containingType!, castType);
         }
 
         if (parameterType.IsImmutableArray())
         {
             var containingType = parameterType.GetContainingTypeSymbol();
-            var castType = "global::System.Collections.Immutable.ImmutableArray<" + parameterType.GetContainingTypeFullName() + ">";
+            var castType = "global::System.Collections.Immutable.ImmutableArray<" + containingType.GetTypeDisplayName() + ">";
             return WriteMultiExecExpression(containingType!, castType);
         }
 
-        if (parameterType.ImplementsIList())
+        if (parameterType.ImplementsIList(out var listTypeSymbol))
         {
-            var castType = "global::System.Collections.Generic.IList<" + parameterType.GetContainingTypeFullName() + ">";
-            return WriteMultiExecExpression(castType);
+            var containingType = listTypeSymbol.GetContainingTypeSymbol();
+            var castType = "global::System.Collections.Generic.IList<" + containingType.GetTypeDisplayName() + ">";
+            return WriteMultiExecExpression(containingType!, castType);
         }
 
-        if (parameterType.ImplementsICollection())
+        if (parameterType.ImplementsICollection(out var collectionTypeSymbol))
         {
-            var castType = "global::System.Collections.Generic.ICollection<" + parameterType.GetContainingTypeFullName() + ">";
-            return WriteMultiExecExpression(castType);
+            var containingType = collectionTypeSymbol.GetContainingTypeSymbol();
+            var castType = "global::System.Collections.Generic.ICollection<" + containingType.GetTypeDisplayName() + ">";
+            return WriteMultiExecExpression(containingType!, castType);
         }
 
-        if (parameterType.ImplementsIReadOnlyList())
+        if (parameterType.ImplementsIReadOnlyList(out var readonlyListTypeSymbol))
         {
-            var castType = "global::System.Collections.Generic.IReadOnlyList<" + parameterType.GetContainingTypeFullName() + ">";
-            return WriteMultiExecExpression(castType);
+            var containingType = readonlyListTypeSymbol.GetContainingTypeSymbol();
+            var castType = "global::System.Collections.Generic.IReadOnlyList<" + containingType.GetTypeDisplayName() + ">";
+            return WriteMultiExecExpression(containingType!, castType);
         }
 
-        if (parameterType.ImplementsIReadOnlyCollection())
+        if (parameterType.ImplementsIReadOnlyCollection(out var readonlyCollectionTypeSymbol))
         {
-            var castType = "global::System.Collections.Generic.IReadOnlyCollection<" + parameterType.GetContainingTypeFullName() + ">";
-            return WriteMultiExecExpression(castType);
+            var containingType = readonlyCollectionTypeSymbol.GetContainingTypeSymbol();
+            var castType = "global::System.Collections.Generic.IReadOnlyCollection<" + containingType.GetTypeDisplayName() + ">";
+            return WriteMultiExecExpression(containingType!, castType);
         }
 
-        if (parameterType.ImplementsGenericIEnumerable())
+        if (parameterType.ImplementsIEnumerable(out var enumerableTypeSymbol))
         {
-            var castType = "global::System.Collections.Generic.IEnumerable<" + parameterType.GetContainingTypeFullName() + ">";
-            return WriteMultiExecExpression(castType);
+            var containingType = enumerableTypeSymbol.GetContainingTypeSymbol();
+            var castType = "global::System.Collections.Generic.IEnumerable<" + containingType.GetTypeDisplayName() + ">";
+            return WriteMultiExecExpression(containingType!, castType);
         }
 
         // no multi type found to cast to, so not using multiexec
@@ -79,13 +84,10 @@ public sealed partial class DapperInterceptorGenerator
 
         bool WriteMultiExecExpression(ITypeSymbol containingTypeSymbol, string castType)
         {
-            // return cnn.Batch(transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).Execute((List<T>)param);
-
             // return Batch<type>
-            sb.Append("return global::Dapper.DapperAotExtensions.Batch<");
-            if (parameterType is null || parameterType.IsAnonymousType) sb.Append("object?");
-            else sb.Append(parameterType.GetContainingTypeFullName());
-            sb.Append('>');
+            sb.Append("return global::Dapper.DapperAotExtensions.Batch<")
+              .Append(containingTypeSymbol.GetTypeDisplayName())
+              .Append('>');
 
             // return Batch<type>(...).
             WriteBatchCommandArguments(containingTypeSymbol);

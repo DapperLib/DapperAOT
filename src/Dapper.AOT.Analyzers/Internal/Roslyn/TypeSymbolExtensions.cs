@@ -1,6 +1,4 @@
 ﻿using Microsoft.CodeAnalysis;
-using Dapper.Internal.Extensions;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
@@ -14,12 +12,16 @@ internal static class TypeSymbolExtensions
         return typeSymbol.ContainingNamespace?.ToDisplayString() == @namespace;
     }
 
-    public static string? GetContainingTypeFullName(this ITypeSymbol? typeSymbol, int typeArgIndex = 0)
+    public static string? GetTypeDisplayName(this ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is null) return null;
+        if (typeSymbol.IsAnonymousType == true) return "object?";
+        return "global::" + typeSymbol.ToDisplayString();
+    }
+    public static string? GetContainingTypeDisplayName(this ITypeSymbol? typeSymbol, int typeArgIndex = 0)
     {
         var containingTypeSymbol = typeSymbol.GetContainingTypeSymbol(typeArgIndex);
-        if (containingTypeSymbol is null) return null;
-        if (containingTypeSymbol.IsAnonymousType == true) return "object?";
-        return "global::" + containingTypeSymbol.ToDisplayString();
+        return containingTypeSymbol.GetTypeDisplayName();
     }
     public static ITypeSymbol? GetContainingTypeSymbol(this ITypeSymbol? typeSymbol, int typeArgIndex = 0)
     {
@@ -83,94 +85,87 @@ internal static class TypeSymbolExtensions
     }
 
     /// <returns>
-    /// True, if passed <param name="typeSymbol"/> implements <see cref="IList{T}"/>.
-    /// False otherwise
+    /// True, if passed <param name="typeSymbol"/> implements <see cref="IEnumerable{T}"/>. False otherwise
     /// </returns>
-    public static bool ImplementsGenericIEnumerable(this ITypeSymbol? typeSymbol)
+    /// <param name="searchedTypeSymbol">if found, an interface type symbol</param>
+    /// <remarks>
+    /// Most likely <see cref="IEnumerable{T}"/> is one of the last defined interfaces in a chain of implementations
+    /// https://learn.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.itypesymbol.allinterfaces?view=roslyn-dotnet
+    /// </remarks>
+    public static bool ImplementsIEnumerable(this ITypeSymbol? typeSymbol, out ITypeSymbol? searchedTypeSymbol)
+        => typeSymbol.ImplementsInterface(SpecialType.System_Collections_Generic_IEnumerable_T, out searchedTypeSymbol, searchFromStart: false);
+
+    /// <returns>
+    /// True, if passed <param name="typeSymbol"/> implements <see cref="IList{T}"/>. False otherwise
+    /// </returns>
+    /// <param name="searchedTypeSymbol">if found, an interface type symbol</param>
+    public static bool ImplementsIList(this ITypeSymbol? typeSymbol, out ITypeSymbol? searchedTypeSymbol)
+        => typeSymbol.ImplementsInterface(SpecialType.System_Collections_Generic_IList_T, out searchedTypeSymbol);
+
+
+    /// <returns>
+    /// True, if passed <param name="typeSymbol"/> implements <see cref="ICollection{T}"/>. False otherwise
+    /// </returns>
+    /// <param name="searchedTypeSymbol">if found, an interface type symbol</param>
+    public static bool ImplementsICollection(this ITypeSymbol? typeSymbol, out ITypeSymbol? searchedTypeSymbol)
+        => typeSymbol.ImplementsInterface(SpecialType.System_Collections_Generic_ICollection_T, out searchedTypeSymbol);
+
+    /// <returns>
+    /// True, if passed <param name="typeSymbol"/> implements <see cref="IReadOnlyCollection{T}"/>. False otherwise
+    /// </returns>
+    /// <param name="searchedTypeSymbol">if found, an interface type symbol</param>
+    public static bool ImplementsIReadOnlyCollection(this ITypeSymbol? typeSymbol, out ITypeSymbol? searchedTypeSymbol)
+        => typeSymbol.ImplementsInterface(SpecialType.System_Collections_Generic_IReadOnlyCollection_T, out searchedTypeSymbol);
+
+    /// <returns>
+    /// True, if passed <param name="typeSymbol"/> implements <see cref="IReadOnlyList{T}"/>. False otherwise
+    /// </returns>
+    /// <param name="searchedTypeSymbol">if found, an interface type symbol</param>
+    public static bool ImplementsIReadOnlyList(this ITypeSymbol? typeSymbol, out ITypeSymbol? searchedTypeSymbol) 
+        => typeSymbol.ImplementsInterface(SpecialType.System_Collections_Generic_IReadOnlyList_T, out searchedTypeSymbol);
+
+    private static bool ImplementsInterface(
+        this ITypeSymbol? typeSymbol,
+        SpecialType interfaceType,
+        out ITypeSymbol? searchedInterface,
+        bool searchFromStart = true)
     {
-        if (typeSymbol is null) return false;
-
-        // note: IEnumerable<T> most probably is one of the last in interfaces implementation order:
-        // https://learn.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.itypesymbol.allinterfaces?view=roslyn-dotnet
-        for (var i = typeSymbol.AllInterfaces.Length - 1; i >= 0; i--)
+        if (typeSymbol is null)
         {
-            var interfaceSpecialType = typeSymbol.AllInterfaces[i].SpecialType;
-            var originalSpecialType = typeSymbol.AllInterfaces[i].OriginalDefinition?.SpecialType;
+            searchedInterface = null;
+            return false;
+        }
 
-            if (interfaceSpecialType == SpecialType.System_Collections_Generic_IEnumerable_T
-                || originalSpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
+        if (searchFromStart)
+        {
+            for (var i = 0; i < typeSymbol.AllInterfaces.Length; i++)
             {
-                return true;
+                var currentSymbol = typeSymbol.AllInterfaces[i];
+
+                if (currentSymbol.SpecialType == interfaceType 
+                    || currentSymbol.OriginalDefinition?.SpecialType == interfaceType)
+                {
+                    searchedInterface = currentSymbol;
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            for (var i = 0; i < typeSymbol.AllInterfaces.Length; i++)
+            {
+                var currentSymbol = typeSymbol.AllInterfaces[i];
+
+                if (currentSymbol.SpecialType == interfaceType
+                    || currentSymbol.OriginalDefinition?.SpecialType == interfaceType)
+                {
+                    searchedInterface = currentSymbol;
+                    return true;
+                }
             }
         }
 
+        searchedInterface = null;
         return false;
-    }
-
-    /// <returns>
-    /// True, if passed <param name="typeSymbol"/> implements <see cref="IEnumerable"/>.
-    /// False otherwise
-    /// </returns>
-    public static bool ImplementsIEnumerable(this ITypeSymbol? typeSymbol)
-    {
-        if (typeSymbol is null) return false;
-
-        // note: IEnumerable most probably is last in interfaces implementation order:
-        // https://learn.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.itypesymbol.allinterfaces?view=roslyn-dotnet
-        for (var i = typeSymbol.AllInterfaces.Length - 1; i >= 0; i--)
-        {
-            var interfaceSpecialType = typeSymbol.AllInterfaces[i].SpecialType;
-            if (interfaceSpecialType == SpecialType.System_Collections_IEnumerable) return true;
-        }
-
-        return false;
-    }
-
-    /// <returns>
-    /// True, if passed <param name="typeSymbol"/> implements <see cref="IList{T}"/>.
-    /// False otherwise
-    /// </returns>
-    public static bool ImplementsIList(this ITypeSymbol? typeSymbol)
-    {
-        if (typeSymbol is null) return false;
-        return typeSymbol.AllInterfaces.Contains(
-            x => x.SpecialType == SpecialType.System_Collections_Generic_IList_T
-              || x.OriginalDefinition?.SpecialType == SpecialType.System_Collections_Generic_IList_T);
-    }
-
-    /// <returns>
-    /// True, if passed <param name="typeSymbol"/> implements <see cref="ICollection{T}"/>.
-    /// False otherwise
-    /// </returns>
-    public static bool ImplementsICollection(this ITypeSymbol? typeSymbol)
-    {
-        if (typeSymbol is null) return false;
-        return typeSymbol.AllInterfaces.Contains(
-            x => x.SpecialType == SpecialType.System_Collections_Generic_ICollection_T
-              || x.OriginalDefinition?.SpecialType == SpecialType.System_Collections_Generic_ICollection_T);
-    }
-
-    /// <returns>
-    /// True, if passed <param name="typeSymbol"/> implements <see cref="IReadOnlyCollection{T}"/>.
-    /// False otherwise
-    /// </returns>
-    public static bool ImplementsIReadOnlyCollection(this ITypeSymbol? typeSymbol)
-    {
-        if (typeSymbol is null) return false;
-        return typeSymbol.AllInterfaces.Contains(
-            x => x.SpecialType == SpecialType.System_Collections_Generic_IReadOnlyCollection_T
-              || x.OriginalDefinition?.SpecialType == SpecialType.System_Collections_Generic_IReadOnlyCollection_T);
-    }
-
-    /// <returns>
-    /// True, if passed <param name="typeSymbol"/> implements <see cref="IReadOnlyList{T}"/>.
-    /// False otherwise
-    /// </returns>
-    public static bool ImplementsIReadOnlyList(this ITypeSymbol? typeSymbol)
-    {
-        if (typeSymbol is null) return false;
-        return typeSymbol.AllInterfaces.Contains(
-            x => x.SpecialType == SpecialType.System_Collections_Generic_IReadOnlyList_T
-              || x.OriginalDefinition?.SpecialType == SpecialType.System_Collections_Generic_IReadOnlyList_T);
     }
 }

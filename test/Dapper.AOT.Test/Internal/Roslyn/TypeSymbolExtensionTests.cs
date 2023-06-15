@@ -22,17 +22,18 @@ namespace Dapper.Internal.Roslyn
             var typeSymbol = GetConversionTypeSymbol(argumentOperation);
 
             // implements
-            Assert.True(typeSymbol.ImplementsIEnumerable());
-            Assert.True(typeSymbol.ImplementsGenericIEnumerable());
-            Assert.True(typeSymbol.ImplementsIList());
-            Assert.True(typeSymbol.ImplementsIReadOnlyCollection());
-            Assert.True(typeSymbol.ImplementsIReadOnlyList());
-            Assert.True(typeSymbol.ImplementsICollection());
+            Assert.True(typeSymbol.ImplementsIEnumerable(out _));
+            Assert.True(typeSymbol.ImplementsIList(out _));
+            Assert.True(typeSymbol.ImplementsIReadOnlyCollection(out _));
+            Assert.True(typeSymbol.ImplementsIReadOnlyList(out _));
+            Assert.True(typeSymbol.ImplementsICollection(out _));
 
             // is
             Assert.True(typeSymbol.IsList());
             Assert.False(typeSymbol.IsArray());
             Assert.False(typeSymbol.IsImmutableArray());
+
+            Assert.Equal("object?", typeSymbol.GetContainingTypeDisplayName());
         }
 
         [Fact]
@@ -48,19 +49,18 @@ namespace Dapper.Internal.Roslyn
             var typeSymbol = GetConversionTypeSymbol(argumentOperation);
 
             // implements
-            Assert.True(typeSymbol.ImplementsIEnumerable());
-            Assert.True(typeSymbol.ImplementsGenericIEnumerable());
-            Assert.True(typeSymbol.ImplementsIList());
-            Assert.True(typeSymbol.ImplementsIReadOnlyCollection());
-            Assert.True(typeSymbol.ImplementsIReadOnlyList());
-            Assert.True(typeSymbol.ImplementsICollection());
+            Assert.True(typeSymbol.ImplementsIEnumerable(out _));
+            Assert.True(typeSymbol.ImplementsIList(out _));
+            Assert.True(typeSymbol.ImplementsIReadOnlyCollection(out _));
+            Assert.True(typeSymbol.ImplementsIReadOnlyList(out _));
+            Assert.True(typeSymbol.ImplementsICollection(out _));
 
             // is
             Assert.True(typeSymbol.IsArray());
             Assert.False(typeSymbol.IsList());
             Assert.False(typeSymbol.IsImmutableArray());
 
-            Assert.Equal("Foo.Customer", typeSymbol.GetContainingTypeFullName());
+            Assert.Equal("global::Foo.Customer", typeSymbol.GetContainingTypeDisplayName());
         }
 
         [Fact]
@@ -76,19 +76,18 @@ namespace Dapper.Internal.Roslyn
             var typeSymbol = GetConversionTypeSymbol(argumentOperation);
 
             // implements
-            Assert.True(typeSymbol.ImplementsIEnumerable());
-            Assert.True(typeSymbol.ImplementsGenericIEnumerable());
-            Assert.True(typeSymbol.ImplementsIList());
-            Assert.True(typeSymbol.ImplementsIReadOnlyCollection());
-            Assert.True(typeSymbol.ImplementsIReadOnlyList());
-            Assert.True(typeSymbol.ImplementsICollection());
+            Assert.True(typeSymbol.ImplementsIEnumerable(out _));
+            Assert.True(typeSymbol.ImplementsIList(out _));
+            Assert.True(typeSymbol.ImplementsIReadOnlyCollection(out _));
+            Assert.True(typeSymbol.ImplementsIReadOnlyList(out _));
+            Assert.True(typeSymbol.ImplementsICollection(out _));
 
             // is
             Assert.True(typeSymbol.IsList());
             Assert.False(typeSymbol.IsArray());
             Assert.False(typeSymbol.IsImmutableArray());
 
-            Assert.Equal("Foo.Customer", typeSymbol.GetContainingTypeFullName());
+            Assert.Equal("global::Foo.Customer", typeSymbol.GetContainingTypeDisplayName());
         }
 
         [Fact]
@@ -104,19 +103,18 @@ namespace Dapper.Internal.Roslyn
             var typeSymbol = GetConversionTypeSymbol(argumentOperation);
 
             // assert
-            Assert.True(typeSymbol.ImplementsIEnumerable());
-            Assert.True(typeSymbol.ImplementsGenericIEnumerable());
-            Assert.True(typeSymbol.ImplementsIList());
-            Assert.True(typeSymbol.ImplementsIReadOnlyCollection());
-            Assert.True(typeSymbol.ImplementsIReadOnlyList());
-            Assert.True(typeSymbol.ImplementsICollection());
+            Assert.True(typeSymbol.ImplementsIEnumerable(out _));
+            Assert.True(typeSymbol.ImplementsIList(out _));
+            Assert.True(typeSymbol.ImplementsIReadOnlyCollection(out _));
+            Assert.True(typeSymbol.ImplementsIReadOnlyList(out _));
+            Assert.True(typeSymbol.ImplementsICollection(out _));
 
             // is
             Assert.True(typeSymbol.IsImmutableArray());
             Assert.False(typeSymbol.IsList());
             Assert.False(typeSymbol.IsArray());
 
-            Assert.Equal("Foo.Customer", typeSymbol.GetContainingTypeFullName());
+            Assert.Equal("global::Foo.Customer", typeSymbol.GetContainingTypeDisplayName());
         }
 
         static ITypeSymbol GetConversionTypeSymbol(IArgumentOperation argumentOperation)
