@@ -14,8 +14,9 @@ namespace Dapper;
 [ShortRunJob, MemoryDiagnoser, GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory), CategoriesColumn]
 public class BatchInsertBenchmarks : IDisposable
 {
-    public SqlConnection connection = new(Program.ConnectionString);
+    private readonly SqlConnection connection = new(Program.ConnectionString);
     private Customer[] customers = Array.Empty<Customer>();
+    private readonly MyContext ctx = new();
 
     public BatchInsertBenchmarks()
     {
@@ -170,7 +171,8 @@ public class BatchInsertBenchmarks : IDisposable
 
     [RunOncePerIteration]
     public void ResetIds()
-    {   // this is mostly because EF is going to update the values,
+    {
+        // this is mostly because EF is going to update the values,
         // triggering identity-insert violations on the *next* attempt
         foreach (var customer in customers)
         {
@@ -181,17 +183,19 @@ public class BatchInsertBenchmarks : IDisposable
     [Benchmark, BenchmarkCategory("Sync")]
     public int EntityFramework()
     {
-        using var ctx = new MyContext();
         ctx.Customers.AddRange(customers);
-        return ctx.SaveChanges();
+        var result = ctx.SaveChanges();
+        ctx.ChangeTracker.Clear();
+        return result;
     }
 
     [Benchmark, BenchmarkCategory("Async")]
     public async Task<int> EntityFrameworkAsync()
     {
-        using var ctx = new MyContext();
         ctx.Customers.AddRange(customers);
-        return await ctx.SaveChangesAsync();
+        var result = await ctx.SaveChangesAsync();
+        ctx.ChangeTracker.Clear();
+        return result;
     }
 
     [Benchmark, BenchmarkCategory("Sync")]
@@ -255,6 +259,7 @@ public class BatchInsertBenchmarks : IDisposable
     public void Dispose()
     {
         connection.Dispose();
+        ctx.Dispose();
         GC.SuppressFinalize(this);
     }
 }

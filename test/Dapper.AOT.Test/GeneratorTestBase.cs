@@ -176,6 +176,7 @@ namespace Dapper.AOT.Test
                    MetadataReference.CreateFromFile(typeof(Span<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(IgnoreDataMemberAttribute).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(DynamicAttribute).Assembly.Location),
                },
                options: new CSharpCompilationOptions(OutputKind.ConsoleApplication, allowUnsafe: true));
     }

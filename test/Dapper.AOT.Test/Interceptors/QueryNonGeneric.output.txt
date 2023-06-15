@@ -1,19 +1,19 @@
 Generator produced 6 diagnostics:
 
-Info DA0001 Interceptors/QueryNonGeneric.input.cs L12 C23
-The Dapper method 'SqlMapper.Query(IDbConnection, string, object, IDbTransaction, bool, int?, CommandType?)' is not currently supported by Dapper.AOT
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L12 C23
+Dapper.AOT does not currently support untyped/dynamic results
 
-Info DA0001 Interceptors/QueryNonGeneric.input.cs L13 C23
-The Dapper method 'SqlMapper.Query(IDbConnection, string, object, IDbTransaction, bool, int?, CommandType?)' is not currently supported by Dapper.AOT
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L13 C23
+Dapper.AOT does not currently support untyped/dynamic results
 
-Info DA0001 Interceptors/QueryNonGeneric.input.cs L14 C23
-The Dapper method 'SqlMapper.Query(IDbConnection, string, object, IDbTransaction, bool, int?, CommandType?)' is not currently supported by Dapper.AOT
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L14 C23
+Dapper.AOT does not currently support untyped/dynamic results
 
-Info DA0001 Interceptors/QueryNonGeneric.input.cs L15 C23
-The Dapper method 'SqlMapper.Query(IDbConnection, string, object, IDbTransaction, bool, int?, CommandType?)' is not currently supported by Dapper.AOT
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L15 C23
+Dapper.AOT does not currently support untyped/dynamic results
 
-Info DA0001 Interceptors/QueryNonGeneric.input.cs L17 C29
-The Dapper method 'SqlMapper.QueryAsync(IDbConnection, string, object, IDbTransaction, int?, CommandType?)' is not currently supported by Dapper.AOT
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L17 C29
+Dapper.AOT does not currently support untyped/dynamic results
 
-Info DA0001 Interceptors/QueryNonGeneric.input.cs L18 C29
-The Dapper method 'SqlMapper.QueryAsync(IDbConnection, string, object, IDbTransaction, int?, CommandType?)' is not currently supported by Dapper.AOT
+Info DAP002 Interceptors/QueryNonGeneric.input.cs L18 C29
+Dapper.AOT does not currently support untyped/dynamic results

@@ -1,37 +1,37 @@
 Generator produced 12 diagnostics:
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L11 C23
+Info DAP001 Interceptors/QueryMultiType.input.cs L11 C23
 The Dapper method 'SqlMapper.Query<TFirst, TSecond, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L12 C23
+Info DAP001 Interceptors/QueryMultiType.input.cs L12 C23
 The Dapper method 'SqlMapper.Query<TFirst, TSecond, TThird, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TThird, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L13 C23
+Info DAP001 Interceptors/QueryMultiType.input.cs L13 C23
 The Dapper method 'SqlMapper.Query<TFirst, TSecond, TThird, TFourth, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TThird, TFourth, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L14 C23
+Info DAP001 Interceptors/QueryMultiType.input.cs L14 C23
 The Dapper method 'SqlMapper.Query<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L15 C23
+Info DAP001 Interceptors/QueryMultiType.input.cs L15 C23
 The Dapper method 'SqlMapper.Query<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L16 C23
+Info DAP001 Interceptors/QueryMultiType.input.cs L16 C23
 The Dapper method 'SqlMapper.Query<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L18 C29
+Info DAP001 Interceptors/QueryMultiType.input.cs L18 C29
 The Dapper method 'SqlMapper.QueryAsync<TFirst, TSecond, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L19 C29
+Info DAP001 Interceptors/QueryMultiType.input.cs L19 C29
 The Dapper method 'SqlMapper.QueryAsync<TFirst, TSecond, TThird, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TThird, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L20 C29
+Info DAP001 Interceptors/QueryMultiType.input.cs L20 C29
 The Dapper method 'SqlMapper.QueryAsync<TFirst, TSecond, TThird, TFourth, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TThird, TFourth, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L21 C29
+Info DAP001 Interceptors/QueryMultiType.input.cs L21 C29
 The Dapper method 'SqlMapper.QueryAsync<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L22 C29
+Info DAP001 Interceptors/QueryMultiType.input.cs L22 C29
 The Dapper method 'SqlMapper.QueryAsync<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT
 
-Info DA0001 Interceptors/QueryMultiType.input.cs L23 C29
+Info DAP001 Interceptors/QueryMultiType.input.cs L23 C29
 The Dapper method 'SqlMapper.QueryAsync<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(IDbConnection, string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>, object, IDbTransaction, bool, string, int?, CommandType?)' is not currently supported by Dapper.AOT

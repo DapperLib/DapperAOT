@@ -175,10 +175,13 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             {
                 resultType = typeArgs[0];
             }
-            if (resultType is null)
+        }
+
+        if (HasAny(flags, OperationFlags.Query))
+        {
+            if (resultType is null || resultType.SpecialType == SpecialType.System_Object || resultType.TypeKind == TypeKind.Dynamic)
             {
-                Log?.Invoke(DiagnosticSeverity.Hidden, $"Unable to resolve data type");
-                return null;
+                return new SourceState(Diagnostic.Create(Diagnostics.UntypedResults, loc));
             }
         }
 
@@ -351,7 +354,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
         {
             case "Query":
                 flags |= OperationFlags.Query;
-                return method.Arity == 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+                return method.Arity <= 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
             case "QueryAsync":
             case "QueryUnbufferedAsync":
                 flags |= method.Name.Contains("Unbuffered") ? OperationFlags.Unbuffered : OperationFlags.Buffered;
@@ -379,7 +382,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
             case "ExecuteScalar":
             case "ExecuteScalarAsync":
                 flags |= OperationFlags.Execute | OperationFlags.Scalar;
-                return method.Arity is 0 or 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+                return method.Arity <= 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
             default:
                 return DapperMethodKind.DapperUnsupported;
         }

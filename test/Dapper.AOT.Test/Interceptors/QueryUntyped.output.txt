@@ -1,0 +1,76 @@
+Generator produced 25 diagnostics:
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L12 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L13 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L14 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L15 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L16 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L18 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L19 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L20 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L21 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L22 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L24 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L25 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L26 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L27 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L28 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L30 C29
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L31 C29
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L32 C46
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L33 C46
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L35 C29
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L36 C29
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L37 C46
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L38 C46
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L40 C29
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/QueryUntyped.input.cs L41 C29
+Dapper.AOT does not currently support untyped/dynamic results
