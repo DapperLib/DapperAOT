@@ -1,0 +1,28 @@
+Generator produced 9 diagnostics:
+
+Info DAP008 Interceptors/MiscDiagnostics.input.cs L11 C27
+Only constant SQL is currently supported
+
+Warning DAP012 Interceptors/MiscDiagnostics.input.cs L15 C19
+Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindByName({true|false})]' to clarify your intent
+
+Info DAP013 Interceptors/MiscDiagnostics.input.cs L15 C19
+Tuple-type results are not currently supported
+
+Warning DAP012 Interceptors/MiscDiagnostics.input.cs L19 C19
+Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindByName({true|false})]' to clarify your intent
+
+Info DAP014 Interceptors/MiscDiagnostics.input.cs L19 C19
+Tuple-type parameters are not currently supported
+
+Info DAP015 Interceptors/MiscDiagnostics.input.cs L22 C19
+The parameter type could not be resolved
+
+Info DAP013 Interceptors/MiscDiagnostics.input.cs L32 C19
+Tuple-type results are not currently supported
+
+Info DAP014 Interceptors/MiscDiagnostics.input.cs L35 C19
+Tuple-type parameters are not currently supported
+
+Warning DAP011 Interceptors/MiscDiagnostics.input.cs L45 C19
+Dapper (original) does not support tuple results with bind-by-name semantics
