@@ -1,22 +1,22 @@
 Generator produced 7 diagnostics:
 
 Info DAP017 Interceptors/MiscDiagnostics.input.cs L42 C23
-Type 'SomeCode.InternalNesting.SomePrivateType' is not accessible; Private types are not currently supported
+Type 'SomeCode.InternalNesting.SomePrivateType' is not accessible; private types are not currently supported
 
 Info DAP017 Interceptors/MiscDiagnostics.input.cs L43 C23
-Type 'SomeCode.InternalNesting.SomePrivateType' is not accessible; Private types are not currently supported
+Type 'SomeCode.InternalNesting.SomePrivateType' is not accessible; private types are not currently supported
 
 Info DAP017 Interceptors/MiscDiagnostics.input.cs L46 C23
-Type 'SomeCode.InternalNesting.SomeProtectedType' is not accessible; Protected types are not currently supported
+Type 'SomeCode.InternalNesting.SomeProtectedType' is not accessible; protected types are not currently supported
 
 Info DAP017 Interceptors/MiscDiagnostics.input.cs L47 C23
-Type 'SomeCode.InternalNesting.SomeProtectedType' is not accessible; Protected types are not currently supported
+Type 'SomeCode.InternalNesting.SomeProtectedType' is not accessible; protected types are not currently supported
 
 Info DAP017 Interceptors/MiscDiagnostics.input.cs L50 C23
-Type 'SomeCode.InternalNesting.SomePrivateProtectedType' is not accessible; ProtectedAndInternal types are not currently supported
+Type 'SomeCode.InternalNesting.SomePrivateProtectedType' is not accessible; private protected types are not currently supported
 
 Info DAP017 Interceptors/MiscDiagnostics.input.cs L51 C23
-Type 'SomeCode.InternalNesting.SomePrivateProtectedType' is not accessible; ProtectedAndInternal types are not currently supported
+Type 'SomeCode.InternalNesting.SomePrivateProtectedType' is not accessible; private protected types are not currently supported
 
 Info DAP017 Interceptors/MiscDiagnostics.input.cs L90 C23
-Type 'SomeCode.PrivateNesting' is not accessible; Private types are not currently supported
+Type 'SomeCode.PrivateNesting' is not accessible; private types are not currently supported

@@ -143,4 +143,46 @@ internal static class Inspection
         failingSymbol = null;
         return true;
     }
+
+    public static bool InvolvesGenericTypeParameter(ISymbol? symbol)
+    {
+        while (symbol is not null)
+        {
+            if (symbol is ITypeParameterSymbol)
+            {
+                return true;
+            }
+
+            if (symbol is INamedTypeSymbol named && named.Arity != 0)
+            {
+                foreach (var arg in named.TypeArguments)
+                {
+                    if (InvolvesGenericTypeParameter(arg))
+                    {
+                        return true;
+                    }
+                }
+            }
+            // could be Something.Foo<T>.SomethingElse
+            symbol = symbol.ContainingType;
+        }
+
+        return false;
+    }
+
+    public static string NameAccessibility(ISymbol symbol)
+    {
+        var accessibility = symbol is IArrayTypeSymbol { IsSZArray: true } array
+            ? array.ElementType.DeclaredAccessibility : symbol.DeclaredAccessibility;
+        return accessibility switch
+        {
+            Accessibility.Public => "public",
+            Accessibility.Internal => "internal",
+            Accessibility.Private => "private",
+            Accessibility.Protected => "protected",
+            Accessibility.ProtectedAndInternal => "private protected",
+            Accessibility.ProtectedOrInternal => "protected internal",
+            _ => "non-public",
+        };
+    }
 }

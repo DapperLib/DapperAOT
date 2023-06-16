@@ -219,10 +219,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedResults, loc));
                 }
-                else if (resultType is ITypeParameterSymbol t)
+                else if (Inspection.InvolvesGenericTypeParameter(resultType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, t.Name));
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, resultType!.ToDisplayString()));
                 }
                 else if (resultTuple)
                 {
@@ -242,7 +242,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 else if (!Inspection.IsPublicOrAssemblyLocal(resultType!, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), failing.DeclaredAccessibility));
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
                 }
             }
         }
@@ -277,10 +277,10 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleParameter, loc));
                 }
-                else if (paramType is ITypeParameterSymbol t)
+                else if (Inspection.InvolvesGenericTypeParameter(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, t.Name));
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, paramType!.ToDisplayString()));
                 }
                 else if (Inspection.IsMissingOrObjectOrDynamic(paramType))
                 {
@@ -290,7 +290,7 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 else if (!Inspection.IsPublicOrAssemblyLocal(paramType!, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), failing.DeclaredAccessibility));
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
                 }
             }
         }
