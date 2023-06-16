@@ -10,6 +10,21 @@ namespace Dapper.Internal.Roslyn
     public class TypeSymbolExtensionsTests
     {
         [Fact]
+        public void CheckCollectionType_TwoDimensionalArray()
+        {
+            var text = BuildDapperCodeText(
+            """
+            var customers = new Customer[4, 2];
+            _ = connection.Execute("def", customers);
+            """);
+
+            var argumentOperation = GetInvocationArgumentOperation(text);
+            var typeSymbol = GetConversionTypeSymbol(argumentOperation);
+
+            Assert.False(typeSymbol.IsArray());
+        }
+
+        [Fact]
         public void CheckCollectionType_AnonymousObjectsList()
         {
             var text = BuildDapperCodeText(

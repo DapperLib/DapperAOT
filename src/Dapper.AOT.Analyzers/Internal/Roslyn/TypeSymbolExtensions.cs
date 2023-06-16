@@ -56,18 +56,10 @@ internal static class TypeSymbolExtensions
     }
 
     /// <returns>
-    /// True, if passed <param name="typeSymbol"/> represents array.
-    /// False otherwise
+    /// True, if passed <param name="typeSymbol"/> represents array. False otherwise
     /// </returns>
-    public static bool IsArray(this ITypeSymbol? typeSymbol)
-    {
-        if (typeSymbol is null) return false;
-        if (typeSymbol is not IArrayTypeSymbol arrayTypeSymbol) return false;
-
-        return arrayTypeSymbol.TypeKind == TypeKind.Array
-            && arrayTypeSymbol.BaseType?.InNamespace("System") == true
-            && arrayTypeSymbol.BaseType?.Name == "Array";
-    }
+    /// <remarks>Checks it type is a zero-based one-dimensional array</remarks>
+    public static bool IsArray(this ITypeSymbol? typeSymbol) => typeSymbol is IArrayTypeSymbol { IsSZArray: true };
 
     /// <returns>
     /// True, if passed <param name="typeSymbol"/> represents <see cref="List{T}"/>.
