@@ -50,9 +50,9 @@ internal static class TypeSymbolExtensions
         if (typeSymbol is not INamedTypeSymbol namedTypeSymbol) return false;
 
         return namedTypeSymbol.TypeKind == TypeKind.Struct
-            && namedTypeSymbol.InNamespace("System.Collections.Immutable")
             && namedTypeSymbol.Arity == 1
-            && namedTypeSymbol.Name == "ImmutableArray";
+            && namedTypeSymbol.Name == "ImmutableArray"
+            && namedTypeSymbol.InNamespace("System.Collections.Immutable");
     }
 
     /// <returns>
@@ -71,9 +71,9 @@ internal static class TypeSymbolExtensions
         if (typeSymbol is not INamedTypeSymbol namedTypeSymbol) return false;
 
         return namedTypeSymbol.TypeKind == TypeKind.Class
-            && namedTypeSymbol.InNamespace("System.Collections.Generic")
             && namedTypeSymbol.Arity == 1
-            && namedTypeSymbol.Name == "List";
+            && namedTypeSymbol.Name == "List"
+            && namedTypeSymbol.InNamespace("System.Collections.Generic");
     }
 
     /// <returns>
