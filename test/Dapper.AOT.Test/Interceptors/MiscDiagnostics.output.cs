@@ -22,7 +22,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(commandType is null);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<global::SomeCode.InternalNesting.SomePublicType>(cnn, transaction, sql, (global::SomeCode.InternalNesting.SomePublicType)param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory1.Instance).Execute();
+        return global::Dapper.DapperAotExtensions.Command<global::SomeCode.InternalNesting.SomePublicType>(cnn, transaction, sql, (global::SomeCode.InternalNesting.SomePublicType)param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).Execute();
 
     }
 
@@ -46,7 +46,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(commandType is null);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<global::SomeCode.InternalNesting.SomeInternalType>(cnn, transaction, sql, (global::SomeCode.InternalNesting.SomeInternalType)param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory2.Instance).Execute();
+        return global::Dapper.DapperAotExtensions.Command<global::SomeCode.InternalNesting.SomeInternalType>(cnn, transaction, sql, (global::SomeCode.InternalNesting.SomeInternalType)param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory1.Instance).Execute();
 
     }
 
@@ -70,7 +70,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(commandType is null);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<global::SomeCode.InternalNesting.SomeProtectedInternalType>(cnn, transaction, sql, (global::SomeCode.InternalNesting.SomeProtectedInternalType)param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory3.Instance).Execute();
+        return global::Dapper.DapperAotExtensions.Command<global::SomeCode.InternalNesting.SomeProtectedInternalType>(cnn, transaction, sql, (global::SomeCode.InternalNesting.SomeProtectedInternalType)param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory2.Instance).Execute();
 
     }
 
@@ -237,10 +237,10 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory1 : CommonCommandFactory<global::SomeCode.InternalNesting.SomePublicType>
+    private sealed class CommandFactory0 : CommonCommandFactory<global::SomeCode.InternalNesting.SomePublicType>
     {
-        internal static readonly CommandFactory1 Instance = new();
-        private CommandFactory1() {}
+        internal static readonly CommandFactory0 Instance = new();
+        private CommandFactory0() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomePublicType args)
         {
             // var sql = cmd.CommandText;
@@ -270,10 +270,10 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory2 : CommonCommandFactory<global::SomeCode.InternalNesting.SomeInternalType>
+    private sealed class CommandFactory1 : CommonCommandFactory<global::SomeCode.InternalNesting.SomeInternalType>
     {
-        internal static readonly CommandFactory2 Instance = new();
-        private CommandFactory2() {}
+        internal static readonly CommandFactory1 Instance = new();
+        private CommandFactory1() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeInternalType args)
         {
             // var sql = cmd.CommandText;
@@ -303,10 +303,10 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory3 : CommonCommandFactory<global::SomeCode.InternalNesting.SomeProtectedInternalType>
+    private sealed class CommandFactory2 : CommonCommandFactory<global::SomeCode.InternalNesting.SomeProtectedInternalType>
     {
-        internal static readonly CommandFactory3 Instance = new();
-        private CommandFactory3() {}
+        internal static readonly CommandFactory2 Instance = new();
+        private CommandFactory2() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeProtectedInternalType args)
         {
             // var sql = cmd.CommandText;

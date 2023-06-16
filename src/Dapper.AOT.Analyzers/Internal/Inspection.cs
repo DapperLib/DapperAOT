@@ -120,6 +120,10 @@ internal static class Inspection
         if (symbol is null) throw new ArgumentNullException(nameof(symbol));
         while (symbol is not null)
         {
+            if (symbol is IArrayTypeSymbol array)
+            {
+                return IsPublicOrAssemblyLocal(array.ElementType, assembly, out failingSymbol);
+            }
             switch (symbol.DeclaredAccessibility)
             {
                 case Accessibility.Public:
@@ -172,7 +176,7 @@ internal static class Inspection
 
     public static string NameAccessibility(ISymbol symbol)
     {
-        var accessibility = symbol is IArrayTypeSymbol { IsSZArray: true } array
+        var accessibility = symbol is IArrayTypeSymbol array
             ? array.ElementType.DeclaredAccessibility : symbol.DeclaredAccessibility;
         return accessibility switch
         {
