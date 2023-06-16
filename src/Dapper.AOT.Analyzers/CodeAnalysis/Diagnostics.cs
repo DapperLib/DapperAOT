@@ -34,7 +34,9 @@ internal static class Diagnostics
         DapperAotTupleParameter = new("DAP014", "Tuple-type parameter",
             "Tuple-type parameters are not currently supported", Category.Library, DiagnosticSeverity.Info, true),
         UntypedParameter = new("DAP015", "Untyped parameter",
-            "The parameter type could not be resolved", Category.Library, DiagnosticSeverity.Info, true);
+            "The parameter type could not be resolved", Category.Library, DiagnosticSeverity.Info, true),
+        GenericTypeParameter = new("DAP016", "Generic type parameter",
+            "Generic type parameters ({0}) are not currently supported", Category.Library, DiagnosticSeverity.Info, true);
 
     internal static class Category
     {

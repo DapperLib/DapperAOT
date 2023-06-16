@@ -221,6 +221,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedResults, loc));
                 }
+                else if (resultType is ITypeParameterSymbol t)
+                {
+                    flags |= OperationFlags.DoNotGenerate;
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, t.Name));
+                }
                 else if (resultTuple)
                 {
                     if (Inspection.IsEnabled(ctx, op, Types.BindByNameAttribute, out var defined, cancellationToken))
@@ -235,7 +240,6 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     // but not implemented currently!
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleResults, loc));
-
                 }
             }
         }
@@ -269,6 +273,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     // but not implemented currently!
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleParameter, loc));
+                }
+                else if (paramType is ITypeParameterSymbol t)
+                {
+                    flags |= OperationFlags.DoNotGenerate;
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, t.Name));
                 }
                 else if (Inspection.IsMissingOrObjectOrDynamic(paramType))
                 {

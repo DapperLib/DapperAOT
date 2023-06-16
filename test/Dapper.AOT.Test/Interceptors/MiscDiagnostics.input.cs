@@ -26,6 +26,16 @@ public static class SomeCode
         connection.Execute("blah");
     }
 
+    [DapperAot(true)]
+    public static void WithDapper<T>(DbConnection connection, T args)
+    {
+        // expect warning about generic
+        connection.Execute("blah", args);
+
+        // expect warning about generic
+        connection.Query<T>("blah");
+    }
+
     [DapperAot(true), BindByName]
     public static void WithDapperAndBindByName(DbConnection connection)
     {

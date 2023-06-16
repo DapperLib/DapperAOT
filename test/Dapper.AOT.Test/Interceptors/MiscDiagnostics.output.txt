@@ -1,4 +1,4 @@
-Generator produced 9 diagnostics:
+Generator produced 11 diagnostics:
 
 Info DAP008 Interceptors/MiscDiagnostics.input.cs L11 C27
 Only constant SQL is currently supported
@@ -18,11 +18,17 @@ Tuple-type parameters are not currently supported
 Info DAP015 Interceptors/MiscDiagnostics.input.cs L22 C19
 The parameter type could not be resolved
 
-Info DAP013 Interceptors/MiscDiagnostics.input.cs L32 C19
+Info DAP016 Interceptors/MiscDiagnostics.input.cs L32 C19
+Generic type parameters (T) are not currently supported
+
+Info DAP016 Interceptors/MiscDiagnostics.input.cs L35 C19
+Generic type parameters (T) are not currently supported
+
+Info DAP013 Interceptors/MiscDiagnostics.input.cs L42 C19
 Tuple-type results are not currently supported
 
-Info DAP014 Interceptors/MiscDiagnostics.input.cs L35 C19
+Info DAP014 Interceptors/MiscDiagnostics.input.cs L45 C19
 Tuple-type parameters are not currently supported
 
-Warning DAP011 Interceptors/MiscDiagnostics.input.cs L45 C19
+Warning DAP011 Interceptors/MiscDiagnostics.input.cs L55 C19
 Dapper (original) does not support tuple results with bind-by-name semantics

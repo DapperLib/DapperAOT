@@ -20,3 +20,4 @@ DAP012 | Library | Warning | Diagnostics
 DAP013 | Library | Info | Diagnostics
 DAP014 | Library | Info | Diagnostics
 DAP015 | Library | Info | Diagnostics
+DAP016 | Library | Info | Diagnostics
