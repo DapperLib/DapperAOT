@@ -11,6 +11,9 @@
 
     <ItemGroup>
       <Compile Remove="InterceptsLocationAttribute.cs" />
+      <Compile Update="CodeAnalysis\DapperInterceptorGenerator.*.cs">
+        <DependentUpon>DapperInterceptorGenerator.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
     <ItemGroup>

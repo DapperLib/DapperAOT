@@ -1,19 +1,14 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Dapper.TestCommon;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.ComponentModel;
-using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
 using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace Dapper.AOT.Test
@@ -62,7 +57,7 @@ namespace Dapper.AOT.Test
             // Create the 'input' compilation that the generator will act on
             if (string.IsNullOrWhiteSpace(name)) name = "compilation";
             if (string.IsNullOrWhiteSpace(fileName)) fileName = "input.cs";
-            Compilation inputCompilation = CreateCompilation(source, name!, fileName!);
+            Compilation inputCompilation = RoslynTestHelpers.CreateCompilation(source, name!, fileName!);
 
             // directly create an instance of the generator
             // (Note: in the compiler this is loaded from an assembly, and created via reflection at runtime)
@@ -146,38 +141,5 @@ namespace Dapper.AOT.Test
             let loc = d.Location
             orderby loc.SourceTree?.FilePath, loc.SourceSpan.Start, d.Id, d.ToString()
             select d).ToList();
-
-        static readonly CSharpParseOptions ParseOptionsLatestLangVer = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest);
-
-        protected static Compilation CreateCompilation(string source, string name, string fileName)
-           => CSharpCompilation.Create(name,
-               syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source, ParseOptionsLatestLangVer).WithFilePath(fileName) },
-               references: new[] {
-                   MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
-#if !NET48
-                   MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
-                   MetadataReference.CreateFromFile(Assembly.Load("System.Data").Location),
-                   MetadataReference.CreateFromFile(Assembly.Load("netstandard").Location),
-                   MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
-#endif
-                   MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(System.Data.SqlClient.SqlConnection).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(OracleConnection).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(ValueTask<int>).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(Component).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(Command<int>).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(ImmutableList<int>).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(ImmutableArray<int>).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(IAsyncEnumerable<int>).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(Span<int>).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(IgnoreDataMemberAttribute).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(DynamicAttribute).Assembly.Location),
-               },
-               options: new CSharpCompilationOptions(OutputKind.ConsoleApplication, allowUnsafe: true));
     }
 }
