@@ -3,7 +3,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.CodeAnalysis.Options;
 using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
@@ -13,7 +12,6 @@ using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Xml.Linq;
 
 namespace Dapper.CodeAnalysis;
 
@@ -241,6 +239,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleResults, loc));
                 }
+                else if (!Inspection.IsPublicOrAssemblyLocal(resultType!, ctx, out var failing))
+                {
+                    flags |= OperationFlags.DoNotGenerate;
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), failing.DeclaredAccessibility));
+                }
             }
         }
 
@@ -283,6 +286,11 @@ public sealed class DapperInterceptorGenerator : IIncrementalGenerator
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedParameter, loc));
+                }
+                else if (!Inspection.IsPublicOrAssemblyLocal(paramType!, ctx, out var failing))
+                {
+                    flags |= OperationFlags.DoNotGenerate;
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), failing.DeclaredAccessibility));
                 }
             }
         }

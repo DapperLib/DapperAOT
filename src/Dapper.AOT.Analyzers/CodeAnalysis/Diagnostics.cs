@@ -36,7 +36,9 @@ internal static class Diagnostics
         UntypedParameter = new("DAP015", "Untyped parameter",
             "The parameter type could not be resolved", Category.Library, DiagnosticSeverity.Info, true),
         GenericTypeParameter = new("DAP016", "Generic type parameter",
-            "Generic type parameters ({0}) are not currently supported", Category.Library, DiagnosticSeverity.Info, true);
+            "Generic type parameters ({0}) are not currently supported", Category.Library, DiagnosticSeverity.Info, true),
+        NonPublicType = new ("DAP017", "Non-accessible type",
+            "Type '{0}' is not accessible; {1} types are not currently supported", Category.Library, DiagnosticSeverity.Info, true);
 
     internal static class Category
     {

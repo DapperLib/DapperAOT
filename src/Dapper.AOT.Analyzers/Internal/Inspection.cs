@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using System;
 using System.Threading;
 
 namespace Dapper.Internal;
@@ -110,4 +111,36 @@ internal static class Inspection
         }
     }
     public static bool IsMissingOrObjectOrDynamic(ITypeSymbol? type) => type is null || type.SpecialType == SpecialType.System_Object || type.TypeKind == TypeKind.Dynamic;
+
+    public static bool IsPublicOrAssemblyLocal(ISymbol symbol, in GeneratorSyntaxContext ctx, out ISymbol? failingSymbol)
+        => IsPublicOrAssemblyLocal(symbol, ctx.SemanticModel.Compilation.Assembly, out failingSymbol);
+
+    public static bool IsPublicOrAssemblyLocal(ISymbol symbol, IAssemblySymbol? assembly, out ISymbol? failingSymbol)
+    {
+        if (symbol is null) throw new ArgumentNullException(nameof(symbol));
+        while (symbol is not null)
+        {
+            switch (symbol.DeclaredAccessibility)
+            {
+                case Accessibility.Public:
+                    break; // fine, keep looking upwards
+                case Accessibility.Internal:
+                case Accessibility.ProtectedOrInternal when assembly is not null:
+                    if (!SymbolEqualityComparer.Default.Equals(symbol.ContainingAssembly, assembly))
+                    {
+                        // different assembly
+                        failingSymbol = symbol;
+                        return false;
+                    }
+                    break; // otherwise fine, keep looking upwards
+                default:
+                    failingSymbol = symbol;
+                    return false;
+            }
+
+            symbol = symbol.ContainingType;
+        }
+        failingSymbol = null;
+        return true;
+    }
 }
