@@ -1,10 +1,19 @@
-Output code has 3 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+Generator produced 6 diagnostics:
 
-Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L82 C15
-Nullability of reference types in value of type 'Task<object?>' doesn't match target type 'Task<object>'.
+Info DAP002 Interceptors/ExecuteScalar.input.cs L12 C23
+Dapper.AOT does not currently support untyped/dynamic results
 
-Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L93 C15
-Nullability of reference types in value of type 'Task<object?>' doesn't match target type 'Task<object>'.
+Info DAP002 Interceptors/ExecuteScalar.input.cs L13 C23
+Dapper.AOT does not currently support untyped/dynamic results
 
-Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L104 C15
-Nullability of reference types in value of type 'Task<object?>' doesn't match target type 'Task<object>'.
+Info DAP002 Interceptors/ExecuteScalar.input.cs L14 C23
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/ExecuteScalar.input.cs L20 C29
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/ExecuteScalar.input.cs L21 C29
+Dapper.AOT does not currently support untyped/dynamic results
+
+Info DAP002 Interceptors/ExecuteScalar.input.cs L22 C29
+Dapper.AOT does not currently support untyped/dynamic results
