@@ -9,7 +9,8 @@ namespace Dapper;
 /// </summary>
 [ImmutableObject(true), Conditional("DEBUG")]
 [AttributeUsage(AttributeTargets.All, AllowMultiple = false, Inherited = true)]
-public sealed class BindByNameAttribute : Attribute
+public sealed class BindTupleByNameAttribute
+    : Attribute
 {
     /// <summary>
     /// Indicates whether name-based result-binding for value tuples is enabled for this element
@@ -18,5 +19,5 @@ public sealed class BindByNameAttribute : Attribute
     /// <summary>
     /// Indicates whether name-based result-binding for value tuples is enabled for this element
     /// </summary>
-    public BindByNameAttribute(bool enabled = true) => Enabled = enabled;
+    public BindTupleByNameAttribute(bool enabled = true) => Enabled = enabled;
 }

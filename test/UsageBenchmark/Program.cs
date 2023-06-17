@@ -35,12 +35,12 @@ static class Program
             Console.WriteLine(await obj.DapperAsync());
 
             obj.ResetIds();
-            Console.WriteLine(obj.DapperAot());
+            Console.WriteLine(obj.DapperAotManual());
             obj.ResetIds();
             Console.WriteLine(await obj.DapperAotAsync());
 
             obj.ResetIds();
-            Console.WriteLine(obj.DapperAot_Prepared());
+            Console.WriteLine(obj.DapperAot_PreparedManual());
             obj.ResetIds();
             Console.WriteLine(await obj.DapperAot_PreparedAsync());
 

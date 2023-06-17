@@ -3,7 +3,7 @@
 internal static class Types
 {
     public const string
-        BindByNameAttribute = nameof(BindByNameAttribute),
+        BindTupleByNameAttribute = nameof(BindTupleByNameAttribute),
         DapperAotAttribute = nameof(DapperAotAttribute);
 
 }

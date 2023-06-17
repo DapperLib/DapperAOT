@@ -1,10 +1,15 @@
 ﻿using Microsoft.CodeAnalysis;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Reflection;
 
 namespace Dapper.CodeAnalysis;
 
 internal static class Diagnostics
 {
     internal static readonly DiagnosticDescriptor
+        InterceptorsGenerated = new("DAP000", "Interceptors generated",
+            "Dapper.AOT handled {0} of {1} enabled call-sites using {2} interceptors, {3} commands and {4} readers", Category.Library, DiagnosticSeverity.Info, false),
         UnsupportedMethod = new("DAP001", "Unsupported method",
             "The Dapper method '{0}' is not currently supported by Dapper.AOT", Category.Library, DiagnosticSeverity.Info, true),
         UntypedResults = new("DAP002", "Untyped result types",
@@ -27,8 +32,8 @@ internal static class Diagnostics
             "The SQL for this operation could not be identified", Category.Library, DiagnosticSeverity.Info, true),
         DapperLegacyBindNameTupleResults = new("DAP011", "Named-tuple results",
             "Dapper (original) does not support tuple results with bind-by-name semantics", Category.Library, DiagnosticSeverity.Warning, true),
-        DapperAotAddBindByName = new("DAP012", "Add BindByName",
-            "Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindByName({true|false})]' to clarify your intent", Category.Library, DiagnosticSeverity.Warning, true),
+        DapperAotAddBindTupleByName = new("DAP012", "Add BindTupleByName",
+            "Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindTupleByName({true|false})]' to clarify your intent", Category.Library, DiagnosticSeverity.Warning, true),
         DapperAotTupleResults = new("DAP013", "Tuple-type results",
             "Tuple-type results are not currently supported", Category.Library, DiagnosticSeverity.Info, true),
         DapperAotTupleParameter = new("DAP014", "Tuple-type parameter",
@@ -39,6 +44,12 @@ internal static class Diagnostics
             "Generic type parameters ({0}) are not currently supported", Category.Library, DiagnosticSeverity.Info, true),
         NonPublicType = new ("DAP017", "Non-accessible type",
             "Type '{0}' is not accessible; {1} types are not currently supported", Category.Library, DiagnosticSeverity.Info, true);
+
+    // be careful moving this because of static field initialization order
+    internal static readonly ImmutableArray<DiagnosticDescriptor> All = typeof(Diagnostics)
+        .GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
+        .Select(x => x.GetValue(null)).OfType<DiagnosticDescriptor>().ToImmutableArray();
+
 
     internal static class Category
     {

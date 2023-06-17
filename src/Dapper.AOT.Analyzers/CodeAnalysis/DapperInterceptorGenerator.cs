@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis.Text;
 using System;
@@ -18,9 +19,20 @@ namespace Dapper.CodeAnalysis;
 /// <summary>
 /// Analyses source for Dapper syntax and generates suitable interceptors where possible.
 /// </summary>
-[Generator(LanguageNames.CSharp)]
-public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
+[Generator(LanguageNames.CSharp), DiagnosticAnalyzer(LanguageNames.CSharp)]
+public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIncrementalGenerator
 {
+    /// <inheritdoc/>
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Diagnostics.All;
+
+    /// <inheritdoc/>
+    public override void Initialize(AnalysisContext context)
+    {
+        context.EnableConcurrentExecution();
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        // we won't register anything; all we really want here is to report our supported diagnostics
+    }
+
     /// <summary>
     /// Whether to emit interceptors even if the "interceptors" feature is not detected
     /// </summary>
@@ -206,7 +218,7 @@ public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
             if (HasAny(flags, OperationFlags.DoNotGenerate))
             {
                 // extra checks specific to Dapper vanilla
-                if (resultTuple && Inspection.IsEnabled(ctx, op, Types.BindByNameAttribute, out _, cancellationToken))
+                if (resultTuple && Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out _, cancellationToken))
                 {   // Dapper vanilla supports bind-by-position for tuples; warn if bind-by-name is enabled
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyBindNameTupleResults, loc));
                 }
@@ -226,13 +238,13 @@ public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
                 }
                 else if (resultTuple)
                 {
-                    if (Inspection.IsEnabled(ctx, op, Types.BindByNameAttribute, out var defined, cancellationToken))
+                    if (Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out var defined, cancellationToken))
                     {
                         flags |= OperationFlags.BindTupleResultByName;
                     }
                     if (!defined)
                     {
-                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindByName, loc));
+                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
                     }
 
                     // but not implemented currently!
@@ -264,13 +276,13 @@ public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
                 // extra checks specific to DapperAOT
                 if (paramTuple)
                 {
-                    if (Inspection.IsEnabled(ctx, op, Types.BindByNameAttribute, out var defined, cancellationToken))
+                    if (Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out var defined, cancellationToken))
                     {
                         flags |= OperationFlags.BindTupleParameterByName;
                     }
                     if (!defined)
                     {
-                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindByName, loc));
+                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
                     }
 
                     // but not implemented currently!
@@ -509,8 +521,9 @@ public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
         return method.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat);
     }
 
-    private bool CheckPrerequisites(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+    private bool CheckPrerequisites(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state, out int enabledCount)
     {
+        enabledCount = 0;
         if (!state.Nodes.IsDefaultOrEmpty)
         {
             int errorCount = 0, disabledCount = 0, doNotGenerateCount = 0;
@@ -531,6 +544,7 @@ public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
                 }
                 else
                 {
+                    enabledCount++;
                     // find the first enabled thing with a C# parse options
                     if (checkParseOptions && node.Location.SourceTree?.Options is CSharpParseOptions options)
                     {
@@ -569,7 +583,7 @@ public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
     {
-        if (!CheckPrerequisites(ctx, state)) // also reports per-item diagnostics
+        if (!CheckPrerequisites(ctx, state, out int enabledCount)) // also reports per-item diagnostics
         {
             // failed checks; do nothing
             return;
@@ -580,7 +594,7 @@ public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
         bool allowUnsafe = state.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
             .Append("file static class DapperGeneratedInterceptors").Indent().NewLine();
-        int methodIndex = 0;
+        int methodIndex = 0, callSiteCount = 0;
 
         var resultTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
         var parameterTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
@@ -620,6 +634,7 @@ public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
             {
                 continue; // empty group?
             }
+            callSiteCount += usageCount;
 
             // declare the method
             bool makeMethodNullable = false; // fixup return type annotation
@@ -756,6 +771,7 @@ public sealed partial class DapperInterceptorGenerator : IIncrementalGenerator
             sb.NewLine().Append(Resources.ReadString("Dapper.InterceptsLocationAttribute.cs"));
         }
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
+        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, enabledCount, methodIndex, parameterTypes.Count, resultTypes.Count));
     }
 
     private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index)

@@ -1,8 +1,19 @@
 #nullable enable
 file static class DapperGeneratedInterceptors
 {
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 26, 20)]
+    internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Execute
+        global::System.Diagnostics.Debug.Assert(commandType is null);
+        global::System.Diagnostics.Debug.Assert(param is null);
+
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, DefaultCommandFactory).Execute();
+
+    }
+
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 35, 24)]
-    internal static global::SomeCode.InternalNesting.SomePublicType QueryFirst0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::SomeCode.InternalNesting.SomePublicType QueryFirst1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, SingleRow, AtLeastOne
         // returns data: global::SomeCode.InternalNesting.SomePublicType
@@ -15,7 +26,7 @@ file static class DapperGeneratedInterceptors
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 36, 24)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 92, 24)]
-    internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static int Execute2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters
         // takes parameter: global::SomeCode.InternalNesting.SomePublicType
@@ -27,7 +38,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 39, 24)]
-    internal static global::SomeCode.InternalNesting.SomeInternalType QueryFirst2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::SomeCode.InternalNesting.SomeInternalType QueryFirst3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, SingleRow, AtLeastOne
         // returns data: global::SomeCode.InternalNesting.SomeInternalType
@@ -39,7 +50,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 40, 24)]
-    internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static int Execute4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters
         // takes parameter: global::SomeCode.InternalNesting.SomeInternalType
@@ -51,7 +62,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 55, 24)]
-    internal static global::SomeCode.InternalNesting.SomeProtectedInternalType QueryFirst4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::SomeCode.InternalNesting.SomeProtectedInternalType QueryFirst5(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, SingleRow, AtLeastOne
         // returns data: global::SomeCode.InternalNesting.SomeProtectedInternalType
@@ -63,7 +74,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 56, 24)]
-    internal static int Execute5(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static int Execute6(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters
         // takes parameter: global::SomeCode.InternalNesting.SomeProtectedInternalType

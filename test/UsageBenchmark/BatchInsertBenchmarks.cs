@@ -53,12 +53,15 @@ public class BatchInsertBenchmarks : IDisposable
     [Benchmark, BenchmarkCategory("Sync")]
     public int Dapper() => connection.Execute("insert BenchmarkBatchInsert (Name) values (@name)", customers);
 
+    [Benchmark, BenchmarkCategory("Sync"), DapperAot]
+    public int DapperAot() => connection.Execute("insert BenchmarkBatchInsert (Name) values (@name)", customers);
+
     [Benchmark, BenchmarkCategory("Sync")]
-    public int DapperAot() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
+    public int DapperAotManual() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Unprepared).Execute(customers);
 
     [Benchmark, BenchmarkCategory("Sync")]
-    public int DapperAot_Prepared() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
+    public int DapperAot_PreparedManual() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Prepared).Execute(customers);
 
     [Benchmark(Baseline = true), BenchmarkCategory("Sync")]
