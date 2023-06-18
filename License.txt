@@ -1,6 +1,10 @@
 The Dapper library and tools are licenced under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 
-The Dapper logo is copyright Marc Gravell 2021 onwards; it is fine to use the Dapper logo when referencing the Dapper library and utilities, but
-the Dapper logo (including derivatives) must not be used in a way that misrepresents an external product or library as being affiliated or endorsed
-with Dapper. For example, you must not use the Dapper logo as the package icon on your own external tool (even if it uses Dapper internally),
-without written permission. If in doubt: ask.
+The Dapper logo is copyright Marc Gravell 2021 onwards.
+
+This licence applies only to the use of the tools themselves. It does not grant you the right to use the name Dapper (or
+any derivate thereof), or the Dapper logo, as part of your own product name / branding. It is fine to use the Dapper name
+and logo when referencing the Dapper library and utilities, but the Dapper name and/or logo (including derivatives) must not
+be used in a way that misrepresents an external product or library as being affiliated with or endorsed by Dapper.
+For example, you must not use the Dapper logo as the package icon on your own external tool (even if it uses Dapper
+internally), without written permission. If in doubt: ask.
