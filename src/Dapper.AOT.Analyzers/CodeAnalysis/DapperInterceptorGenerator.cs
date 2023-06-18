@@ -690,7 +690,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         int methodIndex = 0, callSiteCount = 0;
 
         var resultTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
-        var parameterTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
+        var parameterTypes = new Dictionary<(ITypeSymbol Type, string Map), int>(ParameterTypeMapComparer.Instance);
 
         foreach (var grp in state.Nodes.Where(x => !HasAny(x.Flags, OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
@@ -799,9 +799,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
-            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, methodParameters, parameterTypes, resultTypes))
+            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, methodParameters, parameterTypes, resultTypes))
             {
-                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, methodParameters, parameterTypes, resultTypes);
+                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, methodParameters, parameterTypes, resultTypes);
             }
         }
 
@@ -861,7 +861,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
         foreach (var pair in parameterTypes.OrderBy(x => x.Value)) // retain discovery order
         {
-            WriteCommandFactory(baseCommandFactory, sb, pair.Key, pair.Value);
+            WriteCommandFactory(baseCommandFactory, sb, pair.Key.Type, pair.Value, pair.Key.Map);
         }
 
         sb.Outdent(); // ends our generated file-scoped class
@@ -876,7 +876,21 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, enabledCount, methodIndex, parameterTypes.Count, resultTypes.Count));
     }
 
-    private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index)
+    private sealed class ParameterTypeMapComparer : IEqualityComparer<(ITypeSymbol Type, string Map)>
+    {
+        public static readonly ParameterTypeMapComparer Instance = new();
+        private ParameterTypeMapComparer() { }
+
+        public bool Equals((ITypeSymbol Type, string Map) x, (ITypeSymbol Type, string Map) y)
+            => StringComparer.InvariantCultureIgnoreCase.Equals(x.Map, y.Map)
+            && SymbolEqualityComparer.Default.Equals(x.Type, y.Type);
+
+        public int GetHashCode((ITypeSymbol Type, string Map) obj)
+            => StringComparer.InvariantCultureIgnoreCase.GetHashCode(obj.Map)
+            ^ SymbolEqualityComparer.Default.GetHashCode(obj.Type);
+    }
+
+    private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map)
     {
         var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
         sb.Append("private sealed class CommandFactory").Append(index).Append(" : ")

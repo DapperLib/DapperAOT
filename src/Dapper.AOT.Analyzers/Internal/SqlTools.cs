@@ -19,6 +19,39 @@ internal static class SqlTools
     public static ImmutableHashSet<string> GetUniqueParameters(string sql)
         => ImmutableHashSet.Create(StringComparer.InvariantCultureIgnoreCase, GetParameters(sql));
 
+    public static bool IncludeParameter(string map, string name, out bool test)
+    {
+        test = false;
+        if (string.IsNullOrWhiteSpace(map))
+        {
+            return false;
+        }
+        if (map == "?")
+        {
+            test = true;
+            return true;
+        }
+        if (map == "*")
+        {
+            return true;
+        }
+        int start = 0, index;
+        while ((index = map.IndexOf(name, start, StringComparison.InvariantCultureIgnoreCase)) >= 0)
+        {
+            if (
+                (index == 0 || map[index-1] == ' ') // isn't "foo" in "somefoo"
+                &&
+                ((index + name.Length == map.Length) || map[index + name.Length] == ' ') // isn't "foo" in "foothing"
+                )
+            {
+                return true;
+            }
+            start = index + name.Length;
+        }
+        return false;
+
+    }
+
     public static string[] GetParameters(string sql)
     {
         if (!ParameterRegex.IsMatch(sql))

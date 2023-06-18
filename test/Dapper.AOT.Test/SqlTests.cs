@@ -21,4 +21,26 @@ public class SqlTests
     {
         Assert.Equal(expected, string.Join(' ', SqlTools.GetParameters(sql)));
     }
+
+
+    [Theory]
+    [InlineData("", false)]
+    [InlineData("*", true)]
+    [InlineData("?", true, true)]
+    [InlineData("bar", false)]
+    [InlineData("bar blap", false)]
+    [InlineData("name", true)]
+    [InlineData("name bar", true)]
+    [InlineData("bar name", true)]
+    [InlineData("aname bar", false)]
+    [InlineData("namea bar", false)]
+    [InlineData("anamea bar", false)]
+    [InlineData("bar namea", false)]
+    [InlineData("bar aname", false)]
+    [InlineData("bar anamea", false)]
+    public void IncludeParameter(string map, bool expected, bool testExpected = false)
+    {
+        Assert.Equal(expected, SqlTools.IncludeParameter(map, "name", out var testActual));
+        Assert.Equal(testExpected, testActual);
+    }
 }

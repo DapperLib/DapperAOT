@@ -49,7 +49,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Immutable.ImmutableArray<global::Foo.Customer>)param);
+        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory2.Instance).Execute((global::System.Collections.Immutable.ImmutableArray<global::Foo.Customer>)param);
 
     }
 
@@ -237,6 +237,65 @@ file static class DapperGeneratedInterceptors
             // if (Include(sql, commandType, "bar"))
             {
                 ps["bar"].Value = AsValue(typed.bar);
+
+            }
+
+        }
+
+    }
+
+    private sealed class CommandFactory2 : CommonCommandFactory<global::Foo.Customer>
+    {
+        internal static readonly CommandFactory2 Instance = new();
+        private CommandFactory2() {}
+        public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+        {
+            // var sql = cmd.CommandText;
+            // var commandType = cmd.CommandType;
+            global::System.Data.Common.DbParameter p;
+            // if (Include(sql, commandType, "X"))
+            {
+                p = cmd.CreateParameter();
+                p.ParameterName = "X";
+                p.DbType = global::System.Data.DbType.Int32;
+                p.Value = AsValue(args.X);
+                cmd.Parameters.Add(p);
+            }
+            // if (Include(sql, commandType, "Y"))
+            {
+                p = cmd.CreateParameter();
+                p.ParameterName = "Y";
+                p.DbType = global::System.Data.DbType.String;
+                p.Value = AsValue(args.Y);
+                cmd.Parameters.Add(p);
+            }
+            // if (Include(sql, commandType, "Z"))
+            {
+                p = cmd.CreateParameter();
+                p.ParameterName = "Z";
+                p.DbType = global::System.Data.DbType.Double;
+                p.Value = AsValue(args.Z);
+                cmd.Parameters.Add(p);
+            }
+
+        }
+        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+        {
+            var sql = cmd.CommandText;
+            var ps = cmd.Parameters;
+            // if (Include(sql, commandType, "X"))
+            {
+                ps["X"].Value = AsValue(args.X);
+
+            }
+            // if (Include(sql, commandType, "Y"))
+            {
+                ps["Y"].Value = AsValue(args.Y);
+
+            }
+            // if (Include(sql, commandType, "Z"))
+            {
+                ps["Z"].Value = AsValue(args.Z);
 
             }
 

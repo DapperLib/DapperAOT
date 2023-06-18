@@ -66,7 +66,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).QueryBuffered<global::Foo.Customer>(RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).QueryBuffered<global::Foo.Customer>(RowFactory0.Instance);
 
     }
 
@@ -119,7 +119,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).QueryUnbufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).QueryUnbufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default);
 
     }
 
@@ -212,6 +212,54 @@ file static class DapperGeneratedInterceptors
     {
         internal static readonly CommandFactory0 Instance = new();
         private CommandFactory0() {}
+        public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
+        {
+            // var sql = cmd.CommandText;
+            // var commandType = cmd.CommandType;
+            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            global::System.Data.Common.DbParameter p;
+            // if (Include(sql, commandType, "Foo"))
+            {
+                p = cmd.CreateParameter();
+                p.ParameterName = "Foo";
+                p.DbType = global::System.Data.DbType.Int32;
+                p.Value = AsValue(typed.Foo);
+                cmd.Parameters.Add(p);
+            }
+            // if (Include(sql, commandType, "bar"))
+            {
+                p = cmd.CreateParameter();
+                p.ParameterName = "bar";
+                p.DbType = global::System.Data.DbType.String;
+                p.Value = AsValue(typed.bar);
+                cmd.Parameters.Add(p);
+            }
+
+        }
+        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
+        {
+            var sql = cmd.CommandText;
+            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            var ps = cmd.Parameters;
+            // if (Include(sql, commandType, "Foo"))
+            {
+                ps["Foo"].Value = AsValue(typed.Foo);
+
+            }
+            // if (Include(sql, commandType, "bar"))
+            {
+                ps["bar"].Value = AsValue(typed.bar);
+
+            }
+
+        }
+
+    }
+
+    private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
+    {
+        internal static readonly CommandFactory1 Instance = new();
+        private CommandFactory1() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
             // var sql = cmd.CommandText;

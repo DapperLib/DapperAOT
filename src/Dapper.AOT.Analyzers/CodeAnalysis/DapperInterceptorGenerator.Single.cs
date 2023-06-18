@@ -14,8 +14,9 @@ public sealed partial class DapperInterceptorGenerator
         OperationFlags flags,
         OperationFlags commandTypeMode,
         ITypeSymbol? parameterType,
+        string map,
         ImmutableArray<IParameterSymbol> methodParameters,
-        IDictionary<ITypeSymbol, int> parameterTypes,
+        IDictionary<(ITypeSymbol Type, string Map), int> parameterTypes,
         IDictionary<ITypeSymbol, int> resultTypes)
     {
         sb.Append("return ");
@@ -54,9 +55,10 @@ public sealed partial class DapperInterceptorGenerator
         sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? " ?? -1" : "").Append(", ");
         if (HasAny(flags, OperationFlags.HasParameters))
         {
-            if (!parameterTypes.TryGetValue(parameterType!, out var parameterTypeIndex))
+            var key = (parameterType!, map);
+            if (!parameterTypes.TryGetValue(key, out var parameterTypeIndex))
             {
-                parameterTypes.Add(parameterType!, parameterTypeIndex = parameterTypes.Count);
+                parameterTypes.Add(key!, parameterTypeIndex = parameterTypes.Count);
             }
             sb.Append("CommandFactory").Append(parameterTypeIndex).Append(".Instance");
         }
