@@ -4,24 +4,26 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 14, 24)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters
+        // Execute, HasParameters, StoredProcedure
         // takes parameter: global::System.Collections.Generic.List<global::Foo.Customer>
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        // parameter map: (everything)
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.List<global::Foo.Customer>)param);
+        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.List<global::Foo.Customer>)param);
 
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 15, 24)]
     internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters
+        // Execute, HasParameters, StoredProcedure
         // takes parameter: global::System.Collections.Generic.List<global::<anonymous type: int Foo, string bar>>
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        // parameter map: (everything)
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Batch<object?>(cnn, transaction, sql, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory1.Instance).Execute((global::System.Collections.Generic.List<object?>)param);
+        return global::Dapper.DapperAotExtensions.Batch<object?>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory1.Instance).Execute((global::System.Collections.Generic.List<object?>)param);
 
     }
 
@@ -30,6 +32,7 @@ file static class DapperGeneratedInterceptors
     {
         // Execute, HasParameters, StoredProcedure
         // takes parameter: global::Foo.Customer[]
+        // parameter map: (everything)
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
@@ -42,6 +45,7 @@ file static class DapperGeneratedInterceptors
     {
         // Execute, HasParameters, Text
         // takes parameter: global::System.Collections.Immutable.ImmutableArray<global::Foo.Customer>
+        // parameter map: x
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
@@ -52,60 +56,65 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 18, 24)]
     internal static int Execute4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters
+        // Execute, HasParameters, StoredProcedure
         // takes parameter: global::Foo.CustomerEnumerable
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        // parameter map: (everything)
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.IEnumerable<global::Foo.Customer>)param);
+        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.IEnumerable<global::Foo.Customer>)param);
 
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 19, 24)]
     internal static int Execute5(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters
+        // Execute, HasParameters, StoredProcedure
         // takes parameter: global::Foo.CustomerICollection
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        // parameter map: (everything)
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.ICollection<global::Foo.Customer>)param);
+        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.ICollection<global::Foo.Customer>)param);
 
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 20, 24)]
     internal static int Execute6(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters
+        // Execute, HasParameters, StoredProcedure
         // takes parameter: global::Foo.CustomerIList
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        // parameter map: (everything)
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.IList<global::Foo.Customer>)param);
+        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.IList<global::Foo.Customer>)param);
 
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 21, 24)]
     internal static int Execute7(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters
+        // Execute, HasParameters, StoredProcedure
         // takes parameter: global::Foo.CustomerIReadOnlyCollection
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        // parameter map: (everything)
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.IReadOnlyCollection<global::Foo.Customer>)param);
+        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.IReadOnlyCollection<global::Foo.Customer>)param);
 
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 22, 24)]
     internal static int Execute8(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters
+        // Execute, HasParameters, StoredProcedure
         // takes parameter: global::Foo.CustomerIReadOnlyList
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        // parameter map: (everything)
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.IReadOnlyList<global::Foo.Customer>)param);
+        return global::Dapper.DapperAotExtensions.Batch<global::Foo.Customer>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::System.Collections.Generic.IReadOnlyList<global::Foo.Customer>)param);
 
     }
 

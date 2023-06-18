@@ -14,7 +14,7 @@ public static class Foo
         _ = connection.Execute("def", new List<Customer> { new Customer(), new Customer() });
         _ = connection.Execute("def", (new[] { new { Foo = 12, bar }, new { Foo = 53, bar = "abc" } }).AsList());
         _ = connection.Execute("def", new Customer[0], commandType: CommandType.StoredProcedure);
-        _ = connection.Execute("def", ImmutableArray<Customer>.Empty, commandType: CommandType.Text);
+        _ = connection.Execute("def @x", ImmutableArray<Customer>.Empty, commandType: CommandType.Text);
         _ = connection.Execute("def", new CustomerEnumerable());
         _ = connection.Execute("def", new CustomerICollection());
         _ = connection.Execute("def", new CustomerIList());

@@ -1,0 +1,16 @@
+Generator produced 5 diagnostics:
+
+Error DAP020 Interceptors/SqlDetection.input.cs L16 C19
+No member could be found for the SQL parameter 'd' from type '<anonymous type: int A, int B, int C>'
+
+Error DAP019 Interceptors/SqlDetection.input.cs L19 C19
+SQL parameters were detected, but no parameters are being supplied
+
+Warning DAP018 Interceptors/SqlDetection.input.cs L22 C19
+Parameters are being supplied, but no parameters were detected in the command
+
+Error DAP020 Interceptors/SqlDetection.input.cs L30 C19
+No member could be found for the SQL parameter 'd' from type '<anonymous type: int A, int B, int C>'
+
+Warning DAP018 Interceptors/SqlDetection.input.cs L33 C19
+Parameters are being supplied, but no parameters were detected in the command

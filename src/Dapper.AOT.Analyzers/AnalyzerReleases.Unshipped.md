@@ -23,3 +23,6 @@ DAP014 | Library | Info | Diagnostics
 DAP015 | Library | Info | Diagnostics
 DAP016 | Library | Info | Diagnostics
 DAP017 | Library | Info | Diagnostics
+DAP018 | Sql | Warning | Diagnostics
+DAP019 | Sql | Error | Diagnostics
+DAP020 | Sql | Error | Diagnostics

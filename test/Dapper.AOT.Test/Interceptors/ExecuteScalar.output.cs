@@ -4,13 +4,14 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 17, 24)]
     internal static float ExecuteScalar0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, TypedResult, HasParameters, Scalar
+        // Execute, TypedResult, HasParameters, StoredProcedure, Scalar
         // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: (everything)
         // returns data: float
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).ExecuteScalar<float>();
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).ExecuteScalar<float>();
 
     }
 
@@ -41,13 +42,14 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 25, 30)]
     internal static global::System.Threading.Tasks.Task<float> ExecuteScalarAsync3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, Async, TypedResult, HasParameters, Scalar
+        // Execute, Async, TypedResult, HasParameters, StoredProcedure, Scalar
         // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: (everything)
         // returns data: float
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).ExecuteScalarAsync<float>(default);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).ExecuteScalarAsync<float>(default);
 
     }
 

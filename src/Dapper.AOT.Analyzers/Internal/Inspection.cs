@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Dapper.Internal.Roslyn;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Threading;
@@ -188,5 +189,74 @@ internal static class Inspection
             Accessibility.ProtectedOrInternal => "protected internal",
             _ => "non-public",
         };
+    }
+
+    public static bool IsCollectionType(ITypeSymbol? parameterType, out ITypeSymbol? elementType)
+        => IsCollectionType(parameterType, out elementType, out _, false);
+    public static bool IsCollectionType(ITypeSymbol? parameterType, out ITypeSymbol? elementType,
+        out string castType)
+        => IsCollectionType(parameterType, out elementType, out castType, true);
+
+    private static bool IsCollectionType(ITypeSymbol? parameterType, out ITypeSymbol? elementType,
+        out string castType, bool getCastType)
+    {
+        castType = "";
+        if (parameterType.IsArray())
+        {
+            elementType = parameterType.GetContainingTypeSymbol();
+            if (getCastType) castType = elementType.GetTypeDisplayName() + "[]";
+            return true;
+        }
+
+        if (parameterType.IsList())
+        {
+            elementType = parameterType.GetContainingTypeSymbol();
+            if (getCastType) castType = "global::System.Collections.Generic.List<" + elementType.GetTypeDisplayName() + ">";
+            return true;
+        }
+
+        if (parameterType.IsImmutableArray())
+        {
+            elementType = parameterType.GetContainingTypeSymbol();
+            if (getCastType) castType = "global::System.Collections.Immutable.ImmutableArray<" + elementType.GetTypeDisplayName() + ">";
+            return true;
+        }
+
+        if (parameterType.ImplementsIList(out var listTypeSymbol))
+        {
+            elementType = listTypeSymbol.GetContainingTypeSymbol();
+            if (getCastType) castType = "global::System.Collections.Generic.IList<" + elementType.GetTypeDisplayName() + ">";
+            return true;
+        }
+
+        if (parameterType.ImplementsICollection(out var collectionTypeSymbol))
+        {
+            elementType = collectionTypeSymbol.GetContainingTypeSymbol();
+            if (getCastType) castType = "global::System.Collections.Generic.ICollection<" + elementType.GetTypeDisplayName() + ">";
+            return true;
+        }
+
+        if (parameterType.ImplementsIReadOnlyList(out var readonlyListTypeSymbol))
+        {
+            elementType = readonlyListTypeSymbol.GetContainingTypeSymbol();
+            if (getCastType) castType = "global::System.Collections.Generic.IReadOnlyList<" + elementType.GetTypeDisplayName() + ">";
+            return true;
+        }
+
+        if (parameterType.ImplementsIReadOnlyCollection(out var readonlyCollectionTypeSymbol))
+        {
+            elementType = readonlyCollectionTypeSymbol.GetContainingTypeSymbol();
+            if (getCastType) castType = "global::System.Collections.Generic.IReadOnlyCollection<" + elementType.GetTypeDisplayName() + ">";
+            return true;
+        }
+
+        if (parameterType.ImplementsIEnumerable(out var enumerableTypeSymbol))
+        {
+            elementType = enumerableTypeSymbol.GetContainingTypeSymbol();
+            if (getCastType) castType = "global::System.Collections.Generic.IEnumerable<" + elementType.GetTypeDisplayName() + ">";
+            return true;
+        }
+        elementType = null;
+        return false;
     }
 }

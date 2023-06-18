@@ -4,13 +4,14 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Single.input.cs", 13, 24)]
     internal static global::Foo.Customer QueryFirst0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, HasParameters, SingleRow, AtLeastOne
+        // Query, TypedResult, HasParameters, SingleRow, StoredProcedure, AtLeastOne
         // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: (everything)
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).QueryFirst<global::Foo.Customer>(RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).QueryFirst<global::Foo.Customer>(RowFactory0.Instance);
 
     }
 
@@ -19,6 +20,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, SingleRow, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: (everything)
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
@@ -32,6 +34,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne
         // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
@@ -43,25 +46,26 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Single.input.cs", 16, 24)]
     internal static global::Foo.Customer? QuerySingleOrDefault3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, SingleRow, AtMostOne
+        // Query, TypedResult, SingleRow, StoredProcedure, AtMostOne
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, DefaultCommandFactory).QuerySingleOrDefault<global::Foo.Customer>(RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QuerySingleOrDefault<global::Foo.Customer>(RowFactory0.Instance);
 
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Single.input.cs", 18, 30)]
     internal static global::System.Threading.Tasks.Task<global::Foo.Customer> QueryFirstAsync4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, Async, TypedResult, HasParameters, SingleRow, AtLeastOne
+        // Query, Async, TypedResult, HasParameters, SingleRow, StoredProcedure, AtLeastOne
         // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: (everything)
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, CommandFactory0.Instance).QueryFirstAsync<global::Foo.Customer>(RowFactory0.Instance, default);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).QueryFirstAsync<global::Foo.Customer>(RowFactory0.Instance, default);
 
     }
 
@@ -70,6 +74,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, Async, TypedResult, HasParameters, SingleRow, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: (everything)
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
@@ -83,6 +88,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, Async, TypedResult, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne
         // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
@@ -94,12 +100,12 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Single.input.cs", 21, 30)]
     internal static global::System.Threading.Tasks.Task<global::Foo.Customer>? QuerySingleOrDefaultAsync7(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, Async, TypedResult, SingleRow, AtMostOne
+        // Query, Async, TypedResult, SingleRow, StoredProcedure, AtMostOne
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType is null);
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, DefaultCommandFactory).QuerySingleOrDefaultAsync<global::Foo.Customer>(RowFactory0.Instance, default);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QuerySingleOrDefaultAsync<global::Foo.Customer>(RowFactory0.Instance, default);
 
     }
 

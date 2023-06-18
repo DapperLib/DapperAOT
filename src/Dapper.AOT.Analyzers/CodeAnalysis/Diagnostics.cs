@@ -42,17 +42,23 @@ internal static class Diagnostics
             "The parameter type could not be resolved", Category.Library, DiagnosticSeverity.Info, true),
         GenericTypeParameter = new("DAP016", "Generic type parameter",
             "Generic type parameters ({0}) are not currently supported", Category.Library, DiagnosticSeverity.Info, true),
-        NonPublicType = new ("DAP017", "Non-accessible type",
-            "Type '{0}' is not accessible; {1} types are not currently supported", Category.Library, DiagnosticSeverity.Info, true);
+        NonPublicType = new("DAP017", "Non-accessible type",
+            "Type '{0}' is not accessible; {1} types are not currently supported", Category.Library, DiagnosticSeverity.Info, true),
+        SqlParametersNotDetected = new("DAP018", "SQL parameters not detected",
+            "Parameters are being supplied, but no parameters were detected in the command", Category.Sql, DiagnosticSeverity.Warning, true),
+        NoParametersSupplied = new("DAP019", "No parameters supplied",
+            "SQL parameters were detected, but no parameters are being supplied", Category.Sql, DiagnosticSeverity.Error, true),
+        SqlParameterNotBound = new("DAP020", "SQL parameter not bound",
+            "No member could be found for the SQL parameter '{0}' from type '{1}'", Category.Sql, DiagnosticSeverity.Error, true);
 
     // be careful moving this because of static field initialization order
     internal static readonly ImmutableArray<DiagnosticDescriptor> All = typeof(Diagnostics)
         .GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
         .Select(x => x.GetValue(null)).OfType<DiagnosticDescriptor>().ToImmutableArray();
 
-
     internal static class Category
     {
         public const string Library = nameof(Library);
+        public const string Sql = nameof(Sql);
     }
 }

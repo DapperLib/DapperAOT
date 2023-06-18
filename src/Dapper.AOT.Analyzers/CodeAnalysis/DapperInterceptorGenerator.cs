@@ -177,6 +177,11 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                             switch (ct)
                             {
                                 case null:
+                                    if (!string.IsNullOrWhiteSpace(sql))
+                                    {
+                                        // if no spaces: interpret as stored proc, else: text
+                                        flags |= sql!.Trim().IndexOf(' ') < 0 ? OperationFlags.StoredProcedure : OperationFlags.Text;
+                                    }
                                     break;
                                 case 1:
                                     flags |= OperationFlags.Text;
@@ -307,9 +312,8 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
         }
 
-
-
-        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, "?", diagnostics);
+        var parameterMap = BuildParameterMap(sql, flags, paramType, loc, ref diagnostics);
+        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, diagnostics);
 
         static bool HasDiagnostic(object? diagnostics, DiagnosticDescriptor diagnostic)
         {
@@ -380,6 +384,95 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             catch { }
             value = default!;
             return false;
+        }
+
+
+        static string BuildParameterMap(string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics)
+        {
+            if (HasAny(flags, OperationFlags.DoNotGenerate))
+            {
+                return "";
+            }
+            // if command-type is known statically to be stored procedure etc: pass everything
+            if (HasAny(flags, OperationFlags.StoredProcedure | OperationFlags.TableDirect))
+            {
+                return HasAny(flags, OperationFlags.HasParameters) ? "*" : "";
+            }
+            // if command-type or command is not known statically: defer decision
+            if (!HasAny(flags, OperationFlags.Text) || string.IsNullOrWhiteSpace(sql))
+            {
+                return HasAny(flags, OperationFlags.HasParameters) ? "?" : "";
+            }
+
+            // so: we know statically that we have known command-text
+            // first, try try to find any parameters
+            var paramNames = SqlTools.GetUniqueParameters(sql!);
+            if (paramNames.IsEmpty)
+            {
+                if (HasAny(flags, OperationFlags.HasParameters))
+                {
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParametersNotDetected, loc));
+                }
+                return "";
+            }
+
+            // so, definitely detect parameters
+            if (!HasAny(flags, OperationFlags.HasParameters))
+            {
+                AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
+                return "";
+            }
+            if (parameterType is null)
+            {
+                // unknown parameter type; defer decision
+                return "?";
+            }
+
+            // ok, so the SQL is using parameters; check what we have
+            var memberNames = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
+            if (!Inspection.IsCollectionType(parameterType, out var elementType))
+            {
+                elementType = parameterType;
+            }
+
+            if (elementType is INamedTypeSymbol named && named.IsTupleType)
+            {
+                foreach (var field in named.TupleElements)
+                {
+                    if (!string.IsNullOrWhiteSpace(field.Name)) memberNames.Add(field.Name);
+                }
+            }
+            else
+            {
+                foreach (var member in elementType!.GetMembers())
+                {
+                    if (member.IsStatic || member.DeclaredAccessibility != Accessibility.Public) continue;
+                    if (string.IsNullOrWhiteSpace(member.Name)) continue;
+                    switch (member)
+                    {
+                        case IPropertySymbol { IsIndexer: false }:
+                        case IFieldSymbol:
+                            memberNames.Add(member.Name);
+                            break;
+                    }
+                }
+            }
+
+            StringBuilder? sb = null;
+            foreach (var sqlParamName in paramNames.OrderBy(x => x, StringComparer.InvariantCultureIgnoreCase))
+            {
+                if (memberNames.Contains(sqlParamName))
+                {
+                    sb ??= new();
+                    if (sb.Length != 0) sb.Append(' ');
+                    sb.Append(sqlParamName);
+                }
+                else
+                {
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, elementType.ToDisplayString()));
+                }
+            }
+            return sb is null ? "" : sb.ToString();
         }
     }
 
@@ -665,6 +758,15 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             if (HasAny(flags, OperationFlags.HasParameters))
             {
                 sb.Append("// takes parameter: ").Append(parameterType).NewLine();
+            }
+            if (!string.IsNullOrWhiteSpace(grp.Key.ParameterMap))
+            {
+                sb.Append("// parameter map: ").Append(grp.Key.ParameterMap switch
+                {
+                    "?" => "(deferred)",
+                    "*" => "(everything)",
+                    _ => grp.Key.ParameterMap,
+                }).NewLine();
             }
             ITypeSymbol? resultType = null;
             if (HasAny(flags, OperationFlags.TypedResult))

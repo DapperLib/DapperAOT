@@ -23,85 +23,33 @@ public sealed partial class DapperInterceptorGenerator
             return false;
         }
 
-        if (parameterType.IsArray())
+        if (Inspection.IsCollectionType(parameterType, out var elementType, out var castType))
         {
-            var containingType = parameterType.GetContainingTypeSymbol();
-            var castType = containingType.GetTypeDisplayName() + "[]";
-            return WriteMultiExecExpression(containingType!, castType);
-        }
-
-        if (parameterType.IsList())
-        {
-            var containingType = parameterType.GetContainingTypeSymbol();
-            var castType = "global::System.Collections.Generic.List<" + containingType.GetTypeDisplayName() + ">";
-            return WriteMultiExecExpression(containingType!, castType);
-        }
-
-        if (parameterType.IsImmutableArray())
-        {
-            var containingType = parameterType.GetContainingTypeSymbol();
-            var castType = "global::System.Collections.Immutable.ImmutableArray<" + containingType.GetTypeDisplayName() + ">";
-            return WriteMultiExecExpression(containingType!, castType);
-        }
-
-        if (parameterType.ImplementsIList(out var listTypeSymbol))
-        {
-            var containingType = listTypeSymbol.GetContainingTypeSymbol();
-            var castType = "global::System.Collections.Generic.IList<" + containingType.GetTypeDisplayName() + ">";
-            return WriteMultiExecExpression(containingType!, castType);
-        }
-
-        if (parameterType.ImplementsICollection(out var collectionTypeSymbol))
-        {
-            var containingType = collectionTypeSymbol.GetContainingTypeSymbol();
-            var castType = "global::System.Collections.Generic.ICollection<" + containingType.GetTypeDisplayName() + ">";
-            return WriteMultiExecExpression(containingType!, castType);
-        }
-
-        if (parameterType.ImplementsIReadOnlyList(out var readonlyListTypeSymbol))
-        {
-            var containingType = readonlyListTypeSymbol.GetContainingTypeSymbol();
-            var castType = "global::System.Collections.Generic.IReadOnlyList<" + containingType.GetTypeDisplayName() + ">";
-            return WriteMultiExecExpression(containingType!, castType);
-        }
-
-        if (parameterType.ImplementsIReadOnlyCollection(out var readonlyCollectionTypeSymbol))
-        {
-            var containingType = readonlyCollectionTypeSymbol.GetContainingTypeSymbol();
-            var castType = "global::System.Collections.Generic.IReadOnlyCollection<" + containingType.GetTypeDisplayName() + ">";
-            return WriteMultiExecExpression(containingType!, castType);
-        }
-
-        if (parameterType.ImplementsIEnumerable(out var enumerableTypeSymbol))
-        {
-            var containingType = enumerableTypeSymbol.GetContainingTypeSymbol();
-            var castType = "global::System.Collections.Generic.IEnumerable<" + containingType.GetTypeDisplayName() + ">";
-            return WriteMultiExecExpression(containingType!, castType);
+            WriteMultiExecExpression(elementType!, castType);
+            return true;
         }
 
         // no multi type found to cast to, so not using multiexec
         return false;
 
-        bool WriteMultiExecExpression(ITypeSymbol containingTypeSymbol, string castType)
+        void WriteMultiExecExpression(ITypeSymbol elementType, string castType)
         {
             // return Batch<type>
             sb.Append("return global::Dapper.DapperAotExtensions.Batch<")
-              .Append(containingTypeSymbol.GetTypeDisplayName())
+              .Append(elementType.GetTypeDisplayName())
               .Append('>');
 
             // return Batch<type>(...).
-            WriteBatchCommandArguments(containingTypeSymbol);
+            WriteBatchCommandArguments(elementType);
 
             // return Batch<type>(...).ExecuteAsync((cast)param, ...);
             bool isAsync = HasAny(flags, OperationFlags.Async);
             sb.Append("Execute").Append(isAsync ? "Async" : "").Append("(");
             sb.Append("(").Append(castType).Append(")param").Append(");");
             sb.NewLine().Outdent().NewLine().NewLine();
-
-            return true;
         }
 
-        void WriteBatchCommandArguments(ITypeSymbol containingTypeSymbol)
+        void WriteBatchCommandArguments(ITypeSymbol elementType)
         {
             // cnn, transaction, sql
             sb.Append("(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", sql, ");
@@ -125,9 +73,9 @@ public sealed partial class DapperInterceptorGenerator
             // commandFactory
             if (HasAny(flags, OperationFlags.HasParameters))
             {
-                if (!parameterTypes.TryGetValue(containingTypeSymbol, out var parameterTypeIndex))
+                if (!parameterTypes.TryGetValue(elementType, out var parameterTypeIndex))
                 {
-                    parameterTypes.Add(containingTypeSymbol, parameterTypeIndex = parameterTypes.Count);
+                    parameterTypes.Add(elementType, parameterTypeIndex = parameterTypes.Count);
                 }
                 sb.Append("CommandFactory").Append(parameterTypeIndex).Append(".Instance");
             }
