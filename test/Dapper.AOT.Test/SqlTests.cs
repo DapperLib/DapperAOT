@@ -17,9 +17,14 @@ public class SqlTests
         where x = @x
         and y = @y+@z
         """, "x y z")]
-    public void DetectParameters(string sql, string expected)
+    [InlineData("""
+       do thing;
+       return 12;
+       """, "", true)]
+    public void DetectParameters(string sql, string expected, bool expectReturn = false)
     {
-        Assert.Equal(expected, string.Join(' ', SqlTools.GetParameters(sql)));
+        Assert.Equal(expected, string.Join(' ', SqlTools.GetParameters(sql, out var actualReturn)));
+        Assert.Equal(expectReturn, actualReturn);
     }
 
 

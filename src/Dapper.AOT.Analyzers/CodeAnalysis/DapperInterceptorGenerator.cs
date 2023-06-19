@@ -406,8 +406,8 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
             // so: we know statically that we have known command-text
             // first, try try to find any parameters
-            var paramNames = SqlTools.GetUniqueParameters(sql!);
-            if (paramNames.IsEmpty)
+            var paramNames = SqlTools.GetUniqueParameters(sql, out var hasReturn);
+            if (paramNames.IsEmpty && !hasReturn)
             {
                 if (HasAny(flags, OperationFlags.HasParameters))
                 {
@@ -416,8 +416,8 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 return "";
             }
 
-            // so, definitely detect parameters
-            if (!HasAny(flags, OperationFlags.HasParameters))
+            // so, we definitely detect parameters (note: don't warn just for return)
+            if (!HasAny(flags, OperationFlags.HasParameters) && !paramNames.IsEmpty)
             {
                 AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
                 return "";
@@ -429,31 +429,33 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
 
             // ok, so the SQL is using parameters; check what we have
-            var memberNames = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
+            var memberDbToCodeNames = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
             if (!Inspection.IsCollectionType(parameterType, out var elementType))
             {
                 elementType = parameterType;
             }
 
-            if (elementType is INamedTypeSymbol named && named.IsTupleType)
+            string? returnCodeMember = null;
+            foreach (var member in Inspection.GetMembers(elementType!))
             {
-                foreach (var field in named.TupleElements)
+                var dbName = member.DbName;
+                if (memberDbToCodeNames.TryGetValue(dbName, out var existing))
                 {
-                    if (!string.IsNullOrWhiteSpace(field.Name)) memberNames.Add(field.Name);
+                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateParameter, loc, member.CodeName, existing, dbName));
                 }
-            }
-            else
-            {
-                foreach (var member in elementType!.GetMembers())
+                else
                 {
-                    if (member.IsStatic || member.DeclaredAccessibility != Accessibility.Public) continue;
-                    if (string.IsNullOrWhiteSpace(member.Name)) continue;
-                    switch (member)
+                    memberDbToCodeNames.Add(dbName, member.CodeName);
+                }
+                if (member.Direction == ParameterDirection.ReturnValue)
+                {
+                    if (returnCodeMember is null)
                     {
-                        case IPropertySymbol { IsIndexer: false }:
-                        case IFieldSymbol:
-                            memberNames.Add(member.Name);
-                            break;
+                        returnCodeMember = member.CodeName;
+                    }
+                    else
+                    {
+                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateReturn, loc, member.CodeName, returnCodeMember));
                     }
                 }
             }
@@ -461,18 +463,23 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             StringBuilder? sb = null;
             foreach (var sqlParamName in paramNames.OrderBy(x => x, StringComparer.InvariantCultureIgnoreCase))
             {
-                if (memberNames.Contains(sqlParamName))
+                if (memberDbToCodeNames.TryGetValue(sqlParamName, out var codeName))
                 {
-                    sb ??= new();
-                    if (sb.Length != 0) sb.Append(' ');
-                    sb.Append(sqlParamName);
+                    WithSpace(ref sb).Append(codeName);
                 }
                 else
                 {
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, elementType.ToDisplayString()));
+                    // we can't consider this an error, because we would need full SQL parse for that
+                    // AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, elementType.ToDisplayString()));
                 }
             }
+            if (hasReturn && returnCodeMember is not null)
+            {
+                WithSpace(ref sb).Append(returnCodeMember);
+            }
             return sb is null ? "" : sb.ToString();
+
+            static StringBuilder WithSpace(ref StringBuilder? sb) => sb is null ? (sb = new()) : (sb.Length == 0 ? sb : sb.Append(' '));
         }
     }
 
@@ -913,7 +920,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             sb.Append("); // expected shape").NewLine();
             argSource = "typed";
         }
-        WriteArgs(type, sb, argSource, true);
+        WriteArgs(type, sb, argSource, true, map);
         sb.Outdent().NewLine();
 
         sb.Append("public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine().Append("var sql = cmd.CommandText;").NewLine();
@@ -924,7 +931,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             sb.Append("); // expected shape").NewLine();
             argSource = "typed";
         }
-        WriteArgs(type, sb, argSource, false);
+        WriteArgs(type, sb, argSource, false, map);
         sb.Outdent().NewLine();
 
 
@@ -933,11 +940,11 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
     private static void WriteRowFactory(CodeWriter sb, ITypeSymbol type, int index)
     {
-        var members = type.GetMembers();
+        var members = Inspection.GetMembers(type).ToImmutableArray();
         var memberCount = 0;
         foreach (var member in members)
         {
-            if (CodeWriter.IsSettableInstanceMember(member, out _))
+            if (CodeWriter.IsSettableInstanceMember(member.Member, out _))
             {
                 memberCount++;
             }
@@ -960,13 +967,13 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             int token = 0;
             foreach (var member in members)
             {
-                if (CodeWriter.IsSettableInstanceMember(member, out var memberType))
+                if (CodeWriter.IsSettableInstanceMember(member.Member, out var memberType))
                 {
-                    var name = member.Name; // TODO: [Column] ?
-                    sb.Append("case ").Append(StringHashing.NormalizedHash(name))
+                    var dbName = member.DbName;
+                    sb.Append("case ").Append(StringHashing.NormalizedHash(dbName))
                         .Append(" when NormalizedEquals(name, ")
-                        .AppendVerbatimLiteral(StringHashing.Normalize(name)).Append("):").Indent(false).NewLine()
-                        .Append("token = type == typeof(").Append(MakeNonNullable(memberType)).Append(") ? ").Append(token)
+                        .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine()
+                        .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(memberType)).Append(") ? ").Append(token)
                         .Append(" : ").Append(token + memberCount).Append(";")
                         .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
                         .Append("break;").Outdent(false).NewLine();
@@ -991,12 +998,12 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             int token = 0;
             foreach (var member in members)
             {
-                if (CodeWriter.IsSettableInstanceMember(member, out var memberType))
+                if (CodeWriter.IsSettableInstanceMember(member.Member, out var memberType))
                 {
-                    IdentifyDbType(memberType, out var readerMethod);
+                    member.GetDbType(out var readerMethod);
                     var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetNullableTypeName(memberType)})null : " : "";
                     sb.Append("case ").Append(token).Append(":").NewLine().Indent(false)
-                        .Append("result.").Append(member.Name).Append(" = ").Append(nullCheck);
+                        .Append("result.").Append(member.CodeName).Append(" = ").Append(nullCheck);
 
                     if (readerMethod is null)
                     {
@@ -1008,9 +1015,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     }
                     sb.NewLine().Append("break;").NewLine().Outdent(false)
                         .Append("case ").Append(token + memberCount).Append(":").NewLine().Indent(false)
-                        .Append("result.").Append(member.Name).Append(" = ").Append(nullCheck)
+                        .Append("result.").Append(member.CodeName).Append(" = ").Append(nullCheck)
                         .Append("GetValue<")
-                        .Append(MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
+                        .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
                         .Append("break;").NewLine().Outdent(false);
                     token++;
                 }
@@ -1031,130 +1038,95 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
     }
 
-    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, string source, bool add)
+    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, string source, bool add, string map)
     {
         if (parameterType is null)
         {
             return;
         }
-        var members = parameterType.GetMembers();
-        bool first = true;
-        foreach (var member in members)
-        {
-            if (CodeWriter.IsGettableInstanceMember(member, out var type))
-            {
-                var name = member.Name; // TODO use [Column] here?
-                if (first)
-                {
-                    if (add)
-                    {
-                        sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
-                    }
-                    else
-                    {
-                        sb.Append("var ps = cmd.Parameters;").NewLine();
-                    }
 
-                    first = false;
-                }
-                sb.Append("// if (Include(sql, commandType, ").AppendVerbatimLiteral(name).Append("))").Indent().NewLine();
+        bool first = true;
+        foreach (var member in Inspection.GetMembers(parameterType))
+        {
+            if (!SqlTools.IncludeParameter(map, member.CodeName, out var test))
+            {
+                continue; // not required
+            }
+            if (first)
+            {
                 if (add)
                 {
-                    sb.Append("p = cmd.CreateParameter();").NewLine()
-                        .Append("p.ParameterName = ").AppendVerbatimLiteral(name).Append(";").NewLine();
-                    var dbType = IdentifyDbType(type, out _);
-                    if (dbType is not null)
-                    {
-                        sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.ToString()).Append(";").NewLine();
-                    }
-                    sb.Append("p.Value = AsValue(").Append(source).Append(".").Append(member.Name).Append(");").NewLine()
-                        .Append("cmd.Parameters.Add(p);");
+                    sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
                 }
                 else
                 {
-                    sb.Append("ps[").AppendVerbatimLiteral(name).Append("].Value = AsValue(").Append(source).Append(".").Append(member.Name).Append(");").NewLine();
+                    sb.Append("var ps = cmd.Parameters;").NewLine();
                 }
+
+                first = false;
+            }
+            else if (add)
+            {
+                // space each param out a bit
+                sb.NewLine();
+            }
+
+            if (test)
+            {
+                sb.Append("if (Include(sql, commandType, ").AppendVerbatimLiteral(member.DbName).Append("))").Indent().NewLine();
+            }
+            var direction = member.Direction;
+            if (add)
+            {
+                sb.Append("p = cmd.CreateParameter();").NewLine()
+                    .Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
+
+                var dbType = member.GetDbType(out _);
+                if (dbType is not null)
+                {
+                    sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.GetValueOrDefault().ToString()).Append(";").NewLine();
+                }
+                sb.Append("p.Direction = global::System.Data.ParameterDirection.").Append(direction switch
+                {
+                    ParameterDirection.Input => nameof(ParameterDirection.Input),
+                    ParameterDirection.InputOutput => nameof(ParameterDirection.InputOutput),
+                    ParameterDirection.Output => nameof(ParameterDirection.Output),
+                    ParameterDirection.ReturnValue => nameof(ParameterDirection.ReturnValue),
+                    _ => direction.ToString(),
+                }).Append(";").NewLine().Append("p.Value = ");
+                switch (direction)
+                {
+                    case ParameterDirection.Input:
+                    case ParameterDirection.InputOutput:
+                        sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                        break;
+                    default:
+                        sb.Append("global::System.DBNull.Value;").NewLine();
+                        break;
+                }
+                sb.Append("cmd.Parameters.Add(p);").NewLine();
+
+            }
+            else
+            {
+                sb.Append("ps[").AppendVerbatimLiteral(member.DbName).Append("].Value = ");
+                switch (direction)
+                {
+                    case ParameterDirection.Input:
+                    case ParameterDirection.InputOutput:
+                        sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                        break;
+                    default:
+                        sb.Append("global::System.DBNull.Value;").NewLine();
+                        break;
+
+                }
+            }
+            if (test)
+            {
                 sb.Outdent().NewLine();
             }
         }
-    }
-
-    private static ITypeSymbol MakeNonNullable(ITypeSymbol type)
-    {
-        // think: type = Nullable.GetUnderlyingType(type) ?? type
-        if (type.IsValueType && type.NullableAnnotation == NullableAnnotation.Annotated
-            && type is INamedTypeSymbol named && named.Arity == 1)
-        {
-            type = named.TypeArguments[0];
-        }
-        return type.NullableAnnotation == NullableAnnotation.None
-            ? type : type.WithNullableAnnotation(NullableAnnotation.None);
-    }
-    private static DbType? IdentifyDbType(ITypeSymbol type, out string? readerMethod)
-    {
-        type = MakeNonNullable(type);
-        switch (type.SpecialType)
-        {
-            case SpecialType.System_Boolean:
-                readerMethod = nameof(DbDataReader.GetBoolean);
-                return DbType.Boolean;
-            case SpecialType.System_String:
-                readerMethod = nameof(DbDataReader.GetString);
-                return DbType.String;
-            case SpecialType.System_Single:
-                readerMethod = nameof(DbDataReader.GetFloat);
-                return DbType.Single;
-            case SpecialType.System_Double:
-                readerMethod = nameof(DbDataReader.GetDouble);
-                return DbType.Double;
-            case SpecialType.System_Decimal:
-                readerMethod = nameof(DbDataReader.GetDecimal);
-                return DbType.Decimal;
-            case SpecialType.System_DateTime:
-                readerMethod = nameof(DbDataReader.GetDateTime);
-                return DbType.DateTime;
-            case SpecialType.System_Int16:
-                readerMethod = nameof(DbDataReader.GetInt16);
-                return DbType.Int16;
-            case SpecialType.System_Int32:
-                readerMethod = nameof(DbDataReader.GetInt32);
-                return DbType.Int32;
-            case SpecialType.System_Int64:
-                readerMethod = nameof(DbDataReader.GetInt64);
-                return DbType.Int64;
-            case SpecialType.System_UInt16:
-                readerMethod = null;
-                return DbType.UInt16;
-            case SpecialType.System_UInt32:
-                readerMethod = null;
-                return DbType.UInt32;
-            case SpecialType.System_UInt64:
-                readerMethod = null;
-                return DbType.UInt64;
-            case SpecialType.System_Byte:
-                readerMethod = nameof(DbDataReader.GetByte);
-                return DbType.Byte;
-            case SpecialType.System_SByte:
-                readerMethod = null;
-                return DbType.SByte;
-        }
-        //if (type is IArrayTypeSymbol array && array.IsSZArray) // SZArray === "vector" (1-dim, 0-based)
-        //{
-        // byte
-        //}
-
-        if (type.Name == nameof(Guid) && type.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true })
-        {
-            readerMethod = nameof(DbDataReader.GetGuid);
-            return DbType.Guid;
-        }
-        if (type.Name == nameof(DateTimeOffset) && type.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true })
-        {
-            readerMethod = null;
-            return DbType.DateTimeOffset;
-        }
-        readerMethod = null;
-        return null;
     }
 
     private static void AppendShapeLambda(CodeWriter sb, ITypeSymbol parameterType)

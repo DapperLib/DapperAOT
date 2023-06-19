@@ -34,4 +34,12 @@
         <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
         <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
     </ItemGroup>
+    <ItemGroup>
+      <None Update="Interceptors\MappedSqlDetection.output.cs">
+        <DependentUpon>MappedSqlDetection.input.cs</DependentUpon>
+      </None>
+      <None Update="Interceptors\MappedSqlDetection.output.txt">
+        <DependentUpon>MappedSqlDetection.input.cs</DependentUpon>
+      </None>
+    </ItemGroup>
 </Project>

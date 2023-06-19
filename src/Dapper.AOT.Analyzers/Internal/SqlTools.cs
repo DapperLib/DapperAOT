@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Dapper.Internal;
@@ -16,8 +13,8 @@ internal static class SqlTools
     // )
     private static readonly Regex ParameterRegex = new(@"[?@:]([\p{L}_][\p{L}\p{N}_]*)", RegexOptions.Compiled | RegexOptions.Multiline);
 
-    public static ImmutableHashSet<string> GetUniqueParameters(string sql)
-        => ImmutableHashSet.Create(StringComparer.InvariantCultureIgnoreCase, GetParameters(sql));
+    public static ImmutableHashSet<string> GetUniqueParameters(string? sql, out bool hasReturn)
+        => ImmutableHashSet.Create(StringComparer.InvariantCultureIgnoreCase, GetParameters(sql, out hasReturn));
 
     public static bool IncludeParameter(string map, string name, out bool test)
     {
@@ -52,8 +49,15 @@ internal static class SqlTools
 
     }
 
-    public static string[] GetParameters(string sql)
+    public static string[] GetParameters(string? sql, out bool hasReturn)
     {
+        if (string.IsNullOrWhiteSpace(sql))
+        {
+            hasReturn = false;
+            return Array.Empty<string>();
+        }
+        hasReturn = sql!.IndexOf("return", StringComparison.InvariantCultureIgnoreCase) >= 0;
+
         if (!ParameterRegex.IsMatch(sql))
         {
             return Array.Empty<string>();

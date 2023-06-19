@@ -6,7 +6,7 @@ file static class DapperGeneratedInterceptors
     {
         // Execute, HasParameters, Text
         // takes parameter: <anonymous type: int A, int B, int C>
-        // parameter map: b
+        // parameter map: B
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
@@ -15,15 +15,17 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlDetection.input.cs", 17, 20)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlDetection.input.cs", 23, 20)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlDetection.input.cs", 28, 20)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlDetection.input.cs", 31, 20)]
     internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters, Text
-        // takes parameter: <anonymous type: int A, int B, int C>
+        // takes parameter: global::<anonymous type: int A, int B, int C>[]
+        // parameter map: B
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute();
+        return global::Dapper.DapperAotExtensions.Batch<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute((object?[])param);
 
     }
 
@@ -38,20 +40,18 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlDetection.input.cs", 28, 20)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlDetection.input.cs", 23, 20)]
     internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters, Text
-        // takes parameter: global::<anonymous type: int A, int B, int C>[]
-        // parameter map: b
+        // takes parameter: <anonymous type: int A, int B, int C>
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Batch<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute((object?[])param);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute();
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlDetection.input.cs", 31, 20)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlDetection.input.cs", 34, 20)]
     internal static int Execute4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
@@ -93,30 +93,12 @@ file static class DapperGeneratedInterceptors
             // var commandType = cmd.CommandType;
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
             global::System.Data.Common.DbParameter p;
-            // if (Include(sql, commandType, "A"))
-            {
-                p = cmd.CreateParameter();
-                p.ParameterName = "A";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Value = AsValue(typed.A);
-                cmd.Parameters.Add(p);
-            }
-            // if (Include(sql, commandType, "B"))
-            {
-                p = cmd.CreateParameter();
-                p.ParameterName = "B";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Value = AsValue(typed.B);
-                cmd.Parameters.Add(p);
-            }
-            // if (Include(sql, commandType, "C"))
-            {
-                p = cmd.CreateParameter();
-                p.ParameterName = "C";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Value = AsValue(typed.C);
-                cmd.Parameters.Add(p);
-            }
+            p = cmd.CreateParameter();
+            p.ParameterName = "B";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.B);
+            cmd.Parameters.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
@@ -124,21 +106,7 @@ file static class DapperGeneratedInterceptors
             var sql = cmd.CommandText;
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
             var ps = cmd.Parameters;
-            // if (Include(sql, commandType, "A"))
-            {
-                ps["A"].Value = AsValue(typed.A);
-
-            }
-            // if (Include(sql, commandType, "B"))
-            {
-                ps["B"].Value = AsValue(typed.B);
-
-            }
-            // if (Include(sql, commandType, "C"))
-            {
-                ps["C"].Value = AsValue(typed.C);
-
-            }
+            ps["B"].Value = AsValue(typed.B);
 
         }
 
@@ -153,53 +121,12 @@ file static class DapperGeneratedInterceptors
             // var sql = cmd.CommandText;
             // var commandType = cmd.CommandType;
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
-            global::System.Data.Common.DbParameter p;
-            // if (Include(sql, commandType, "A"))
-            {
-                p = cmd.CreateParameter();
-                p.ParameterName = "A";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Value = AsValue(typed.A);
-                cmd.Parameters.Add(p);
-            }
-            // if (Include(sql, commandType, "B"))
-            {
-                p = cmd.CreateParameter();
-                p.ParameterName = "B";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Value = AsValue(typed.B);
-                cmd.Parameters.Add(p);
-            }
-            // if (Include(sql, commandType, "C"))
-            {
-                p = cmd.CreateParameter();
-                p.ParameterName = "C";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Value = AsValue(typed.C);
-                cmd.Parameters.Add(p);
-            }
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
             var sql = cmd.CommandText;
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
-            var ps = cmd.Parameters;
-            // if (Include(sql, commandType, "A"))
-            {
-                ps["A"].Value = AsValue(typed.A);
-
-            }
-            // if (Include(sql, commandType, "B"))
-            {
-                ps["B"].Value = AsValue(typed.B);
-
-            }
-            // if (Include(sql, commandType, "C"))
-            {
-                ps["C"].Value = AsValue(typed.C);
-
-            }
 
         }
 

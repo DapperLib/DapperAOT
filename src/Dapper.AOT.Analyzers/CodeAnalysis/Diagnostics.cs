@@ -49,7 +49,11 @@ internal static class Diagnostics
         NoParametersSupplied = new("DAP019", "No parameters supplied",
             "SQL parameters were detected, but no parameters are being supplied", Category.Sql, DiagnosticSeverity.Error, true),
         SqlParameterNotBound = new("DAP020", "SQL parameter not bound",
-            "No member could be found for the SQL parameter '{0}' from type '{1}'", Category.Sql, DiagnosticSeverity.Error, true);
+            "No member could be found for the SQL parameter '{0}' from type '{1}'", Category.Sql, DiagnosticSeverity.Error, true),
+        DuplicateParameter = new ("DAP021", "Duplicate parameter",
+            "Members '{0}' and '{1}' both have the database name '{2}'; '{0}' will be ignored", Category.Sql, DiagnosticSeverity.Warning, true),
+        DuplicateReturn = new("DAP022", "Duplicate return parameter",
+            "Members '{0}' and '{1}' are both designated as return values; '{0}' will be ignored", Category.Sql, DiagnosticSeverity.Warning, true);
 
     // be careful moving this because of static field initialization order
     internal static readonly ImmutableArray<DiagnosticDescriptor> All = typeof(Diagnostics)

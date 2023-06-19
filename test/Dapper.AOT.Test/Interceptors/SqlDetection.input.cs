@@ -13,8 +13,8 @@ public static class Foo
         // fine, text, detect b
         connection.Execute("foo @b", obj);
 
-        // error, d not mapped
-        connection.Execute("foo @d", obj);
+        // fine, text, detect b
+        connection.Execute("declare @d int = @b;", arr);
 
         // error, no args supplied
         connection.Execute("foo @b");
@@ -27,8 +27,8 @@ public static class Foo
         // fine, text, detect b
         connection.Execute("foo @b", arr);
 
-        // error, d not mapped
-        connection.Execute("foo @d", arr);
+        // fine, text, detect b
+        connection.Execute("declare @d int = @b;", arr);
 
         // warning, args not needed
         connection.Execute("foo bar", arr);

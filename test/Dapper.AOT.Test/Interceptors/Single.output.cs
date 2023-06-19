@@ -34,7 +34,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne
         // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: foo
+        // parameter map: Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
@@ -88,7 +88,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, Async, TypedResult, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne
         // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: foo
+        // parameter map: Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
@@ -204,22 +204,19 @@ file static class DapperGeneratedInterceptors
             // var commandType = cmd.CommandType;
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
             global::System.Data.Common.DbParameter p;
-            // if (Include(sql, commandType, "Foo"))
-            {
-                p = cmd.CreateParameter();
-                p.ParameterName = "Foo";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Value = AsValue(typed.Foo);
-                cmd.Parameters.Add(p);
-            }
-            // if (Include(sql, commandType, "bar"))
-            {
-                p = cmd.CreateParameter();
-                p.ParameterName = "bar";
-                p.DbType = global::System.Data.DbType.String;
-                p.Value = AsValue(typed.bar);
-                cmd.Parameters.Add(p);
-            }
+            p = cmd.CreateParameter();
+            p.ParameterName = "Foo";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.Foo);
+            cmd.Parameters.Add(p);
+
+            p = cmd.CreateParameter();
+            p.ParameterName = "bar";
+            p.DbType = global::System.Data.DbType.String;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.bar);
+            cmd.Parameters.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
@@ -227,16 +224,8 @@ file static class DapperGeneratedInterceptors
             var sql = cmd.CommandText;
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
             var ps = cmd.Parameters;
-            // if (Include(sql, commandType, "Foo"))
-            {
-                ps["Foo"].Value = AsValue(typed.Foo);
-
-            }
-            // if (Include(sql, commandType, "bar"))
-            {
-                ps["bar"].Value = AsValue(typed.bar);
-
-            }
+            ps["Foo"].Value = AsValue(typed.Foo);
+            ps["bar"].Value = AsValue(typed.bar);
 
         }
 
@@ -252,22 +241,12 @@ file static class DapperGeneratedInterceptors
             // var commandType = cmd.CommandType;
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
             global::System.Data.Common.DbParameter p;
-            // if (Include(sql, commandType, "Foo"))
-            {
-                p = cmd.CreateParameter();
-                p.ParameterName = "Foo";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Value = AsValue(typed.Foo);
-                cmd.Parameters.Add(p);
-            }
-            // if (Include(sql, commandType, "bar"))
-            {
-                p = cmd.CreateParameter();
-                p.ParameterName = "bar";
-                p.DbType = global::System.Data.DbType.String;
-                p.Value = AsValue(typed.bar);
-                cmd.Parameters.Add(p);
-            }
+            p = cmd.CreateParameter();
+            p.ParameterName = "Foo";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.Foo);
+            cmd.Parameters.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
@@ -275,16 +254,7 @@ file static class DapperGeneratedInterceptors
             var sql = cmd.CommandText;
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
             var ps = cmd.Parameters;
-            // if (Include(sql, commandType, "Foo"))
-            {
-                ps["Foo"].Value = AsValue(typed.Foo);
-
-            }
-            // if (Include(sql, commandType, "bar"))
-            {
-                ps["bar"].Value = AsValue(typed.bar);
-
-            }
+            ps["Foo"].Value = AsValue(typed.Foo);
 
         }
 

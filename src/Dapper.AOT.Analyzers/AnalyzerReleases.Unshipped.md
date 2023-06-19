@@ -26,3 +26,5 @@ DAP017 | Library | Info | Diagnostics
 DAP018 | Sql | Warning | Diagnostics
 DAP019 | Sql | Error | Diagnostics
 DAP020 | Sql | Error | Diagnostics
+DAP021 | Sql | Warning | Diagnostics
+DAP022 | Sql | Warning | Diagnostics
