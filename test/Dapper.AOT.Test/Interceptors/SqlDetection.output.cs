@@ -107,6 +107,7 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = AsValue(typed.B);
 
         }
+        public override bool CanPrepare => true;
 
     }
 
@@ -124,6 +125,7 @@ file static class DapperGeneratedInterceptors
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
 
         }
+        public override bool CanPrepare => true;
 
     }
 

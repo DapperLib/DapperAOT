@@ -52,6 +52,7 @@ file static class DapperGeneratedInterceptors
             p = cmd.CreateParameter();
             p.ParameterName = "bar";
             p.DbType = global::System.Data.DbType.String;
+            p.Size = -1;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(typed.bar);
             ps.Add(p);
@@ -65,6 +66,7 @@ file static class DapperGeneratedInterceptors
             ps[1].Value = AsValue(typed.bar);
 
         }
+        public override bool CanPrepare => true;
 
     }
 

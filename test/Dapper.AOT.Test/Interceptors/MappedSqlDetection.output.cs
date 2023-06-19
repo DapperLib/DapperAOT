@@ -125,6 +125,7 @@ file static class DapperGeneratedInterceptors
             args.RowCount = rowCount;
             PostProcess(cmd, args);
         }
+        public override bool CanPrepare => true;
 
     }
 
@@ -145,6 +146,7 @@ file static class DapperGeneratedInterceptors
             args.RowCount = rowCount;
             PostProcess(cmd, args);
         }
+        public override bool CanPrepare => true;
 
     }
 
@@ -176,6 +178,7 @@ file static class DapperGeneratedInterceptors
             args.RowCount = rowCount;
             PostProcess(cmd, args);
         }
+        public override bool CanPrepare => true;
 
     }
 
@@ -208,6 +211,7 @@ file static class DapperGeneratedInterceptors
             args.RowCount = rowCount;
             PostProcess(cmd, args);
         }
+        public override bool CanPrepare => true;
 
     }
 
@@ -222,6 +226,7 @@ file static class DapperGeneratedInterceptors
             p = cmd.CreateParameter();
             p.ParameterName = "E";
             p.DbType = global::System.Data.DbType.String;
+            p.Size = -1;
             p.Direction = global::System.Data.ParameterDirection.ReturnValue;
             p.Value = global::System.DBNull.Value;
             ps.Add(p);
@@ -244,6 +249,7 @@ file static class DapperGeneratedInterceptors
             args.RowCount = rowCount;
             PostProcess(cmd, args);
         }
+        public override bool CanPrepare => true;
 
     }
 
@@ -275,6 +281,7 @@ file static class DapperGeneratedInterceptors
             args.DuplicateToCauseProblems = rowCount;
             PostProcess(cmd, args);
         }
+        public override bool CanPrepare => true;
 
     }
 

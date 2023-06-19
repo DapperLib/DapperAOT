@@ -950,6 +950,10 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             sb.Outdent().NewLine();
         }
 
+        if ((flags & WriteArgsFlags.CanPrepare) != 0)
+        {
+            sb.Append("public override bool CanPrepare => true;").NewLine();
+        }
 
         sb.Outdent().NewLine().NewLine();
     }
@@ -1061,6 +1065,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         NeedsTest = 1 << 0,
         NeedsPostProcess = 1 << 1,
         NeedsRowCount = 1 << 2,
+        CanPrepare = 1 << 3,
     }
 
     enum WriteArgsMode
@@ -1083,6 +1088,11 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             AppendShapeLambda(sb, parameterType);
             sb.Append("); // expected shape").NewLine();
             source = "typed";
+        }
+
+        if (mode == WriteArgsMode.Add)
+        {   // we'll calculate this; assume we can, and claw backwards from there
+            flags |= WriteArgsFlags.CanPrepare;
         }
 
         bool first = true, firstTest = true;
@@ -1158,11 +1168,29 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                         .Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
 
                     var dbType = member.GetDbType(out _);
+                    var size = member.TryGetValue<int>("Size");
                     if (dbType is not null)
                     {
                         sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.GetValueOrDefault().ToString()).Append(";").NewLine();
+                        if (size is null)
+                        {
+                            switch (dbType.GetValueOrDefault())
+                            {
+                                case DbType.Binary:
+                                case DbType.String:
+                                case DbType.AnsiString:
+                                    size = -1; // default to [n]varchar(max)/varbinary(max)
+                                    break;
+                            }
+                        }
                     }
-                    AppendDbParameterSetting(sb, "Size", member.TryGetValue<int>("Size"));
+                    else
+                    {
+                        // prepare requires all args to have a type (it also requires all
+                        // string/binary args to have a size, but: we've set that)
+                        flags &= ~WriteArgsFlags.CanPrepare;
+                    }
+                    AppendDbParameterSetting(sb, "Size", size);
                     AppendDbParameterSetting(sb, "Precision", member.TryGetValue<byte>("Precision"));
                     AppendDbParameterSetting(sb, "Scale", member.TryGetValue<byte>("Scale"));
 

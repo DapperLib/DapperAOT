@@ -12,6 +12,6 @@
         <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
         <PackageReference Include="Microsoft.Data.SqlClient" />
-        <PackageReference Include="Oracle.ManagedDataAccess.Core"/>
+        <!--<PackageReference Include="Oracle.ManagedDataAccess.Core"/>-->
     </ItemGroup>
 </Project>

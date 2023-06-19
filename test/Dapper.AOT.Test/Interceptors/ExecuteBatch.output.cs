@@ -155,6 +155,7 @@ file static class DapperGeneratedInterceptors
             p = cmd.CreateParameter();
             p.ParameterName = "Y";
             p.DbType = global::System.Data.DbType.String;
+            p.Size = -1;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(args.Y);
             ps.Add(p);
@@ -175,6 +176,7 @@ file static class DapperGeneratedInterceptors
             ps[2].Value = AsValue(args.Z);
 
         }
+        public override bool CanPrepare => true;
 
     }
 
@@ -197,6 +199,7 @@ file static class DapperGeneratedInterceptors
             p = cmd.CreateParameter();
             p.ParameterName = "bar";
             p.DbType = global::System.Data.DbType.String;
+            p.Size = -1;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(typed.bar);
             ps.Add(p);
@@ -210,6 +213,7 @@ file static class DapperGeneratedInterceptors
             ps[1].Value = AsValue(typed.bar);
 
         }
+        public override bool CanPrepare => true;
 
     }
 
@@ -235,6 +239,7 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = AsValue(args.X);
 
         }
+        public override bool CanPrepare => true;
 
     }
 

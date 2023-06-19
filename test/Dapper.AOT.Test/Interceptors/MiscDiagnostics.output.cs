@@ -273,6 +273,7 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = AsValue(args.Id);
 
         }
+        public override bool CanPrepare => true;
 
     }
 
@@ -298,6 +299,7 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = AsValue(args.Id);
 
         }
+        public override bool CanPrepare => true;
 
     }
 
@@ -323,6 +325,7 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = AsValue(args.Id);
 
         }
+        public override bool CanPrepare => true;
 
     }
 
