@@ -5,5 +5,6 @@ internal static class Types
     public const string
         BindTupleByNameAttribute = nameof(BindTupleByNameAttribute),
         DapperAotAttribute = nameof(DapperAotAttribute),
-        DbValueAttribute = nameof(DbValueAttribute);
+        DbValueAttribute = nameof(DbValueAttribute),
+        RowCountAttribute = nameof(RowCountAttribute);
 }

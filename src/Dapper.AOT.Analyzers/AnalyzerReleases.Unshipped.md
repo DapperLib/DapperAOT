@@ -28,3 +28,5 @@ DAP019 | Sql | Error | Diagnostics
 DAP020 | Sql | Error | Diagnostics
 DAP021 | Sql | Warning | Diagnostics
 DAP022 | Sql | Warning | Diagnostics
+DAP023 | Sql | Warning | Diagnostics
+DAP024 | Sql | Warning | Diagnostics

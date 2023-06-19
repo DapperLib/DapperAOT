@@ -89,24 +89,22 @@ file static class DapperGeneratedInterceptors
         private CommandFactory0() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
+            var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             p = cmd.CreateParameter();
             p.ParameterName = "B";
             p.DbType = global::System.Data.DbType.Int32;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(typed.B);
-            cmd.Parameters.Add(p);
+            ps.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
-            var sql = cmd.CommandText;
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
             var ps = cmd.Parameters;
-            ps["B"].Value = AsValue(typed.B);
+            ps[0].Value = AsValue(typed.B);
 
         }
 
@@ -118,14 +116,11 @@ file static class DapperGeneratedInterceptors
         private CommandFactory1() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
-            var sql = cmd.CommandText;
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
 
         }

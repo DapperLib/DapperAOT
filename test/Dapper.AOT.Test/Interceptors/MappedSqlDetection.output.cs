@@ -66,6 +66,19 @@ file static class DapperGeneratedInterceptors
 
     }
 
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 32, 20)]
+    internal static int Execute5(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Execute, HasParameters, Text
+        // takes parameter: global::Foo.SomeOtherArg
+        // parameter map: X
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(param is not null);
+
+        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeOtherArg>(cnn, transaction, sql, (global::Foo.SomeOtherArg)param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory5.Instance).Execute();
+
+    }
+
     private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
     {
         public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
@@ -91,23 +104,26 @@ file static class DapperGeneratedInterceptors
         private CommandFactory0() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
+            var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             p = cmd.CreateParameter();
             p.ParameterName = "A";
             p.DbType = global::System.Data.DbType.Int32;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(args.A);
-            cmd.Parameters.Add(p);
+            ps.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
-            var sql = cmd.CommandText;
             var ps = cmd.Parameters;
-            ps["A"].Value = AsValue(args.A);
+            ps[0].Value = AsValue(args.A);
 
+        }
+        public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args, int rowCount)
+        {
+            args.RowCount = rowCount;
+            PostProcess(cmd, args);
         }
 
     }
@@ -118,14 +134,16 @@ file static class DapperGeneratedInterceptors
         private CommandFactory1() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
-            var sql = cmd.CommandText;
 
+        }
+        public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args, int rowCount)
+        {
+            args.RowCount = rowCount;
+            PostProcess(cmd, args);
         }
 
     }
@@ -136,23 +154,27 @@ file static class DapperGeneratedInterceptors
         private CommandFactory2() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
+            var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             p = cmd.CreateParameter();
             p.ParameterName = "f";
             p.DbType = global::System.Data.DbType.String;
+            p.Size = 200;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(args.B);
-            cmd.Parameters.Add(p);
+            ps.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
-            var sql = cmd.CommandText;
             var ps = cmd.Parameters;
-            ps["f"].Value = AsValue(args.B);
+            ps[0].Value = AsValue(args.B);
 
+        }
+        public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args, int rowCount)
+        {
+            args.RowCount = rowCount;
+            PostProcess(cmd, args);
         }
 
     }
@@ -163,23 +185,28 @@ file static class DapperGeneratedInterceptors
         private CommandFactory3() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
+            var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             p = cmd.CreateParameter();
             p.ParameterName = "D";
-            p.DbType = global::System.Data.DbType.String;
+            p.DbType = global::System.Data.DbType.Decimal;
+            p.Precision = 12;
+            p.Scale = 42;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(args.D);
-            cmd.Parameters.Add(p);
+            ps.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
-            var sql = cmd.CommandText;
             var ps = cmd.Parameters;
-            ps["D"].Value = AsValue(args.D);
+            ps[0].Value = AsValue(args.D);
 
+        }
+        public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args, int rowCount)
+        {
+            args.RowCount = rowCount;
+            PostProcess(cmd, args);
         }
 
     }
@@ -190,23 +217,63 @@ file static class DapperGeneratedInterceptors
         private CommandFactory4() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
+            var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             p = cmd.CreateParameter();
             p.ParameterName = "E";
             p.DbType = global::System.Data.DbType.String;
             p.Direction = global::System.Data.ParameterDirection.ReturnValue;
             p.Value = global::System.DBNull.Value;
-            cmd.Parameters.Add(p);
+            ps.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
-            var sql = cmd.CommandText;
             var ps = cmd.Parameters;
-            ps["E"].Value = global::System.DBNull.Value;
+            ps[0].Value = global::System.DBNull.Value;
 
+        }
+        public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
+        {
+            var ps = cmd.Parameters;
+            args.E = Parse<string>(ps[0].Value);
+
+        }
+        public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args, int rowCount)
+        {
+            args.RowCount = rowCount;
+            PostProcess(cmd, args);
+        }
+
+    }
+
+    private sealed class CommandFactory5 : CommonCommandFactory<global::Foo.SomeOtherArg>
+    {
+        internal static readonly CommandFactory5 Instance = new();
+        private CommandFactory5() {}
+        public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeOtherArg args)
+        {
+            var ps = cmd.Parameters;
+            global::System.Data.Common.DbParameter p;
+            p = cmd.CreateParameter();
+            p.ParameterName = "X";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(args.X);
+            ps.Add(p);
+
+        }
+        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeOtherArg args)
+        {
+            var ps = cmd.Parameters;
+            ps[0].Value = AsValue(args.X);
+
+        }
+        public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeOtherArg args, int rowCount)
+        {
+            args.RowCount = rowCount;
+            args.DuplicateToCauseProblems = rowCount;
+            PostProcess(cmd, args);
         }
 
     }

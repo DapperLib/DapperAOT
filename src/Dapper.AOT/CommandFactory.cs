@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Dapper.Internal;
+using System;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
@@ -100,6 +101,12 @@ public abstract class CommandFactory
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static object AsValue(object? value)
         => value ?? DBNull.Value;
+
+    /// <summary>
+    /// Flexibly parse an <see cref="object"/> as a value of type <typeparamref name="T"/>.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static T Parse<T>(object? value) => CommandUtils.As<T>(value);
 
     /// <summary>
     /// Allows the caller to cast values by providing a template shape - in particular this allows anonymous types to be accessed in type-safe code

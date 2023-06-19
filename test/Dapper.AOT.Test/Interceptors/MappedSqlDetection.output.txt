@@ -1,0 +1,7 @@
+Generator produced 2 diagnostics:
+
+Warning DAP023 Interceptors/MappedSqlDetection.input.cs L31 C19
+Members 'DuplicateToCauseProblems' and 'RowCount' are both marked [RowCount]
+
+Warning DAP024 Interceptors/MappedSqlDetection.input.cs L31 C19
+Member 'DuplicateToCauseProblems' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored

@@ -257,22 +257,20 @@ file static class DapperGeneratedInterceptors
         private CommandFactory0() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomePublicType args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
+            var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             p = cmd.CreateParameter();
             p.ParameterName = "Id";
             p.DbType = global::System.Data.DbType.Int32;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(args.Id);
-            cmd.Parameters.Add(p);
+            ps.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomePublicType args)
         {
-            var sql = cmd.CommandText;
             var ps = cmd.Parameters;
-            ps["Id"].Value = AsValue(args.Id);
+            ps[0].Value = AsValue(args.Id);
 
         }
 
@@ -284,22 +282,20 @@ file static class DapperGeneratedInterceptors
         private CommandFactory1() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeInternalType args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
+            var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             p = cmd.CreateParameter();
             p.ParameterName = "Id";
             p.DbType = global::System.Data.DbType.Int32;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(args.Id);
-            cmd.Parameters.Add(p);
+            ps.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeInternalType args)
         {
-            var sql = cmd.CommandText;
             var ps = cmd.Parameters;
-            ps["Id"].Value = AsValue(args.Id);
+            ps[0].Value = AsValue(args.Id);
 
         }
 
@@ -311,22 +307,20 @@ file static class DapperGeneratedInterceptors
         private CommandFactory2() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeProtectedInternalType args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
+            var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             p = cmd.CreateParameter();
             p.ParameterName = "Id";
             p.DbType = global::System.Data.DbType.Int32;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(args.Id);
-            cmd.Parameters.Add(p);
+            ps.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeProtectedInternalType args)
         {
-            var sql = cmd.CommandText;
             var ps = cmd.Parameters;
-            ps["Id"].Value = AsValue(args.Id);
+            ps[0].Value = AsValue(args.Id);
 
         }
 

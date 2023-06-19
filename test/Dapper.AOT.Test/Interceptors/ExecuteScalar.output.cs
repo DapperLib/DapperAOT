@@ -102,32 +102,30 @@ file static class DapperGeneratedInterceptors
         private CommandFactory0() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
-            // var sql = cmd.CommandText;
-            // var commandType = cmd.CommandType;
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             p = cmd.CreateParameter();
             p.ParameterName = "Foo";
             p.DbType = global::System.Data.DbType.Int32;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(typed.Foo);
-            cmd.Parameters.Add(p);
+            ps.Add(p);
 
             p = cmd.CreateParameter();
             p.ParameterName = "bar";
             p.DbType = global::System.Data.DbType.String;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(typed.bar);
-            cmd.Parameters.Add(p);
+            ps.Add(p);
 
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
-            var sql = cmd.CommandText;
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
             var ps = cmd.Parameters;
-            ps["Foo"].Value = AsValue(typed.Foo);
-            ps["bar"].Value = AsValue(typed.bar);
+            ps[0].Value = AsValue(typed.Foo);
+            ps[1].Value = AsValue(typed.bar);
 
         }
 

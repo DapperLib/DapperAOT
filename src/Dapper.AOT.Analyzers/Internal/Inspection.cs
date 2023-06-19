@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Dapper.Internal;
@@ -301,8 +300,14 @@ internal static class Inspection
             _ => ((IFieldSymbol)Member).Type,
         };
 
-        public ParameterDirection Direction => TryGetAttributeValue(_dbValue, "Direction", out int direction)
+        public ParameterDirection Direction => TryGetAttributeValue(_dbValue, nameof(Direction), out int direction)
             ? (ParameterDirection)direction : ParameterDirection.Input;
+
+        public bool IsRowCount { get; }
+        public bool HasDbValueAttribute => _dbValue is not null;
+
+        public T? TryGetValue<T>(string memberName) where T : struct
+            => TryGetAttributeValue(_dbValue, memberName, out T value) ? value : null;
 
         public DbType? GetDbType(out string? readerMethod)
         {
@@ -318,10 +323,11 @@ internal static class Inspection
             return dbType;
         }
 
-        public ElementMember(ISymbol member, AttributeData? dbValue)
+        public ElementMember(ISymbol member, AttributeData? dbValue, bool isRowCount)
         {
             Member = member;
             _dbValue = dbValue;
+            IsRowCount = isRowCount;
         }
 
         public override int GetHashCode() => SymbolEqualityComparer.Default.GetHashCode(Member);
@@ -337,7 +343,7 @@ internal static class Inspection
         {
             foreach (var field in named.TupleElements)
             {
-                yield return new(field, null);
+                yield return new(field, null, false);
             }
         }
         else
@@ -349,7 +355,8 @@ internal static class Inspection
 
                 // public or annotated only; not explicitly ignored
                 var dbValue = GetDapperAttribute(member, Types.DbValueAttribute);
-                if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public) continue;
+                var isRowCount = GetDapperAttribute(member, Types.RowCountAttribute) is not null;
+                if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && !isRowCount) continue;
                 if (TryGetAttributeValue(dbValue, "Ignore", out bool ignore) && ignore)
                 {
                     continue;
@@ -366,7 +373,7 @@ internal static class Inspection
                 }
 
                 // all good, then!
-                yield return new(member, dbValue);
+                yield return new(member, dbValue, isRowCount);
             }
         }
     }

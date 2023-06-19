@@ -9,7 +9,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
-using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -435,9 +434,25 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 elementType = parameterType;
             }
 
-            string? returnCodeMember = null;
+            string? returnCodeMember = null, rowCountMember = null;
             foreach (var member in Inspection.GetMembers(elementType!))
             {
+                if (member.IsRowCount)
+                {
+                    if (rowCountMember is null)
+                    {
+                        rowCountMember = member.CodeName;
+                    }
+                    else
+                    {
+                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateRowCount, loc, member.CodeName, rowCountMember));
+                    }
+                    if (member.HasDbValueAttribute)
+                    {
+                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.RowCountDbValue, loc, member.CodeName));
+                    }
+                    continue; // not treated as parameters for naming etc purposes
+                }
                 var dbName = member.DbName;
                 if (memberDbToCodeNames.TryGetValue(dbName, out var existing))
                 {
@@ -909,30 +924,31 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         sb.Indent().NewLine()
             .Append("internal static readonly CommandFactory").Append(index).Append(" Instance = new();").NewLine()
             .Append("private CommandFactory").Append(index).Append("() {}").NewLine()
-            .Append("public override void AddParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine()
-            .Append("// var sql = cmd.CommandText;").NewLine()
-            .Append("// var commandType = cmd.CommandType;").NewLine();
-        var argSource = "args";
-        if (type.IsAnonymousType)
-        {
-            sb.Append("var typed = Cast(args, ");
-            AppendShapeLambda(sb, type);
-            sb.Append("); // expected shape").NewLine();
-            argSource = "typed";
-        }
-        WriteArgs(type, sb, argSource, true, map);
+            .Append("public override void AddParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+
+        var flags = WriteArgsFlags.None;
+        WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags);
         sb.Outdent().NewLine();
 
-        sb.Append("public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine().Append("var sql = cmd.CommandText;").NewLine();
-        if (type.IsAnonymousType)
-        {
-            sb.Append("var typed = Cast(args, ");
-            AppendShapeLambda(sb, type);
-            sb.Append("); // expected shape").NewLine();
-            argSource = "typed";
-        }
-        WriteArgs(type, sb, argSource, false, map);
+        sb.Append("public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+        WriteArgs(type, sb, WriteArgsMode.Update, map, ref flags);
         sb.Outdent().NewLine();
+
+
+        if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
+        {
+            sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+            WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
+            sb.Outdent().NewLine();
+        }
+
+        if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
+        {
+            sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
+            WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
+            sb.Append("PostProcess(cmd, args);");
+            sb.Outdent().NewLine();
+        }
 
 
         sb.Outdent().NewLine().NewLine();
@@ -1038,34 +1054,87 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
     }
 
-    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, string source, bool add, string map)
+    [Flags]
+    enum WriteArgsFlags
+    {
+        None = 0,
+        NeedsTest = 1 << 0,
+        NeedsPostProcess = 1 << 1,
+        NeedsRowCount = 1 << 2,
+    }
+
+    enum WriteArgsMode
+    {
+        Add, Update, PostProcess,
+        SetRowCount
+    }
+
+    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags)
     {
         if (parameterType is null)
         {
             return;
         }
 
-        bool first = true;
+        var source = "args";
+        if (parameterType.IsAnonymousType)
+        {
+            sb.Append("var typed = Cast(args, ");
+            AppendShapeLambda(sb, parameterType);
+            sb.Append("); // expected shape").NewLine();
+            source = "typed";
+        }
+
+        bool first = true, firstTest = true;
+        int parameterIndex = 0;
         foreach (var member in Inspection.GetMembers(parameterType))
         {
+            if (member.IsRowCount)
+            {
+                flags |= WriteArgsFlags.NeedsRowCount;
+                if (mode == WriteArgsMode.SetRowCount)
+                {
+                    sb.Append(source).Append(".").Append(member.CodeName).Append(" = rowCount;").NewLine();
+                }
+            }
+            if (mode == WriteArgsMode.SetRowCount || member.IsRowCount)
+            {
+                // rowcount mode *only* does the above, and rowcount members are *only*
+                // used by that; they are not treated as routine parameters
+                continue;
+            }
+
             if (!SqlTools.IncludeParameter(map, member.CodeName, out var test))
             {
                 continue; // not required
             }
+            var direction = member.Direction;
+            if (mode == WriteArgsMode.PostProcess)
+            {
+                switch (direction)
+                {
+                    case ParameterDirection.Output:
+                    case ParameterDirection.InputOutput:
+                    case ParameterDirection.ReturnValue:
+                        break; // fine, we'll look at that
+                    default:
+                        parameterIndex++;
+                        continue; // we don't need to know
+                }
+            }
+
             if (first)
             {
-                if (add)
+                sb.Append("var ps = cmd.Parameters;").NewLine();
+                switch (mode)
                 {
-                    sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
+                    case WriteArgsMode.Add:
+                        sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
+                        break;
                 }
-                else
-                {
-                    sb.Append("var ps = cmd.Parameters;").NewLine();
-                }
-
                 first = false;
             }
-            else if (add)
+            else if (mode == WriteArgsMode.Add)
             {
                 // space each param out a bit
                 sb.NewLine();
@@ -1073,59 +1142,106 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
             if (test)
             {
+                // add is seeing this for the first time
+                if (firstTest)
+                {
+                    sb.Append("var sql = cmd.CommandText;").NewLine().Append("var commandType = cmd.CommandType;").NewLine();
+                    flags |= WriteArgsFlags.NeedsTest;
+                    firstTest = false;
+                }
                 sb.Append("if (Include(sql, commandType, ").AppendVerbatimLiteral(member.DbName).Append("))").Indent().NewLine();
             }
-            var direction = member.Direction;
-            if (add)
+            switch (mode)
             {
-                sb.Append("p = cmd.CreateParameter();").NewLine()
-                    .Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
+                case WriteArgsMode.Add:
+                    sb.Append("p = cmd.CreateParameter();").NewLine()
+                        .Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
 
-                var dbType = member.GetDbType(out _);
-                if (dbType is not null)
-                {
-                    sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.GetValueOrDefault().ToString()).Append(";").NewLine();
-                }
-                sb.Append("p.Direction = global::System.Data.ParameterDirection.").Append(direction switch
-                {
-                    ParameterDirection.Input => nameof(ParameterDirection.Input),
-                    ParameterDirection.InputOutput => nameof(ParameterDirection.InputOutput),
-                    ParameterDirection.Output => nameof(ParameterDirection.Output),
-                    ParameterDirection.ReturnValue => nameof(ParameterDirection.ReturnValue),
-                    _ => direction.ToString(),
-                }).Append(";").NewLine().Append("p.Value = ");
-                switch (direction)
-                {
-                    case ParameterDirection.Input:
-                    case ParameterDirection.InputOutput:
-                        sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
-                        break;
-                    default:
-                        sb.Append("global::System.DBNull.Value;").NewLine();
-                        break;
-                }
-                sb.Append("cmd.Parameters.Add(p);").NewLine();
+                    var dbType = member.GetDbType(out _);
+                    if (dbType is not null)
+                    {
+                        sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.GetValueOrDefault().ToString()).Append(";").NewLine();
+                    }
+                    AppendDbParameterSetting(sb, "Size", member.TryGetValue<int>("Size"));
+                    AppendDbParameterSetting(sb, "Precision", member.TryGetValue<byte>("Precision"));
+                    AppendDbParameterSetting(sb, "Scale", member.TryGetValue<byte>("Scale"));
 
-            }
-            else
-            {
-                sb.Append("ps[").AppendVerbatimLiteral(member.DbName).Append("].Value = ");
-                switch (direction)
-                {
-                    case ParameterDirection.Input:
-                    case ParameterDirection.InputOutput:
-                        sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
-                        break;
-                    default:
-                        sb.Append("global::System.DBNull.Value;").NewLine();
-                        break;
+                    sb.Append("p.Direction = global::System.Data.ParameterDirection.").Append(direction switch
+                    {
+                        ParameterDirection.Input => nameof(ParameterDirection.Input),
+                        ParameterDirection.InputOutput => nameof(ParameterDirection.InputOutput),
+                        ParameterDirection.Output => nameof(ParameterDirection.Output),
+                        ParameterDirection.ReturnValue => nameof(ParameterDirection.ReturnValue),
+                        _ => direction.ToString(),
+                    }).Append(";").NewLine().Append("p.Value = ");
+                    switch (direction)
+                    {
+                        case ParameterDirection.Input:
+                        case ParameterDirection.InputOutput:
+                            sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                            break;
+                        default:
+                            sb.Append("global::System.DBNull.Value;").NewLine();
+                            break;
+                    }
+                    sb.Append("ps.Add(p);").NewLine();
 
-                }
+                    switch (direction)
+                    {
+                        case ParameterDirection.InputOutput:
+                        case ParameterDirection.Output:
+                        case ParameterDirection.ReturnValue:
+                            flags |= WriteArgsFlags.NeedsPostProcess;
+                            break;
+                    }
+                    break;
+                case WriteArgsMode.Update:
+                    sb.Append("ps[");
+                    if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
+                    else sb.Append(parameterIndex);
+                    sb.Append("].Value = ");
+                    switch (direction)
+                    {
+                        case ParameterDirection.Input:
+                        case ParameterDirection.InputOutput:
+                            sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                            break;
+                        default:
+                            sb.Append("global::System.DBNull.Value;").NewLine();
+                            break;
+
+                    }
+                    break;
+                case WriteArgsMode.PostProcess:
+                    // we already elinated args that we don't need to look at
+                    sb.Append(source).Append(".").Append(member.CodeName).Append(" = Parse<")
+                        .Append(member.CodeType).Append(">(ps[");
+                    if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
+                    else sb.Append(parameterIndex);
+                    sb.Append("].Value);").NewLine();
+                       
+                    break;
             }
             if (test)
             {
                 sb.Outdent().NewLine();
             }
+            parameterIndex++;
+        }
+    }
+
+    static void AppendDbParameterSetting(CodeWriter sb, string memberName, int? value)
+    {
+        if (value is not null)
+        {
+            sb.Append("p.").Append(memberName).Append(" = ").Append(value.GetValueOrDefault()).Append(";").NewLine();
+        }
+    }
+    static void AppendDbParameterSetting(CodeWriter sb, string memberName, byte? value)
+    {
+        if (value is not null)
+        {
+            sb.Append("p.").Append(memberName).Append(" = ").Append(value.GetValueOrDefault()).Append(";").NewLine();
         }
     }
 
