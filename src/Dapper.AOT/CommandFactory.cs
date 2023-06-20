@@ -151,9 +151,9 @@ public class CommandFactory<T> : CommandFactory
     /// <summary>
     /// Provide and configure an ADO.NET command that can perform the requested operation
     /// </summary>
-#if !NETSTANDARD
+#pragma warning disable IDE0079 // unnecessary suppression; it is necessary on some TFMs
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2249:Consider using 'string.Contains' instead of 'string.IndexOf'", Justification = "Not available in all target frameworks; readability is fine")]
-#endif
+#pragma warning restore IDE0079
     public virtual DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, T args)
     {
         // default behavior assumes no args, no special logic

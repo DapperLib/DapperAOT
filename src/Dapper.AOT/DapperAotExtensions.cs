@@ -53,22 +53,6 @@ public static class DapperAotExtensions
         => new(null, (DbTransaction)transaction, sql, commandType, timeout, handler);
 
     /// <summary>
-    /// Create a command that takes parameters from <typeparamref name="T"/>
-    /// </summary>
-    public static Command<T> Command<T>(this DbConnection connection, in CommandDefinition command, [DapperAot] CommandFactory<T>? handler = null)
-        => new(connection, (DbTransaction?)command.Transaction, command.CommandText,
-            command.CommandType ?? GetCommandType(command.CommandText),
-            command.CommandTimeout.GetValueOrDefault(), handler);
-
-    /// <summary>
-    /// Create a command that takes parameters from <typeparamref name="T"/>
-    /// </summary>
-    public static Command<T> Command<T>(this IDbConnection connection, in CommandDefinition command, [DapperAot] CommandFactory<T>? handler = null)
-        => new((DbConnection)connection, (DbTransaction?)command.Transaction, command.CommandText,
-            command.CommandType ?? GetCommandType(command.CommandText),
-            command.CommandTimeout.GetValueOrDefault(), handler);
-
-    /// <summary>
     /// Suggest an appropriate command-type for the provided SQL
     /// </summary>
     public static CommandType GetCommandType(string sql)

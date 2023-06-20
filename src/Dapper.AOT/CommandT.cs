@@ -10,9 +10,9 @@ namespace Dapper;
 /// <summary>
 /// Represents a command that will be executed for a series of <typeparamref name="TArgs"/> values
 /// </summary>
-#if !NETSTANDARD
+#pragma warning disable IDE0079 // unnecessary suppression; it is necessary on some TFMs
 [SuppressMessage("Usage", "CA2231:Overload operator equals on overriding value type Equals", Justification = "Equality not actually supported")]
-#endif
+#pragma warning restore IDE0079
 public readonly partial struct Command<TArgs> : ICommand<TArgs>
 {
 
