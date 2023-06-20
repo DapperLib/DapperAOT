@@ -135,12 +135,10 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 switch (arg.Parameter?.Name)
                 {
                     case "sql":
-                        if (!TryGetConstantValue(arg, out string? s))
+                        if (TryGetConstantValue(arg, out string? s))
                         {
-                            AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonConstantSql, arg.Syntax.GetLocation()));
-                            flags |= OperationFlags.DoNotGenerate;
+                            sql = s;
                         }
-                        sql = s;
                         break;
                     case "buffered":
                         if (TryGetConstantValue(arg, out bool b))
@@ -166,22 +164,16 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                         // nothing to do
                         break;
                     case "commandType":
-                        if (!TryGetConstantValue(arg, out int? ct))
-                        {
-                            flags |= OperationFlags.DoNotGenerate;
-                            AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedCommandType, arg.Syntax.GetLocation()));
-                        }
-                        else
+                        if (TryGetConstantValue(arg, out int? ct))
                         {
                             switch (ct)
                             {
-                                case null:
-                                    if (!string.IsNullOrWhiteSpace(sql))
-                                    {
-                                        // if no spaces: interpret as stored proc, else: text
-                                        flags |= sql!.Trim().IndexOf(' ') < 0 ? OperationFlags.StoredProcedure : OperationFlags.Text;
-                                    }
+                                case null when !string.IsNullOrWhiteSpace(sql):
+                                    // if no spaces: interpret as stored proc, else: text
+                                    flags |= sql!.Trim().IndexOf(' ') < 0 ? OperationFlags.StoredProcedure : OperationFlags.Text;
                                     break;
+                                case null:
+                                    break; // flexible
                                 case 1:
                                     flags |= OperationFlags.Text;
                                     break;
@@ -203,11 +195,6 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                         AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedArgument, arg.Syntax.GetLocation(), arg.Parameter?.Name));
                         break;
                 }
-            }
-            if (string.IsNullOrWhiteSpace(sql) && !HasDiagnostic(diagnostics, Diagnostics.NonConstantSql))
-            {
-                flags |= OperationFlags.DoNotGenerate;
-                AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.SqlNotDetected, loc));
             }
         }
         if (HasAny(flags, OperationFlags.Query) && buffered.HasValue)
@@ -800,17 +787,26 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             // assertions
             var commandTypeMode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
             var methodParameters = grp.Key.Method.Parameters;
+            if (HasParam(methodParameters, "sql"))
+            {
+                sb.Append("global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));").NewLine();
+            }
             if (HasParam(methodParameters, "commandType"))
             {
-                switch (commandTypeMode)
+                if (commandTypeMode != 0)
                 {
-                    case 0:
-                        sb.Append("global::System.Diagnostics.Debug.Assert(commandType is null);").NewLine();
-                        break;
-                    default:
-                        sb.Append("global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.")
-                            .Append(commandTypeMode.ToString()).Append(");").NewLine();
-                        break;
+                    sb.Append("global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.")
+                            .Append(commandTypeMode.ToString());
+                    switch (commandTypeMode)
+                    {
+                        case OperationFlags.StoredProcedure when HasParam(methodParameters, "sql"):
+                            sb.Append(" || (commandType is null && sql.IndexOf(' ') < 0)");
+                            break;
+                        case OperationFlags.Text when HasParam(methodParameters, "sql"):
+                            sb.Append(" || (commandType is null && sql.IndexOf(' ') >= 0)");
+                            break;
+                    }
+                    sb.Append(");").NewLine();
                 }
             }
 

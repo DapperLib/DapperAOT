@@ -6,7 +6,8 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is null);
 
@@ -21,7 +22,8 @@ file static class DapperGeneratedInterceptors
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: (everything)
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
@@ -36,7 +38,8 @@ file static class DapperGeneratedInterceptors
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: (everything)
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).Query<global::Foo.Customer>(buffered, RowFactory0.Instance);
@@ -48,7 +51,8 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, Unbuffered, StoredProcedure
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
         global::System.Diagnostics.Debug.Assert(buffered is false);
         global::System.Diagnostics.Debug.Assert(param is null);
 
@@ -62,7 +66,8 @@ file static class DapperGeneratedInterceptors
         // Query, TypedResult, HasParameters, Buffered, Text
         // takes parameter: <anonymous type: int Foo, string bar>
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text || (commandType is null && sql.IndexOf(' ') >= 0));
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
@@ -75,7 +80,8 @@ file static class DapperGeneratedInterceptors
     {
         // Query, Async, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
@@ -90,7 +96,8 @@ file static class DapperGeneratedInterceptors
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: (everything)
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
@@ -103,7 +110,8 @@ file static class DapperGeneratedInterceptors
     {
         // Query, Async, TypedResult, Unbuffered, StoredProcedure
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryUnbufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default);
@@ -116,7 +124,8 @@ file static class DapperGeneratedInterceptors
         // Query, Async, TypedResult, HasParameters, Unbuffered, Text
         // takes parameter: <anonymous type: int Foo, string bar>
         // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text || (commandType is null && sql.IndexOf(' ') >= 0));
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).QueryUnbufferedAsync<global::Foo.Customer>(RowFactory0.Instance, default);

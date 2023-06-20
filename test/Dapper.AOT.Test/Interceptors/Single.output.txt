@@ -1,7 +1,7 @@
 Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
 
-Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L81 C15
+Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L87 C15
 Nullability of reference types in value of type 'Task<Foo.Customer?>' doesn't match target type 'Task<Foo.Customer>'.
 
-Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L107 C15
+Warning CS8619 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L115 C15
 Nullability of reference types in value of type 'Task<Foo.Customer?>' doesn't match target type 'Task<Foo.Customer>'.

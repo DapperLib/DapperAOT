@@ -24,12 +24,10 @@ internal static class Diagnostics
             "Dapper (original) does not work well with tuple-type parameters as name information is inaccessible", Category.Library, DiagnosticSeverity.Warning, true),
         UnexpectedCommandType = new("DAP007", "Unexpected command type",
             "The command type specified is not understood", Category.Library, DiagnosticSeverity.Info, true),
-        NonConstantSql = new("DAP008", "Non-constant SQL",
-            "Only constant SQL is currently supported", Category.Library, DiagnosticSeverity.Info, true),
+        // space
         UnexpectedArgument = new("DAP009", "Unexpected parameter",
             "The parameter '{0}' is not understood", Category.Library, DiagnosticSeverity.Info, true),
-        SqlNotDetected = new("DAP010", "Missing SQL",
-            "The SQL for this operation could not be identified", Category.Library, DiagnosticSeverity.Info, true),
+        // space
         DapperLegacyBindNameTupleResults = new("DAP011", "Named-tuple results",
             "Dapper (original) does not support tuple results with bind-by-name semantics", Category.Library, DiagnosticSeverity.Warning, true),
         DapperAotAddBindTupleByName = new("DAP012", "Add BindTupleByName",

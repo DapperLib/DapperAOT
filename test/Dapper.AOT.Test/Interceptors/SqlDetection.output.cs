@@ -7,7 +7,8 @@ file static class DapperGeneratedInterceptors
         // Execute, HasParameters, Text
         // takes parameter: <anonymous type: int A, int B, int C>
         // parameter map: B
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text || (commandType is null && sql.IndexOf(' ') >= 0));
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute();
@@ -22,7 +23,8 @@ file static class DapperGeneratedInterceptors
         // Execute, HasParameters, Text
         // takes parameter: global::<anonymous type: int A, int B, int C>[]
         // parameter map: B
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text || (commandType is null && sql.IndexOf(' ') >= 0));
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Batch<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute((object?[])param);
@@ -33,7 +35,8 @@ file static class DapperGeneratedInterceptors
     internal static int Execute2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, Text
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text || (commandType is null && sql.IndexOf(' ') >= 0));
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, DefaultCommandFactory).Execute();
@@ -45,7 +48,8 @@ file static class DapperGeneratedInterceptors
     {
         // Execute, HasParameters, Text
         // takes parameter: <anonymous type: int A, int B, int C>
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text || (commandType is null && sql.IndexOf(' ') >= 0));
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute();
@@ -57,7 +61,8 @@ file static class DapperGeneratedInterceptors
     {
         // Execute, HasParameters, Text
         // takes parameter: global::<anonymous type: int A, int B, int C>[]
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text || (commandType is null && sql.IndexOf(' ') >= 0));
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Batch<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute((object?[])param);
