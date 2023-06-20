@@ -102,6 +102,21 @@ public abstract class CommandFactory
     protected static object AsValue(object? value)
         => value ?? DBNull.Value;
 
+
+    /// <summary>
+    /// Wrap a value for use in an ADO.NET parameter
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static object AsGenericValue<T>(T value)
+    {
+        // note JIT elide here
+        if (typeof(T) == typeof(bool)) return AsValue(Unsafe.As<T, bool>(ref value));
+        if (typeof(T) == typeof(bool?)) return AsValue(Unsafe.As<T, bool?>(ref value));
+        if (typeof(T) == typeof(int)) return AsValue(Unsafe.As<T, int>(ref value));
+        if (typeof(T) == typeof(int?)) return AsValue(Unsafe.As<T, int?>(ref value));
+        return AsValue((object?)value);
+    }
+
     /// <summary>
     /// Flexibly parse an <see cref="object"/> as a value of type <typeparamref name="T"/>.
     /// </summary>
