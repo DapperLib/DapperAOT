@@ -58,7 +58,14 @@ public sealed partial class DapperInterceptorGenerator
             // commandType
             if (commandTypeMode == 0)
             {   // not hard-coded
-                sb.Append(Forward(methodParameters, "commandType")).Append(HasParam(methodParameters, "commandType") ? ".GetValueOrDefault()" : "");
+                if (HasParam(methodParameters, "command"))
+                {
+                    sb.Append("command ?? global::Dapper.Command.GetCommandType(sql)");
+                }
+                else
+                {
+                    sb.Append("global::Dapper.Command.GetCommandType(sql)");
+                }
             }
             else
             {

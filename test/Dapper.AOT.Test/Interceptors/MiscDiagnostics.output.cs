@@ -8,7 +8,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert(param is null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, commandType.GetValueOrDefault(), commandTimeout ?? -1, DefaultCommandFactory).Execute();
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::Dapper.Command.GetCommandType(sql), commandTimeout ?? -1, DefaultCommandFactory).Execute();
 
     }
 
@@ -17,7 +17,7 @@ file static class DapperGeneratedInterceptors
     {
         // Execute, StoredProcedure
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).Execute();
@@ -30,7 +30,7 @@ file static class DapperGeneratedInterceptors
         // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne
         // returns data: global::SomeCode.InternalNesting.SomePublicType
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryFirst<global::SomeCode.InternalNesting.SomePublicType>(RowFactory0.Instance);
@@ -45,7 +45,7 @@ file static class DapperGeneratedInterceptors
         // takes parameter: global::SomeCode.InternalNesting.SomePublicType
         // parameter map: (everything)
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Command<global::SomeCode.InternalNesting.SomePublicType>(cnn, transaction, sql, (global::SomeCode.InternalNesting.SomePublicType)param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).Execute();
@@ -58,7 +58,7 @@ file static class DapperGeneratedInterceptors
         // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne
         // returns data: global::SomeCode.InternalNesting.SomeInternalType
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryFirst<global::SomeCode.InternalNesting.SomeInternalType>(RowFactory1.Instance);
@@ -72,7 +72,7 @@ file static class DapperGeneratedInterceptors
         // takes parameter: global::SomeCode.InternalNesting.SomeInternalType
         // parameter map: (everything)
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Command<global::SomeCode.InternalNesting.SomeInternalType>(cnn, transaction, sql, (global::SomeCode.InternalNesting.SomeInternalType)param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory1.Instance).Execute();
@@ -85,7 +85,7 @@ file static class DapperGeneratedInterceptors
         // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne
         // returns data: global::SomeCode.InternalNesting.SomeProtectedInternalType
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryFirst<global::SomeCode.InternalNesting.SomeProtectedInternalType>(RowFactory2.Instance);
@@ -99,7 +99,7 @@ file static class DapperGeneratedInterceptors
         // takes parameter: global::SomeCode.InternalNesting.SomeProtectedInternalType
         // parameter map: (everything)
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Command<global::SomeCode.InternalNesting.SomeProtectedInternalType>(cnn, transaction, sql, (global::SomeCode.InternalNesting.SomeProtectedInternalType)param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory2.Instance).Execute();

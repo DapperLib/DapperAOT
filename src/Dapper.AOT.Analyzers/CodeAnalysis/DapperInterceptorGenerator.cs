@@ -787,26 +787,13 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             // assertions
             var commandTypeMode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
             var methodParameters = grp.Key.Method.Parameters;
-            if (HasParam(methodParameters, "sql"))
-            {
-                sb.Append("global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));").NewLine();
-            }
+            sb.Append("global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));").NewLine();
             if (HasParam(methodParameters, "commandType"))
             {
                 if (commandTypeMode != 0)
                 {
-                    sb.Append("global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.")
-                            .Append(commandTypeMode.ToString());
-                    switch (commandTypeMode)
-                    {
-                        case OperationFlags.StoredProcedure when HasParam(methodParameters, "sql"):
-                            sb.Append(" || (commandType is null && sql.IndexOf(' ') < 0)");
-                            break;
-                        case OperationFlags.Text when HasParam(methodParameters, "sql"):
-                            sb.Append(" || (commandType is null && sql.IndexOf(' ') >= 0)");
-                            break;
-                    }
-                    sb.Append(");").NewLine();
+                    sb.Append("global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.")
+                            .Append(commandTypeMode.ToString()).Append(");").NewLine();
                 }
             }
 

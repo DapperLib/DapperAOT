@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,6 +13,12 @@ public abstract class Command
     : Dapper.Internal.ICommandApi
 #endif
 {
+    /// <summary>
+    /// Suggest an appropriate command-type for the provided SQL
+    /// </summary>
+    public static CommandType GetCommandType(string sql)
+        => sql.IndexOf(' ') < 0 ? CommandType.StoredProcedure : CommandType.Text;
+
     /// <inheritdoc cref="Command{TArgs}.QuerySingle{TRow}(RowFactory{TRow}?)"/>
     public abstract TRow QuerySingle<TRow>([DapperAot] RowFactory<TRow>? rowFactory = null);
 

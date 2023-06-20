@@ -9,7 +9,7 @@ file static class DapperGeneratedInterceptors
         // parameter map: (everything)
         // returns data: float
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).ExecuteScalar<float>();
@@ -22,7 +22,7 @@ file static class DapperGeneratedInterceptors
         // Execute, TypedResult, StoredProcedure, Scalar
         // returns data: float
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).ExecuteScalar<float>();
@@ -35,7 +35,7 @@ file static class DapperGeneratedInterceptors
         // Execute, TypedResult, Text, Scalar
         // returns data: float
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text || (commandType is null && sql.IndexOf(' ') >= 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, DefaultCommandFactory).ExecuteScalar<float>();
@@ -50,7 +50,7 @@ file static class DapperGeneratedInterceptors
         // parameter map: (everything)
         // returns data: float
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).ExecuteScalarAsync<float>(default);
@@ -63,7 +63,7 @@ file static class DapperGeneratedInterceptors
         // Execute, Async, TypedResult, StoredProcedure, Scalar
         // returns data: float
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.StoredProcedure || (commandType is null && sql.IndexOf(' ') < 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).ExecuteScalarAsync<float>(default);
@@ -76,7 +76,7 @@ file static class DapperGeneratedInterceptors
         // Execute, Async, TypedResult, Text, Scalar
         // returns data: float
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert(commandType == global::System.Data.CommandType.Text || (commandType is null && sql.IndexOf(' ') >= 0));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, param, global::System.Data.CommandType.Text, commandTimeout ?? -1, DefaultCommandFactory).ExecuteScalarAsync<float>(default);
