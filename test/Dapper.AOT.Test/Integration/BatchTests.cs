@@ -45,7 +45,7 @@ public class BatchTests : IClassFixture<SqlClientDatabase>
     private readonly SqlClientDatabase Database;
     public BatchTests(SqlClientDatabase database) => Database = database;
 
-    private Batch<string> Batch => Database.Connection.Batch("insert AotIntegrationBatchTests (Name) values (@name)", handler: CustomHandler.Instance);
+    private Command<string> Batch => Database.Connection.Command("insert AotIntegrationBatchTests (Name) values (@name)", handler: CustomHandler.Instance);
 
     [SkippableTheory]
     [InlineData(-1)]

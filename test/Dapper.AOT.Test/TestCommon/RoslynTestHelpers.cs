@@ -36,7 +36,7 @@ internal static class RoslynTestHelpers
                    MetadataReference.CreateFromFile(typeof(OracleConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(ValueTask<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(Component).Assembly.Location),
-                   MetadataReference.CreateFromFile(typeof(Command<int>).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(DapperAotExtensions).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(ImmutableList<int>).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(ImmutableArray<int>).Assembly.Location),

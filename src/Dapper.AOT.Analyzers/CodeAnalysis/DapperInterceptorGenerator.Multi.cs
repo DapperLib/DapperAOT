@@ -36,7 +36,7 @@ public sealed partial class DapperInterceptorGenerator
         void WriteMultiExecExpression(ITypeSymbol elementType, string castType)
         {
             // return Batch<type>
-            sb.Append("return global::Dapper.DapperAotExtensions.Batch<")
+            sb.Append("return global::Dapper.DapperAotExtensions.Command<")
               .Append(elementType.GetTypeDisplayName())
               .Append('>');
 
@@ -60,11 +60,11 @@ public sealed partial class DapperInterceptorGenerator
             {   // not hard-coded
                 if (HasParam(methodParameters, "command"))
                 {
-                    sb.Append("command ?? global::Dapper.Command.GetCommandType(sql)");
+                    sb.Append("command ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)");
                 }
                 else
                 {
-                    sb.Append("global::Dapper.Command.GetCommandType(sql)");
+                    sb.Append("global::Dapper.DapperAotExtensions.GetCommandType(sql)");
                 }
             }
             else

@@ -301,22 +301,22 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         var parameterMap = BuildParameterMap(sql, flags, paramType, loc, ref diagnostics);
         return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, diagnostics);
 
-        static bool HasDiagnostic(object? diagnostics, DiagnosticDescriptor diagnostic)
-        {
-            if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
-            switch (diagnostics)
-            {
-                case null: return false;
-                case Diagnostic single: return single.Descriptor == diagnostic;
-                case IEnumerable<Diagnostic> list:
-                    foreach (var single in list)
-                    {
-                        if (single.Descriptor == diagnostic) return true;
-                    }
-                    return false;
-                default: throw new ArgumentException(nameof(diagnostics));
-            }
-        }
+        //static bool HasDiagnostic(object? diagnostics, DiagnosticDescriptor diagnostic)
+        //{
+        //    if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
+        //    switch (diagnostics)
+        //    {
+        //        case null: return false;
+        //        case Diagnostic single: return single.Descriptor == diagnostic;
+        //        case IEnumerable<Diagnostic> list:
+        //            foreach (var single in list)
+        //            {
+        //                if (single.Descriptor == diagnostic) return true;
+        //            }
+        //            return false;
+        //        default: throw new ArgumentException(nameof(diagnostics));
+        //    }
+        //}
         static void AddDiagnostic(ref object? diagnostics, Diagnostic diagnostic)
         {
             if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
@@ -792,7 +792,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             {
                 if (commandTypeMode != 0)
                 {
-                    sb.Append("global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.")
+                    sb.Append("global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.")
                             .Append(commandTypeMode.ToString()).Append(");").NewLine();
                 }
             }

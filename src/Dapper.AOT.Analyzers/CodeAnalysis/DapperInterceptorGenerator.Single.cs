@@ -35,24 +35,15 @@ public sealed partial class DapperInterceptorGenerator
             sb.Append(parameterType);
         }
         sb.Append(">(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", sql, ");
-        if (parameterType is null || parameterType.IsAnonymousType)
-        {
-            sb.Append("param");
-        }
-        else
-        {
-            sb.Append("(").Append(parameterType).Append(")param");
-        }
-        sb.Append(", ");
         if (commandTypeMode == 0)
         {   // not hard-coded
             if (HasParam(methodParameters, "command"))
             {
-                sb.Append("command ?? global::Dapper.Command.GetCommandType(sql)");
+                sb.Append("command ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)");
             }
             else
             {
-                sb.Append("global::Dapper.Command.GetCommandType(sql)");
+                sb.Append("global::Dapper.DapperAotExtensions.GetCommandType(sql)");
             }
         }
         else
@@ -91,6 +82,7 @@ public sealed partial class DapperInterceptorGenerator
                 OperationFlags.Unbuffered => "Unbuffered",
                 _ => ""
             }).Append(isAsync ? "Async" : "").Append("<").Append(resultType).Append(">").Append("(");
+            WriteTypedArg(sb, parameterType).Append(", ");
             if (!HasAny(flags, OperationFlags.SingleRow))
             {
                 switch (flags & (OperationFlags.Buffered | OperationFlags.Unbuffered))
@@ -107,7 +99,7 @@ public sealed partial class DapperInterceptorGenerator
             {
                 resultTypes.Add(resultType!, resultTypeIndex = resultTypes.Count);
             }
-            sb.Append("RowFactory").Append(resultTypeIndex).Append(".Instance").Append(isAsync ? ", " : "");
+            sb.Append("RowFactory").Append(resultTypeIndex).Append(".Instance");
         }
         else if (HasAny(flags, OperationFlags.Execute))
         {
@@ -122,6 +114,7 @@ public sealed partial class DapperInterceptorGenerator
                 sb.Append("<").Append(resultType).Append(">");
             }
             sb.Append("(");
+            WriteTypedArg(sb, parameterType);
         }
         else
         {
@@ -129,7 +122,7 @@ public sealed partial class DapperInterceptorGenerator
         }
         if (isAsync)
         {
-            sb.Append(Forward(methodParameters, "cancellationToken"));
+            sb.Append(", ").Append(Forward(methodParameters, "cancellationToken"));
         }
         if (HasAll(flags, OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
         {
@@ -137,6 +130,19 @@ public sealed partial class DapperInterceptorGenerator
         }
         sb.Append(");");
         sb.NewLine().Outdent().NewLine().NewLine();
+
+        static CodeWriter WriteTypedArg(CodeWriter sb, ITypeSymbol? parameterType)
+        {
+            if (parameterType is null || parameterType.IsAnonymousType)
+            {
+                sb.Append("param");
+            }
+            else
+            {
+                sb.Append("(").Append(parameterType).Append(")param");
+            }
+            return sb;
+        }
     }
 
     private static bool HasParam(ImmutableArray<IParameterSymbol> methodParameters, string name)

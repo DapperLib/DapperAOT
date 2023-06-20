@@ -13,9 +13,9 @@ DAP004 | Library | Warning | Diagnostics
 DAP005 | Library | Info | Diagnostics
 DAP006 | Library | Warning | Diagnostics
 DAP007 | Library | Info | Diagnostics
-DAP008 | Library | Info | Diagnostics
+; DAP008 | Library | Info | Diagnostics
 DAP009 | Library | Info | Diagnostics
-DAP010 | Library | Info | Diagnostics
+; DAP010 | Library | Info | Diagnostics
 DAP011 | Library | Warning | Diagnostics
 DAP012 | Library | Warning | Diagnostics
 DAP013 | Library | Info | Diagnostics

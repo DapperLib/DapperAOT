@@ -19,5 +19,9 @@
         <None Include="../Dapper.AOT.Analyzers/bin/Release/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
 
         <None Include="../../docs/readme.md" Link="readme.md" Pack="true" PackagePath="/" />
+
+        <Compile Update="CommandT.*.cs">
+            <DependentUpon>CommandT.cs</DependentUpon>
+        </Compile>
     </ItemGroup>
 </Project>

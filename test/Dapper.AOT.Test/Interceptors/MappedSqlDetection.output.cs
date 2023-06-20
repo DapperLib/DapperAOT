@@ -8,10 +8,10 @@ file static class DapperGeneratedInterceptors
         // takes parameter: global::Foo.SomeArg
         // parameter map: A
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeArg>(cnn, transaction, sql, (global::Foo.SomeArg)param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute();
+        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeArg>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute((global::Foo.SomeArg)param);
 
     }
 
@@ -22,10 +22,10 @@ file static class DapperGeneratedInterceptors
         // Execute, HasParameters, Text
         // takes parameter: global::Foo.SomeArg
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeArg>(cnn, transaction, sql, (global::Foo.SomeArg)param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute();
+        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeArg>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute((global::Foo.SomeArg)param);
 
     }
 
@@ -36,10 +36,10 @@ file static class DapperGeneratedInterceptors
         // takes parameter: global::Foo.SomeArg
         // parameter map: B
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeArg>(cnn, transaction, sql, (global::Foo.SomeArg)param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory2.Instance).Execute();
+        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeArg>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory2.Instance).Execute((global::Foo.SomeArg)param);
 
     }
 
@@ -50,10 +50,10 @@ file static class DapperGeneratedInterceptors
         // takes parameter: global::Foo.SomeArg
         // parameter map: D
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeArg>(cnn, transaction, sql, (global::Foo.SomeArg)param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory3.Instance).Execute();
+        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeArg>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory3.Instance).Execute((global::Foo.SomeArg)param);
 
     }
 
@@ -64,10 +64,10 @@ file static class DapperGeneratedInterceptors
         // takes parameter: global::Foo.SomeArg
         // parameter map: E
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeArg>(cnn, transaction, sql, (global::Foo.SomeArg)param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory4.Instance).Execute();
+        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeArg>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory4.Instance).Execute((global::Foo.SomeArg)param);
 
     }
 
@@ -78,10 +78,10 @@ file static class DapperGeneratedInterceptors
         // takes parameter: global::Foo.SomeOtherArg
         // parameter map: X
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.Command.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeOtherArg>(cnn, transaction, sql, (global::Foo.SomeOtherArg)param, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory5.Instance).Execute();
+        return global::Dapper.DapperAotExtensions.Command<global::Foo.SomeOtherArg>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory5.Instance).Execute((global::Foo.SomeOtherArg)param);
 
     }
 

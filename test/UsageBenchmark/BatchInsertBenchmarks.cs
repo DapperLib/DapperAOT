@@ -57,11 +57,11 @@ public class BatchInsertBenchmarks : IDisposable
     public int DapperAot() => connection.Execute("insert BenchmarkBatchInsert (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Sync")]
-    public int DapperAotManual() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
+    public int DapperAotManual() => connection.Command("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Unprepared).Execute(customers);
 
     [Benchmark, BenchmarkCategory("Sync")]
-    public int DapperAot_PreparedManual() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
+    public int DapperAot_PreparedManual() => connection.Command("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Prepared).Execute(customers);
 
     [Benchmark(Baseline = true), BenchmarkCategory("Sync")]
@@ -125,11 +125,11 @@ public class BatchInsertBenchmarks : IDisposable
     public Task<int> DapperAsync() => connection.ExecuteAsync("insert BenchmarkBatchInsert (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Async")]
-    public Task<int> DapperAotAsync() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
+    public Task<int> DapperAotAsync() => connection.Command("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Unprepared).ExecuteAsync(customers);
 
     [Benchmark, BenchmarkCategory("Async")]
-    public Task<int> DapperAot_PreparedAsync() => connection.Batch("insert BenchmarkBatchInsert (Name) values (@name)",
+    public Task<int> DapperAot_PreparedAsync() => connection.Command("insert BenchmarkBatchInsert (Name) values (@name)",
         handler: CustomHandler.Prepared).ExecuteAsync(customers);
 
     [Benchmark(Baseline = true), BenchmarkCategory("Async")]
