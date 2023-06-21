@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Dapper;
 
@@ -198,4 +199,31 @@ public class CommandFactory<T> : CommandFactory
     /// Provides an opportunity to recycle and reuse command instances
     /// </summary>
     public virtual bool TryRecycle(DbCommand command) => false;
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse command instances
+    /// </summary>
+    protected bool TryRecycle(ref DbCommand? storage, DbCommand command)
+    {
+        // detach and recycle
+        command.Connection = null;
+        command.Transaction = null;
+        return Interlocked.CompareExchange(ref storage, command, null) is null;
+    }
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse command instances
+    /// </summary>
+    protected DbCommand? TryReuse(ref DbCommand? storage, string sql, CommandType commandType, T args)
+    {
+        var cmd = Interlocked.Exchange(ref storage, null);
+        if (cmd is not null)
+        {
+            // try to avoid any dirty detection in the setters
+            if (cmd.CommandText != sql) cmd.CommandText = sql;
+            if (cmd.CommandType != commandType) cmd.CommandType = commandType;
+            UpdateParameters(cmd, args);
+        }
+        return cmd;
+    }
 }

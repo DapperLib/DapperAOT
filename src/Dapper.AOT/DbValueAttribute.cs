@@ -9,7 +9,7 @@ namespace Dapper;
 /// Specifies additional metadata to be used for columns and parameter handling; only explicitly specified values are used
 /// </summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = false)]
-public class DbValueAttribute
+public sealed class DbValueAttribute
     : Attribute
 {
     /// <summary>
@@ -58,7 +58,7 @@ public class DbValueAttribute
 /// </code></remarks>
 [ImmutableObject(true)]
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-public class DbAttribute<T> : Attribute where T : DbParameter
+public sealed class DbAttribute<T> : Attribute where T : DbParameter
 {
     /// <summary>
     /// Creates a new metadata entry that applies to parameters of type <typeparamref name="T"/>

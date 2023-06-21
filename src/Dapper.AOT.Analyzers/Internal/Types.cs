@@ -6,5 +6,6 @@ internal static class Types
         BindTupleByNameAttribute = nameof(BindTupleByNameAttribute),
         DapperAotAttribute = nameof(DapperAotAttribute),
         DbValueAttribute = nameof(DbValueAttribute),
-        RowCountAttribute = nameof(RowCountAttribute);
+        RowCountAttribute = nameof(RowCountAttribute),
+        CacheCommandAttribute = nameof(CacheCommandAttribute);
 }

@@ -302,18 +302,9 @@ internal class CustomHandler : CommandFactory<Customer>
     private ref DbCommand? Spare => ref (_canPrepare ? ref _spareP : ref _spareU);
 
     public override DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, Customer args)
-    {
-        var cmd = Interlocked.Exchange(ref Spare, null);
-        if (cmd is not null)
-        {
-            UpdateParameters(cmd, args);
-            return cmd;
-        }
-        return base.GetCommand(connection, sql, commandType, args);
-    }
+        => TryReuse(ref Spare, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);
 
-    public override bool TryRecycle(DbCommand command)
-        => Interlocked.CompareExchange(ref Spare, command, null) is null;
+    public override bool TryRecycle(DbCommand command) => TryRecycle(ref Spare, command);
 
     public override void AddParameters(DbCommand command, Customer obj)
     {

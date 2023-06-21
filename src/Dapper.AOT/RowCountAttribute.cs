@@ -8,4 +8,4 @@ namespace Dapper;
 /// </summary>
 [ImmutableObject(true)]
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = false)]
-public class RowCountAttribute : Attribute { }
+public sealed class RowCountAttribute : Attribute { }

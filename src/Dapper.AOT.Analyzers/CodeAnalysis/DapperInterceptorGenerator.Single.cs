@@ -14,9 +14,9 @@ public sealed partial class DapperInterceptorGenerator
         OperationFlags flags,
         OperationFlags commandTypeMode,
         ITypeSymbol? parameterType,
-        string map,
+        string map, Location? uniqueLocation,
         ImmutableArray<IParameterSymbol> methodParameters,
-        IDictionary<(ITypeSymbol Type, string Map), int> parameterTypes,
+        IDictionary<(ITypeSymbol Type, string Map, Location? UniqueLocation), int> parameterTypes,
         IDictionary<ITypeSymbol, int> resultTypes)
     {
         sb.Append("return ");
@@ -53,7 +53,7 @@ public sealed partial class DapperInterceptorGenerator
         sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? " ?? -1" : "").Append(", ");
         if (HasAny(flags, OperationFlags.HasParameters))
         {
-            var key = (parameterType!, map);
+            var key = (parameterType!, map, uniqueLocation);
             if (!parameterTypes.TryGetValue(key, out var parameterTypeIndex))
             {
                 parameterTypes.Add(key!, parameterTypeIndex = parameterTypes.Count);

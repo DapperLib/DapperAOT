@@ -13,9 +13,9 @@ public sealed partial class DapperInterceptorGenerator
         OperationFlags flags,
         OperationFlags commandTypeMode,
         ITypeSymbol? parameterType,
-        string map,
+        string map, Location? uniqueLocation,
         ImmutableArray<IParameterSymbol> methodParameters,
-        IDictionary<(ITypeSymbol Type, string Map), int> parameterTypes,
+        IDictionary<(ITypeSymbol Type, string Map, Location? UniqueLocation), int> parameterTypes,
         IDictionary<ITypeSymbol, int> resultTypes)
     {
         if (!HasAny(flags, OperationFlags.Execute))
@@ -81,7 +81,7 @@ public sealed partial class DapperInterceptorGenerator
             // commandFactory
             if (HasAny(flags, OperationFlags.HasParameters))
             {
-                var key = (elementType, map);
+                var key = (elementType, map, uniqueLocation);
                 if (!parameterTypes.TryGetValue(key, out var parameterTypeIndex))
                 {
                     parameterTypes.Add(key, parameterTypeIndex = parameterTypes.Count);
