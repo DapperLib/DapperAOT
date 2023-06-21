@@ -19,8 +19,8 @@
         <!-- we don't *super* need this (although it is nice to have) - mostly it fixes a generator init glitch -->
         <PackageReference Include="System.Collections.Immutable" />
 
-        <None Include="../Dapper.AOT.Analyzers/bin/Release/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
-
+        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
+        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Microsoft.SqlServer.TransactSql.ScriptDom.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
         <None Include="../../docs/readme.md" Link="readme.md" Pack="true" PackagePath="/" />
 
         <Compile Update="CommandT.*.cs">
