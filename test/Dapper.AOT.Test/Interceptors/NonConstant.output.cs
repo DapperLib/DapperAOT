@@ -10,7 +10,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::Dapper.DapperAotExtensions.GetCommandType(sql), commandTimeout ?? -1, CommandFactory0.Instance).Execute(param);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::Dapper.DapperAotExtensions.GetCommandType(sql), commandTimeout ?? -1, CommandFactory0.Instance).Execute(param);
 
     }
 
@@ -23,7 +23,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::Dapper.DapperAotExtensions.GetCommandType(sql), commandTimeout ?? -1, CommandFactory0.Instance).Execute((object?[])param);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::Dapper.DapperAotExtensions.GetCommandType(sql), commandTimeout ?? -1, CommandFactory0.Instance).Execute((object?[])param);
 
     }
 

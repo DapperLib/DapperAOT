@@ -11,7 +11,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered<global::Foo.Customer>(param, RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory0.Instance);
 
     }
 
@@ -27,7 +27,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).QueryBuffered<global::Foo.Customer>(param, RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).QueryBuffered(param, RowFactory0.Instance);
 
     }
 
@@ -42,7 +42,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).Query<global::Foo.Customer>(param, buffered, RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).Query(param, buffered, RowFactory0.Instance);
 
     }
 
@@ -56,7 +56,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(buffered is false);
         global::System.Diagnostics.Debug.Assert(param is null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryUnbuffered<global::Foo.Customer>(param, RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryUnbuffered(param, RowFactory0.Instance);
 
     }
 
@@ -71,7 +71,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).QueryBuffered<global::Foo.Customer>(param, RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).QueryBuffered(param, RowFactory0.Instance);
 
     }
 
@@ -85,7 +85,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
-            global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBufferedAsync<global::Foo.Customer>(param, RowFactory0.Instance, default));
+            global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBufferedAsync(param, RowFactory0.Instance, default));
 
     }
 
@@ -101,7 +101,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
-            global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).QueryBufferedAsync<global::Foo.Customer>(param, RowFactory0.Instance, default));
+            global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, CommandFactory0.Instance).QueryBufferedAsync(param, RowFactory0.Instance, default));
 
     }
 
@@ -114,7 +114,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryUnbufferedAsync<global::Foo.Customer>(param, RowFactory0.Instance, default);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryUnbufferedAsync(param, RowFactory0.Instance, default);
 
     }
 
@@ -128,7 +128,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).QueryUnbufferedAsync<global::Foo.Customer>(param, RowFactory0.Instance, default);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).QueryUnbufferedAsync(param, RowFactory0.Instance, default);
 
     }
 
@@ -253,7 +253,7 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
+    private sealed class CommandFactory1 : CommonCommandFactory<object>
     {
         internal static readonly CommandFactory1 Instance = new();
         public override bool CanPrepare => true;

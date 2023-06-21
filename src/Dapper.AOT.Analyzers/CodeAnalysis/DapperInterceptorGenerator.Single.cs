@@ -25,16 +25,7 @@ public sealed partial class DapperInterceptorGenerator
             sb.Append("global::Dapper.DapperAotExtensions.AsEnumerableAsync(").Indent(false).NewLine();
         }
         // (DbConnection connection, DbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, CommandFactory<TArgs>? commandFactory)
-        sb.Append("global::Dapper.DapperAotExtensions.Command<");
-        if (parameterType is null || parameterType.IsAnonymousType)
-        {
-            sb.Append("object?");
-        }
-        else
-        {
-            sb.Append(parameterType);
-        }
-        sb.Append(">(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", sql, ");
+        sb.Append("global::Dapper.DapperAotExtensions.Command(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", sql, ");
         if (commandTypeMode == 0)
         {   // not hard-coded
             if (HasParam(methodParameters, "command"))
@@ -77,7 +68,7 @@ public sealed partial class DapperInterceptorGenerator
                 OperationFlags.Buffered => "Buffered",
                 OperationFlags.Unbuffered => "Unbuffered",
                 _ => ""
-            }).Append(isAsync ? "Async" : "").Append("<").Append(resultType).Append(">").Append("(");
+            }).Append(isAsync ? "Async" : "").Append("(");
             WriteTypedArg(sb, parameterType).Append(", ");
             if (!HasAny(flags, OperationFlags.SingleRow))
             {

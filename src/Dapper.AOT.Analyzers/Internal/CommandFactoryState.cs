@@ -8,7 +8,8 @@ namespace Dapper.Internal;
 
 internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, string Map, int Index, int CacheCount)>
 {
-    public CommandFactoryState() { }
+    public CommandFactoryState(Compilation compilation) => systemObject = compilation.GetSpecialType(SpecialType.System_Object);
+    private readonly ITypeSymbol systemObject;
     private readonly Dictionary<(ITypeSymbol Type, string Map, bool Cached), (int Index, int CacheCount)> parameterTypes = new(ParameterTypeMapComparer.Instance);
 
     public int Count()
@@ -32,6 +33,11 @@ internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, st
 
     public int GetIndex(ITypeSymbol type, string map, bool cache, out int? subIndex)
     {
+        if (string.IsNullOrWhiteSpace(map) && type.IsReferenceType)
+        {
+            // just use object if there's nothing to map
+            type = systemObject;
+        }
         var key = (type!, map, cache);
         int index;
         if (parameterTypes.TryGetValue(key, out var value))

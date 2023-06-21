@@ -6,17 +6,11 @@ namespace Dapper.Internal.Roslyn;
 
 internal static class TypeSymbolExtensions
 {
-    public static bool InNamespace(this ITypeSymbol? typeSymbol, string @namespace)
-    {
-        if (typeSymbol is null) return false;
-        return typeSymbol.ContainingNamespace?.ToDisplayString() == @namespace;
-    }
-
     public static string? GetTypeDisplayName(this ITypeSymbol? typeSymbol)
     {
         if (typeSymbol is null) return null;
         if (typeSymbol.IsAnonymousType == true) return "object?";
-        return "global::" + typeSymbol.ToDisplayString();
+        return CodeWriter.GetTypeName(typeSymbol);
     }
     public static string? GetContainingTypeDisplayName(this ITypeSymbol? typeSymbol, int typeArgIndex = 0)
     {
@@ -41,40 +35,42 @@ internal static class TypeSymbolExtensions
     }
 
     /// <returns>
-    /// True, if passed <param name="typeSymbol"/> represents <see cref="ImmutableArray{T}"/>.
-    /// False otherwise
-    /// </returns>
-    public static bool IsImmutableArray(this ITypeSymbol? typeSymbol)
-    {
-        if (typeSymbol is null) return false;
-        if (typeSymbol is not INamedTypeSymbol namedTypeSymbol) return false;
-
-        return namedTypeSymbol.TypeKind == TypeKind.Struct
-            && namedTypeSymbol.Arity == 1
-            && namedTypeSymbol.Name == "ImmutableArray"
-            && namedTypeSymbol.InNamespace("System.Collections.Immutable");
-    }
-
-    /// <returns>
     /// True, if passed <param name="typeSymbol"/> represents array. False otherwise
     /// </returns>
     /// <remarks>Checks it type is a zero-based one-dimensional array</remarks>
     public static bool IsArray(this ITypeSymbol? typeSymbol) => typeSymbol is IArrayTypeSymbol { IsSZArray: true };
 
     /// <returns>
-    /// True, if passed <param name="typeSymbol"/> represents <see cref="List{T}"/>.
+    /// True, if passed <param name="type"/> represents <see cref="List{T}"/>.
     /// False otherwise
     /// </returns>
-    public static bool IsList(this ITypeSymbol? typeSymbol)
-    {
-        if (typeSymbol is null) return false;
-        if (typeSymbol is not INamedTypeSymbol namedTypeSymbol) return false;
+    public static bool IsList(this ITypeSymbol? type) => IsStandardCollection(type, "List");
 
-        return namedTypeSymbol.TypeKind == TypeKind.Class
-            && namedTypeSymbol.Arity == 1
-            && namedTypeSymbol.Name == "List"
-            && namedTypeSymbol.InNamespace("System.Collections.Generic");
-    }
+    /// <returns>
+    /// True, if passed <param name="typeSymbol"/> represents <see cref="ImmutableArray{T}"/>.
+    /// False otherwise
+    /// </returns>
+    public static bool IsImmutableArray(this ITypeSymbol? typeSymbol) => IsStandardCollection(typeSymbol, "ImmutableArray", "Immutable", TypeKind.Struct);
+
+    private static bool IsStandardCollection(ITypeSymbol? type, string name, string nsName = "Generic", TypeKind kind = TypeKind.Class)
+        => type is INamedTypeSymbol named
+            && named.Name == name
+            && named.TypeKind == kind
+            && named.Arity == 1
+            && named.ContainingSymbol is INamespaceSymbol ns
+            && ns.Name == ns.Name
+            && ns is
+            {
+                ContainingNamespace:
+                {
+                    Name: "Collections",
+                    ContainingNamespace:
+                    {
+                        Name: "System",
+                        ContainingNamespace: { IsGlobalNamespace: true }
+                    }
+                }
+            };
 
     /// <returns>
     /// True, if passed <param name="typeSymbol"/> implements <see cref="IEnumerable{T}"/>. False otherwise

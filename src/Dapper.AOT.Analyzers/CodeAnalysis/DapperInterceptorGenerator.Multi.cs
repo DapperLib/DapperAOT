@@ -34,15 +34,13 @@ public sealed partial class DapperInterceptorGenerator
 
         void WriteMultiExecExpression(ITypeSymbol elementType, string castType)
         {
-            // return Batch<type>
-            sb.Append("return global::Dapper.DapperAotExtensions.Command<")
-              .Append(elementType.GetTypeDisplayName())
-              .Append('>');
+            // return Command<type>
+            sb.Append("return global::Dapper.DapperAotExtensions.Command");
 
-            // return Batch<type>(...).
+            // return Command<type>(...).
             WriteBatchCommandArguments(elementType);
 
-            // return Batch<type>(...).ExecuteAsync((cast)param, ...);
+            // return Command<type>(...).ExecuteAsync((cast)param, ...);
             bool isAsync = HasAny(flags, OperationFlags.Async);
             sb.Append("Execute").Append(isAsync ? "Async" : "").Append("(");
             sb.Append("(").Append(castType).Append(")param").Append(");");

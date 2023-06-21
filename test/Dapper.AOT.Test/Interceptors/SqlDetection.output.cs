@@ -11,7 +11,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute(param);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute(param);
 
     }
 
@@ -27,7 +27,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute((object?[])param);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute((object?[])param);
 
     }
 
@@ -39,7 +39,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, DefaultCommandFactory).Execute(param);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, DefaultCommandFactory).Execute(param);
 
     }
 
@@ -52,7 +52,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute(param);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute(param);
 
     }
 
@@ -65,7 +65,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute((object?[])param);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute((object?[])param);
 
     }
 
@@ -115,7 +115,7 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int A, int B, int C>
+    private sealed class CommandFactory1 : CommonCommandFactory<object>
     {
         internal static readonly CommandFactory1 Instance = new();
         public override bool CanPrepare => true;

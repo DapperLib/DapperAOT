@@ -716,8 +716,8 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             .Append("file static class DapperGeneratedInterceptors").Indent().NewLine();
         int methodIndex = 0, callSiteCount = 0;
 
-        CommandFactoryState factories = new();
-        RowReaderState readers = new();
+        var factories = new CommandFactoryState(state.Compilation);
+        var readers = new RowReaderState();
 
         foreach (var grp in state.Nodes.Where(x => !HasAny(x.Flags, OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
@@ -971,7 +971,8 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         {
             if ((flags & WriteArgsFlags.NeedsTest) != 0)
             {
-                sb.Append("#error writing cache, but per-parameter test is needed; please report this!").NewLine();
+                // I hope to never see this, but I'd rather know than not
+                sb.Append("#error writing cache, but per-parameter test is needed; this isn't your fault - please report this! for now, mark the offending usage with [CacheCommand(false)]").NewLine();
             }
 
             // provide overrides to fetch/store cached commands
