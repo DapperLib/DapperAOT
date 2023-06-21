@@ -1075,9 +1075,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 }
             }
 
-            sb.Outdent().NewLine().Append("columnOffset++;").NewLine();
+            sb.Outdent().NewLine().Append("columnOffset++;").NewLine().Outdent().NewLine();
         }
-        sb.Outdent().NewLine().Append("return result;").NewLine().Outdent().NewLine();
+        sb.Append("return result;").NewLine().Outdent().NewLine();
 
 
         sb.Outdent().NewLine().NewLine();

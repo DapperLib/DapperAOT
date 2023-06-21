@@ -104,6 +104,13 @@ public sealed partial class DapperInterceptorGenerator
                     helper = "Object";
                     return true;
                 }
+                if (Inspection.IdentifyDbType(type, out _) is not null)
+                {
+                    bool nullable = type.IsValueType && type.NullableAnnotation == NullableAnnotation.Annotated;
+                    helper = (nullable ? "NullableValue<" : "Value<") + CodeWriter.GetTypeName(
+                        nullable ? Inspection.MakeNonNullable(type) : type) + ">()";
+                    return true;
+                }
                 if (type is INamedTypeSymbol { Arity: 0 })
                 {
                     if (type is
