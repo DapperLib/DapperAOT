@@ -30,18 +30,18 @@ public sealed partial class DapperInterceptorGenerator
         {   // not hard-coded
             if (HasParam(methodParameters, "command"))
             {
-                sb.Append("command ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)");
+                sb.Append("command.GetValueOrDefault()");
             }
             else
             {
-                sb.Append("global::Dapper.DapperAotExtensions.GetCommandType(sql)");
+                sb.Append("default");
             }
         }
         else
         {
             sb.Append("global::System.Data.CommandType.").Append(commandTypeMode.ToString());
         }
-        sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? " ?? -1" : "").Append(", ");
+        sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "").Append(", ");
         if (HasAny(flags, OperationFlags.HasParameters))
         {
             var index = factories.GetIndex(parameterType!, map, cache, out var subIndex);
