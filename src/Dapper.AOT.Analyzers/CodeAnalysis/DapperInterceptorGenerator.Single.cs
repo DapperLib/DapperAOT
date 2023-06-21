@@ -14,10 +14,10 @@ public sealed partial class DapperInterceptorGenerator
         OperationFlags flags,
         OperationFlags commandTypeMode,
         ITypeSymbol? parameterType,
-        string map,
+        string map, bool cache,
         ImmutableArray<IParameterSymbol> methodParameters,
-        IDictionary<(ITypeSymbol Type, string Map), int> parameterTypes,
-        IDictionary<ITypeSymbol, int> resultTypes)
+        CommandFactoryState factories,
+        RowReaderState readers)
     {
         sb.Append("return ");
         if (HasAll(flags, OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
@@ -53,12 +53,8 @@ public sealed partial class DapperInterceptorGenerator
         sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? " ?? -1" : "").Append(", ");
         if (HasAny(flags, OperationFlags.HasParameters))
         {
-            var key = (parameterType!, map);
-            if (!parameterTypes.TryGetValue(key, out var parameterTypeIndex))
-            {
-                parameterTypes.Add(key!, parameterTypeIndex = parameterTypes.Count);
-            }
-            sb.Append("CommandFactory").Append(parameterTypeIndex).Append(".Instance");
+            var index = factories.GetIndex(parameterType!, map, cache, out var subIndex);
+            sb.Append("CommandFactory").Append(index).Append(".Instance").Append(subIndex);
         }
         else
         {
@@ -95,11 +91,7 @@ public sealed partial class DapperInterceptorGenerator
                         break;
                 }
             }
-            if (!resultTypes.TryGetValue(resultType!, out var resultTypeIndex))
-            {
-                resultTypes.Add(resultType!, resultTypeIndex = resultTypes.Count);
-            }
-            sb.Append("RowFactory").Append(resultTypeIndex).Append(".Instance");
+            sb.Append("RowFactory").Append(readers.GetIndex(resultType!)).Append(".Instance");
         }
         else if (HasAny(flags, OperationFlags.Execute))
         {

@@ -114,6 +114,11 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             // but we still process the other bits, as there might be relevant additional things
         }
 
+        if (Inspection.IsEnabled(ctx, op, Types.CacheCommandAttribute, out _, cancellationToken))
+        {
+            flags |= OperationFlags.CacheCommand;
+        }
+
         Log?.Invoke(DiagnosticSeverity.Hidden, $"Found {op.TargetMethod.Name}: {flags} at {loc}");
 
         ITypeSymbol? resultType = null, paramType = null;
@@ -299,6 +304,18 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
 
         var parameterMap = BuildParameterMap(sql, flags, paramType, loc, ref diagnostics);
+
+        if (HasAny(flags, OperationFlags.CacheCommand))
+        {
+            bool canBeCached = true;
+            // need fixed text, command-type and parameters to be reusable
+            if (string.IsNullOrWhiteSpace(sql) || parameterMap == "?" || !HasAny(flags, OperationFlags.StoredProcedure | OperationFlags.TableDirect | OperationFlags.Text))
+            {
+                canBeCached = false;
+            }
+
+            if (!canBeCached) flags &= ~OperationFlags.CacheCommand;
+        }
         return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, diagnostics);
 
         //static bool HasDiagnostic(object? diagnostics, DiagnosticDescriptor diagnostic)
@@ -576,6 +593,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         AotNotEnabled = 1 << 15,
         BindTupleResultByName = 1 << 16,
         BindTupleParameterByName = 1 << 17,
+        CacheCommand = 1 << 18,
     }
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
@@ -698,13 +716,13 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             .Append("file static class DapperGeneratedInterceptors").Indent().NewLine();
         int methodIndex = 0, callSiteCount = 0;
 
-        var resultTypes = new Dictionary<ITypeSymbol, int>(SymbolEqualityComparer.Default);
-        var parameterTypes = new Dictionary<(ITypeSymbol Type, string Map), int>(ParameterTypeMapComparer.Instance);
+        CommandFactoryState factories = new();
+        RowReaderState readers = new();
 
         foreach (var grp in state.Nodes.Where(x => !HasAny(x.Flags, OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
             // first, try to resolve the helper method that we're going to use for this
-            var (flags, method, parameterType, parameterMap) = grp.Key;
+            var (flags, method, parameterType, parameterMap, _) = grp.Key;
             int arity = HasAny(flags, OperationFlags.TypedResult) ? 2 : 1, argCount = 8;
             bool useUnsafe = false;
             var helperName = method.Name;
@@ -804,9 +822,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
-            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, methodParameters, parameterTypes, resultTypes))
+            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories))
             {
-                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, methodParameters, parameterTypes, resultTypes);
+                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers);
             }
         }
 
@@ -859,14 +877,14 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
         sb.NewLine();
 
-        foreach (var pair in resultTypes.OrderBy(x => x.Value)) // retain discovery order
+        foreach (var pair in readers)
         {
-            WriteRowFactory(sb, pair.Key, pair.Value);
+            WriteRowFactory(sb, pair.Type, pair.Index);
         }
 
-        foreach (var pair in parameterTypes.OrderBy(x => x.Value)) // retain discovery order
+        foreach (var tuple in factories)
         {
-            WriteCommandFactory(baseCommandFactory, sb, pair.Key.Type, pair.Value, pair.Key.Map);
+            WriteCommandFactory(baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount);
         }
 
         sb.Outdent(); // ends our generated file-scoped class
@@ -878,64 +896,99 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             sb.NewLine().Append(Resources.ReadString("Dapper.InterceptsLocationAttribute.cs"));
         }
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
-        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, enabledCount, methodIndex, parameterTypes.Count, resultTypes.Count));
+        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, enabledCount, methodIndex, factories.Count(), readers.Count()));
     }
 
-    private sealed class ParameterTypeMapComparer : IEqualityComparer<(ITypeSymbol Type, string Map)>
-    {
-        public static readonly ParameterTypeMapComparer Instance = new();
-        private ParameterTypeMapComparer() { }
-
-        public bool Equals((ITypeSymbol Type, string Map) x, (ITypeSymbol Type, string Map) y)
-            => StringComparer.InvariantCultureIgnoreCase.Equals(x.Map, y.Map)
-            && SymbolEqualityComparer.Default.Equals(x.Type, y.Type);
-
-        public int GetHashCode((ITypeSymbol Type, string Map) obj)
-            => StringComparer.InvariantCultureIgnoreCase.GetHashCode(obj.Map)
-            ^ SymbolEqualityComparer.Default.GetHashCode(obj.Type);
-    }
-
-    private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map)
+    private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount)
     {
         var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
-        sb.Append("private sealed class CommandFactory").Append(index).Append(" : ")
+        sb.Append("private ").Append(cacheCount == 0 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
             .Append(baseFactory).Append("<").Append(declaredType).Append(">");
         if (type.IsAnonymousType)
         {
             sb.Append(" // ").Append(type); // give the reader a clue
         }
-        sb.Indent().NewLine()
-            .Append("internal static readonly CommandFactory").Append(index).Append(" Instance = new();").NewLine()
-            .Append("private CommandFactory").Append(index).Append("() {}").NewLine()
-            .Append("public override void AddParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+        sb.Indent().NewLine();
 
-        var flags = WriteArgsFlags.None;
-        WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags);
-        sb.Outdent().NewLine();
-
-        sb.Append("public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-        WriteArgs(type, sb, WriteArgsMode.Update, map, ref flags);
-        sb.Outdent().NewLine();
-
-
-        if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
+        if (cacheCount == 0)
         {
-            sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-            WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
-            sb.Outdent().NewLine();
+            // default instance
+            sb.Append("internal static readonly CommandFactory").Append(index).Append(" Instance = new();").NewLine();
+        }
+        else
+        {
+            // cache instances
+            if (cacheCount != 1)
+            {
+                sb.Append("// these represent different call-sites (and most likely all have different SQL etc)").NewLine();
+            }
+            for (int i = 0; i < cacheCount; i++)
+            {
+                sb.Append("internal static readonly CommandFactory").Append(index).Append(".Cached").Append(i)
+                    .Append(" Instance").Append(i).Append(" = new();").NewLine();
+            }
+            sb.NewLine();
         }
 
-        if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
+        var flags = WriteArgsFlags.None;
+        if (string.IsNullOrWhiteSpace(map))
         {
-            sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
-            WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
-            sb.Append("PostProcess(cmd, args);");
+            flags = WriteArgsFlags.CanPrepare;
+        }
+        else
+        {
+            sb.Append("public override void AddParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+            WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags);
             sb.Outdent().NewLine();
+
+            sb.Append("public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+            WriteArgs(type, sb, WriteArgsMode.Update, map, ref flags);
+            sb.Outdent().NewLine();
+
+
+            if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
+            {
+                sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+                WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
+                sb.Outdent().NewLine();
+            }
+
+            if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
+            {
+                sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
+                WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
+                sb.Append("PostProcess(cmd, args);");
+                sb.Outdent().NewLine();
+            }
         }
 
         if ((flags & WriteArgsFlags.CanPrepare) != 0)
         {
             sb.Append("public override bool CanPrepare => true;").NewLine();
+        }
+
+        if (cacheCount != 0)
+        {
+            if ((flags & WriteArgsFlags.NeedsTest) != 0)
+            {
+                sb.Append("#error writing cache, but per-parameter test is needed; please report this!").NewLine();
+            }
+
+            // provide overrides to fetch/store cached commands
+            sb.NewLine().Append("public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,").Indent(false).NewLine()
+                .Append("string sql, global::System.Data.CommandType commandType, ")
+                .Append(declaredType).Append(" args)").NewLine()
+                .Append(" => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false)
+                .NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine()
+                .Append("protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}").NewLine().NewLine();
+            
+            for (int i = 0; i < cacheCount; i++)
+            {
+                sb.Append("internal sealed class Cached").Append(i).Append(" : CommandFactory").Append(index).Indent().NewLine()
+                    .Append("protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;").NewLine()
+                    .Append("private static global::System.Data.Common.DbCommand? s_Storage;").NewLine()
+                    .Outdent().NewLine();
+            }
         }
 
         sb.Outdent().NewLine().NewLine();
@@ -1432,9 +1485,10 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             _ => throw new IndexOutOfRangeException(nameof(index)),
         };
 
-        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap) Group() => new(Flags, Method, ParameterType, ParameterMap);
+        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) Group()
+            => new(Flags, Method, ParameterType, ParameterMap, (Flags & OperationFlags.CacheCommand) == 0 ? null : Location);
     }
-    private sealed class CommonComparer : IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap)>, IComparer<Location>
+    private sealed class CommonComparer : IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation)>, IComparer<Location>
     {
         public static readonly CommonComparer Instance = new();
         private CommonComparer() { }
@@ -1457,12 +1511,13 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             return delta;
         }
 
-        public bool Equals((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap) x, (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap) y) => x.Flags == y.Flags
+        public bool Equals((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) x, (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) y) => x.Flags == y.Flags
                 && x.ParameterMap == y.ParameterMap
                 && SymbolEqualityComparer.Default.Equals(x.Method, y.Method)
-                && SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType);
+                && SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType)
+                && x.UniqueLocation == y.UniqueLocation;
 
-        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap) obj)
+        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) obj)
         {
             var hash = (int)obj.Flags;
             hash *= -47;
@@ -1473,6 +1528,11 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             if (obj.ParameterType is not null)
             {
                 hash += SymbolEqualityComparer.Default.GetHashCode(obj.ParameterType);
+            }
+            hash *= -47;
+            if (obj.UniqueLocation is not null)
+            {
+                hash += obj.UniqueLocation.GetHashCode();
             }
             return hash;
         }
