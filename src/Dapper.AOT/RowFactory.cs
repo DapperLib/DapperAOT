@@ -42,13 +42,13 @@ public class RowFactory<T> : RowFactory
     /// Inspect the metadata of the next columns (width according to <paramref name="tokens"/>), starting
     /// from <paramref name="columnOffset"/>, allowing an opportunity to identify columns that should be mapped
     /// </summary>
-    public virtual void Tokenize(DbDataReader reader, Span<int> tokens, int columnOffset) { }
+    public virtual object? Tokenize(DbDataReader reader, Span<int> tokens, int columnOffset) => null;
 
     /// <summary>
     /// Read the data of the next columns (width according to <paramref name="tokens"/>), starting from
     /// <paramref name="columnOffset"/>, parsing the cells into a <typeparamref name="T"/> value
     /// </summary>
-    public virtual T Read(DbDataReader reader, ReadOnlySpan<int> tokens, int columnOffset)
+    public virtual T Read(DbDataReader reader, ReadOnlySpan<int> tokens, int columnOffset, object? state)
         => reader.GetFieldValue<T>(columnOffset);
 }
 

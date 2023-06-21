@@ -58,7 +58,7 @@ internal static class TypeSymbolExtensions
             && named.TypeKind == kind
             && named.Arity == 1
             && named.ContainingSymbol is INamespaceSymbol ns
-            && ns.Name == ns.Name
+            && ns.Name == nsName
             && ns is
             {
                 ContainingNamespace:
@@ -67,7 +67,7 @@ internal static class TypeSymbolExtensions
                     ContainingNamespace:
                     {
                         Name: "System",
-                        ContainingNamespace: { IsGlobalNamespace: true }
+                        ContainingNamespace.IsGlobalNamespace: true
                     }
                 }
             };

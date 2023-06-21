@@ -129,7 +129,7 @@ file static class DapperGeneratedInterceptors
     {
         internal static readonly RowFactory0 Instance = new();
         private RowFactory0() {}
-        public override void Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
+        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
         {
             for (int i = 0; i < tokens.Length; i++)
             {
@@ -147,9 +147,9 @@ file static class DapperGeneratedInterceptors
                 columnOffset++;
 
             }
-
+            return null;
         }
-        public override global::SomeCode.InternalNesting.SomePublicType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+        public override global::SomeCode.InternalNesting.SomePublicType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
         {
             global::SomeCode.InternalNesting.SomePublicType result = new();
             foreach (var token in tokens)
@@ -177,7 +177,7 @@ file static class DapperGeneratedInterceptors
     {
         internal static readonly RowFactory1 Instance = new();
         private RowFactory1() {}
-        public override void Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
+        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
         {
             for (int i = 0; i < tokens.Length; i++)
             {
@@ -195,9 +195,9 @@ file static class DapperGeneratedInterceptors
                 columnOffset++;
 
             }
-
+            return null;
         }
-        public override global::SomeCode.InternalNesting.SomeInternalType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+        public override global::SomeCode.InternalNesting.SomeInternalType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
         {
             global::SomeCode.InternalNesting.SomeInternalType result = new();
             foreach (var token in tokens)
@@ -225,7 +225,7 @@ file static class DapperGeneratedInterceptors
     {
         internal static readonly RowFactory2 Instance = new();
         private RowFactory2() {}
-        public override void Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
+        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
         {
             for (int i = 0; i < tokens.Length; i++)
             {
@@ -243,9 +243,9 @@ file static class DapperGeneratedInterceptors
                 columnOffset++;
 
             }
-
+            return null;
         }
-        public override global::SomeCode.InternalNesting.SomeProtectedInternalType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+        public override global::SomeCode.InternalNesting.SomeProtectedInternalType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
         {
             global::SomeCode.InternalNesting.SomeProtectedInternalType result = new();
             foreach (var token in tokens)

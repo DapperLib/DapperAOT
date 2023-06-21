@@ -1014,7 +1014,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
         if (memberCount != 0)
         {
-            sb.Append("public override void Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
+            sb.Append("public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
             sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
                 .Append("int token = -1;").NewLine()
                 .Append("var name = reader.GetName(columnOffset);").NewLine()
@@ -1040,9 +1040,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             sb.Outdent().NewLine()
                 .Append("tokens[i] = token;").NewLine()
                 .Append("columnOffset++;").NewLine();
-            sb.Outdent().NewLine().Outdent().NewLine();
+            sb.Outdent().NewLine().Append("return null;").Outdent().NewLine();
         }
-        sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)").Indent().NewLine();
+        sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
 
         sb.Append(type.NullableAnnotation == NullableAnnotation.Annotated
             ? type.WithNullableAnnotation(NullableAnnotation.None) : type).Append(" result = new();").NewLine();
@@ -1146,7 +1146,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
             if (mode == WriteArgsMode.SetRowCount || member.IsRowCount)
             {
-                // rowcount mode *only* does the above, and rowcount members are *only*
+                // row-count mode *only* does the above, and row-count members are *only*
                 // used by that; they are not treated as routine parameters
                 continue;
             }
@@ -1278,7 +1278,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     }
                     break;
                 case WriteArgsMode.PostProcess:
-                    // we already elinated args that we don't need to look at
+                    // we already eliminated args that we don't need to look at
                     sb.Append(source).Append(".").Append(member.CodeName).Append(" = Parse<")
                         .Append(member.CodeType).Append(">(ps[");
                     if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);

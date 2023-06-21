@@ -140,7 +140,7 @@ file static class DapperGeneratedInterceptors
     {
         internal static readonly RowFactory0 Instance = new();
         private RowFactory0() {}
-        public override void Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
+        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
         {
             for (int i = 0; i < tokens.Length; i++)
             {
@@ -164,9 +164,9 @@ file static class DapperGeneratedInterceptors
                 columnOffset++;
 
             }
-
+            return null;
         }
-        public override global::Foo.Customer Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)
+        public override global::Foo.Customer Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
         {
             global::Foo.Customer result = new();
             foreach (var token in tokens)
