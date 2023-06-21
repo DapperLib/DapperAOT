@@ -451,7 +451,7 @@ internal static class Inspection
     public static ITypeSymbol MakeNonNullable(ITypeSymbol type)
     {
         // think: type = Nullable.GetUnderlyingType(type) ?? type
-        if (type.IsValueType && type is INamedTypeSymbol { Arity: 1, ConstructedFrom: { SpecialType: SpecialType.System_Nullable_T} } named)
+        if (type.IsValueType && type is INamedTypeSymbol { Arity: 1, ConstructedFrom.SpecialType: SpecialType.System_Nullable_T } named)
         {
             return named.TypeArguments[0];
         }

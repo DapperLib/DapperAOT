@@ -2,6 +2,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Runtime.CompilerServices;
 
 namespace Dapper;
 
@@ -59,7 +60,25 @@ public abstract class RowFactory
     /// or <see cref="DbDataReader.GetFieldValue{T}(int)"/> otherwise.
     /// </summary>
     protected static T GetValueExact<T>(DbDataReader reader, int fieldOffset)
-        => reader.GetFieldValue<T>(fieldOffset);
+    {
+        // note JIT elide at play here
+        if (typeof(T) == typeof(int)) return UnsafeAs<int, T>(reader.GetInt32(fieldOffset));
+        if (typeof(T) == typeof(short)) return UnsafeAs<short, T>(reader.GetInt16(fieldOffset));
+        if (typeof(T) == typeof(long)) return UnsafeAs<long, T>(reader.GetInt64(fieldOffset));
+        if (typeof(T) == typeof(byte)) return UnsafeAs<byte, T>(reader.GetByte(fieldOffset));
+        if (typeof(T) == typeof(bool)) return UnsafeAs<bool, T>(reader.GetBoolean(fieldOffset));
+        if (typeof(T) == typeof(DateTime)) return UnsafeAs<DateTime, T>(reader.GetDateTime(fieldOffset));
+        if (typeof(T) == typeof(decimal)) return UnsafeAs<decimal, T>(reader.GetDecimal(fieldOffset));
+        if (typeof(T) == typeof(double)) return UnsafeAs<double, T>(reader.GetDouble(fieldOffset));
+        if (typeof(T) == typeof(float)) return UnsafeAs<float, T>(reader.GetFloat(fieldOffset));
+        if (typeof(T) == typeof(Guid)) return UnsafeAs<Guid, T>(reader.GetGuid(fieldOffset));
+        // do not use GetChar - it isn't reliable on all implementations
+        // if (typeof(T) == typeof(char)) return UnsafeAs<char, T>(reader.GetChar(fieldOffset));
+        if (typeof(T) == typeof(string)) return UnsafeAs<string, T>(reader.GetString(fieldOffset));
+        return reader.GetFieldValue<T>(fieldOffset);
+    }
+
+    private static TTo UnsafeAs<TFrom, TTo>(TFrom value) => Unsafe.As<TFrom, TTo>(ref value);
 
     /// <summary>
     /// Provides a reliable string hashing function that ignores case, whitespace and underscores
