@@ -9,6 +9,7 @@
     <ItemGroup>
         <None Update="BatchInsertBenchmarks.txt" DependentUpon="BatchInsertBenchmarks.cs" />
         <None Update="ListIterationBenchmarks.txt" DependentUpon="ListIterationBenchmarks.cs" />
+        <None Update="QueryBenchmarks.txt" DependentUpon="QueryBenchmarks.cs" />
 
         <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />

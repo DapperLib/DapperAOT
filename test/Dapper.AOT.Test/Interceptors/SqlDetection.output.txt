@@ -10,5 +10,5 @@ Warning DAP018 Interceptors/SqlDetection.input.cs L33 C19
 Parameters are being supplied, but no parameters were detected in the command
 Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
 
-Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L67 C175
+Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L67 C189
 Argument of type 'object?[]' cannot be used for parameter 'values' of type 'object[]' in 'int Command<object>.Execute(object[] values)' due to differences in the nullability of reference types.

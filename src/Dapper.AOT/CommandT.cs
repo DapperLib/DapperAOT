@@ -63,7 +63,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         this.connection = connection!;
         this.transaction = transaction;
         this.sql = sql;
-        this.commandType = commandType;
+        this.commandType = commandType == 0 ? DapperAotExtensions.GetCommandType(sql) : commandType;
         this.timeout = timeout;
         this.commandFactory = commandFactory ?? CommandFactory<TArgs>.Default;
 

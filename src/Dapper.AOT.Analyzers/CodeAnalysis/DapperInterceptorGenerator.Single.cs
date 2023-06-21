@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -30,18 +31,18 @@ public sealed partial class DapperInterceptorGenerator
         {   // not hard-coded
             if (HasParam(methodParameters, "command"))
             {
-                sb.Append("command ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)");
+                sb.Append("command.GetValueOrDefault()");
             }
             else
             {
-                sb.Append("global::Dapper.DapperAotExtensions.GetCommandType(sql)");
+                sb.Append("default");
             }
         }
         else
         {
             sb.Append("global::System.Data.CommandType.").Append(commandTypeMode.ToString());
         }
-        sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? " ?? -1" : "").Append(", ");
+        sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "").Append(", ");
         if (HasAny(flags, OperationFlags.HasParameters))
         {
             var index = factories.GetIndex(parameterType!, map, cache, out var subIndex);
@@ -82,7 +83,83 @@ public sealed partial class DapperInterceptorGenerator
                         break;
                 }
             }
-            sb.Append("RowFactory").Append(readers.GetIndex(resultType!)).Append(".Instance");
+            if (IsInbuilt(resultType, out var helper))
+            {
+                sb.Append("global::Dapper.RowFactory.Inbuilt.").Append(helper);
+            }
+            else
+            {
+                sb.Append("RowFactory").Append(readers.GetIndex(resultType!)).Append(".Instance");
+            }
+
+            static bool IsInbuilt(ITypeSymbol? type, out string? helper)
+            {
+                if (type is null || type.TypeKind == TypeKind.Dynamic)
+                {
+                    helper = "Dynamic";
+                    return true;
+                }
+                if (type.SpecialType == SpecialType.System_Object)
+                {
+                    helper = "Object";
+                    return true;
+                }
+                if (Inspection.IdentifyDbType(type, out _) is not null)
+                {
+                    bool nullable = type.IsValueType && type.NullableAnnotation == NullableAnnotation.Annotated;
+                    helper = (nullable ? "NullableValue<" : "Value<") + CodeWriter.GetTypeName(
+                        nullable ? Inspection.MakeNonNullable(type) : type) + ">()";
+                    return true;
+                }
+                if (type is INamedTypeSymbol { Arity: 0 })
+                {
+                    if (type is
+                        {
+                            TypeKind: TypeKind.Interface,
+                            Name: "IDataRecord",
+                            ContainingType: null,
+                            ContainingNamespace:
+                            {
+                                Name: "Data",
+                                ContainingNamespace:
+                                {
+                                    Name: "System",
+                                    ContainingNamespace.IsGlobalNamespace: true
+                                }
+                            }
+                        })
+                    {
+                        helper = "IDataRecord";
+                        return true;
+                    }
+                    if (type is
+                        {
+                            TypeKind: TypeKind.Class,
+                            Name: "DbDataRecord",
+                            ContainingType: null,
+                            ContainingNamespace:
+                            {
+                                Name: "Common",
+                                ContainingNamespace:
+                                {
+                                    Name: "Data",
+                                    ContainingNamespace:
+                                    {
+                                        Name: "System",
+                                        ContainingNamespace.IsGlobalNamespace: true
+                                    }
+                                }
+                            }
+                        })
+                    {
+                        helper = "IDataRecord";
+                        return true;
+                    }
+                }
+                helper = null;
+                return false;
+
+            }
         }
         else if (HasAny(flags, OperationFlags.Execute))
         {
@@ -111,8 +188,26 @@ public sealed partial class DapperInterceptorGenerator
         {
             sb.Append(")").Outdent(false);
         }
-        sb.Append(");");
-        sb.NewLine().Outdent().NewLine().NewLine();
+        sb.Append(")");
+        if (HasAny(flags, OperationFlags.Scalar) || (HasAny(flags, OperationFlags.SingleRow) && !HasAny(flags, OperationFlags.AtLeastOne)))
+        {
+            // there are some NRT oddities in Dapper itself; shim over everything
+            // (we know that DapperAOT has "T? {First|Single}OrDefault<T>[Async]" and "T? ExecuteScalar<T>[Async]")
+            bool addNullForgiving;
+            if (method.ReturnType.IsAsync(out var t))
+            {
+                addNullForgiving = t is not null && t.NullableAnnotation != NullableAnnotation.Annotated;
+            }
+            else
+            {
+                addNullForgiving = method.ReturnType.NullableAnnotation != NullableAnnotation.Annotated;
+            }
+            if (addNullForgiving)
+            {
+                sb.Append("!");
+            }
+        }
+        sb.Append(";").NewLine().Outdent().NewLine().NewLine();
 
         static CodeWriter WriteTypedArg(CodeWriter sb, ITypeSymbol? parameterType)
         {

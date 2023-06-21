@@ -14,12 +14,12 @@ public static class Foo
         _ = connection.Query<Customer>("def", obj);
         _ = connection.Query<Customer>("def", obj, buffered: isBuffered);
         _ = connection.Query<Customer>("def", buffered: false, commandType: CommandType.StoredProcedure);
-        _ = connection.Query<Customer>("def", obj, buffered: true, commandType: CommandType.Text);
+        _ = connection.Query<Customer>("def @Foo", obj, buffered: true, commandType: CommandType.Text);
 
         _ = await connection.QueryAsync<Customer>("def");
         _ = await connection.QueryAsync<Customer>("def", obj);
         await foreach (var item in connection.QueryUnbufferedAsync<Customer>("def", commandType: CommandType.StoredProcedure)) { }
-        await foreach (var item in connection.QueryUnbufferedAsync<Customer>("def", obj, commandType: CommandType.Text)) { }
+        await foreach (var item in connection.QueryUnbufferedAsync<Customer>("def @Foo", obj, commandType: CommandType.Text)) { }
     }
     public class Customer
     {

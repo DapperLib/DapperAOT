@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -222,12 +223,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             else
             {
                 // extra checks specific to DapperAOT
-                if (Inspection.IsMissingOrObjectOrDynamic(resultType))
-                {
-                    flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedResults, loc));
-                }
-                else if (Inspection.InvolvesGenericTypeParameter(resultType))
+                if (Inspection.InvolvesGenericTypeParameter(resultType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, resultType!.ToDisplayString()));
@@ -247,7 +243,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleResults, loc));
                 }
-                else if (!Inspection.IsPublicOrAssemblyLocal(resultType!, ctx, out var failing))
+                else if (!Inspection.IsPublicOrAssemblyLocal(resultType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
@@ -295,7 +291,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedParameter, loc));
                 }
-                else if (!Inspection.IsPublicOrAssemblyLocal(paramType!, ctx, out var failing))
+                else if (!Inspection.IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
@@ -724,7 +720,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             // first, try to resolve the helper method that we're going to use for this
             var (flags, method, parameterType, parameterMap, _) = grp.Key;
             int arity = HasAny(flags, OperationFlags.TypedResult) ? 2 : 1, argCount = 8;
-            bool useUnsafe = false;
+            const bool useUnsafe = false;
             var helperName = method.Name;
             if (helperName == "Query")
             {
@@ -741,6 +737,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
 
             int usageCount = 0;
+
             foreach (var op in grp.OrderBy(row => row.Location, CommonComparer.Instance))
             {
                 var loc = op.Location.GetLineSpan();
@@ -757,22 +754,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             callSiteCount += usageCount;
 
             // declare the method
-            bool makeMethodNullable = false; // fixup return type annotation
-            if (method.ReturnType.IsReferenceType) // (but never change from value-type T to Nullable<T>)
-            {
-                if (HasAny(flags, OperationFlags.Scalar) && method.Arity == 0)
-                {   // ExecuteScalar non-generic returns object when it should return object? - fix that
-                    makeMethodNullable = true;
-                }
-                else if ((flags & (OperationFlags.SingleRow | OperationFlags.AtLeastOne)) == OperationFlags.SingleRow)
-                {
-                    // FirstOrDefault and SingleOrDefault could return null
-                    makeMethodNullable = true;
-                }
-            }
-
-            sb.Append("internal static ").Append(useUnsafe ? "unsafe " : "").Append(method.ReturnType).Append(makeMethodNullable ? "? " : " ")
-                .Append(method.Name).Append(methodIndex++).Append("(");
+            sb.Append("internal static ").Append(useUnsafe ? "unsafe " : "")
+                .Append(method.ReturnType)
+                .Append(" ").Append(method.Name).Append(methodIndex++).Append("(");
             var parameters = method.Parameters;
             for (int i = 0; i < parameters.Length; i++)
             {
@@ -902,7 +886,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
     private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount)
     {
         var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
-        sb.Append("private ").Append(cacheCount == 0 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
+        sb.Append("private ").Append(cacheCount <= 1 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
             .Append(baseFactory).Append("<").Append(declaredType).Append(">");
         if (type.IsAnonymousType)
         {
@@ -910,24 +894,27 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
         sb.Indent().NewLine();
 
-        if (cacheCount == 0)
+
+        switch (cacheCount)
         {
-            // default instance
-            sb.Append("internal static readonly CommandFactory").Append(index).Append(" Instance = new();").NewLine();
-        }
-        else
-        {
-            // cache instances
-            if (cacheCount != 1)
-            {
+            case 0:
+                // default instance
+                sb.Append("internal static readonly CommandFactory").Append(index).Append(" Instance = new();").NewLine();
+                break;
+            case 1:
+                // default instance, but we named it slightly differently because we were expecting more trouble
+                sb.Append("internal static readonly CommandFactory").Append(index).Append(" Instance0 = new();").NewLine();
+                break;
+            default:
+                // per-usage concrete sub-type
                 sb.Append("// these represent different call-sites (and most likely all have different SQL etc)").NewLine();
-            }
-            for (int i = 0; i < cacheCount; i++)
-            {
-                sb.Append("internal static readonly CommandFactory").Append(index).Append(".Cached").Append(i)
-                    .Append(" Instance").Append(i).Append(" = new();").NewLine();
-            }
-            sb.NewLine();
+                for (int i = 0; i < cacheCount; i++)
+                {
+                    sb.Append("internal static readonly CommandFactory").Append(index).Append(".Cached").Append(i)
+                        .Append(" Instance").Append(i).Append(" = new();").NewLine();
+                }
+                sb.NewLine();
+                break;
         }
 
         var flags = WriteArgsFlags.None;
@@ -980,15 +967,23 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 .Append("string sql, global::System.Data.CommandType commandType, ")
                 .Append(declaredType).Append(" args)").NewLine()
                 .Append(" => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false)
-                .NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine()
-                .Append("protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}").NewLine().NewLine();
-            
-            for (int i = 0; i < cacheCount; i++)
+                .NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine();
+
+            if (cacheCount == 1)
             {
-                sb.Append("internal sealed class Cached").Append(i).Append(" : CommandFactory").Append(index).Indent().NewLine()
-                    .Append("protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;").NewLine()
-                    .Append("private static global::System.Data.Common.DbCommand? s_Storage;").NewLine()
-                    .Outdent().NewLine();
+                sb.Append("private static global::System.Data.Common.DbCommand? Storage;").NewLine();
+            }
+            else
+            {
+                sb.Append("protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}").NewLine().NewLine();
+
+                for (int i = 0; i < cacheCount; i++)
+                {
+                    sb.Append("internal sealed class Cached").Append(i).Append(" : CommandFactory").Append(index).Indent().NewLine()
+                        .Append("protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;").NewLine()
+                        .Append("private static global::System.Data.Common.DbCommand? s_Storage;").NewLine()
+                        .Outdent().NewLine();
+                }
             }
         }
 
@@ -1014,7 +1009,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
         if (memberCount != 0)
         {
-            sb.Append("public override void Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
+            sb.Append("public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
             sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
                 .Append("int token = -1;").NewLine()
                 .Append("var name = reader.GetName(columnOffset);").NewLine()
@@ -1040,9 +1035,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             sb.Outdent().NewLine()
                 .Append("tokens[i] = token;").NewLine()
                 .Append("columnOffset++;").NewLine();
-            sb.Outdent().NewLine().Outdent().NewLine();
+            sb.Outdent().NewLine().Append("return null;").Outdent().NewLine();
         }
-        sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset)").Indent().NewLine();
+        sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
 
         sb.Append(type.NullableAnnotation == NullableAnnotation.Annotated
             ? type.WithNullableAnnotation(NullableAnnotation.None) : type).Append(" result = new();").NewLine();
@@ -1080,9 +1075,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 }
             }
 
-            sb.Outdent().NewLine().Append("columnOffset++;").NewLine();
+            sb.Outdent().NewLine().Append("columnOffset++;").NewLine().Outdent().NewLine();
         }
-        sb.Outdent().NewLine().Append("return result;").NewLine().Outdent().NewLine();
+        sb.Append("return result;").NewLine().Outdent().NewLine();
 
 
         sb.Outdent().NewLine().NewLine();
@@ -1146,7 +1141,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
             if (mode == WriteArgsMode.SetRowCount || member.IsRowCount)
             {
-                // rowcount mode *only* does the above, and rowcount members are *only*
+                // row-count mode *only* does the above, and row-count members are *only*
                 // used by that; they are not treated as routine parameters
                 continue;
             }
@@ -1278,7 +1273,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     }
                     break;
                 case WriteArgsMode.PostProcess:
-                    // we already elinated args that we don't need to look at
+                    // we already eliminated args that we don't need to look at
                     sb.Append(source).Append(".").Append(member.CodeName).Append(" = Parse<")
                         .Append(member.CodeType).Append(">(ps[");
                     if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
