@@ -71,11 +71,13 @@ static class Program
 
             Console.WriteLine(obj.DapperDynamic());
             Console.WriteLine(obj.Dapper());
+            Console.WriteLine(obj.DapperAotDynamic());
             Console.WriteLine(obj.DapperAot());
             Console.WriteLine(obj.EntityFramework());
 
             Console.WriteLine(await obj.DapperDynamicAsync());
             Console.WriteLine(await obj.DapperAsync());
+            Console.WriteLine(await obj.DapperAotDynamicAsync());
             Console.WriteLine(await obj.DapperAotAsync());
             Console.WriteLine(await obj.EntityFrameworkAsync());
         }

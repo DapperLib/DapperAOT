@@ -78,7 +78,7 @@ internal static class CommandUtils
             {
                 return typed;
             }
-
+            string? s;
             // note we're using value-type T JIT dead-code removal to elide most of these checks
             if (typeof(T) == typeof(int))
             {
@@ -139,6 +139,16 @@ internal static class CommandUtils
             {
                 DateTime? t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
                 return Unsafe.As<DateTime?, T>(ref t);
+            }
+            else if (typeof(T) == typeof(Guid) && (s = value as string) is not null)
+            {
+                Guid t = Guid.Parse(s);
+                return Unsafe.As<Guid, T>(ref t);
+            }
+            else if (typeof(T) == typeof(Guid?) && (s = value as string) is not null)
+            {
+                Guid? t = Guid.Parse(s);
+                return Unsafe.As<Guid?, T>(ref t);
             }
             else if (typeof(T) == typeof(long))
             {

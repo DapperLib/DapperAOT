@@ -3,11 +3,8 @@ using BenchmarkDotNet.Configs;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using UsageBenchmark;
 
@@ -59,6 +56,9 @@ public class QueryBenchmarks : IDisposable
     public int Dapper() => connection.Query<Customer>("select * from BenchmarkCustomers").AsList().Count;
 
     [Benchmark, BenchmarkCategory("Sync"), DapperAot, CacheCommand]
+    public int DapperAotDynamic() => connection.Query("select * from BenchmarkCustomers").AsList().Count;
+
+    [Benchmark, BenchmarkCategory("Sync"), DapperAot, CacheCommand]
     public int DapperAot() => connection.Query<Customer>("select * from BenchmarkCustomers").AsList().Count;
 
     [Benchmark, BenchmarkCategory("Async")]
@@ -68,9 +68,13 @@ public class QueryBenchmarks : IDisposable
     public async Task<int> DapperAsync() => (await connection.QueryAsync<Customer>("select * from BenchmarkCustomers")).AsList().Count;
 
     [Benchmark, BenchmarkCategory("Async"), DapperAot, CacheCommand]
+    public async Task<int> DapperAotDynamicAsync() => (await connection.QueryAsync("select * from BenchmarkCustomers")).AsList().Count;
+
+    [Benchmark, BenchmarkCategory("Async"), DapperAot, CacheCommand]
     public async Task<int> DapperAotAsync() => (await connection.QueryAsync<Customer>("select * from BenchmarkCustomers")).AsList().Count;
 
     [Benchmark, BenchmarkCategory("Sync")]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Needed for test")]
     public int EntityFramework()
     {
         using var ctx = new MyContext();
@@ -78,6 +82,7 @@ public class QueryBenchmarks : IDisposable
     }
 
     [Benchmark, BenchmarkCategory("Async")]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Needed for test")]
     public async Task<int> EntityFrameworkAsync()
     {
         using var ctx = new MyContext();

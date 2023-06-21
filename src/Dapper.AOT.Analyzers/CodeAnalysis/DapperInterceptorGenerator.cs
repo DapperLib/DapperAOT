@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -222,12 +223,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             else
             {
                 // extra checks specific to DapperAOT
-                if (Inspection.IsMissingOrObjectOrDynamic(resultType))
-                {
-                    flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedResults, loc));
-                }
-                else if (Inspection.InvolvesGenericTypeParameter(resultType))
+                if (Inspection.InvolvesGenericTypeParameter(resultType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, resultType!.ToDisplayString()));
@@ -247,7 +243,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleResults, loc));
                 }
-                else if (!Inspection.IsPublicOrAssemblyLocal(resultType!, ctx, out var failing))
+                else if (!Inspection.IsPublicOrAssemblyLocal(resultType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
@@ -295,7 +291,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedParameter, loc));
                 }
-                else if (!Inspection.IsPublicOrAssemblyLocal(paramType!, ctx, out var failing))
+                else if (!Inspection.IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
@@ -724,7 +720,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             // first, try to resolve the helper method that we're going to use for this
             var (flags, method, parameterType, parameterMap, _) = grp.Key;
             int arity = HasAny(flags, OperationFlags.TypedResult) ? 2 : 1, argCount = 8;
-            bool useUnsafe = false;
+            const bool useUnsafe = false;
             var helperName = method.Name;
             if (helperName == "Query")
             {
@@ -741,6 +737,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
 
             int usageCount = 0;
+
             foreach (var op in grp.OrderBy(row => row.Location, CommonComparer.Instance))
             {
                 var loc = op.Location.GetLineSpan();
@@ -757,22 +754,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             callSiteCount += usageCount;
 
             // declare the method
-            bool makeMethodNullable = false; // fixup return type annotation
-            if (method.ReturnType.IsReferenceType) // (but never change from value-type T to Nullable<T>)
-            {
-                if (HasAny(flags, OperationFlags.Scalar) && method.Arity == 0)
-                {   // ExecuteScalar non-generic returns object when it should return object? - fix that
-                    makeMethodNullable = true;
-                }
-                else if ((flags & (OperationFlags.SingleRow | OperationFlags.AtLeastOne)) == OperationFlags.SingleRow)
-                {
-                    // FirstOrDefault and SingleOrDefault could return null
-                    makeMethodNullable = true;
-                }
-            }
-
-            sb.Append("internal static ").Append(useUnsafe ? "unsafe " : "").Append(method.ReturnType).Append(makeMethodNullable ? "? " : " ")
-                .Append(method.Name).Append(methodIndex++).Append("(");
+            sb.Append("internal static ").Append(useUnsafe ? "unsafe " : "")
+                .Append(method.ReturnType)
+                .Append(" ").Append(method.Name).Append(methodIndex++).Append("(");
             var parameters = method.Parameters;
             for (int i = 0; i < parameters.Length; i++)
             {

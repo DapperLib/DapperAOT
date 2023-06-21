@@ -82,7 +82,76 @@ public sealed partial class DapperInterceptorGenerator
                         break;
                 }
             }
-            sb.Append("RowFactory").Append(readers.GetIndex(resultType!)).Append(".Instance");
+            if (IsInbuilt(resultType, out var helper))
+            {
+                sb.Append("global::Dapper.RowFactory.Inbuilt.").Append(helper);
+            }
+            else
+            {
+                sb.Append("RowFactory").Append(readers.GetIndex(resultType!)).Append(".Instance");
+            }
+
+            static bool IsInbuilt(ITypeSymbol? type, out string? helper)
+            {
+                if (type is null || type.TypeKind == TypeKind.Dynamic)
+                {
+                    helper = "Dynamic";
+                    return true;
+                }
+                if (type.SpecialType == SpecialType.System_Object)
+                {
+                    helper = "Object";
+                    return true;
+                }
+                if (type is INamedTypeSymbol { Arity: 0 })
+                {
+                    if (type is
+                        {
+                            TypeKind: TypeKind.Interface,
+                            Name: "IDataRecord",
+                            ContainingType: null,
+                            ContainingNamespace:
+                            {
+                                Name: "Data",
+                                ContainingNamespace:
+                                {
+                                    Name: "System",
+                                    ContainingNamespace.IsGlobalNamespace: true
+                                }
+                            }
+                        })
+                    {
+                        helper = "IDataRecord";
+                        return true;
+                    }
+                    if (type is
+                        {
+                            TypeKind: TypeKind.Class,
+                            Name: "DbDataRecord",
+                            ContainingType: null,
+                            ContainingNamespace:
+                            {
+                                Name: "Common",
+                                ContainingNamespace:
+                                {
+                                    Name: "Data",
+                                    ContainingNamespace:
+                                    {
+                                        Name: "System",
+                                        ContainingNamespace.IsGlobalNamespace: true
+                                    }
+                                }
+                            }
+                        })
+                    {
+                        helper = "IDataRecord";
+                        return true;
+                    }
+                }
+                helper = null;
+                return false;
+
+            }
         }
         else if (HasAny(flags, OperationFlags.Execute))
         {
@@ -111,8 +180,12 @@ public sealed partial class DapperInterceptorGenerator
         {
             sb.Append(")").Outdent(false);
         }
-        sb.Append(");");
-        sb.NewLine().Outdent().NewLine().NewLine();
+        sb.Append(")");
+        if (HasAny(flags, OperationFlags.Scalar | OperationFlags.SingleRow))
+        {   // there are some NRT oddities in Dapper itself; shim over everything
+            sb.Append("!");
+        }
+        sb.Append(";").NewLine().Outdent().NewLine().NewLine();
 
         static CodeWriter WriteTypedArg(CodeWriter sb, ITypeSymbol? parameterType)
         {

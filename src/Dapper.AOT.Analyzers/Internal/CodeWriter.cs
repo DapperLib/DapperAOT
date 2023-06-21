@@ -61,8 +61,16 @@ internal sealed class CodeWriter
     }
 
     public static string GetTypeName(ITypeSymbol value)
-        => value.IsAnonymousType ? value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
-        : value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+    {
+        if (value.IsAnonymousType) return value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+
+        var s = value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        if (value.NullableAnnotation == NullableAnnotation.Annotated && !s.EndsWith("?"))
+        {
+            s += "?"; // weird glitch in FQF - doesn't always add the annotation - example: dynamic?
+        }
+        return s;
+    }
 
     public static string GetNullableTypeName(ITypeSymbol value)
     {
@@ -88,7 +96,7 @@ internal sealed class CodeWriter
         }
         else
         {
-            Append(value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+            Append(GetTypeName(value));
         }
         return this;
     }
@@ -246,20 +254,20 @@ internal sealed class CodeWriter
     public CodeWriter DisableWarning(string warning)
     {
         NewLine();
-        _sb.Append("#pragma warning disable ").Append(warning);
+        _sb.Append("#pragma warning disable ").AppendLine(warning);
         return this;
     }
 
     public CodeWriter RestoreWarning(string warning)
     {
         NewLine();
-        _sb.Append("#pragma warning restore ").Append(warning);
+        _sb.Append("#pragma warning restore ").AppendLine(warning);
         return this;
     }
     public CodeWriter DisableObsolete()
-        => DisableWarning("CS0618");
+        => DisableWarning("CS0612, CS0618 // obsolete");
     public CodeWriter RestoreObsolete()
-        => RestoreWarning("CS0618");
+        => RestoreWarning("CS0612, CS0618 // obsolete");
 
 
     [Obsolete("You probably mean " + nameof(ToStringRecycle))]

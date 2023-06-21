@@ -65,6 +65,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, Buffered, Text
         // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
@@ -123,6 +124,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, Async, TypedResult, HasParameters, Unbuffered, Text
         // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
@@ -253,9 +255,29 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory1 : CommonCommandFactory<object>
+    private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
     {
         internal static readonly CommandFactory1 Instance = new();
+        public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
+        {
+            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            var ps = cmd.Parameters;
+            global::System.Data.Common.DbParameter p;
+            p = cmd.CreateParameter();
+            p.ParameterName = "Foo";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.Foo);
+            ps.Add(p);
+
+        }
+        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
+        {
+            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            var ps = cmd.Parameters;
+            ps[0].Value = AsValue(typed.Foo);
+
+        }
         public override bool CanPrepare => true;
 
     }

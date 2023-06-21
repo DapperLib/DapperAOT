@@ -1,5 +1,6 @@
 ﻿using Dapper.Internal;
 using System;
+using System.Data;
 using System.Data.Common;
 
 namespace Dapper;
@@ -9,6 +10,32 @@ namespace Dapper;
 /// </summary>
 public abstract class RowFactory
 {
+    /// <summary>
+    /// Provides an assortment of pre-built row factory implementations
+    /// </summary>
+    public static class Inbuilt
+    {
+        /// <summary>
+        /// Private a row-factory that can dynamically parse records as <see cref="IDataRecord"/>
+        /// </summary>
+        public static RowFactory<IDataRecord> IDataRecord => DynamicRecordReader<IDataRecord>.Instance;
+
+        /// <summary>
+        /// Private a row-factory that can dynamically parse records as <see cref="DbDataRecord"/>
+        /// </summary>
+        public static RowFactory<DbDataRecord> DbDataRecord => DynamicRecordReader<DbDataRecord>.Instance;
+
+        /// <summary>
+        /// Private a row-factory that can dynamically parse records as dynamic data
+        /// </summary>
+        public static RowFactory<dynamic> Dynamic => DynamicRecordReader<dynamic>.Instance;
+
+        /// <summary>
+        /// Private a row-factory that can dynamically parse records as dynamic data
+        /// </summary>
+        public static RowFactory<object> Object => DynamicRecordReader<object>.Instance;
+    }
+
     /// <summary>
     /// Provides a flexible typed read operation where the underlying data type
     /// is <b>not</b> required to be correct, i.e. where <see cref="DbDataReader.GetFieldValue{T}(int)"/>

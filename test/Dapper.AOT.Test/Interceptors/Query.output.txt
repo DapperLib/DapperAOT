@@ -1,7 +1,0 @@
-Generator produced 2 diagnostics:
-
-Warning DAP018 Interceptors/Query.input.cs L16 C23
-Parameters are being supplied, but no parameters were detected in the command
-
-Warning DAP018 Interceptors/Query.input.cs L21 C46
-Parameters are being supplied, but no parameters were detected in the command

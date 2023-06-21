@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
 using System.Threading;
@@ -140,12 +141,16 @@ internal static class Inspection
 
     public static bool IsMissingOrObjectOrDynamic(ITypeSymbol? type) => type is null || type.SpecialType == SpecialType.System_Object || type.TypeKind == TypeKind.Dynamic;
 
-    public static bool IsPublicOrAssemblyLocal(ISymbol symbol, in GeneratorSyntaxContext ctx, out ISymbol? failingSymbol)
+    public static bool IsPublicOrAssemblyLocal(ISymbol? symbol, in GeneratorSyntaxContext ctx, out ISymbol? failingSymbol)
         => IsPublicOrAssemblyLocal(symbol, ctx.SemanticModel.Compilation.Assembly, out failingSymbol);
 
-    public static bool IsPublicOrAssemblyLocal(ISymbol symbol, IAssemblySymbol? assembly, out ISymbol? failingSymbol)
+    public static bool IsPublicOrAssemblyLocal(ISymbol? symbol, IAssemblySymbol? assembly, out ISymbol? failingSymbol)
     {
-        if (symbol is null) throw new ArgumentNullException(nameof(symbol));
+        if (symbol is null || symbol.Kind == SymbolKind.DynamicType)
+        {   // interpret null as "dynamic"
+            failingSymbol = null;
+            return true;
+        }
         while (symbol is not null)
         {
             if (symbol is IArrayTypeSymbol array)
@@ -426,13 +431,29 @@ internal static class Inspection
         }
     }
 
+    //public static ITypeSymbol MakeNullable(ITypeSymbol type)
+    //{
+    //    if (type is null) return null!; // GIGO
+    //    if (type.IsAsync() && type is INamedTypeSymbol named)
+    //    {
+    //        if (named.TypeArgumentNullableAnnotations.Length == 1 && named.TypeArgumentNullableAnnotations[0] != NullableAnnotation.Annotated)
+    //        {
+    //            return named.ConstructedFrom.Construct(named.TypeArguments, SingleAnnotated);
+    //        }
+    //    }
+    //    else if (type.NullableAnnotation != NullableAnnotation.Annotated)
+    //    {
+    //        return type.WithNullableAnnotation(NullableAnnotation.Annotated);
+    //    }
+    //    return type;
+    //}
+    private static readonly ImmutableArray<NullableAnnotation> SingleAnnotated = new[] { NullableAnnotation.Annotated }.ToImmutableArray();
     public static ITypeSymbol MakeNonNullable(ITypeSymbol type)
     {
         // think: type = Nullable.GetUnderlyingType(type) ?? type
-        if (type.IsValueType && type.NullableAnnotation == NullableAnnotation.Annotated
-            && type is INamedTypeSymbol named && named.Arity == 1)
+        if (type.IsValueType && type is INamedTypeSymbol { Arity: 1, ConstructedFrom: { SpecialType: SpecialType.System_Nullable_T} } named)
         {
-            type = named.TypeArguments[0];
+            return named.TypeArguments[0];
         }
         return type.NullableAnnotation == NullableAnnotation.None
             ? type : type.WithNullableAnnotation(NullableAnnotation.None);
@@ -486,10 +507,6 @@ internal static class Inspection
                 readerMethod = null;
                 return DbType.SByte;
         }
-        //if (type is IArrayTypeSymbol array && array.IsSZArray) // SZArray === "vector" (1-dim, 0-based)
-        //{
-        // byte
-        //}
 
         if (type.Name == nameof(Guid) && type.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true })
         {

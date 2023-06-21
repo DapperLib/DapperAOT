@@ -40,6 +40,34 @@ internal static class TypeSymbolExtensions
     /// <remarks>Checks it type is a zero-based one-dimensional array</remarks>
     public static bool IsArray(this ITypeSymbol? typeSymbol) => typeSymbol is IArrayTypeSymbol { IsSZArray: true };
 
+    public static bool IsAsync(this ITypeSymbol? type)
+    {
+        if (type is not INamedTypeSymbol named) return false;
+        if (named.Name is "Task" or "ValueTask" && named.Arity <= 1
+            && named.ContainingType is null
+            && named.ContainingNamespace is
+            {
+                Name: "Tasks",
+                ContainingNamespace:
+                {
+                    Name: "Threading",
+                    ContainingNamespace:
+                    {
+                        Name: "System",
+                        ContainingNamespace.IsGlobalNamespace: true
+                    }
+                }
+            })
+        {
+            return true;
+        }
+        if (IsStandardCollection(type, "IAsyncEnumerable", kind: TypeKind.Interface))
+        {
+            return true;
+        }
+        return false;
+    }
+
     /// <returns>
     /// True, if passed <param name="type"/> represents <see cref="List{T}"/>.
     /// False otherwise
