@@ -902,7 +902,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
     private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount)
     {
         var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
-        sb.Append("private ").Append(cacheCount == 0 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
+        sb.Append("private ").Append(cacheCount <= 1 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
             .Append(baseFactory).Append("<").Append(declaredType).Append(">");
         if (type.IsAnonymousType)
         {
@@ -910,24 +910,27 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
         sb.Indent().NewLine();
 
-        if (cacheCount == 0)
+
+        switch (cacheCount)
         {
-            // default instance
-            sb.Append("internal static readonly CommandFactory").Append(index).Append(" Instance = new();").NewLine();
-        }
-        else
-        {
-            // cache instances
-            if (cacheCount != 1)
-            {
+            case 0:
+                // default instance
+                sb.Append("internal static readonly CommandFactory").Append(index).Append(" Instance = new();").NewLine();
+                break;
+            case 1:
+                // default instance, but we named it slightly differently because we were expecting more trouble
+                sb.Append("internal static readonly CommandFactory").Append(index).Append(" Instance0 = new();").NewLine();
+                break;
+            default:
+                // per-usage concrete sub-type
                 sb.Append("// these represent different call-sites (and most likely all have different SQL etc)").NewLine();
-            }
-            for (int i = 0; i < cacheCount; i++)
-            {
-                sb.Append("internal static readonly CommandFactory").Append(index).Append(".Cached").Append(i)
-                    .Append(" Instance").Append(i).Append(" = new();").NewLine();
-            }
-            sb.NewLine();
+                for (int i = 0; i < cacheCount; i++)
+                {
+                    sb.Append("internal static readonly CommandFactory").Append(index).Append(".Cached").Append(i)
+                        .Append(" Instance").Append(i).Append(" = new();").NewLine();
+                }
+                sb.NewLine();
+                break;
         }
 
         var flags = WriteArgsFlags.None;
@@ -980,15 +983,23 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 .Append("string sql, global::System.Data.CommandType commandType, ")
                 .Append(declaredType).Append(" args)").NewLine()
                 .Append(" => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false)
-                .NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine()
-                .Append("protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}").NewLine().NewLine();
-            
-            for (int i = 0; i < cacheCount; i++)
+                .NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine();
+
+            if (cacheCount == 1)
             {
-                sb.Append("internal sealed class Cached").Append(i).Append(" : CommandFactory").Append(index).Indent().NewLine()
-                    .Append("protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;").NewLine()
-                    .Append("private static global::System.Data.Common.DbCommand? s_Storage;").NewLine()
-                    .Outdent().NewLine();
+                sb.Append("private static global::System.Data.Common.DbCommand? Storage;").NewLine();
+            }
+            else
+            {
+                sb.Append("protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}").NewLine().NewLine();
+
+                for (int i = 0; i < cacheCount; i++)
+                {
+                    sb.Append("internal sealed class Cached").Append(i).Append(" : CommandFactory").Append(index).Indent().NewLine()
+                        .Append("protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;").NewLine()
+                        .Append("private static global::System.Data.Common.DbCommand? s_Storage;").NewLine()
+                        .Outdent().NewLine();
+                }
             }
         }
 
