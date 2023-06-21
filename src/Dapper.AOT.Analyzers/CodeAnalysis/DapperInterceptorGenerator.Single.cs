@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -181,9 +182,23 @@ public sealed partial class DapperInterceptorGenerator
             sb.Append(")").Outdent(false);
         }
         sb.Append(")");
-        if (HasAny(flags, OperationFlags.Scalar | OperationFlags.SingleRow))
-        {   // there are some NRT oddities in Dapper itself; shim over everything
-            sb.Append("!");
+        if (HasAny(flags, OperationFlags.Scalar) || (HasAny(flags, OperationFlags.SingleRow) && !HasAny(flags, OperationFlags.AtLeastOne)))
+        {
+            // there are some NRT oddities in Dapper itself; shim over everything
+            // (we know that DapperAOT has "T? {First|Single}OrDefault<T>[Async]" and "T? ExecuteScalar<T>[Async]")
+            bool addNullForgiving;
+            if (method.ReturnType.IsAsync(out var t))
+            {
+                addNullForgiving = t is not null && t.NullableAnnotation != NullableAnnotation.Annotated;
+            }
+            else
+            {
+                addNullForgiving = method.ReturnType.NullableAnnotation != NullableAnnotation.Annotated;
+            }
+            if (addNullForgiving)
+            {
+                sb.Append("!");
+            }
         }
         sb.Append(";").NewLine().Outdent().NewLine().NewLine();
 

@@ -40,10 +40,15 @@ internal static class TypeSymbolExtensions
     /// <remarks>Checks it type is a zero-based one-dimensional array</remarks>
     public static bool IsArray(this ITypeSymbol? typeSymbol) => typeSymbol is IArrayTypeSymbol { IsSZArray: true };
 
-    public static bool IsAsync(this ITypeSymbol? type)
+    public static bool IsAsync(this ITypeSymbol? type, out ITypeSymbol? result)
     {
-        if (type is not INamedTypeSymbol named) return false;
-        if (named.Name is "Task" or "ValueTask" && named.Arity <= 1
+        if (type is not INamedTypeSymbol { Arity: <= 1 } named)
+        {
+            result = null;
+            return false;
+        }
+        result = named.Arity == 0 ? null : named.TypeArguments[0];
+        if (named.Name is "Task" or "ValueTask"
             && named.ContainingType is null
             && named.ContainingNamespace is
             {
@@ -65,6 +70,7 @@ internal static class TypeSymbolExtensions
         {
             return true;
         }
+        result = null;
         return false;
     }
 
