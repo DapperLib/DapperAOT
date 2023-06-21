@@ -220,7 +220,6 @@ file static class DapperGeneratedInterceptors
     private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
     {
         internal static readonly CommandFactory0 Instance = new();
-        private CommandFactory0() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
@@ -257,17 +256,6 @@ file static class DapperGeneratedInterceptors
     private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
     {
         internal static readonly CommandFactory1 Instance = new();
-        private CommandFactory1() {}
-        public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
-        {
-            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
-
-        }
-        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
-        {
-            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
-
-        }
         public override bool CanPrepare => true;
 
     }

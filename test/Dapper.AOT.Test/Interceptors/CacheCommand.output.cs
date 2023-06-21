@@ -11,7 +11,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).Execute(param);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance0).Execute(param);
 
     }
 
@@ -25,7 +25,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute(param);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance1).Execute(param);
 
     }
 
@@ -39,7 +39,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory2.Instance).Execute(param);
+        return global::Dapper.DapperAotExtensions.Command<object?>(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).Execute(param);
 
     }
 
@@ -62,10 +62,12 @@ file static class DapperGeneratedInterceptors
 
     private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();
 
-    private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int id, string bar>
+    private abstract class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int id, string bar>
     {
-        internal static readonly CommandFactory0 Instance = new();
-        private CommandFactory0() {}
+        // these represent different call-sites (and most likely all have different SQL etc)
+        internal static readonly CommandFactory0.Cached0 Instance0 = new();
+        internal static readonly CommandFactory0.Cached1 Instance1 = new();
+
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
             var typed = Cast(args, static () => new { id = default(int), bar = default(string)! }); // expected shape
@@ -99,59 +101,29 @@ file static class DapperGeneratedInterceptors
 
         public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,
             string sql, global::System.Data.CommandType commandType, object? args)
-             => TryReuse(ref s_CachedCommands[0], sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);
+             => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);
 
-        public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref s_CachedCommands[0], command);
+        public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);
+        protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}
+
+        internal sealed class Cached0 : CommandFactory0
+        {
+            protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;
+            private static global::System.Data.Common.DbCommand? s_Storage;
+
+        }
+        internal sealed class Cached1 : CommandFactory0
+        {
+            protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;
+            private static global::System.Data.Common.DbCommand? s_Storage;
+
+        }
 
     }
 
     private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int id, string bar>
     {
         internal static readonly CommandFactory1 Instance = new();
-        private CommandFactory1() {}
-        public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
-        {
-            var typed = Cast(args, static () => new { id = default(int), bar = default(string)! }); // expected shape
-            var ps = cmd.Parameters;
-            global::System.Data.Common.DbParameter p;
-            p = cmd.CreateParameter();
-            p.ParameterName = "id";
-            p.DbType = global::System.Data.DbType.Int32;
-            p.Direction = global::System.Data.ParameterDirection.Input;
-            p.Value = AsValue(typed.id);
-            ps.Add(p);
-
-            p = cmd.CreateParameter();
-            p.ParameterName = "bar";
-            p.DbType = global::System.Data.DbType.String;
-            p.Size = -1;
-            p.Direction = global::System.Data.ParameterDirection.Input;
-            p.Value = AsValue(typed.bar);
-            ps.Add(p);
-
-        }
-        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
-        {
-            var typed = Cast(args, static () => new { id = default(int), bar = default(string)! }); // expected shape
-            var ps = cmd.Parameters;
-            ps[0].Value = AsValue(typed.id);
-            ps[1].Value = AsValue(typed.bar);
-
-        }
-        public override bool CanPrepare => true;
-
-        public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,
-            string sql, global::System.Data.CommandType commandType, object? args)
-             => TryReuse(ref s_CachedCommands[1], sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);
-
-        public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref s_CachedCommands[1], command);
-
-    }
-
-    private sealed class CommandFactory2 : CommonCommandFactory<object?> // <anonymous type: int id, string bar>
-    {
-        internal static readonly CommandFactory2 Instance = new();
-        private CommandFactory2() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
             var typed = Cast(args, static () => new { id = default(int), bar = default(string)! }); // expected shape
@@ -205,7 +177,6 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private static readonly global::System.Data.Common.DbCommand?[] s_CachedCommands = new global::System.Data.Common.DbCommand?[2];
 
 }
 namespace System.Runtime.CompilerServices

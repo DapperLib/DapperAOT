@@ -272,7 +272,6 @@ file static class DapperGeneratedInterceptors
     private sealed class CommandFactory0 : CommonCommandFactory<global::SomeCode.InternalNesting.SomePublicType>
     {
         internal static readonly CommandFactory0 Instance = new();
-        private CommandFactory0() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomePublicType args)
         {
             var ps = cmd.Parameters;
@@ -298,7 +297,6 @@ file static class DapperGeneratedInterceptors
     private sealed class CommandFactory1 : CommonCommandFactory<global::SomeCode.InternalNesting.SomeInternalType>
     {
         internal static readonly CommandFactory1 Instance = new();
-        private CommandFactory1() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeInternalType args)
         {
             var ps = cmd.Parameters;
@@ -324,7 +322,6 @@ file static class DapperGeneratedInterceptors
     private sealed class CommandFactory2 : CommonCommandFactory<global::SomeCode.InternalNesting.SomeProtectedInternalType>
     {
         internal static readonly CommandFactory2 Instance = new();
-        private CommandFactory2() {}
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeProtectedInternalType args)
         {
             var ps = cmd.Parameters;

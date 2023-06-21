@@ -186,7 +186,10 @@ public class CommandFactory<T> : CommandFactory
     /// </summary>
     public virtual void UpdateParameters(DbCommand command, T args)
     {
-        command.Parameters.Clear();
+        if (command.Parameters.Count != 0) // try to avoid rogue "dirty" checks
+        {
+            command.Parameters.Clear();
+        }
         AddParameters(command, args);
     }
 
