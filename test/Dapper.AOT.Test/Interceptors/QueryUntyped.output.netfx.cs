@@ -251,36 +251,8 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryUntyped.input.cs", 34, 47)]
-    internal static global::System.Collections.Generic.IAsyncEnumerable<object> QueryUnbufferedAsync17(this global::System.Data.Common.DbConnection cnn, string sql, object param, global::System.Data.Common.DbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, Async, TypedResult, Unbuffered, StoredProcedure
-        // returns data: object
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
-        global::System.Diagnostics.Debug.Assert(param is null);
-
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryUnbufferedAsync(param, global::Dapper.RowFactory.Inbuilt.Object, default);
-
-    }
-
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryUntyped.input.cs", 35, 47)]
-    internal static global::System.Collections.Generic.IAsyncEnumerable<object> QueryUnbufferedAsync18(this global::System.Data.Common.DbConnection cnn, string sql, object param, global::System.Data.Common.DbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, Async, TypedResult, HasParameters, Unbuffered, Text
-        // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: Foo
-        // returns data: object
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
-        global::System.Diagnostics.Debug.Assert(param is not null);
-
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).QueryUnbufferedAsync(param, global::Dapper.RowFactory.Inbuilt.Object, default);
-
-    }
-
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryUntyped.input.cs", 37, 30)]
-    internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<dynamic>> QueryAsync19(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<dynamic>> QueryAsync17(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Async, TypedResult, Buffered, StoredProcedure
         // returns data: dynamic
@@ -294,7 +266,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryUntyped.input.cs", 38, 30)]
-    internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<dynamic>> QueryAsync20(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<dynamic>> QueryAsync18(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Async, TypedResult, HasParameters, Buffered, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>
@@ -309,36 +281,8 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryUntyped.input.cs", 40, 47)]
-    internal static global::System.Collections.Generic.IAsyncEnumerable<dynamic> QueryUnbufferedAsync21(this global::System.Data.Common.DbConnection cnn, string sql, object param, global::System.Data.Common.DbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, Async, TypedResult, Unbuffered, StoredProcedure
-        // returns data: dynamic
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
-        global::System.Diagnostics.Debug.Assert(param is null);
-
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryUnbufferedAsync(param, global::Dapper.RowFactory.Inbuilt.Dynamic, default);
-
-    }
-
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryUntyped.input.cs", 41, 47)]
-    internal static global::System.Collections.Generic.IAsyncEnumerable<dynamic> QueryUnbufferedAsync22(this global::System.Data.Common.DbConnection cnn, string sql, object param, global::System.Data.Common.DbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, Async, TypedResult, HasParameters, Unbuffered, Text
-        // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: Foo
-        // returns data: dynamic
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
-        global::System.Diagnostics.Debug.Assert(param is not null);
-
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).QueryUnbufferedAsync(param, global::Dapper.RowFactory.Inbuilt.Dynamic, default);
-
-    }
-
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryUntyped.input.cs", 44, 30)]
-    internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<dynamic>> QueryAsync23(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<dynamic>> QueryAsync19(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Async, Buffered, StoredProcedure
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -351,7 +295,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryUntyped.input.cs", 45, 30)]
-    internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<dynamic>> QueryAsync24(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<dynamic>> QueryAsync20(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Async, HasParameters, Buffered, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>

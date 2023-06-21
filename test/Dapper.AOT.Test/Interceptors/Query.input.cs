@@ -18,8 +18,10 @@ public static class Foo
 
         _ = await connection.QueryAsync<Customer>("def");
         _ = await connection.QueryAsync<Customer>("def", obj);
+#if !NETFRAMEWORK
         await foreach (var item in connection.QueryUnbufferedAsync<Customer>("def", commandType: CommandType.StoredProcedure)) { }
         await foreach (var item in connection.QueryUnbufferedAsync<Customer>("def @Foo", obj, commandType: CommandType.Text)) { }
+#endif
     }
     public class Customer
     {

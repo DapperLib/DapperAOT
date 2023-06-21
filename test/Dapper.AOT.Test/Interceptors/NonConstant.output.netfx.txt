@@ -1,0 +1,7 @@
+Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L25 C160
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L25 C160
+Possible null reference argument for parameter 'values' in 'int Command<object?>.Execute(object?[] values)'.

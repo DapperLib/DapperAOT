@@ -30,13 +30,16 @@ public static class Foo
 
         _ = await connection.QueryAsync<object>("def");
         _ = await connection.QueryAsync<object>("def", obj);
+#if !NETFRAMEWORK
         await foreach (var item in connection.QueryUnbufferedAsync<object>("def", commandType: CommandType.StoredProcedure)) { }
         await foreach (var item in connection.QueryUnbufferedAsync<object>("def @Foo", obj, commandType: CommandType.Text)) { }
-
+#endif
         _ = await connection.QueryAsync<dynamic>("def");
         _ = await connection.QueryAsync<dynamic>("def", obj);
+#if !NETFRAMEWORK
         await foreach (var item in connection.QueryUnbufferedAsync<dynamic>("def", commandType: CommandType.StoredProcedure)) { }
         await foreach (var item in connection.QueryUnbufferedAsync<dynamic>("def @Foo", obj, commandType: CommandType.Text)) { }
+#endif
 
         _ = await connection.QueryAsync("def");
         _ = await connection.QueryAsync("def", obj);

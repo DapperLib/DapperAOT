@@ -12,7 +12,10 @@ public static class Foo
         {
             _ = multi.Read();
         }
-        await using (var multi = await connection.QueryMultipleAsync("def", obj))
+#if !NETFRAMEWORK
+        await
+#endif
+        using (var multi = await connection.QueryMultipleAsync("def", obj))
         {
             _ = await multi.ReadAsync();
         }
@@ -26,7 +29,10 @@ public static class Foo
         {
             _ = multi.Read();
         }
-        await using (var multi = await connection.QueryMultipleAsync("def", obj))
+#if !NETFRAMEWORK
+        await
+#endif
+        using (var multi = await connection.QueryMultipleAsync("def", obj))
         {
             _ = await multi.ReadAsync();
         }

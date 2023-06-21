@@ -23,7 +23,7 @@ public class SqlTests
        """, "", true)]
     public void DetectParameters(string sql, string expected, bool expectReturn = false)
     {
-        Assert.Equal(expected, string.Join(' ', SqlTools.GetParameters(sql, out var actualReturn)));
+        Assert.Equal(expected, string.Join(" ", SqlTools.GetParameters(sql, out var actualReturn)));
         Assert.Equal(expectReturn, actualReturn);
     }
 

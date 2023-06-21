@@ -21,9 +21,11 @@ public static class Foo
         _ = await connection.QueryAsync<int>("def");
         _ = await connection.QueryAsync<int?>("def");
         _ = await connection.QueryAsync<string>("def");
+#if !NETFRAMEWORK
         await foreach (var item in connection.QueryUnbufferedAsync<int>("def")) { }
         await foreach (var item in connection.QueryUnbufferedAsync<int?>("def")) { }
         await foreach (var item in connection.QueryUnbufferedAsync<string>("def")) { }
+#endif
         _ = await connection.QueryFirstAsync<int>("def");
         _ = await connection.QueryFirstAsync<int?>("def");
         _ = await connection.QueryFirstAsync<string>("def");

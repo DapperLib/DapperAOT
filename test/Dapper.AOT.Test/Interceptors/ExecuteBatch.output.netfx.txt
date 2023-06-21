@@ -1,0 +1,52 @@
+Output code has 17 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L13 C200
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L13 C200
+Possible null reference argument for parameter 'values' in 'int Command<Customer>.Execute(List<Customer> values)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L27 C200
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L27 C200
+Possible null reference argument for parameter 'values' in 'int Command<object?>.Execute(List<object?> values)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L41 C200
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L41 C200
+Possible null reference argument for parameter 'values' in 'int Command<Customer>.Execute(Customer[] values)'.
+
+Warning CS8605 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L55 C189
+Unboxing a possibly null value.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L69 C200
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L69 C200
+Possible null reference argument for parameter 'values' in 'int Command<Customer>.Execute(IEnumerable<Customer> values)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L83 C200
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L83 C200
+Possible null reference argument for parameter 'values' in 'int Command<Customer>.Execute(IEnumerable<Customer> values)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L97 C200
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L97 C200
+Possible null reference argument for parameter 'values' in 'int Command<Customer>.Execute(IEnumerable<Customer> values)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L111 C200
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L111 C200
+Possible null reference argument for parameter 'values' in 'int Command<Customer>.Execute(IEnumerable<Customer> values)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L125 C200
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L125 C200
+Possible null reference argument for parameter 'values' in 'int Command<Customer>.Execute(IEnumerable<Customer> values)'.

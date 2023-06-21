@@ -1,0 +1,29 @@
+Generator produced 3 diagnostics:
+
+Error DAP019 Interceptors/SqlDetection.input.cs L19 C19
+SQL parameters were detected, but no parameters are being supplied
+
+Warning DAP018 Interceptors/SqlDetection.input.cs L22 C19
+Parameters are being supplied, but no parameters were detected in the command
+
+Warning DAP018 Interceptors/SqlDetection.input.cs L33 C19
+Parameters are being supplied, but no parameters were detected in the command
+Output code has 6 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L29 C189
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L29 C189
+Possible null reference argument for parameter 'values' in 'int Command<object?>.Execute(object?[] values)'.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L54 C189
+Possible null reference argument for parameter 'args' in 'int Command<object>.Execute(object args)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L67 C189
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L67 C189
+Possible null reference argument for parameter 'values' in 'int Command<object>.Execute(object[] values)'.
+
+Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L67 C189
+Argument of type 'object?[]' cannot be used for parameter 'values' of type 'object[]' in 'int Command<object>.Execute(object[] values)' due to differences in the nullability of reference types.

@@ -1,0 +1,44 @@
+Generator produced 2 diagnostics:
+
+Warning DAP023 Interceptors/MappedSqlDetection.input.cs L31 C19
+Members 'DuplicateToCauseProblems' and 'RowCount' are both marked [RowCount]
+
+Warning DAP024 Interceptors/MappedSqlDetection.input.cs L31 C19
+Member 'DuplicateToCauseProblems' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored
+Output code has 12 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L13 C189
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L13 C189
+Possible null reference argument for parameter 'args' in 'int Command<SomeArg>.Execute(SomeArg args)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L27 C189
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L27 C189
+Possible null reference argument for parameter 'args' in 'int Command<object>.Execute(object args)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L41 C189
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L41 C189
+Possible null reference argument for parameter 'args' in 'int Command<SomeArg>.Execute(SomeArg args)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L55 C189
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L55 C189
+Possible null reference argument for parameter 'args' in 'int Command<SomeArg>.Execute(SomeArg args)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L69 C189
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L69 C189
+Possible null reference argument for parameter 'args' in 'int Command<SomeArg>.Execute(SomeArg args)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L83 C189
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L83 C189
+Possible null reference argument for parameter 'args' in 'int Command<SomeOtherArg>.Execute(SomeOtherArg args)'.
