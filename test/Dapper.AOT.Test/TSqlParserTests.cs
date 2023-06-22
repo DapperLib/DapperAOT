@@ -10,14 +10,14 @@ namespace Dapper.AOT.Test;
 public class TSqlParserTests
 {
     public TSqlParserTests(ITestOutputHelper log)
-        => this.log = log.WriteLine;
+        => this._log = log.WriteLine;
 
-    private Action<string> log;
+    private readonly Action<string> _log;
 
     [Fact]
     public void DetectBadNullLiteralUsage()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s int = null;
             select *
@@ -35,7 +35,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidNullUsage()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s int = null;
             select *
@@ -51,7 +51,7 @@ public class TSqlParserTests
     [Fact]
     public void WarnOfIdentityUsage()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             insert customers (id) values (42);
             select @@identity;
@@ -68,7 +68,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidIdentityUsage()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             insert customers (Name)
             output INSERTED.Id
@@ -83,7 +83,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidInlineDeclarationAndAssignment()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s int = 42;
             select *
@@ -99,7 +99,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidSeparateDeclarationAndAssignment()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s int
             set @s = 42
@@ -117,7 +117,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidExecOutput()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s int
             exec someproc @s output
@@ -135,7 +135,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidExecAssignResult()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s int
             exec @s = someproc
@@ -153,7 +153,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidSelectInto()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s table (id int not null)
 
@@ -174,7 +174,7 @@ public class TSqlParserTests
     [Fact]
     public void ReportNotAssignedBeforeExec()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s int
             exec someproc @s
@@ -193,7 +193,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseTableVariableNotPopulated()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s table (id int not null)
             
@@ -210,7 +210,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidTableVariablePopulated()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s table (id int not null)
             insert @s (id) values (42);
@@ -227,7 +227,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidSeparateDeclarationAndSelectAssignment()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s int
             select @s = 42
@@ -245,7 +245,7 @@ public class TSqlParserTests
     [Fact]
     public void ReportVariableAccessedBeforeDeclaration()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             select *
             from Customers
@@ -262,7 +262,7 @@ public class TSqlParserTests
     [Fact]
     public void ReportInvalidSelect()
     {
-        var parser = new TestTSqlProcessor(log: log);
+        var parser = new TestTSqlProcessor(log: _log);
         parser.Execute("""
             declare @s int = 42;
 
@@ -274,6 +274,25 @@ public class TSqlParserTests
         var args = parser.GetParameters(out var errors);
         Assert.Equal("@id", Assert.Single(args));
         Assert.Equal("Incorrect syntax near garbage. (#46010) L5 C27", Assert.Single(errors));
+    }
+
+    [Fact]
+    public void ReportBadExecUsage()
+    {
+        var parser = new TestTSqlProcessor(log: _log);
+        parser.Execute("""
+            declare @sql varchar(8000) = concat('select top 5 * from Sales.Store where BusinessEntityId=',@id)
+            exec (@sql) -- bad
+            go
+            exec ('select top 5 * from Sales.Store where BusinessEntityId=296') -- inadvisable, but...
+            exec sp_executesql N'select top 5 * from Sales.Store where BusinessEntityId=@bid', N'@bid int', @id -- good
+            """);
+
+        var args = parser.GetParameters(out var errors);
+        Assert.Equal("@id", Assert.Single(args));
+        Assert.Equal(2, errors.Length);
+        Assert.Equal("You should use EXEC sp_executesql with parameterized input in place of EXEC with dynamic content L2 C1", errors[0]);
+        Assert.Equal("Multiple batches are not permitted L4 C1", errors[1]);
     }
 
     class TestTSqlProcessor : TSqlProcessor
@@ -288,9 +307,9 @@ public class TSqlParserTests
             errors = this.errors.ToArray();
             return parameters;
         }
-        private readonly List<string> parameters = new();
+
         private readonly List<string> errors = new();
-        protected override void OnError(string error, Location location)
+        protected override void OnError(string error, in Location location)
         {
             errors.Add($"{error} {location}");
         }

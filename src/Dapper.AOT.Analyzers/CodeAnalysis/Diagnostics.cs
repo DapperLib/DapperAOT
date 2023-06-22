@@ -61,8 +61,31 @@ internal static class Diagnostics
 
 
         // SQL parse specific
-        SqlError = new ("DAP200", "SQL error",
-            "SQL parse error: {0}", Category.Sql, DiagnosticSeverity.Warning, true);
+        SqlError = new("DAP200", "SQL error",
+            "SQL error: {0}", Category.Sql, DiagnosticSeverity.Warning, true),
+        MultipleBatches = new("DAP201", "SQL error",
+            "Multiple batches are not permitted (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
+        DuplicateVariableDeclaration = new("DAP202", "Duplicate variable declaration",
+            "The variable {0} is declared multiple times (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
+        SyntaxRecommendation = new("DAP203", "Syntax recommendation",
+            "It is recommended that {0} is used in place of {1} (L{2} C{3})", Category.Sql, DiagnosticSeverity.Warning, true),
+        StrongSyntaxRecommendation = new("DAP204", "Strong syntax recommendation",
+            "It is strongly recommended that {0} is used in place of {1} (L{2} C{3})", Category.Sql, DiagnosticSeverity.Warning, true),
+        NullLiteralComparison = new("DAP205", "Null comparison",
+            "Literal null used in comparison; 'is null' or 'is not null' should be preferred (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+        ParseError = new("DAP206", "SQL parse error",
+            "{0} (#{1} L{2} C{3})", Category.Sql, DiagnosticSeverity.Error, true),
+        ScalarVariableUsedAsTable = new("DAP207", "Scalar used like table",
+            "Scalar variable {0} is used like a table (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
+        TableVariableUsedAsScalar = new("DAP208", "Table used like scalar",
+            "Table-variable {0} is used like a scalar (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
+        TableVariableAccessedBeforePopulate = new("DAP209", "Table used before populate",
+            "Table-variable {0} is accessed before it populated (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
+        VariableAccessedBeforeAssignment = new("DAP210", "Variable used before assigned",
+            "Variable {0} is accessed before it is assigned a value (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
+        VariableAccessedBeforeDeclaration = new("DAP211", "Variable used before declared",
+            "Variable {0} is accessed before it is declared (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true);
+
 
     // be careful moving this because of static field initialization order
     internal static readonly ImmutableArray<DiagnosticDescriptor> All = typeof(Diagnostics)

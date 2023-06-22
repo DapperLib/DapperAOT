@@ -134,6 +134,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
 
         string? sql = null;
+        Location? sqlLocation = null;
         bool? buffered = null;
         if (!HasAny(flags, OperationFlags.DoNotGenerate))
         {
@@ -142,7 +143,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 switch (arg.Parameter?.Name)
                 {
                     case "sql":
-                        if (TryGetConstantValue(arg, out string? s))
+                        if (TryGetConstantValueWithLocation(arg, out string? s, out sqlLocation))
                         {
                             sql = s;
                         }
@@ -300,7 +301,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
         }
 
-        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics);
+        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics, sqlLocation);
 
         if (HasAny(flags, OperationFlags.CacheCommand))
         {
@@ -333,12 +334,16 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         //}
 
         static bool TryGetConstantValue<T>(IArgumentOperation op, out T? value)
+            => TryGetConstantValueWithLocation<T>(op, out value, out _);
+
+        static bool TryGetConstantValueWithLocation<T>(IArgumentOperation op, out T? value, out Location? location)
         {
             try
             {
                 if (op.ConstantValue.HasValue)
                 {
                     value = (T?)op.ConstantValue.Value;
+                    location = op.Syntax.GetLocation();
                     return true;
                 }
                 var val = op.Value;
@@ -350,6 +355,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
                 {
                     value = (T?)field.Field.ConstantValue;
+                    location = field.Field.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
                     return true;
                 }
 
@@ -357,16 +363,18 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 {
                     var v = val.ConstantValue;
                     value = v.HasValue ? (T?)v.Value : default;
+                    location = val.Syntax.GetLocation();
                     return true;
                 }
             }
             catch { }
             value = default!;
+            location = null;
             return false;
         }
 
 
-        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics)
+        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, Location? sqlLocation)
         {
             if (HasAny(flags, OperationFlags.DoNotGenerate))
             {
@@ -390,7 +398,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             switch (IdentifySqlSyntax(op, out bool caseSensitive))
             {
                 case SqlSyntax.TransactSql:
-                    var proc = new DiagnosticTSqlProcessor(caseSensitive, diagnostics, loc);
+                    var proc = new DiagnosticTSqlProcessor(caseSensitive, diagnostics, loc, sqlLocation);
                     try
                     {
                         proc.Execute(sql!);

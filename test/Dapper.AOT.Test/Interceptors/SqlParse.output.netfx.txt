@@ -1,15 +1,15 @@
 Generator produced 4 diagnostics:
 
-Warning DAP200 Interceptors/SqlParse.input.cs L15 C11
-SQL parse error: Incorrect syntax near asdasdlk. (#46010) (L1 C23)
+Error DAP206 Interceptors/SqlParse.input.cs L5 C40
+Incorrect syntax near as. (#46010 L1 C24)
 
-Error DAP020 Interceptors/SqlParse.input.cs L17 C11
+Error DAP206 Interceptors/SqlParse.input.cs L5 C40
+Incorrect syntax near as. (#46010 L1 C24)
+
+Error DAP020 Interceptors/SqlParse.input.cs L20 C11
 No member could be found for the SQL parameter 'Missing' from type 'global::Foo.Customer'
 
-Warning DAP200 Interceptors/SqlParse.input.cs L21 C11
-SQL parse error: Incorrect syntax near asdasdlk. (#46010) (L1 C23)
-
-Error DAP020 Interceptors/SqlParse.input.cs L23 C11
+Error DAP020 Interceptors/SqlParse.input.cs L26 C11
 No member could be found for the SQL parameter 'Missing' from type 'global::Foo.Customer'
 Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
 

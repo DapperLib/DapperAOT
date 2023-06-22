@@ -31,7 +31,7 @@ internal class TSqlProcessor
             tree = parser.Parse(reader, out var errors);
             foreach (var error in errors)
             {
-                OnParseError(error);
+                OnParseError(error, new Location(error.Line, error.Column, error.Offset, 0));
             }
         }
         tree.Accept(visitor);
@@ -47,15 +47,17 @@ internal class TSqlProcessor
         visitor.Reset();
     }
 
-    protected virtual void OnError(string error, Location location) { }
-    protected virtual void OnParseError(ParseError error)
-    {
-        OnError($"{error.Message} (#{error.Number})", new Location(error.Line, error.Column));
-    }
+    protected virtual void OnError(string error, in Location location) { }
+
+    protected virtual void OnParseError(ParseError error, Location location)
+        => OnError($"{error.Message} (#{error.Number})", location);
+
     protected virtual void OnVariableAccessedBeforeDeclaration(Variable variable)
         => OnError($"Variable {variable.Name} accessed before declaration", variable.Location);
+
     protected virtual void OnVariableAccessedBeforeAssignment(Variable variable)
         => OnError($"Variable {variable.Name} accessed before being {(variable.IsTable ? "populated" : "assigned")}", variable.Location);
+
     protected virtual void OnDuplicateVariableDeclaration(Variable variable)
         => OnError($"Variable {variable.Name} is declared multiple times", variable.Location);
 
@@ -67,6 +69,9 @@ internal class TSqlProcessor
 
     protected virtual void OnNullLiteralComparison(Location location)
         => OnError($"Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null'", location);
+
+    protected virtual void OnAdditionalBatch(Location location)
+        => OnError($"Multiple batches are not permitted", location);
 
     protected virtual void OnNewSyntaxRecommendation(string used, string recommended, Location location, bool strong)
     {
@@ -86,16 +91,19 @@ internal class TSqlProcessor
         {
             Line = source.StartLine;
             Column = source.StartColumn;
+            Offset = source.StartOffset;
+            Length = source.FragmentLength;
         }
 
-        public Location(int line, int column)
+        public Location(int line, int column, int offset, int length)
         {
             Line = line;
             Column = column;
+            Offset = offset;
+            Length = length;
         }
 
-        public readonly int Line;
-        public readonly int Column;
+        public readonly int Line, Column, Offset, Length;
 
         public override string ToString() => $"L{Line} C{Column}";
 
@@ -171,14 +179,24 @@ internal class TSqlProcessor
         }
 
         private readonly Dictionary<string, Variable> variables;
-
-        TSqlProcessor parser;
+        private int batchCount;
+        private readonly TSqlProcessor parser;
 
         public IEnumerable<Variable> Variables => variables.Values;
 
         public virtual void Reset()
         {
             variables.Clear();
+            batchCount = 0;
+        }
+
+        public override void ExplicitVisit(TSqlBatch node)
+        {
+            if (++batchCount >= 2)
+            {
+                parser.OnAdditionalBatch(new Location(node));
+            }
+            base.ExplicitVisit(node);
         }
 
         private void OnDeclare(Variable variable)
@@ -260,9 +278,19 @@ internal class TSqlProcessor
             OnDeclare(new(node.VariableName, VariableFlags.NoValue | VariableFlags.Table));
             base.ExplicitVisit(node);
         }
+
         public override void ExplicitVisit(ExecuteSpecification node)
         {
-            if (node.ExecutableEntity is not null) ExplicitVisit(node.ExecutableEntity);
+            if (node.ExecutableEntity is not null)
+            {
+                ExplicitVisit(node.ExecutableEntity);
+                if (node.ExecutableEntity is ExecutableStringList list && list.Strings.Count == 1
+                    && list.Strings[0] is VariableReference)
+                {
+                    parser.OnNewSyntaxRecommendation("EXEC with dynamic content", "EXEC sp_executesql with parameterized input",
+                        new Location(node), true);
+                }
+            }
             if (node.ExecuteContext is not null) ExplicitVisit(node.ExecuteContext);
             if (node.LinkedServer is not null) ExplicitVisit(node.LinkedServer);
             if (node.Variable is not null)
