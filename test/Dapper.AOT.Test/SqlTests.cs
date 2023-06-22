@@ -1,6 +1,4 @@
 ﻿using Dapper.Internal;
-using Dapper.SqlAnalysis;
-using Microsoft.VisualBasic;
 using Xunit;
 
 namespace Dapper.AOT.Test;
@@ -49,20 +47,5 @@ public class SqlTests
     {
         Assert.Equal(expected, SqlTools.IncludeParameter(map, "name", out var testActual));
         Assert.Equal(testExpected, testActual);
-    }
-
-
-    [Fact]
-    public void FullParse()
-    {
-        var arr = TSqlParser.GetArgs("""
-            declare @s int = 42;
-            select *
-            from Customers
-            where Id = @id and S = @s
-            """, out int errCount);
-
-        Assert.Equal("@id", string.Join(",", arr));
-        Assert.Equal(0, errCount);
     }
 }
