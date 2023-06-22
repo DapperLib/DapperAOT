@@ -1,0 +1,13 @@
+Generator produced 4 diagnostics:
+
+Warning DAP200 Interceptors/SqlParse.input.cs L15 C11
+SQL parse error: Incorrect syntax near asdasdlk. (#46010) (L1 C23)
+
+Error DAP020 Interceptors/SqlParse.input.cs L17 C11
+No member could be found for the SQL parameter 'Missing' from type 'global::Foo.Customer'
+
+Warning DAP200 Interceptors/SqlParse.input.cs L21 C11
+SQL parse error: Incorrect syntax near asdasdlk. (#46010) (L1 C23)
+
+Error DAP020 Interceptors/SqlParse.input.cs L23 C11
+No member could be found for the SQL parameter 'Missing' from type 'global::Foo.Customer'

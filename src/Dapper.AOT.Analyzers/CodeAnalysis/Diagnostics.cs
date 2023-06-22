@@ -1,4 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
+using System.Collections.Generic;
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
@@ -55,7 +57,12 @@ internal static class Diagnostics
         DuplicateRowCount = new("DAP023", "Duplicate row-count member",
             "Members '{0}' and '{1}' are both marked [RowCount]", Category.Sql, DiagnosticSeverity.Warning, true),
         RowCountDbValue = new("DAP024", "Member is both row-count and mapped value",
-            "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored", Category.Sql, DiagnosticSeverity.Warning, true);
+            "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored", Category.Sql, DiagnosticSeverity.Warning, true),
+
+
+        // SQL parse specific
+        SqlError = new ("DAP200", "SQL error",
+            "SQL parse error: {0}", Category.Sql, DiagnosticSeverity.Warning, true);
 
     // be careful moving this because of static field initialization order
     internal static readonly ImmutableArray<DiagnosticDescriptor> All = typeof(Diagnostics)
@@ -66,5 +73,27 @@ internal static class Diagnostics
     {
         public const string Library = nameof(Library);
         public const string Sql = nameof(Sql);
+    }
+
+    internal static void Add(ref object? diagnostics, Diagnostic diagnostic)
+    {
+        if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
+        switch (diagnostics)
+        {   // single
+            case null:
+                diagnostics = diagnostic;
+                break;
+            case Diagnostic d:
+                diagnostics = new List<Diagnostic> { d, diagnostic };
+                break;
+            case IList<Diagnostic> list when !list.IsReadOnly:
+                list.Add(diagnostic);
+                break;
+            case IEnumerable<Diagnostic> list:
+                diagnostics = new List<Diagnostic>(list) { diagnostic };
+                break;
+            default:
+                throw new ArgumentException(nameof(diagnostics));
+        }
     }
 }

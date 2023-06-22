@@ -1,5 +1,6 @@
 ﻿using Dapper.Internal;
 using Dapper.Internal.Roslyn;
+using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -105,7 +106,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             if (methodKind == DapperMethodKind.DapperUnsupported)
             {
                 flags |= OperationFlags.DoNotGenerate;
-                AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UnsupportedMethod, loc, GetSignature(op.TargetMethod)));
+                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnsupportedMethod, loc, GetSignature(op.TargetMethod)));
             }
         }
         else
@@ -191,14 +192,14 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                                     break;
                                 default:
                                     flags |= OperationFlags.DoNotGenerate;
-                                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedCommandType, arg.Syntax.GetLocation()));
+                                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedCommandType, arg.Syntax.GetLocation()));
                                     break;
                             }
                         }
                         break;
                     default:
                         flags |= OperationFlags.DoNotGenerate;
-                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedArgument, arg.Syntax.GetLocation(), arg.Parameter?.Name));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedArgument, arg.Syntax.GetLocation(), arg.Parameter?.Name));
                         break;
                 }
             }
@@ -217,7 +218,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 // extra checks specific to Dapper vanilla
                 if (resultTuple && Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out _, cancellationToken))
                 {   // Dapper vanilla supports bind-by-position for tuples; warn if bind-by-name is enabled
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyBindNameTupleResults, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyBindNameTupleResults, loc));
                 }
             }
             else
@@ -226,7 +227,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 if (Inspection.InvolvesGenericTypeParameter(resultType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, resultType!.ToDisplayString()));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, resultType!.ToDisplayString()));
                 }
                 else if (resultTuple)
                 {
@@ -236,17 +237,17 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     }
                     if (!defined)
                     {
-                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
                     }
 
                     // but not implemented currently!
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleResults, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleResults, loc));
                 }
                 else if (!Inspection.IsPublicOrAssemblyLocal(resultType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
                 }
             }
         }
@@ -260,7 +261,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 // extra checks specific to Dapper vanilla
                 if (paramTuple)
                 {
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyTupleParameter, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyTupleParameter, loc));
                 }
             }
             else
@@ -274,32 +275,32 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     }
                     if (!defined)
                     {
-                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
                     }
 
                     // but not implemented currently!
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleParameter, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleParameter, loc));
                 }
                 else if (Inspection.InvolvesGenericTypeParameter(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, paramType!.ToDisplayString()));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, paramType!.ToDisplayString()));
                 }
                 else if (Inspection.IsMissingOrObjectOrDynamic(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedParameter, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedParameter, loc));
                 }
                 else if (!Inspection.IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
                 }
             }
         }
 
-        var parameterMap = BuildParameterMap(sql, flags, paramType, loc, ref diagnostics);
+        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics);
 
         if (HasAny(flags, OperationFlags.CacheCommand))
         {
@@ -330,27 +331,6 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         //        default: throw new ArgumentException(nameof(diagnostics));
         //    }
         //}
-        static void AddDiagnostic(ref object? diagnostics, Diagnostic diagnostic)
-        {
-            if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
-            switch (diagnostics)
-            {   // single
-                case null:
-                    diagnostics = diagnostic;
-                    break;
-                case Diagnostic d:
-                    diagnostics = new List<Diagnostic> { d, diagnostic };
-                    break;
-                case IList<Diagnostic> list when !list.IsReadOnly:
-                    list.Add(diagnostic);
-                    break;
-                case IEnumerable<Diagnostic> list:
-                    diagnostics = new List<Diagnostic>(list) { diagnostic };
-                    break;
-                default:
-                    throw new ArgumentException(nameof(diagnostics));
-            }
-        }
 
         static bool TryGetConstantValue<T>(IArgumentOperation op, out T? value)
         {
@@ -386,7 +366,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
 
 
-        static string BuildParameterMap(string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics)
+        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics)
         {
             if (HasAny(flags, OperationFlags.DoNotGenerate))
             {
@@ -405,12 +385,40 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
             // so: we know statically that we have known command-text
             // first, try try to find any parameters
-            var paramNames = SqlTools.GetUniqueParameters(sql, out var hasReturn);
+            ImmutableHashSet<string> paramNames;
+            bool hasReturn, reportMissingParameters;
+            switch (IdentifySqlSyntax(op, out bool caseSensitive))
+            {
+                case SqlSyntax.TransactSql:
+                    var proc = new DiagnosticTSqlProcessor(caseSensitive, diagnostics, loc);
+                    try
+                    {
+                        proc.Execute(sql!);
+                        hasReturn = proc.HaveReturn;
+                        paramNames = (from var in proc.Variables
+                                      where var.IsParameter
+                                      select var.Name.StartsWith("@") ? var.Name.Substring(1) : var.Name
+                                      ).ToImmutableHashSet();
+                        reportMissingParameters = true; // we're feeling confident!
+                        diagnostics = proc.DiagnosticsObject;
+                    }
+                    catch (Exception ex)
+                    {
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlError, loc, ex.Message));
+                        goto default; // some internal failure
+                    }
+                    break;
+                default:
+                    paramNames = SqlTools.GetUniqueParameters(sql, out hasReturn);
+                    reportMissingParameters = false;
+                    break;
+            }
+
             if (paramNames.IsEmpty && !hasReturn)
             {
                 if (HasAny(flags, OperationFlags.HasParameters))
                 {
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParametersNotDetected, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParametersNotDetected, loc));
                 }
                 return "";
             }
@@ -418,7 +426,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             // so, we definitely detect parameters (note: don't warn just for return)
             if (!HasAny(flags, OperationFlags.HasParameters) && !paramNames.IsEmpty)
             {
-                AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
+                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
                 return "";
             }
             if (parameterType is null)
@@ -433,9 +441,13 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             {
                 elementType = parameterType;
             }
+            if (elementType is null)
+            {
+                return "";
+            }
 
             string? returnCodeMember = null, rowCountMember = null;
-            foreach (var member in Inspection.GetMembers(elementType!))
+            foreach (var member in Inspection.GetMembers(elementType))
             {
                 if (member.IsRowCount)
                 {
@@ -445,18 +457,18 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     }
                     else
                     {
-                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateRowCount, loc, member.CodeName, rowCountMember));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateRowCount, loc, member.CodeName, rowCountMember));
                     }
                     if (member.HasDbValueAttribute)
                     {
-                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.RowCountDbValue, loc, member.CodeName));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.RowCountDbValue, loc, member.CodeName));
                     }
                     continue; // not treated as parameters for naming etc purposes
                 }
                 var dbName = member.DbName;
                 if (memberDbToCodeNames.TryGetValue(dbName, out var existing))
                 {
-                    AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateParameter, loc, member.CodeName, existing, dbName));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateParameter, loc, member.CodeName, existing, dbName));
                 }
                 else
                 {
@@ -470,7 +482,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     }
                     else
                     {
-                        AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateReturn, loc, member.CodeName, returnCodeMember));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateReturn, loc, member.CodeName, returnCodeMember));
                     }
                 }
             }
@@ -484,8 +496,11 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 }
                 else
                 {
-                    // we can't consider this an error, because we would need full SQL parse for that
-                    // AddDiagnostic(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, elementType.ToDisplayString()));
+                    // we can only consider this an error if we're confident in how well we parsed the input
+                    if (reportMissingParameters)
+                    {
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(elementType)));
+                    }
                 }
             }
             if (hasReturn && returnCodeMember is not null)
@@ -496,6 +511,43 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
             static StringBuilder WithSpace(ref StringBuilder? sb) => sb is null ? (sb = new()) : (sb.Length == 0 ? sb : sb.Append(' '));
         }
+    }
+
+    private enum SqlSyntax
+    {
+        General = 0,
+        TransactSql = 1,
+    }
+    private static SqlSyntax IdentifySqlSyntax(IInvocationOperation op, out bool caseSensitive)
+    {
+        caseSensitive = false;
+        if (op.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0 } type)
+        {
+            if (type is
+                {
+                    Name: "SqlConnection", ContainingType: null,
+                    ContainingNamespace:
+                    {
+                        Name: "SqlClient",
+                        ContainingNamespace:
+                        {
+                            Name: "Data",
+                            ContainingNamespace:
+                            {
+                                Name: "System" or "Microsoft",
+                                ContainingNamespace.IsGlobalNamespace: true
+                            }
+                        }
+                    }
+                })
+            {
+                return SqlSyntax.TransactSql;
+            }
+        }
+
+        // TODO : attribute mechanism
+
+        return SqlSyntax.General;
     }
 
     enum DapperMethodKind
@@ -1279,7 +1331,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
                     else sb.Append(parameterIndex);
                     sb.Append("].Value);").NewLine();
-                       
+
                     break;
             }
             if (test)

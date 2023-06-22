@@ -5,7 +5,7 @@ using System.IO;
 
 namespace Dapper.SqlAnalysis;
 
-internal abstract class TSqlProcessor
+internal class TSqlProcessor
 {
     [Flags]
     internal enum VariableFlags
@@ -23,36 +23,29 @@ internal abstract class TSqlProcessor
     }
     public bool Execute(string sql)
     {
-        try
+        Reset();
+        var parser = new TSql160Parser(true, SqlEngineType.All);
+        TSqlFragment tree;
+        using (var reader = new StringReader(sql))
         {
-            Reset();
-            var parser = new TSql160Parser(true, SqlEngineType.All);
-            TSqlFragment tree;
-            using (var reader = new StringReader(sql))
+            tree = parser.Parse(reader, out var errors);
+            foreach (var error in errors)
             {
-                tree = parser.Parse(reader, out var errors);
-                foreach (var error in errors)
-                {
-                    OnParseError(error);
-                }
+                OnParseError(error);
             }
-            tree.Accept(visitor);
-            return true;
         }
-        catch(Exception ex)
-        {
-            try
-            {
-                OnError("Internal error: " + ex.Message, default);
-            }
-            catch { } // failing to fail
-            return false;
-        }
+        tree.Accept(visitor);
+        return true;
     }
 
     public IEnumerable<Variable> Variables => visitor.Variables;
 
-    public virtual void Reset() => visitor.Reset();
+    public bool HaveReturn { get; private set; }
+    public virtual void Reset()
+    {
+        HaveReturn = false;
+        visitor.Reset();
+    }
 
     protected virtual void OnError(string error, Location location) { }
     protected virtual void OnParseError(ParseError error)
@@ -228,6 +221,12 @@ internal abstract class TSqlProcessor
             {
                 MarkAssigned(variable.Variable, true);
             }
+            base.ExplicitVisit(node);
+        }
+
+        public override void ExplicitVisit(ReturnStatement node)
+        {
+            parser.HaveReturn = true;
             base.ExplicitVisit(node);
         }
 
