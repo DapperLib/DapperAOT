@@ -30,3 +30,4 @@ DAP021 | Sql | Warning | Diagnostics
 DAP022 | Sql | Warning | Diagnostics
 DAP023 | Sql | Warning | Diagnostics
 DAP024 | Sql | Warning | Diagnostics
+DAP200 | Sql | Warning | Diagnostics
