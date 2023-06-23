@@ -1,4 +1,7 @@
-Generator produced 24 diagnostics:
+Generator produced 25 diagnostics:
+
+Hidden DAP000  L0 C0
+Dapper.AOT handled 9 of 9 enabled call-sites using 4 interceptors, 3 commands and 0 readers
 
 Error DAP206 Interceptors/SqlParse.input.cs L5 C40
 Incorrect syntax near as. (#46010 L1 C24)

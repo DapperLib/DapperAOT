@@ -73,23 +73,23 @@ public interface ICommand<TArgs>
     IEnumerable<TRow> QueryUnbuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null);
 
     /// <inheritdoc cref="Command{TArgs}.Execute(TArgs[])"/>
-    int Execute(TArgs[] args);
+    int Execute(TArgs[] values);
 
     /// <inheritdoc cref="Command{TArgs}.Execute(IEnumerable{TArgs})"/>
-    int Execute(IEnumerable<TArgs> args);
+    int Execute(IEnumerable<TArgs> values);
 
     /// <inheritdoc cref="Command{TArgs}.Execute(ReadOnlySpan{TArgs})"/>
-    int Execute(ReadOnlySpan<TArgs> args);
+    int Execute(ReadOnlySpan<TArgs> values);
 
     /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(TArgs[], CancellationToken)"/>
-    Task<int> ExecuteAsync(TArgs[] args, CancellationToken cancellationToken = default);
+    Task<int> ExecuteAsync(TArgs[] values, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(IEnumerable{TArgs}, CancellationToken)"/>
-    Task<int> ExecuteAsync(IEnumerable<TArgs> args, CancellationToken cancellationToken = default);
+    Task<int> ExecuteAsync(IEnumerable<TArgs> values, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(IAsyncEnumerable{TArgs}, CancellationToken)"/>
-    Task<int> ExecuteAsync(IAsyncEnumerable<TArgs> args, CancellationToken cancellationToken = default);
+    Task<int> ExecuteAsync(IAsyncEnumerable<TArgs> values, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(ReadOnlyMemory{TArgs}, CancellationToken)"/>
-    Task<int> ExecuteAsync(ReadOnlyMemory<TArgs> args, CancellationToken cancellationToken = default);
+    Task<int> ExecuteAsync(ReadOnlyMemory<TArgs> values, CancellationToken cancellationToken = default);
 }

@@ -7,27 +7,29 @@
         <DevelopmentDependency>true</DevelopmentDependency>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <Deterministic>true</Deterministic>
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Remove="InterceptsLocationAttribute.cs" />
-      <Compile Update="CodeAnalysis\DapperInterceptorGenerator.*.cs">
-        <DependentUpon>DapperInterceptorGenerator.cs</DependentUpon>
-      </Compile>
+        <Compile Remove="InterceptsLocationAttribute.cs" />
+        <Compile Update="CodeAnalysis\DapperInterceptorGenerator.*.cs">
+            <DependentUpon>DapperInterceptorGenerator.cs</DependentUpon>
+        </Compile>
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Include="..\Dapper.AOT\Internal\StringHashing.cs" Link="Internal\StringHashing.cs" />
+        <Compile Include="..\Dapper.AOT\Internal\StringHashing.cs" Link="Internal\StringHashing.cs" />
     </ItemGroup>
 
     <ItemGroup>
-      <EmbeddedResource Include="InterceptsLocationAttribute.cs" />
+        <EmbeddedResource Include="InterceptsLocationAttribute.cs" />
     </ItemGroup>
 
     <ItemGroup>
         <!-- build time deps -->
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Pack="false" PrivateAssets="all" />
-        <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Pack="false" GeneratePathProperty="true"/>
+        <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Pack="false" GeneratePathProperty="true" />
         <None Include="$(PkgMicrosoft_SqlServer_TransactSql_ScriptDom)/lib/netstandard2.0/Microsoft.SqlServer.TransactSql.ScriptDom.dll" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\..\.editorconfig" Link=".editorconfig" />
     </ItemGroup>
 </Project>

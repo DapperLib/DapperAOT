@@ -5,6 +5,8 @@ namespace Dapper.Internal;
 
 internal sealed class NullableRowFactory<T> : RowFactory<T?> where T : struct
 {
+    private static NullableRowFactory<T>? _default;
+    internal new static NullableRowFactory<T> Default => _default ??= new();
     public override object? Tokenize(DbDataReader reader, Span<int> tokens, int columnOffset)
     {
         tokens[0] = reader.GetFieldType(columnOffset) == typeof(T) ? 0 : 1;

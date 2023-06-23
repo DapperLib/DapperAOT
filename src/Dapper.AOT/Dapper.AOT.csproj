@@ -7,15 +7,16 @@
         <WarningsAsErrors>true</WarningsAsErrors>
         <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
         <PackageReadmeFile>readme.md</PackageReadmeFile>
+        <Deterministic>true</Deterministic>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
         <PackageReference Include="System.Memory" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
-        
+
         <!-- don't reference Dapper at all; leave things open to the consumer esp re Dapper.StrongName -->
         <!--<PackageReference Include="Dapper" />-->
-        
+
         <!-- we don't *super* need this (although it is nice to have) - mostly it fixes a generator init glitch -->
         <PackageReference Include="System.Collections.Immutable" />
 

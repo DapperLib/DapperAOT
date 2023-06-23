@@ -15,8 +15,10 @@ using System.Threading.Tasks;
 namespace Dapper.TestCommon;
 
 internal static class RoslynTestHelpers
-{
-    static readonly CSharpParseOptions ParseOptionsLatestLangVer = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest).WithPreprocessorSymbols(new string[] {
+{   
+    static readonly CSharpParseOptions ParseOptionsLatestLangVer = CSharpParseOptions.Default
+        .WithLanguageVersion(LanguageVersion.Latest)
+        .WithPreprocessorSymbols(new string[] {
 #if NETFRAMEWORK
         "NETFRAMEWORK",
 #endif

@@ -749,7 +749,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     if (checkParseOptions && node.Location.SourceTree?.Options is CSharpParseOptions options)
                     {
                         checkParseOptions = false; // only do this once
-                        if (!(OverrideFeatureEnabled || options.Features.ContainsKey("interceptors")))
+                        if (!(OverrideFeatureEnabled || options.Features.ContainsKey("InterceptorsPreview")))
                         {
                             ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsNotEnabled, null));
                             errorCount++;

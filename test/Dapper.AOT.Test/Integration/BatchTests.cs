@@ -1,6 +1,4 @@
-﻿using Dapper.AOT.Test;
-using Microsoft.Data.SqlClient;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
@@ -11,39 +9,11 @@ using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
 
-public sealed class SqlClientDatabase : IDisposable
+[Collection(nameof(SqlClientFixture))]
+public class BatchTests : IClassFixture<SqlClientFixture>
 {
-    private readonly SqlConnection? connection;
-    public SqlClientDatabase()
-    {
-        try
-        {
-            connection = new("Server=.;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=True;Connection Timeout=2");
-            try { connection.Execute("drop table AotIntegrationBatchTests;"); } catch { }
-            connection.Execute("create table AotIntegrationBatchTests(Id int not null identity(1,1), Name nvarchar(200) not null);");
-        }
-        catch
-        {
-            // unable to guarantee working fixture
-            connection?.Dispose();
-            connection = null;
-        }
-    }
-    public void Dispose() => connection?.Dispose();
-
-    public DbConnection Connection => connection ?? SkipTest();
-
-    private static DbConnection SkipTest()
-    {
-        Skip.Inconclusive("Database unavailable");
-        return null!;
-    }
-}
-
-public class BatchTests : IClassFixture<SqlClientDatabase>
-{
-    private readonly SqlClientDatabase Database;
-    public BatchTests(SqlClientDatabase database) => Database = database;
+    private readonly SqlClientFixture Database;
+    public BatchTests(SqlClientFixture database) => Database = database;
 
     private Command<string> Batch => Database.Connection.Command("insert AotIntegrationBatchTests (Name) values (@name)", handler: CustomHandler.Instance);
 

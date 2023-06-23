@@ -11,13 +11,13 @@ internal static class Diagnostics
 {
     internal static readonly DiagnosticDescriptor
         InterceptorsGenerated = new("DAP000", "Interceptors generated",
-            "Dapper.AOT handled {0} of {1} enabled call-sites using {2} interceptors, {3} commands and {4} readers", Category.Library, DiagnosticSeverity.Info, false),
+            "Dapper.AOT handled {0} of {1} enabled call-sites using {2} interceptors, {3} commands and {4} readers", Category.Library, DiagnosticSeverity.Hidden, true),
         UnsupportedMethod = new("DAP001", "Unsupported method",
             "The Dapper method '{0}' is not currently supported by Dapper.AOT", Category.Library, DiagnosticSeverity.Info, true),
         //UntypedResults = new("DAP002", "Untyped result types",
         //    "Dapper.AOT does not currently support untyped/dynamic results", Category.Library, DiagnosticSeverity.Info, true),
         InterceptorsNotEnabled = new("DAP003", "Interceptors not enabled",
-            "Interceptors are an experimental feature, and requires that '<Features>interceptors</Features>' be added to the project file", Category.Library, DiagnosticSeverity.Warning, true),
+            "Interceptors are an experimental feature, and requires that '<Features>InterceptorsPreview</Features>' be added to the project file", Category.Library, DiagnosticSeverity.Warning, true),
         LanguageVersionTooLow = new("DAP004", "Language version too low",
             "Interceptors require at least C# version 11", Category.Library, DiagnosticSeverity.Warning, true),
         DapperAotNotEnabled = new("DAP005", "Dapper.AOT not enabled",
@@ -67,7 +67,7 @@ internal static class Diagnostics
     // SQL parse specific
         SqlError = new("DAP200", "SQL error",
             "SQL error: {0}", Category.Sql, DiagnosticSeverity.Warning, true),
-        MultipleBatches = new("DAP201", "SQL error",
+        MultipleBatches = new("DAP201", "Multiple batches",
             "Multiple batches are not permitted (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
         DuplicateVariableDeclaration = new("DAP202", "Duplicate variable declaration",
             "The variable {0} is declared multiple times (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),

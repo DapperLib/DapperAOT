@@ -5,7 +5,7 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
-DAP000 | Library | Disabled | Diagnostics
+DAP000 | Library | Hidden | Diagnostics
 DAP001 | Library | Info | Diagnostics
 ; DAP002 | Library | Info | Diagnostics
 DAP003 | Library | Warning | Diagnostics

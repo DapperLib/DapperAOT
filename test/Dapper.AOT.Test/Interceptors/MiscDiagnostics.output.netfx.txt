@@ -1,4 +1,7 @@
-Generator produced 17 diagnostics:
+Generator produced 18 diagnostics:
+
+Hidden DAP000  L0 C0
+Dapper.AOT handled 9 of 23 enabled call-sites using 8 interceptors, 3 commands and 3 readers
 
 Warning DAP012 Interceptors/MiscDiagnostics.input.cs L15 C19
 Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindTupleByName({true|false})]' to clarify your intent

@@ -1,4 +1,7 @@
-Generator produced 3 diagnostics:
+Generator produced 4 diagnostics:
+
+Hidden DAP000  L0 C0
+Dapper.AOT handled 7 of 7 enabled call-sites using 5 interceptors, 2 commands and 0 readers
 
 Error DAP019 Interceptors/SqlDetection.input.cs L19 C19
 SQL parameters were detected, but no parameters are being supplied

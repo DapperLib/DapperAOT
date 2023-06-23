@@ -5,6 +5,7 @@ using System.Data.Common;
 using System.Dynamic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace Dapper.Internal;
 
@@ -129,7 +130,17 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
     protected override DbDataReader GetDbDataReader(int i) => throw new NotSupportedException();
 
     public override object GetValue(int i) => values[i];
-    public override object this[string name] => values[GetOrdinal(name)];
+    public override object this[string name]
+    {
+        get
+        {
+            var index = GetOrdinal(name);
+            if (index < 0) Throw(name);
+            return values[index];
+
+            static void Throw(string name) => throw new KeyNotFoundException($"Member '{name}' not found");
+        }
+    }
     public override object this[int i] => values[i];
 
     private T As<T>(int i) => CommandUtils.As<T>(values[i]);
@@ -230,7 +241,14 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
 
     private sealed class DynamicRecordMetaObject : DynamicMetaObject
     {
-        private static readonly MethodInfo getValueMethod = typeof(IReadOnlyDictionary<string, object>).GetProperty("Item")!.GetGetMethod()!;
+        private static readonly MethodInfo getValueMethod;
+        static DynamicRecordMetaObject()
+        {
+            IReadOnlyDictionary<string, object> tmp = new Dictionary<string, object> { { "", "" } };
+            _ = tmp[""]; // to ensure the indexer is not trimmed away
+            getValueMethod = typeof(IReadOnlyDictionary<string, object>).GetProperty("Item")?.GetGetMethod()
+                ?? throw new InvalidOperationException("Unable to resolve indexer");
+        }
 
         public DynamicRecordMetaObject(
             Expression expression,
@@ -265,12 +283,15 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
             return callMethod;
         }
 
+        public override DynamicMetaObject BindSetMember(SetMemberBinder binder, DynamicMetaObject value)
+            => throw new NotSupportedException("Dynamic records are considered read-only currently");
+
         // Needed for Visual basic dynamic support
         public override DynamicMetaObject BindInvokeMember(InvokeMemberBinder binder, DynamicMetaObject[] args)
         {
             var parameters = new Expression[]
             {
-            Expression.Constant(binder.Name)
+                Expression.Constant(binder.Name)
             };
 
             var callMethod = CallMethod(getValueMethod, parameters);

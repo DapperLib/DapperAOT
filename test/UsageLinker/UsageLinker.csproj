@@ -3,10 +3,10 @@
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
         <SignAssembly>False</SignAssembly>
-		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
-		<PublishTrimmed>true</PublishTrimmed>
-		<PublishAot>true</PublishAot>
-		<Features>interceptors</Features>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <PublishTrimmed>true</PublishTrimmed>
+        <PublishAot>true</PublishAot>
+        <Features>InterceptorsPreview;interceptors</Features>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" />
