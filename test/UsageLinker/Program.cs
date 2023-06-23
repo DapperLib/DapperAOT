@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Data.Common;
+using System.Collections.Generic;
 using System.Diagnostics;
 using UsageLinker;
 
@@ -23,9 +23,8 @@ try
     {
         Console.WriteLine("Failed: " + ex.Message);
     }
-    if (dobj is DbDataRecord robj)
+    if (dobj is IDictionary<string,object> robj)
     {
-        // DapperAOT's dynamic objects *are* DbDataRecord objects, so...
         Console.WriteLine("Got record object; trying to access...");
         try
         {
