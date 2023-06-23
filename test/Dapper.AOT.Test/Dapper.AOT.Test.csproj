@@ -10,6 +10,11 @@
         <Compile Remove="Interceptors/**/*.*.cs" />
         <None Include="Interceptors/**/*.*" />
         <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
+
+		<Compile Remove="Accessors/Data/**/*.*.cs" />
+		<None Include="Accessors/Data/**/*.*" />
+		<None Update="Accessors/Data/**/*.*" CopyToOutputDirectory="PreserveNewest" />
+		
         <None Update="**/*.output.*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>
         </None>
