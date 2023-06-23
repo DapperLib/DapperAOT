@@ -27,10 +27,6 @@
         <IncludeSymbols>false</IncludeSymbols>
         <AnalysisMode>latest-Recommended</AnalysisMode>
     </PropertyGroup>
-    <PropertyGroup Condition="'$(Deterministic)' == 'True'">
-        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-        <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    </PropertyGroup>
     <ItemGroup>
         <None Include="$(MSBuildThisFileDirectory)Dapper.png" Visible="false">
             <Pack>True</Pack>
