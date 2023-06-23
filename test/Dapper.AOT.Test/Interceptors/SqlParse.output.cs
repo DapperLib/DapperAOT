@@ -45,6 +45,20 @@ file static class DapperGeneratedInterceptors
 
     }
 
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 69, 12)]
+    internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Execute, HasParameters, Text
+        // takes parameter: global::Foo.Customer
+        // parameter map: Id
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(param is not null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory2.Instance).Execute((global::Foo.Customer)param);
+
+    }
+
     private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
     {
         public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
@@ -100,6 +114,31 @@ file static class DapperGeneratedInterceptors
     private sealed class CommandFactory1 : CommonCommandFactory<object>
     {
         internal static readonly CommandFactory1 Instance = new();
+        public override bool CanPrepare => true;
+
+    }
+
+    private sealed class CommandFactory2 : CommonCommandFactory<global::Foo.Customer>
+    {
+        internal static readonly CommandFactory2 Instance = new();
+        public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+        {
+            var ps = cmd.Parameters;
+            global::System.Data.Common.DbParameter p;
+            p = cmd.CreateParameter();
+            p.ParameterName = "Id";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(args.Id);
+            ps.Add(p);
+
+        }
+        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+        {
+            var ps = cmd.Parameters;
+            ps[0].Value = AsValue(args.Id);
+
+        }
         public override bool CanPrepare => true;
 
     }

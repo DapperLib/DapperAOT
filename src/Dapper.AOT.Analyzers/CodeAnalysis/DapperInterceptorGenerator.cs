@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -301,7 +302,30 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
         }
 
-        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics, sqlLocation);
+        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics, sqlLocation, out var parseFlags);
+
+        // if we have a good parser *and* the SQL isn't borked: check for obvious query/exec mismatch
+        if ((parseFlags & (ParseFlags.Reliable | ParseFlags.SyntaxError)) == ParseFlags.Reliable)
+        {
+            switch (flags & (OperationFlags.Execute | OperationFlags.Query | OperationFlags.Scalar))
+            {
+                case OperationFlags.Execute:
+                    if ((parseFlags & ParseFlags.Query) != 0)
+                    {
+                        // definitely have a query
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ExecuteCommandWithQuery, loc));
+                    }
+                    break;
+                case OperationFlags.Query:
+                case OperationFlags.Execute | OperationFlags.Scalar:
+                    if ((parseFlags & (ParseFlags.Query | ParseFlags.MaybeQuery)) == 0)
+                    {
+                        // definitely do not have a query
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.QueryCommandMissingQuery, loc));
+                    }
+                    break;
+            }
+        }
 
         if (HasAny(flags, OperationFlags.CacheCommand))
         {
@@ -374,27 +398,29 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
 
 
-        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, Location? sqlLocation)
+        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, Location? sqlLocation, out ParseFlags parseFlags)
         {
             if (HasAny(flags, OperationFlags.DoNotGenerate))
             {
+                parseFlags = ParseFlags.MaybeQuery;
                 return "";
             }
             // if command-type is known statically to be stored procedure etc: pass everything
             if (HasAny(flags, OperationFlags.StoredProcedure | OperationFlags.TableDirect))
             {
+                parseFlags = HasAny(flags, OperationFlags.StoredProcedure) ? ParseFlags.MaybeQuery : ParseFlags.Query;
                 return HasAny(flags, OperationFlags.HasParameters) ? "*" : "";
             }
             // if command-type or command is not known statically: defer decision
             if (!HasAny(flags, OperationFlags.Text) || string.IsNullOrWhiteSpace(sql))
             {
+                parseFlags = ParseFlags.MaybeQuery;
                 return HasAny(flags, OperationFlags.HasParameters) ? "?" : "";
             }
 
             // so: we know statically that we have known command-text
             // first, try try to find any parameters
             ImmutableHashSet<string> paramNames;
-            bool hasReturn, reportMissingParameters;
             switch (IdentifySqlSyntax(op, out bool caseSensitive))
             {
                 case SqlSyntax.TransactSql:
@@ -402,12 +428,11 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     try
                     {
                         proc.Execute(sql!);
-                        hasReturn = proc.HaveReturn;
+                        parseFlags = proc.Flags;
                         paramNames = (from var in proc.Variables
                                       where var.IsParameter
                                       select var.Name.StartsWith("@") ? var.Name.Substring(1) : var.Name
                                       ).ToImmutableHashSet();
-                        reportMissingParameters = true; // we're feeling confident!
                         diagnostics = proc.DiagnosticsObject;
                     }
                     catch (Exception ex)
@@ -417,12 +442,11 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     }
                     break;
                 default:
-                    paramNames = SqlTools.GetUniqueParameters(sql, out hasReturn);
-                    reportMissingParameters = false;
+                    paramNames = SqlTools.GetUniqueParameters(sql, out parseFlags);
                     break;
             }
 
-            if (paramNames.IsEmpty && !hasReturn)
+            if (paramNames.IsEmpty && (parseFlags & ParseFlags.Return) == 0) // return is a parameter, sort of
             {
                 if (HasAny(flags, OperationFlags.HasParameters))
                 {
@@ -505,13 +529,13 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 else
                 {
                     // we can only consider this an error if we're confident in how well we parsed the input
-                    if (reportMissingParameters)
+                    if ((parseFlags & ParseFlags.Reliable) != 0)
                     {
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(elementType)));
                     }
                 }
             }
-            if (hasReturn && returnCodeMember is not null)
+            if ((parseFlags & ParseFlags.Return) != 0 && returnCodeMember is not null)
             {
                 WithSpace(ref sb).Append(returnCodeMember);
             }
@@ -1113,7 +1137,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 if (CodeWriter.IsSettableInstanceMember(member.Member, out var memberType))
                 {
                     member.GetDbType(out var readerMethod);
-                    var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetNullableTypeName(memberType)})null : " : "";
+                    var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
                     sb.Append("case ").Append(token).Append(":").NewLine().Indent(false)
                         .Append("result.").Append(member.CodeName).Append(" = ").Append(nullCheck);
 

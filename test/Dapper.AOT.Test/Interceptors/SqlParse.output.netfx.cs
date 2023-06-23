@@ -1,9 +1,9 @@
 #nullable enable
 file static class DapperGeneratedInterceptors
 {
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 19, 12)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 25, 12)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 32, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 48, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 56, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 65, 12)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, Text
@@ -15,9 +15,9 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 21, 12)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 27, 12)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 34, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 50, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 58, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 67, 12)]
     internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters, Text
@@ -28,6 +28,34 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(param is not null);
 
         return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).Execute((global::Foo.Customer)param);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 52, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 60, 12)]
+    internal static int Execute2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Execute, HasParameters, Text
+        // takes parameter: global::Foo.Customer
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(param is not null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).Execute((global::Foo.Customer)param);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 69, 12)]
+    internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Execute, HasParameters, Text
+        // takes parameter: global::Foo.Customer
+        // parameter map: Id
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(param is not null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory2.Instance).Execute((global::Foo.Customer)param);
 
     }
 
@@ -77,6 +105,38 @@ file static class DapperGeneratedInterceptors
             var ps = cmd.Parameters;
             ps[0].Value = AsValue(args.Id);
             ps[1].Value = AsValue(args.Name);
+
+        }
+        public override bool CanPrepare => true;
+
+    }
+
+    private sealed class CommandFactory1 : CommonCommandFactory<object>
+    {
+        internal static readonly CommandFactory1 Instance = new();
+        public override bool CanPrepare => true;
+
+    }
+
+    private sealed class CommandFactory2 : CommonCommandFactory<global::Foo.Customer>
+    {
+        internal static readonly CommandFactory2 Instance = new();
+        public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+        {
+            var ps = cmd.Parameters;
+            global::System.Data.Common.DbParameter p;
+            p = cmd.CreateParameter();
+            p.ParameterName = "Id";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(args.Id);
+            ps.Add(p);
+
+        }
+        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+        {
+            var ps = cmd.Parameters;
+            ps[0].Value = AsValue(args.Id);
 
         }
         public override bool CanPrepare => true;

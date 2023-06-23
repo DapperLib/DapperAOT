@@ -30,11 +30,13 @@ DAP021 | Sql | Warning | Diagnostics
 DAP022 | Sql | Warning | Diagnostics
 DAP023 | Sql | Warning | Diagnostics
 DAP024 | Sql | Warning | Diagnostics
+DAP025 | Sql | Warning | Diagnostics
+DAP026 | Sql | Error | Diagnostics
 DAP200 | Sql | Warning | Diagnostics
 DAP201 | Sql | Error | Diagnostics
 DAP202 | Sql | Error | Diagnostics
-DAP203 | Sql | Warning | Diagnostics
-DAP204 | Sql | Warning | Diagnostics
+DAP203 | Sql | Error | Diagnostics
+DAP204 | Sql | Info | Diagnostics
 DAP205 | Sql | Warning | Diagnostics
 DAP206 | Sql | Error | Diagnostics
 DAP207 | Sql | Error | Diagnostics
@@ -42,3 +44,4 @@ DAP208 | Sql | Error | Diagnostics
 DAP209 | Sql | Error | Diagnostics
 DAP210 | Sql | Error | Diagnostics
 DAP211 | Sql | Error | Diagnostics
+DAP212 | Sql | Warning | Diagnostics

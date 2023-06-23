@@ -1,0 +1,29 @@
+Generator produced 3 diagnostics:
+
+Warning DAP025 Interceptors/QueryDetection.input.cs L11 C11
+The command has a query that will be ignored
+
+Error DAP026 Interceptors/QueryDetection.input.cs L20 C11
+The command lacks a query
+
+Error DAP026 Interceptors/QueryDetection.input.cs L21 C11
+The command lacks a query
+Output code has 6 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L14 C189
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L14 C189
+Possible null reference argument for parameter 'args' in 'int Command<Customer>.Execute(Customer args)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L30 C193
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L30 C193
+Possible null reference argument for parameter 'args' in 'int Command<Customer>.QuerySingle<int>(Customer args, RowFactory<int>? rowFactory = null)'.
+
+Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L46 C200
+Converting null literal or possible null value to non-nullable type.
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L46 C200
+Possible null reference argument for parameter 'args' in 'int Command<Customer>.ExecuteScalar<int>(Customer args)'.

@@ -49,8 +49,12 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
     protected override void OnDuplicateVariableDeclaration(Variable variable)
         => AddDiagnostic(Diagnostics.DuplicateVariableDeclaration, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
-    protected override void OnNewSyntaxRecommendation(string used, string recommended, Location location, bool strong)
-        => AddDiagnostic(strong ? Diagnostics.StrongSyntaxRecommendation : Diagnostics.SyntaxRecommendation, location, recommended, used, location.Line, location.Column);
+    protected override void OnExecVariable(Location location)
+        => AddDiagnostic(Diagnostics.ExecVariable, location, location.Line, location.Column);
+    protected override void OnSelectScopeIdentity(Location location)
+        => AddDiagnostic(Diagnostics.SelectScopeIdentity, location, location.Line, location.Column);
+    protected override void OnGlobalIdentity(Location location)
+        => AddDiagnostic(Diagnostics.GlobalIdentity, location, location.Line, location.Column);
 
     protected override void OnNullLiteralComparison(Location location)
         => AddDiagnostic(Diagnostics.NullLiteralComparison, location, location.Line, location.Column);

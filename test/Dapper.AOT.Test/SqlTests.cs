@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using System;
 using Xunit;
 
 namespace Dapper.AOT.Test;
@@ -20,11 +21,13 @@ public class SqlTests
     [InlineData("""
        do thing;
        return 12;
-       """, "", true)]
-    public void DetectParameters(string sql, string expected, bool expectReturn = false)
+       """, "", "Return")]
+    public void DetectParameters(string sql, string expected, string flags = "")
     {
-        Assert.Equal(expected, string.Join(" ", SqlTools.GetParameters(sql, out var actualReturn)));
-        Assert.Equal(expectReturn, actualReturn);
+        var expectedFlags = string.IsNullOrWhiteSpace(flags) ? ParseFlags.None
+            : (ParseFlags)Enum.Parse(typeof(ParseFlags), flags);
+        Assert.Equal(expected, string.Join(" ", SqlTools.GetParameters(sql, out var actualFlags)));
+        Assert.Equal(expectedFlags, actualFlags);
     }
 
 

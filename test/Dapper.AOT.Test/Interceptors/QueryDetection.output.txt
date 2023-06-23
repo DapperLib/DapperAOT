@@ -1,0 +1,10 @@
+Generator produced 3 diagnostics:
+
+Warning DAP025 Interceptors/QueryDetection.input.cs L11 C11
+The command has a query that will be ignored
+
+Error DAP026 Interceptors/QueryDetection.input.cs L20 C11
+The command lacks a query
+
+Error DAP026 Interceptors/QueryDetection.input.cs L21 C11
+The command lacks a query

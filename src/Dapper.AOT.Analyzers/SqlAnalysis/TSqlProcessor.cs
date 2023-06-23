@@ -29,9 +29,13 @@ internal class TSqlProcessor
         using (var reader = new StringReader(sql))
         {
             tree = parser.Parse(reader, out var errors);
-            foreach (var error in errors)
+            if (errors is not null && errors.Count != 0)
             {
-                OnParseError(error, new Location(error.Line, error.Column, error.Offset, 0));
+                Flags |= ParseFlags.SyntaxError;
+                foreach (var error in errors)
+                {
+                    OnParseError(error, new Location(error.Line, error.Column, error.Offset, 0));
+                }
             }
         }
         tree.Accept(visitor);
@@ -40,10 +44,10 @@ internal class TSqlProcessor
 
     public IEnumerable<Variable> Variables => visitor.Variables;
 
-    public bool HaveReturn { get; private set; }
+    public ParseFlags Flags { get; private set; }
     public virtual void Reset()
     {
-        HaveReturn = false;
+        Flags = ParseFlags.Reliable;
         visitor.Reset();
     }
 
@@ -73,17 +77,14 @@ internal class TSqlProcessor
     protected virtual void OnAdditionalBatch(Location location)
         => OnError($"Multiple batches are not permitted", location);
 
-    protected virtual void OnNewSyntaxRecommendation(string used, string recommended, Location location, bool strong)
-    {
-        if (strong)
-        {
-            OnError($"You should use {recommended} in place of {used}", location);
-        }
-        else
-        {
-            OnError($"You may prefer to use {recommended} in place of {used}", location);
-        }
-    }
+    protected virtual void OnGlobalIdentity(Location location)
+        => OnError($"@@identity should not be used; use SCOPE_IDENTITY() instead", location);
+
+    protected virtual void OnSelectScopeIdentity(Location location)
+        => OnError($"Consider OUTPUT INSERTED.yourid on the INSERT instead of SELECT SCOPE_IDENTITY()", location);
+
+    protected virtual void OnExecVariable(Location location)
+        => OnError($"EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters", location);
 
     internal readonly struct Location
     {
@@ -244,7 +245,7 @@ internal class TSqlProcessor
 
         public override void ExplicitVisit(ReturnStatement node)
         {
-            parser.HaveReturn = true;
+            parser.Flags |= ParseFlags.Return;
             base.ExplicitVisit(node);
         }
 
@@ -279,6 +280,44 @@ internal class TSqlProcessor
             base.ExplicitVisit(node);
         }
 
+        public override void ExplicitVisit(ExecuteStatement node)
+        {
+            parser.Flags |= ParseFlags.MaybeQuery;
+            base.ExplicitVisit(node);
+        }
+
+        private void AddQuery()
+        {
+            switch (parser.Flags & (ParseFlags.Query | ParseFlags.Queries))
+            {
+                case ParseFlags.None:
+                    parser.Flags |= ParseFlags.Query;
+                    break;
+                case ParseFlags.Query:
+                    parser.Flags |= ParseFlags.Queries;
+                    break;
+            }
+        }
+        public override void ExplicitVisit(SelectStatement node)
+        {
+            if (node.QueryExpression is QuerySpecification spec
+                && spec.SelectElements is { Count: 1 }
+                && spec.SelectElements[0] is SelectScalarExpression { Expression: FunctionCall func }
+                && string.Equals(func.FunctionName?.Value, "SCOPE_IDENTITY", StringComparison.OrdinalIgnoreCase))
+            {
+                parser.OnSelectScopeIdentity(new Location(func));
+            }
+            AddQuery();
+
+            base.ExplicitVisit(node);
+        }
+
+        public override void ExplicitVisit(OutputClause node)
+        {
+            AddQuery(); // works like a query
+            base.ExplicitVisit(node);
+        }
+
         public override void ExplicitVisit(ExecuteSpecification node)
         {
             if (node.ExecutableEntity is not null)
@@ -287,8 +326,7 @@ internal class TSqlProcessor
                 if (node.ExecutableEntity is ExecutableStringList list && list.Strings.Count == 1
                     && list.Strings[0] is VariableReference)
                 {
-                    parser.OnNewSyntaxRecommendation("EXEC with dynamic content", "EXEC sp_executesql with parameterized input",
-                        new Location(node), true);
+                    parser.OnExecVariable(new Location(node));
                 }
             }
             if (node.ExecuteContext is not null) ExplicitVisit(node.ExecuteContext);
@@ -325,16 +363,7 @@ internal class TSqlProcessor
             var functionName = node.Name;
             if (string.Equals(functionName, "@@IDENTITY", StringComparison.OrdinalIgnoreCase))
             {
-                parser.OnNewSyntaxRecommendation(functionName, "INSERT...OUTPUT or SCOPE_IDENTITY()", new Location(node), true);
-            }
-            base.ExplicitVisit(node);
-        }
-        public override void ExplicitVisit(FunctionCall node)
-        {
-            var functionName = node.FunctionName?.Value ?? "";
-            if (string.Equals(functionName, "SCOPE_IDENTITY", StringComparison.OrdinalIgnoreCase))
-            {
-                parser.OnNewSyntaxRecommendation(functionName + "()", "INSERT...OUTPUT", new Location(node), false);
+                parser.OnGlobalIdentity(new Location(node));
             }
             base.ExplicitVisit(node);
         }

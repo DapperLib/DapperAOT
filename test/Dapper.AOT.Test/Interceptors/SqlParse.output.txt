@@ -1,4 +1,4 @@
-Generator produced 26 diagnostics:
+Generator produced 24 diagnostics:
 
 Error DAP206 Interceptors/SqlParse.input.cs L5 C40
 Incorrect syntax near as. (#46010 L1 C24)
@@ -18,17 +18,11 @@ The variable @id is declared multiple times (L4 C9)
 Error DAP202 Interceptors/SqlParse.input.cs L16 C17
 The variable @id is declared multiple times (L4 C9)
 
-Warning DAP203 Interceptors/SqlParse.input.cs L16 C17
-It is recommended that INSERT...OUTPUT is used in place of SCOPE_IDENTITY() (L7 C8)
+Error DAP203 Interceptors/SqlParse.input.cs L16 C17
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L7 C26)
 
-Warning DAP203 Interceptors/SqlParse.input.cs L16 C17
-It is recommended that INSERT...OUTPUT is used in place of SCOPE_IDENTITY() (L7 C8)
-
-Warning DAP204 Interceptors/SqlParse.input.cs L16 C17
-It is strongly recommended that INSERT...OUTPUT or SCOPE_IDENTITY() is used in place of @@IDENTITY (L7 C26)
-
-Warning DAP204 Interceptors/SqlParse.input.cs L16 C17
-It is strongly recommended that INSERT...OUTPUT or SCOPE_IDENTITY() is used in place of @@IDENTITY (L7 C26)
+Error DAP203 Interceptors/SqlParse.input.cs L16 C17
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L7 C26)
 
 Warning DAP205 Interceptors/SqlParse.input.cs L16 C17
 Literal null used in comparison; 'is null' or 'is not null' should be preferred (L8 C38)

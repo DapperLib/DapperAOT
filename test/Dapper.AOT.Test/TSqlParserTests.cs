@@ -56,13 +56,14 @@ public class TSqlParserTests
             insert customers (id) values (42);
             select @@identity;
             select SCOPE_IDENTITY();
+            declare @id int = SCOPE_IDENTITY(); -- no warn
             """);
 
         var args = parser.GetParameters(out var errors);
         Assert.Empty(args);
         Assert.Equal(2, errors.Length);
-        Assert.Equal("You should use INSERT...OUTPUT or SCOPE_IDENTITY() in place of @@identity L2 C8", errors[0]);
-        Assert.Equal("You may prefer to use INSERT...OUTPUT in place of SCOPE_IDENTITY() L3 C8", errors[1]);
+        Assert.Equal("@@identity should not be used; use SCOPE_IDENTITY() instead L2 C8", errors[0]);
+        Assert.Equal("Consider OUTPUT INSERTED.yourid on the INSERT instead of SELECT SCOPE_IDENTITY() L3 C8", errors[1]);
     }
 
     [Fact]
@@ -291,7 +292,7 @@ public class TSqlParserTests
         var args = parser.GetParameters(out var errors);
         Assert.Equal("@id", Assert.Single(args));
         Assert.Equal(2, errors.Length);
-        Assert.Equal("You should use EXEC sp_executesql with parameterized input in place of EXEC with dynamic content L2 C1", errors[0]);
+        Assert.Equal("EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters L2 C1", errors[0]);
         Assert.Equal("Multiple batches are not permitted L4 C1", errors[1]);
     }
 

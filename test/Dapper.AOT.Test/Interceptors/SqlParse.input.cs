@@ -60,11 +60,13 @@ gibb!eri -- 206
         db.Execute(AllTheFail, customer);
     }
     // don't expect this to be found
-    static void MicrosoftData(System.Data.Common.DbConnection db, Customer customer)
+    static void GeneralDatabase(System.Data.Common.DbConnection db, Customer customer)
     {
         db.Execute(BadSql);
 
         db.Execute(InsertSql, customer);
+
+        db.Execute(AllTheFail, customer);
     }
 
     public class Customer

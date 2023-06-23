@@ -72,13 +72,6 @@ internal sealed class CodeWriter
         return s;
     }
 
-    public static string GetNullableTypeName(ITypeSymbol value)
-    {
-        var name = GetTypeName(value);
-        return value.IsValueType && value.NullableAnnotation == NullableAnnotation.Annotated
-            ? name : (name + "?");
-    }
-
     public CodeWriter Append(ITypeSymbol? value, bool anonToTuple = false)
     {
         if (value is null)

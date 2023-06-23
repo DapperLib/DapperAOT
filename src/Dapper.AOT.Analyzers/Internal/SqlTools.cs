@@ -13,8 +13,8 @@ internal static class SqlTools
     // )
     private static readonly Regex ParameterRegex = new(@"[?@:]([\p{L}_][\p{L}\p{N}_]*)", RegexOptions.Compiled | RegexOptions.Multiline);
 
-    public static ImmutableHashSet<string> GetUniqueParameters(string? sql, out bool hasReturn)
-        => ImmutableHashSet.Create(StringComparer.InvariantCultureIgnoreCase, GetParameters(sql, out hasReturn));
+    public static ImmutableHashSet<string> GetUniqueParameters(string? sql, out ParseFlags flags)
+        => ImmutableHashSet.Create(StringComparer.InvariantCultureIgnoreCase, GetParameters(sql, out flags));
 
     public static bool IncludeParameter(string map, string name, out bool test)
     {
@@ -49,14 +49,18 @@ internal static class SqlTools
 
     }
 
-    public static string[] GetParameters(string? sql, out bool hasReturn)
+    public static string[] GetParameters(string? sql, out ParseFlags flags)
     {
+        flags = ParseFlags.None;
         if (string.IsNullOrWhiteSpace(sql))
         {
-            hasReturn = false;
             return Array.Empty<string>();
         }
-        hasReturn = sql!.IndexOf("return", StringComparison.InvariantCultureIgnoreCase) >= 0;
+
+        if (sql!.IndexOf("return", StringComparison.InvariantCultureIgnoreCase) >= 0)
+        {
+            flags |= ParseFlags.Return;
+        }
 
         if (!ParameterRegex.IsMatch(sql))
         {

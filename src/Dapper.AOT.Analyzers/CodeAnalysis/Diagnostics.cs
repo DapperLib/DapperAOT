@@ -58,19 +58,23 @@ internal static class Diagnostics
             "Members '{0}' and '{1}' are both marked [RowCount]", Category.Sql, DiagnosticSeverity.Warning, true),
         RowCountDbValue = new("DAP024", "Member is both row-count and mapped value",
             "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored", Category.Sql, DiagnosticSeverity.Warning, true),
+        ExecuteCommandWithQuery = new("DAP025", "Execute command with query",
+            "The command has a query that will be ignored", Category.Sql, DiagnosticSeverity.Warning, true),
+        QueryCommandMissingQuery = new("DAP026", "Query/scalar command lacks query",
+            "The command lacks a query", Category.Sql, DiagnosticSeverity.Error, true),
 
 
-        // SQL parse specific
+    // SQL parse specific
         SqlError = new("DAP200", "SQL error",
             "SQL error: {0}", Category.Sql, DiagnosticSeverity.Warning, true),
         MultipleBatches = new("DAP201", "SQL error",
             "Multiple batches are not permitted (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
         DuplicateVariableDeclaration = new("DAP202", "Duplicate variable declaration",
             "The variable {0} is declared multiple times (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
-        SyntaxRecommendation = new("DAP203", "Syntax recommendation",
-            "It is recommended that {0} is used in place of {1} (L{2} C{3})", Category.Sql, DiagnosticSeverity.Warning, true),
-        StrongSyntaxRecommendation = new("DAP204", "Strong syntax recommendation",
-            "It is strongly recommended that {0} is used in place of {1} (L{2} C{3})", Category.Sql, DiagnosticSeverity.Warning, true),
+        GlobalIdentity = new("DAP203", "Do not use @@identity",
+            "@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
+        SelectScopeIdentity = new("DAP204", "Prefer OUTPUT over SELECT",
+            "Consider using OUTPUT INSERTED.yourid in the INSERT instead of SELECT SCOPE_IDENTITY() (L{0} C{1})", Category.Sql, DiagnosticSeverity.Info, true),
         NullLiteralComparison = new("DAP205", "Null comparison",
             "Literal null used in comparison; 'is null' or 'is not null' should be preferred (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
         ParseError = new("DAP206", "SQL parse error",
@@ -84,7 +88,9 @@ internal static class Diagnostics
         VariableAccessedBeforeAssignment = new("DAP210", "Variable used before assigned",
             "Variable {0} is accessed before it is assigned a value (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
         VariableAccessedBeforeDeclaration = new("DAP211", "Variable used before declared",
-            "Variable {0} is accessed before it is declared (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true);
+            "Variable {0} is accessed before it is declared (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
+        ExecVariable = new("DAP212", "EXEC with composed SQL",
+            "EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql, taking care to fully parameterize the composed query (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
 
 
     // be careful moving this because of static field initialization order
