@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Dapper.SqlAnalysis;
 
@@ -164,6 +165,27 @@ internal class TSqlProcessor
                 case VariableReference var:
                     log(node.GetType().Name + ": " + var.Name);
                     break;
+                case VariableTableReference tvar:
+                    log(node.GetType().Name + ": " + tvar.Variable?.Name);
+                    break;
+                case SqlDataTypeReference sdt:
+                    log(node.GetType().Name + ": " + string.Join(".", sdt.Name.Identifiers.Select(x => x.Value)));
+                    break;
+                case IntegerLiteral liti:
+                    log(node.GetType().Name + ": " + liti.Value);
+                    break;
+                case StringLiteral lits:
+                    log(node.GetType().Name + ": '" + lits.Value + "'");
+                    break;
+                case SchemaObjectName obj:
+                    log(node.GetType().Name + ": " + string.Join(".", obj.Identifiers.Select(x => x.Value)));
+                    break;
+                case Identifier id:
+                    log(node.GetType().Name + ": " + id.Value);
+                    break;
+                case GlobalVariableExpression gve:
+                    log(node.GetType().Name + ": " + gve.Name);
+                    break;
                 default:
                     log(node.GetType().Name);
                     break;
@@ -173,6 +195,27 @@ internal class TSqlProcessor
     }
     class VariableTrackingVisitor : TSqlFragmentVisitor
     {
+        // important note for anyone maintaining this;
+        //
+        // the way the machinery works is:
+        // Accept calls ExplicitVisit; on any node, ExplicitVisit calls Visit on the current node,
+        // then calls node.AcceptChildren, which (for each child element) calls child.Accept(this)
+        //
+        // what this means is:
+        //
+        // - for simple "I spotted a thing" rules, you can just override Visit, add your logic,
+        //   and call base.Visit() - how we spot @@identity in GlobalVariableExpression is an example
+        //
+        // - if you need to add some side-effect *before or after* the standard processing, you can override
+        //   ExplicitVisit chaining base.ExplicitVisit, adding your logic; ExecuteParameter "output" params
+        //   (marking them as assigned so we don't report them as errors) is an exmaple
+        //
+        // - if you need to *change the order of evaluation*, bypass nodes, etc; then you will need to
+        //   override ExplicitVisit, but look at what node.AcceptChildren does; be sure to call
+        //   Visit(node) and replicate any unrelated old behaviour from node.AcceptChildren, but **DO NOT**
+        //   call base.ExplicitVisit; VariableTableReference is an example, omitting node.Variable?.Accept(this)
+        //   to avoid a problem; also, be sure to think "nulls", so: ?.Accept(this), if you're not sure
+
         public VariableTrackingVisitor(bool caseSensitive, TSqlProcessor parser)
         {
             variables = caseSensitive ? new(StringComparer.Ordinal) : new(StringComparer.OrdinalIgnoreCase);
@@ -191,13 +234,13 @@ internal class TSqlProcessor
             batchCount = 0;
         }
 
-        public override void ExplicitVisit(TSqlBatch node)
+        public override void Visit(TSqlBatch node)
         {
             if (++batchCount >= 2)
             {
                 parser.OnAdditionalBatch(new Location(node));
             }
-            base.ExplicitVisit(node);
+            base.Visit(node);
         }
 
         private void OnDeclare(Variable variable)
@@ -224,38 +267,71 @@ internal class TSqlProcessor
         }
         public override void ExplicitVisit(DeclareVariableElement node)
         {
-            OnDeclare(new(node.VariableName, VariableFlags.NoValue));
-            base.ExplicitVisit(node);
+            Visit(node);
+            string? name = null;
+            if (node.VariableName is not null)
+            {
+                OnDeclare(new(node.VariableName, VariableFlags.NoValue));
+                name = node.VariableName.Value;
+                node.VariableName.Accept(this);
+            }
+            node.DataType?.Accept(this);
+            node.Nullable?.Accept(this);
             // assign if there is a value
             if (node.Value is not null)
             {
-                var name = node.VariableName.Value;
-                variables[name] = variables[name].WithValue();
+                node.Value.Accept(this);
+                // mark assigned
+                if (name is not null) variables[name] = variables[name].WithValue();
             }
         }
 
         public override void ExplicitVisit(OutputIntoClause node)
         {
-            if (node.IntoTable is VariableTableReference variable)
+            Visit(node);
+            foreach (var col in node.SelectColumns)
             {
-                MarkAssigned(variable.Variable, true);
+                col.Accept(this);
             }
-            base.ExplicitVisit(node);
+            foreach (var col in node.IntoTableColumns)
+            {
+                col.Accept(this);
+            }
+            if (node.IntoTable is VariableTableReference tableVar)
+            {
+                MarkAssigned(tableVar.Variable, true);
+                // but do *NOT* visit, as that would trigger a scalar/table warning
+            }
+            else
+            {
+                node.IntoTable?.Accept(this);
+            }
         }
 
-        public override void ExplicitVisit(ReturnStatement node)
+        public override void Visit(ReturnStatement node)
         {
             parser.Flags |= ParseFlags.Return;
-            base.ExplicitVisit(node);
+            base.Visit(node);
         }
 
         public override void ExplicitVisit(SetVariableStatement node)
         {
-            base.ExplicitVisit(node.Expression);
-            MarkAssigned(node.Variable, false);
+            Visit(node);
+            node.Identifier?.Accept(this);
+            foreach (var p in node.Parameters)
+            {
+                p.Accept(this);
+            }
+            node.Expression?.Accept(this);
+            node.CursorDefinition?.Accept(this);
+            if (node.Variable is not null)
+            {
+                MarkAssigned(node.Variable, false);
+                node.Variable.Accept(this);
+            }
         }
 
-        public override void ExplicitVisit(BooleanComparisonExpression node)
+        public override void Visit(BooleanComparisonExpression node)
         {
             if (node.FirstExpression is NullLiteral)
             {
@@ -265,25 +341,27 @@ internal class TSqlProcessor
             {
                 parser.OnNullLiteralComparison(new Location(node.SecondExpression));
             }
-            base.ExplicitVisit(node);
+            base.Visit(node);
         }
-
+        
         public override void ExplicitVisit(SelectSetVariable node)
         {
-            base.ExplicitVisit(node.Expression);
+            Visit(node);
+            node.Expression?.Accept(this);
             MarkAssigned(node.Variable, false);
+            node.Variable?.Accept(this);
         }
 
-        public override void ExplicitVisit(DeclareTableVariableBody node)
+        public override void Visit(DeclareTableVariableBody node)
         {
             OnDeclare(new(node.VariableName, VariableFlags.NoValue | VariableFlags.Table));
-            base.ExplicitVisit(node);
+            base.Visit(node);
         }
 
-        public override void ExplicitVisit(ExecuteStatement node)
+        public override void Visit(ExecuteStatement node)
         {
             parser.Flags |= ParseFlags.MaybeQuery;
-            base.ExplicitVisit(node);
+            base.Visit(node);
         }
 
         private void AddQuery()
@@ -298,7 +376,7 @@ internal class TSqlProcessor
                     break;
             }
         }
-        public override void ExplicitVisit(SelectStatement node)
+        public override void Visit(SelectStatement node)
         {
             if (node.QueryExpression is QuerySpecification spec
                 && spec.SelectElements is { Count: 1 }
@@ -309,63 +387,74 @@ internal class TSqlProcessor
             }
             AddQuery();
 
-            base.ExplicitVisit(node);
+            base.Visit(node);
         }
 
-        public override void ExplicitVisit(OutputClause node)
+        public override void Visit(OutputClause node)
         {
             AddQuery(); // works like a query
-            base.ExplicitVisit(node);
+            base.Visit(node);
         }
 
         public override void ExplicitVisit(ExecuteSpecification node)
         {
+            Visit(node);
+            node.LinkedServer?.Accept(this);
+            node.ExecuteContext?.Accept(this);
             if (node.ExecutableEntity is not null)
             {
-                ExplicitVisit(node.ExecutableEntity);
+                node.ExecutableEntity.Accept(this);
                 if (node.ExecutableEntity is ExecutableStringList list && list.Strings.Count == 1
                     && list.Strings[0] is VariableReference)
                 {
                     parser.OnExecVariable(new Location(node));
                 }
             }
-            if (node.ExecuteContext is not null) ExplicitVisit(node.ExecuteContext);
-            if (node.LinkedServer is not null) ExplicitVisit(node.LinkedServer);
             if (node.Variable is not null)
             {
                 MarkAssigned(node.Variable, false);
+                node.Variable.Accept(this);
             }
         }
 
         public override void ExplicitVisit(ExecuteParameter node)
         {
+            // it is *NOT* an accident that we don't call Visit here, since
+            // we're (unusually) using base.ExplicitVisit
+
             if (node.IsOutput && node.ParameterValue is VariableReference variable)
             {
                 // don't demand a value before, so: just mark it assigned
                 MarkAssigned(variable, false);
             }
+            // don't need to change anything else
             base.ExplicitVisit(node);
         }
 
         public override void ExplicitVisit(InsertSpecification node)
         {
-            // we do *not* want to touch the Target
-            if (node.InsertSource is not null) ExplicitVisit(node.InsertSource);
-            if (node.OutputClause is not null) ExplicitVisit(node.OutputClause);
-            if (node.OutputIntoClause is not null) ExplicitVisit(node.OutputIntoClause);
+            Visit(node);
+            node.TopRowFilter?.Accept(this);
+            node.OutputClause?.Accept(this);
+            node.OutputIntoClause?.Accept(this);
+            node.InsertSource?.Accept(this);
+            foreach (var col in node.Columns)
+            {
+                col.Accept(this);
+            }
             if (node.Target is VariableTableReference variable)
             {
                 MarkAssigned(variable.Variable, true);
             }
+            node.Target?.Accept(this);
         }
-        public override void ExplicitVisit(GlobalVariableExpression node)
+        public override void Visit(GlobalVariableExpression node)
         {
-            var functionName = node.Name;
-            if (string.Equals(functionName, "@@IDENTITY", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(node.Name, "@@IDENTITY", StringComparison.OrdinalIgnoreCase))
             {
                 parser.OnGlobalIdentity(new Location(node));
             }
-            base.ExplicitVisit(node);
+            base.Visit(node);
         }
 
         private void MarkAssigned(VariableReference node, bool isTable)
@@ -410,14 +499,18 @@ internal class TSqlProcessor
             }
         }
 
-        public override void ExplicitVisit(VariableReference node)
+        public override void Visit(VariableReference node)
         {
             EnsureAssigned(node, false);
+            base.Visit(node);
         }
 
         public override void ExplicitVisit(VariableTableReference node)
         {
+            Visit(node);
             EnsureAssigned(node.Variable, true);
+            // do *NOT* call  node.Variable?.Accept(this); - would trigger table/scalar warning
+            node.Alias?.Accept(this);
         }
     }
 }

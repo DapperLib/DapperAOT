@@ -57,13 +57,15 @@ public class TSqlParserTests
             select @@identity;
             select SCOPE_IDENTITY();
             declare @id int = SCOPE_IDENTITY(); -- no warn
+            set @id = @@identity; -- warn
             """);
 
         var args = parser.GetParameters(out var errors);
         Assert.Empty(args);
-        Assert.Equal(2, errors.Length);
+        Assert.Equal(3, errors.Length);
         Assert.Equal("@@identity should not be used; use SCOPE_IDENTITY() instead L2 C8", errors[0]);
         Assert.Equal("Consider OUTPUT INSERTED.yourid on the INSERT instead of SELECT SCOPE_IDENTITY() L3 C8", errors[1]);
+        Assert.Equal("@@identity should not be used; use SCOPE_IDENTITY() instead L5 C11", errors[2]);
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-Generator produced 25 diagnostics:
+Generator produced 29 diagnostics:
 
 Hidden DAP000  L0 C0
 Dapper.AOT handled 9 of 9 enabled call-sites using 4 interceptors, 3 commands and 0 readers
@@ -44,6 +44,18 @@ Incorrect syntax near gibb. (#46010 L25 C1)
 
 Error DAP206 Interceptors/SqlParse.input.cs L16 C17
 Incorrect syntax near gibb. (#46010 L25 C1)
+
+Error DAP207 Interceptors/SqlParse.input.cs L16 C17
+Scalar variable @id is used like a table (L23 C8)
+
+Error DAP207 Interceptors/SqlParse.input.cs L16 C17
+Scalar variable @id is used like a table (L23 C8)
+
+Error DAP208 Interceptors/SqlParse.input.cs L16 C17
+Table-variable @t is used like a scalar (L16 C5)
+
+Error DAP208 Interceptors/SqlParse.input.cs L16 C17
+Table-variable @t is used like a scalar (L16 C5)
 
 Error DAP209 Interceptors/SqlParse.input.cs L16 C17
 Table-variable @t is accessed before it populated (L12 C15)
