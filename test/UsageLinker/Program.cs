@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data.Common;
 using System.Diagnostics;
 using UsageLinker;
 
@@ -12,17 +13,6 @@ try
     Console.WriteLine($"First time: {watch.ElapsedMilliseconds}ms");
     Console.WriteLine($"Typed object: {obj.ProductID}: {obj.Name} ({obj.ProductNumber})");
 
-    var robj = Product.GetProductRecord(conn, 750);
-    Console.WriteLine("Got record object; trying to access...");
-    try
-    {
-        Console.WriteLine($"Success: {robj["ProductId"]}: {robj["Name"]} ({robj["ProductNumber"]})");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine("Failed: " + ex.Message);
-    }
-
     var dobj = Product.GetProductDynamic(conn, 751);
     Console.WriteLine("Got dynamic object; trying to access...");
     try
@@ -32,6 +22,20 @@ try
     catch (Exception ex)
     {
         Console.WriteLine("Failed: " + ex.Message);
+    }
+    if (dobj is DbDataRecord robj)
+    {
+        // DapperAOT's dynamic objects *are* DbDataRecord objects, so...
+        Console.WriteLine("Got record object; trying to access...");
+        try
+        {
+            Console.WriteLine($"Success: {robj["ProductId"]}: {robj["Name"]} ({robj["ProductNumber"]})");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Failed: " + ex.Message);
+        }
+
     }
 
     watch.Restart();
