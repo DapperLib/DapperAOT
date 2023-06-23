@@ -1,12 +1,16 @@
 ﻿using Dapper;
 using System;
+using System.Data;
 using System.Data.Common;
 
 namespace UsageLinker;
 
-//[DapperAot(true)]
+[DapperAot(true)]
 public class Product
 {
+    public static IDataRecord GetProductRecord(DbConnection connection, int productId) => connection.QueryFirst<IDataRecord>(
+        "select * from Production.Product where ProductId=@productId", new { productId });
+
     public static dynamic GetProductDynamic(DbConnection connection, int productId) => connection.QueryFirst(
         "select * from Production.Product where ProductId=@productId", new { productId });
 

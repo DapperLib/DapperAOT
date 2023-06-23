@@ -152,7 +152,7 @@ public sealed partial class DapperInterceptorGenerator
                             }
                         })
                     {
-                        helper = "IDataRecord";
+                        helper = "DbDataRecord";
                         return true;
                     }
                 }
