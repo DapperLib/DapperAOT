@@ -1,22 +1,28 @@
 #nullable enable
 file static class DapperGeneratedInterceptors
 {
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 10, 16)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 11, 16)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 12, 16)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 13, 16)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 14, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 15, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 16, 16)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 17, 16)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 18, 16)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 23, 16)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 26, 16)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 28, 16)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 30, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 21, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 22, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 27, 16)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 32, 16)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 36, 16)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 38, 16)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 44, 16)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 46, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 35, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 37, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 39, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 41, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 43, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 45, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 49, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 51, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 57, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 63, 16)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 65, 16)]
     internal static global::System.Collections.Generic.IEnumerable<dynamic> Query0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Buffered, Text
