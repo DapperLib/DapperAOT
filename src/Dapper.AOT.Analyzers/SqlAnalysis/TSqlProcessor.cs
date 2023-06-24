@@ -1,4 +1,5 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,12 +18,11 @@ internal class TSqlProcessor
         Table = 1 << 2,
     }
     private readonly VariableTrackingVisitor visitor;
-
     public TSqlProcessor(bool caseSensitive = false, Action<string>? log = null)
     {
         visitor = log is null ? new VariableTrackingVisitor(caseSensitive, this) : new LoggingVariableTrackingVisitor(caseSensitive, this, log);
     }
-    public bool Execute(string sql)
+    public virtual bool Execute(string sql)
     {
         Reset();
         var parser = new TSql160Parser(true, SqlEngineType.All);

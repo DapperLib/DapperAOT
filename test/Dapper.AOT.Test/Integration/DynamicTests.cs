@@ -10,7 +10,7 @@ public class DynamicTests : IClassFixture<SqlClientFixture>
     private readonly SqlClientFixture Database;
     public DynamicTests(SqlClientFixture database) => Database = database;
 
-    [Fact]
+    [SkippableFact]
     public void CanAccessDynamicData()
     {
         var wilma = Database.Connection.Command("select * from AotIntegrationDynamicTests where Name = 'Wilma';", handler: CommandFactory.Simple)

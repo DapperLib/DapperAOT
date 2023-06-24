@@ -135,7 +135,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
 
         string? sql = null;
-        Location? sqlLocation = null;
+        SyntaxNode? sqlSyntax = null;
         bool? buffered = null;
         if (!HasAny(flags, OperationFlags.DoNotGenerate))
         {
@@ -144,7 +144,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 switch (arg.Parameter?.Name)
                 {
                     case "sql":
-                        if (TryGetConstantValueWithLocation(arg, out string? s, out sqlLocation))
+                        if (TryGetConstantValueWithSyntax(arg, out string? s, out sqlSyntax))
                         {
                             sql = s;
                         }
@@ -302,7 +302,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
         }
 
-        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics, sqlLocation, out var parseFlags);
+        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags, Log);
 
         // if we have a good parser *and* the SQL isn't borked: check for obvious query/exec mismatch
         if ((parseFlags & (ParseFlags.Reliable | ParseFlags.SyntaxError)) == ParseFlags.Reliable)
@@ -358,20 +358,20 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         //}
 
         static bool TryGetConstantValue<T>(IArgumentOperation op, out T? value)
-            => TryGetConstantValueWithLocation<T>(op, out value, out _);
+            => TryGetConstantValueWithSyntax<T>(op, out value, out _);
 
-        static bool TryGetConstantValueWithLocation<T>(IArgumentOperation op, out T? value, out Location? location)
+        static bool TryGetConstantValueWithSyntax<T>(IArgumentOperation op, out T? value, out SyntaxNode? syntax)
         {
             try
             {
                 if (op.ConstantValue.HasValue)
                 {
                     value = (T?)op.ConstantValue.Value;
-                    location = op.Syntax.GetLocation();
+                    syntax = op.Syntax;
                     return true;
                 }
                 var val = op.Value;
-                if (val is IConversionOperation conv)
+                while (val is IConversionOperation conv)
                 {
                     val = conv.Operand;
                 }
@@ -379,26 +379,32 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
                 {
                     value = (T?)field.Field.ConstantValue;
-                    location = field.Field.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
+                    syntax = field.Field.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
                     return true;
                 }
 
+                if (val.ConstantValue.HasValue)
+                {
+                    value = (T?)val.ConstantValue.Value;
+                    syntax = val.Syntax;
+                    return true;
+                }
                 if (val is ILiteralOperation or IDefaultValueOperation)
                 {
-                    var v = val.ConstantValue;
-                    value = v.HasValue ? (T?)v.Value : default;
-                    location = val.Syntax.GetLocation();
+                    // we already ruled out explicit constant above, so: must be default
+                    value = default;
+                    syntax = val.Syntax;
                     return true;
                 }
             }
             catch { }
             value = default!;
-            location = null;
+            syntax = null;
             return false;
         }
 
-
-        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, Location? sqlLocation, out ParseFlags parseFlags)
+        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags,
+            Action<DiagnosticSeverity, string>? log)
         {
             if (HasAny(flags, OperationFlags.DoNotGenerate))
             {
@@ -424,7 +430,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             switch (IdentifySqlSyntax(op, out bool caseSensitive))
             {
                 case SqlSyntax.TransactSql:
-                    var proc = new DiagnosticTSqlProcessor(caseSensitive, diagnostics, loc, sqlLocation);
+                    var proc = new DiagnosticTSqlProcessor(caseSensitive, diagnostics, loc, sqlSyntax, log);
                     try
                     {
                         proc.Execute(sql!);

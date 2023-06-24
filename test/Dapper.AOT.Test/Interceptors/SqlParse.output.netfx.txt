@@ -3,10 +3,10 @@ Generator produced 29 diagnostics:
 Hidden DAP000  L0 C0
 Dapper.AOT handled 9 of 9 enabled call-sites using 4 interceptors, 3 commands and 0 readers
 
-Error DAP206 Interceptors/SqlParse.input.cs L5 C40
+Error DAP206 Interceptors/SqlParse.input.cs L5 C17
 Incorrect syntax near as. (#46010 L1 C24)
 
-Error DAP206 Interceptors/SqlParse.input.cs L5 C40
+Error DAP206 Interceptors/SqlParse.input.cs L5 C17
 Incorrect syntax near as. (#46010 L1 C24)
 
 Error DAP201 Interceptors/SqlParse.input.cs L16 C17
@@ -69,10 +69,10 @@ Variable @s is accessed before it is assigned a value (L19 C8)
 Error DAP210 Interceptors/SqlParse.input.cs L16 C17
 Variable @s is accessed before it is assigned a value (L19 C8)
 
-Error DAP211 Interceptors/SqlParse.input.cs L16 C21
+Error DAP211 Interceptors/SqlParse.input.cs L16 C17
 Variable @id is accessed before it is declared (L1 C5)
 
-Error DAP211 Interceptors/SqlParse.input.cs L16 C21
+Error DAP211 Interceptors/SqlParse.input.cs L16 C17
 Variable @id is accessed before it is declared (L1 C5)
 
 Error DAP020 Interceptors/SqlParse.input.cs L49 C11

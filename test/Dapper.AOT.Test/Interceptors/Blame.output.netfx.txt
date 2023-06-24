@@ -1,0 +1,52 @@
+Generator produced 17 diagnostics:
+
+Hidden DAP000  L0 C0
+Dapper.AOT handled 16 of 16 enabled call-sites using 1 interceptors, 0 commands and 0 readers
+
+Error DAP203 Interceptors/Blame.input.cs L9 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C21)
+
+Error DAP203 Interceptors/Blame.input.cs L10 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C21)
+
+Error DAP203 Interceptors/Blame.input.cs L11 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C21)
+
+Error DAP203 Interceptors/Blame.input.cs L12 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C21)
+
+Error DAP203 Interceptors/Blame.input.cs L13 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+
+Error DAP203 Interceptors/Blame.input.cs L16 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C21)
+
+Error DAP203 Interceptors/Blame.input.cs L17 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+
+Error DAP203 Interceptors/Blame.input.cs L22 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C22)
+
+Error DAP203 Interceptors/Blame.input.cs L25 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C21)
+
+Error DAP203 Interceptors/Blame.input.cs L27 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C21)
+
+Error DAP203 Interceptors/Blame.input.cs L29 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C21)
+
+Error DAP203 Interceptors/Blame.input.cs L31 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C21)
+
+Error DAP203 Interceptors/Blame.input.cs L35 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+
+Error DAP203 Interceptors/Blame.input.cs L37 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C21)
+
+Error DAP203 Interceptors/Blame.input.cs L43 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+
+Error DAP203 Interceptors/Blame.input.cs L45 C21
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C22)
