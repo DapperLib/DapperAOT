@@ -40,7 +40,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
     /// <summary>
     /// Provide log feedback.
     /// </summary>
-    public event Action<DiagnosticSeverity, string>? Log;
+    public event Action<string>? Log;
 
     void IIncrementalGenerator.Initialize(IncrementalGeneratorInitializationContext context)
     {

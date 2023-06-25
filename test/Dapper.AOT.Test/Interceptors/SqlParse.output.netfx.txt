@@ -15,12 +15,6 @@ Variable @id is accessed before it is declared (L1 C5)
 Error DAP211 Interceptors/SqlParse.input.cs L18 C5
 Variable @id is accessed before it is declared (L1 C5)
 
-Warning DAP213 Interceptors/SqlParse.input.cs L18 C5
-Variable @id has a value that is not consumed (L1 C5)
-
-Warning DAP213 Interceptors/SqlParse.input.cs L18 C5
-Variable @id has a value that is not consumed (L1 C5)
-
 Error DAP202 Interceptors/SqlParse.input.cs L21 C9
 The variable @id is declared multiple times (L4 C9)
 
@@ -57,23 +51,29 @@ Table-variable @t is accessed before it populated (L12 C15)
 Error DAP209 Interceptors/SqlParse.input.cs L29 C15
 Table-variable @t is accessed before it populated (L12 C15)
 
-Error DAP208 Interceptors/SqlParse.input.cs L33 C5
-Table-variable @t is used like a scalar (L16 C5)
-
-Error DAP208 Interceptors/SqlParse.input.cs L33 C5
-Table-variable @t is used like a scalar (L16 C5)
-
 Error DAP210 Interceptors/SqlParse.input.cs L36 C8
 Variable @s is accessed before it is assigned a value (L19 C8)
 
 Error DAP210 Interceptors/SqlParse.input.cs L36 C8
 Variable @s is accessed before it is assigned a value (L19 C8)
 
-Error DAP207 Interceptors/SqlParse.input.cs L40 C8
-Scalar variable @id is used like a table (L23 C8)
+Warning DAP213 Interceptors/SqlParse.input.cs L40 C8
+Variable @id has a value that is not consumed (L23 C8)
 
-Error DAP207 Interceptors/SqlParse.input.cs L40 C8
-Scalar variable @id is used like a table (L23 C8)
+Warning DAP213 Interceptors/SqlParse.input.cs L40 C8
+Variable @id has a value that is not consumed (L23 C8)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L45 C5
+Variable @id has a value that is not consumed (L28 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L45 C5
+Variable @id has a value that is not consumed (L28 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L45 C5
+Variable @id has a value that is not consumed (L28 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L45 C5
+Variable @id has a value that is not consumed (L28 C5)
 
 Error DAP206 Interceptors/SqlParse.input.cs L47 C1
 Incorrect syntax near gibb. (#46010 L30 C1)

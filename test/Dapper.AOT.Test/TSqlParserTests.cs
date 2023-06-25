@@ -22,7 +22,9 @@ public class TSqlParserTests
             declare @s int = null;
             select *
             from Customers
-            where Id = null and Name != null
+            where Id = null and Name != null;
+
+            select @s
             """);
 
         var args = parser.GetParameters(out var errors);
@@ -30,6 +32,22 @@ public class TSqlParserTests
         Assert.Equal(2, errors.Length);
         Assert.Equal("Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null' L4 C12", errors[0]);
         Assert.Equal("Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null' L4 C29", errors[1]);
+    }
+
+    [Fact]
+    public void DetectExecParams()
+    {
+        var parser = new TestTSqlProcessor(log: _log);
+        parser.Execute("""
+            declare @a int, @c int;
+            exec @c = SomeProc @x = @a out, @y = @a, @z = @b out; -- middle a is not assigned, b is param
+            select @a, @b, @c -- all fine
+            """);
+
+        var args = parser.GetParameters(out var errors);
+        Assert.Equal("@b", Assert.Single(args));
+        Assert.Single(errors);
+        Assert.Equal("Variable @a accessed before being assigned L2 C38", errors[0]);
     }
 
     [Fact]
@@ -58,6 +76,7 @@ public class TSqlParserTests
             select @@identity;
             select SCOPE_IDENTITY();
             declare @id int = SCOPE_IDENTITY(); -- no warn
+            select @id
             set @id = @@identity; -- warn
             select @id
             """);
@@ -67,7 +86,7 @@ public class TSqlParserTests
         Assert.Equal(3, errors.Length);
         Assert.Equal("@@identity should not be used; use SCOPE_IDENTITY() instead L2 C8", errors[0]);
         Assert.Equal("Consider OUTPUT INSERTED.yourid on the INSERT instead of SELECT SCOPE_IDENTITY() L3 C8", errors[1]);
-        Assert.Equal("@@identity should not be used; use SCOPE_IDENTITY() instead L5 C11", errors[2]);
+        Assert.Equal("@@identity should not be used; use SCOPE_IDENTITY() instead L6 C11", errors[2]);
     }
 
     [Fact]
@@ -299,6 +318,30 @@ public class TSqlParserTests
         Assert.Equal(2, errors.Length);
         Assert.Equal("EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters L2 C1", errors[0]);
         Assert.Equal("Multiple batches are not permitted L4 C1", errors[1]);
+    }
+
+    [Fact]
+    public void ConditionalBail()
+    {
+        var parser = new TestTSqlProcessor(log: _log);
+        parser.Execute("""
+            if @p > 1
+            begin
+                label:
+                while @p > 0
+                begin
+                    set @p = @p - 1 -- this @p looks unconsumed
+                end
+            end
+            else
+            begin
+                goto label
+            end
+            """);
+
+        var args = parser.GetParameters(out var errors);
+        Assert.Equal("@p", Assert.Single(args));
+        Assert.Empty(errors); // because we just gave up
     }
 
     class TestTSqlProcessor : TSqlProcessor

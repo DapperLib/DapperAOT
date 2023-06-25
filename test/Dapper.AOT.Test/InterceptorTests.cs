@@ -37,7 +37,7 @@ public class InterceptorTests : GeneratorTestBase
         var result = Execute<DapperInterceptorGenerator>(sourceText, sb, fileName: path, initializer: g =>
         {
             g.OverrideFeatureEnabled = true;
-            g.Log += (severity, message) => Log($"{severity}: {message}");
+            g.Log += message => Log(message);
         });
 
         var results = Assert.Single(result.Result.Results);
