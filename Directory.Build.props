@@ -21,6 +21,11 @@
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
         <NoWarn>$(NoWarn);IDE0057</NoWarn>
         <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>embedded</DebugType>
+        <DefaultLanguage>en-US</DefaultLanguage>
+        <IncludeSymbols>false</IncludeSymbols>
+        <AnalysisMode>latest-Recommended</AnalysisMode>
     </PropertyGroup>
     <ItemGroup>
         <None Include="$(MSBuildThisFileDirectory)Dapper.png" Visible="false">
@@ -28,6 +33,6 @@
             <PackagePath></PackagePath>
         </None>
         <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
-        <PackageReference Include="DotNet.ReproducibleBuilds" PrivateAssets="All" Pack="false" />
+        <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All"/>
     </ItemGroup>
 </Project>

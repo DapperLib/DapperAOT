@@ -1,9 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
-        <!-- net48;netcoreapp3.1 -->
+        <TargetFrameworks>net6.0;net7.0;net48</TargetFrameworks>
         <NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
-        <SignAssembly Condition="'$(TargetFramework)'=='net48'">false</SignAssembly>
         <RootNamespace>Dapper.AOT.Test</RootNamespace>
     </PropertyGroup>
     <ItemGroup>
@@ -20,7 +18,8 @@
         </None>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Dapper" />
+        <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
+        <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
         <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net6.0'" />
         <PackageReference Include="Microsoft.Build" VersionOverride="17.3.2" Condition="'$(TargetFramework)'=='net6.0'" />
         <PackageReference Include="Microsoft.Build.Utilities.Core" />

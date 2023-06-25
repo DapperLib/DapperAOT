@@ -57,11 +57,11 @@ public sealed partial class DapperInterceptorGenerator
             {   // not hard-coded
                 if (HasParam(methodParameters, "command"))
                 {
-                    sb.Append("command ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)");
+                    sb.Append("command.GetValueOrDefault()");
                 }
                 else
                 {
-                    sb.Append("global::Dapper.DapperAotExtensions.GetCommandType(sql)");
+                    sb.Append("default");
                 }
             }
             else
@@ -72,7 +72,7 @@ public sealed partial class DapperInterceptorGenerator
             // timeout
             sb.Append(", ")
               .Append(Forward(methodParameters, "commandTimeout"))
-              .Append(HasParam(methodParameters, "commandTimeout") ? " ?? -1" : "")
+              .Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "")
               .Append(", ");
 
             // commandFactory

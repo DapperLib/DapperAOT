@@ -1,52 +1,55 @@
-Generator produced 17 diagnostics:
+Generator produced 18 diagnostics:
 
-Warning DAP012 Interceptors/MiscDiagnostics.input.cs L15 C19
+Hidden DAP000  L1 C1
+Dapper.AOT handled 9 of 23 enabled call-sites using 8 interceptors, 3 commands and 3 readers
+
+Warning DAP012 Interceptors/MiscDiagnostics.input.cs L16 C20
 Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindTupleByName({true|false})]' to clarify your intent
 
-Info DAP013 Interceptors/MiscDiagnostics.input.cs L15 C19
+Info DAP013 Interceptors/MiscDiagnostics.input.cs L16 C20
 Tuple-type results are not currently supported
 
-Warning DAP012 Interceptors/MiscDiagnostics.input.cs L19 C19
+Warning DAP012 Interceptors/MiscDiagnostics.input.cs L20 C20
 Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindTupleByName({true|false})]' to clarify your intent
 
-Info DAP014 Interceptors/MiscDiagnostics.input.cs L19 C19
+Info DAP014 Interceptors/MiscDiagnostics.input.cs L20 C20
 Tuple-type parameters are not currently supported
 
-Info DAP015 Interceptors/MiscDiagnostics.input.cs L22 C19
+Info DAP015 Interceptors/MiscDiagnostics.input.cs L23 C20
 The parameter type could not be resolved
 
-Info DAP017 Interceptors/MiscDiagnostics.input.cs L42 C23
+Info DAP017 Interceptors/MiscDiagnostics.input.cs L43 C24
 Type 'SomeCode.InternalNesting.SomePrivateType' is not accessible; private types are not currently supported
 
-Info DAP017 Interceptors/MiscDiagnostics.input.cs L43 C23
+Info DAP017 Interceptors/MiscDiagnostics.input.cs L44 C24
 Type 'SomeCode.InternalNesting.SomePrivateType' is not accessible; private types are not currently supported
 
-Info DAP017 Interceptors/MiscDiagnostics.input.cs L46 C23
+Info DAP017 Interceptors/MiscDiagnostics.input.cs L47 C24
 Type 'SomeCode.InternalNesting.SomeProtectedType' is not accessible; protected types are not currently supported
 
-Info DAP017 Interceptors/MiscDiagnostics.input.cs L47 C23
+Info DAP017 Interceptors/MiscDiagnostics.input.cs L48 C24
 Type 'SomeCode.InternalNesting.SomeProtectedType' is not accessible; protected types are not currently supported
 
-Info DAP017 Interceptors/MiscDiagnostics.input.cs L50 C23
+Info DAP017 Interceptors/MiscDiagnostics.input.cs L51 C24
 Type 'SomeCode.InternalNesting.SomePrivateProtectedType' is not accessible; private protected types are not currently supported
 
-Info DAP017 Interceptors/MiscDiagnostics.input.cs L51 C23
+Info DAP017 Interceptors/MiscDiagnostics.input.cs L52 C24
 Type 'SomeCode.InternalNesting.SomePrivateProtectedType' is not accessible; private protected types are not currently supported
 
-Info DAP017 Interceptors/MiscDiagnostics.input.cs L90 C23
+Info DAP017 Interceptors/MiscDiagnostics.input.cs L91 C24
 Type 'SomeCode.PrivateNesting' is not accessible; private types are not currently supported
 
-Info DAP016 Interceptors/MiscDiagnostics.input.cs L104 C19
+Info DAP016 Interceptors/MiscDiagnostics.input.cs L105 C20
 Generic type parameters (T) are not currently supported
 
-Info DAP016 Interceptors/MiscDiagnostics.input.cs L107 C19
+Info DAP016 Interceptors/MiscDiagnostics.input.cs L108 C20
 Generic type parameters (T) are not currently supported
 
-Info DAP013 Interceptors/MiscDiagnostics.input.cs L114 C19
+Info DAP013 Interceptors/MiscDiagnostics.input.cs L115 C20
 Tuple-type results are not currently supported
 
-Info DAP014 Interceptors/MiscDiagnostics.input.cs L117 C19
+Info DAP014 Interceptors/MiscDiagnostics.input.cs L118 C20
 Tuple-type parameters are not currently supported
 
-Warning DAP011 Interceptors/MiscDiagnostics.input.cs L127 C19
+Warning DAP011 Interceptors/MiscDiagnostics.input.cs L128 C20
 Dapper (original) does not support tuple results with bind-by-name semantics

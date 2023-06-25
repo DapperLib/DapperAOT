@@ -43,7 +43,7 @@ namespace Dapper.AOT.Test
             {
                 Output("", true);
                 var loc = d.Location.GetMappedLineSpan();
-                Output($"{d.Severity} {d.Id} {loc.Path} L{loc.StartLinePosition.Line} C{loc.StartLinePosition.Character}");
+                Output($"{d.Severity} {d.Id} {loc.Path} L{loc.StartLinePosition.Line + 1} C{loc.StartLinePosition.Character + 1}");
                 Output(d.GetMessage(CultureInfo.InvariantCulture));
             }
             void Output(string message, bool force = false)
@@ -130,7 +130,7 @@ namespace Dapper.AOT.Test
             {
                 Output("", true);
                 var loc = d.Location.GetMappedLineSpan();
-                Output($"{d.Severity} {d.Id} {loc.Path} L{loc.StartLinePosition.Line} C{loc.StartLinePosition.Character}");
+                Output($"{d.Severity} {d.Id} {loc.Path} L{loc.StartLinePosition.Line + 1} C{loc.StartLinePosition.Character + 1}");
                 Output(d.GetMessage(CultureInfo.InvariantCulture));
             }
         }

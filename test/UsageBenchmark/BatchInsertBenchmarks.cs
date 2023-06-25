@@ -20,8 +20,8 @@ public class BatchInsertBenchmarks : IDisposable
 
     public BatchInsertBenchmarks()
     {
-        try { connection.Execute("drop table BenchmarkBatchInsert;"); } catch { }
-        connection.Execute("create table BenchmarkBatchInsert(Id int not null identity(1,1), Name nvarchar(200) not null);");
+        try { connection.Execute("drop table BenchmarkCustomers;"); } catch { }
+        connection.Execute("create table BenchmarkCustomers(Id int not null identity(1,1), Name nvarchar(200) not null);");
     }
 
     [Params(0, 1, 10, 100, 1000)]
@@ -47,21 +47,21 @@ public class BatchInsertBenchmarks : IDisposable
         {
             connection.Close();
         }
-        connection.Execute("truncate table BenchmarkBatchInsert;");
+        connection.Execute("truncate table BenchmarkCustomers;");
     }
 
     [Benchmark, BenchmarkCategory("Sync")]
-    public int Dapper() => connection.Execute("insert BenchmarkBatchInsert (Name) values (@name)", customers);
+    public int Dapper() => connection.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
 
-    [Benchmark, BenchmarkCategory("Sync"), DapperAot]
-    public int DapperAot() => connection.Execute("insert BenchmarkBatchInsert (Name) values (@name)", customers);
+    [Benchmark, BenchmarkCategory("Sync"), DapperAot, CacheCommand]
+    public int DapperAot() => connection.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Sync")]
-    public int DapperAotManual() => connection.Command("insert BenchmarkBatchInsert (Name) values (@name)",
+    public int DapperAotManual() => connection.Command("insert BenchmarkCustomers (Name) values (@name)",
         handler: CustomHandler.Unprepared).Execute(customers);
 
     [Benchmark, BenchmarkCategory("Sync")]
-    public int DapperAot_PreparedManual() => connection.Command("insert BenchmarkBatchInsert (Name) values (@name)",
+    public int DapperAot_PreparedManual() => connection.Command("insert BenchmarkCustomers (Name) values (@name)",
         handler: CustomHandler.Prepared).Execute(customers);
 
     [Benchmark(Baseline = true), BenchmarkCategory("Sync")]
@@ -101,7 +101,7 @@ public class BatchInsertBenchmarks : IDisposable
         if (cmd is null)
         {
             cmd = connection.CreateCommand();
-            cmd.CommandText = "insert BenchmarkBatchInsert (Name) values (@name)";
+            cmd.CommandText = "insert BenchmarkCustomers (Name) values (@name)";
             cmd.CommandType = CommandType.Text;
             name = cmd.CreateParameter();
             name.ParameterName = "name";
@@ -122,14 +122,14 @@ public class BatchInsertBenchmarks : IDisposable
         => Interlocked.CompareExchange(ref _spare, cmd, null) is null;
 
     [Benchmark, BenchmarkCategory("Async")]
-    public Task<int> DapperAsync() => connection.ExecuteAsync("insert BenchmarkBatchInsert (Name) values (@name)", customers);
+    public Task<int> DapperAsync() => connection.ExecuteAsync("insert BenchmarkCustomers (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Async")]
-    public Task<int> DapperAotAsync() => connection.Command("insert BenchmarkBatchInsert (Name) values (@name)",
+    public Task<int> DapperAotAsync() => connection.Command("insert BenchmarkCustomers (Name) values (@name)",
         handler: CustomHandler.Unprepared).ExecuteAsync(customers);
 
     [Benchmark, BenchmarkCategory("Async")]
-    public Task<int> DapperAot_PreparedAsync() => connection.Command("insert BenchmarkBatchInsert (Name) values (@name)",
+    public Task<int> DapperAot_PreparedAsync() => connection.Command("insert BenchmarkCustomers (Name) values (@name)",
         handler: CustomHandler.Prepared).ExecuteAsync(customers);
 
     [Benchmark(Baseline = true), BenchmarkCategory("Async")]
@@ -214,7 +214,7 @@ public class BatchInsertBenchmarks : IDisposable
             }
             using var table = new SqlBulkCopy(connection)
             {
-                DestinationTableName = "BenchmarkBatchInsert",
+                DestinationTableName = "BenchmarkCustomers",
                 ColumnMappings =
             {
                 { nameof(Customer.Name), nameof(Customer.Name) }
@@ -243,7 +243,7 @@ public class BatchInsertBenchmarks : IDisposable
             }
             using var table = new SqlBulkCopy(connection)
             {
-                DestinationTableName = "BenchmarkBatchInsert",
+                DestinationTableName = "BenchmarkCustomers",
                 ColumnMappings =
             {
                 { nameof(Customer.Name), nameof(Customer.Name) }
@@ -265,61 +265,37 @@ public class BatchInsertBenchmarks : IDisposable
         ctx.Dispose();
         GC.SuppressFinalize(this);
     }
-}
 
-public class Customer
-{
-    public int Id { get; set; }
+    private sealed class CustomHandler : CommandFactory<Customer>
+    {
+        public static readonly CustomHandler Prepared = new(true), Unprepared = new(false);
+        private readonly bool _canPrepare;
+        private CustomHandler(bool canPrepare) => _canPrepare = canPrepare;
 
-    [DbValue(Size = 400)]
-    public string Name { get; set; } = "";
-}
+        private static DbCommand? _spareP, _spareU;
 
-public class MyContext : DbContext
-{
-    public DbSet<Customer> Customers { get; set; }
+        private ref DbCommand? Spare => ref (_canPrepare ? ref _spareP : ref _spareU);
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer(Program.ConnectionString);
+        public override DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, Customer args)
+            => TryReuse(ref Spare, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-        => modelBuilder.Entity<Customer>(entity =>
+        public override bool TryRecycle(DbCommand command) => TryRecycle(ref Spare, command);
+
+        public override void AddParameters(DbCommand command, Customer obj)
         {
-            entity.ToTable("BenchmarkBatchInsert");
-            entity.Property<int>(nameof(Customer.Id)).ValueGeneratedOnAdd().UseIdentityColumn(1, 1);
-            entity.Property<string>(nameof(Customer.Name));
-        });
-}
+            var p = command.CreateParameter();
+            p.ParameterName = "name";
+            p.DbType = DbType.String;
+            p.Size = 400;
+            p.Value = AsValue(obj.Name);
+            command.Parameters.Add(p);
+        }
 
-internal class CustomHandler : CommandFactory<Customer>
-{
-    public static readonly CustomHandler Prepared = new(true), Unprepared = new(false);
-    private readonly bool _canPrepare;
-    private CustomHandler(bool canPrepare) => _canPrepare = canPrepare;
+        public override void UpdateParameters(DbCommand command, Customer obj)
+        {
+            command.Parameters[0].Value = AsValue(obj.Name);
+        }
 
-    private static DbCommand? _spareP, _spareU;
-
-    private ref DbCommand? Spare => ref (_canPrepare ? ref _spareP : ref _spareU);
-
-    public override DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, Customer args)
-        => TryReuse(ref Spare, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);
-
-    public override bool TryRecycle(DbCommand command) => TryRecycle(ref Spare, command);
-
-    public override void AddParameters(DbCommand command, Customer obj)
-    {
-        var p = command.CreateParameter();
-        p.ParameterName = "name";
-        p.DbType = DbType.String;
-        p.Size = 400;
-        p.Value = AsValue(obj.Name);
-        command.Parameters.Add(p);
+        public override bool CanPrepare => _canPrepare;
     }
-
-    public override void UpdateParameters(DbCommand command, Customer obj)
-    {
-        command.Parameters[0].Value = AsValue(obj.Name);
-    }
-
-    public override bool CanPrepare => _canPrepare;
 }

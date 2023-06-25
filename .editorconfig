@@ -1,0 +1,4 @@
+﻿[*.cs]
+
+# DAP000: Interceptors generated
+dotnet_diagnostic.DAP000.severity = suggestion

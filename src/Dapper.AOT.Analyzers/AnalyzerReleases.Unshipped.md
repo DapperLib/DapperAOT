@@ -5,9 +5,9 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
-DAP000 | Library | Disabled | Diagnostics
+DAP000 | Library | Hidden | Diagnostics
 DAP001 | Library | Info | Diagnostics
-DAP002 | Library | Info | Diagnostics
+; DAP002 | Library | Info | Diagnostics
 DAP003 | Library | Warning | Diagnostics
 DAP004 | Library | Warning | Diagnostics
 DAP005 | Library | Info | Diagnostics
@@ -30,3 +30,18 @@ DAP021 | Sql | Warning | Diagnostics
 DAP022 | Sql | Warning | Diagnostics
 DAP023 | Sql | Warning | Diagnostics
 DAP024 | Sql | Warning | Diagnostics
+DAP025 | Sql | Warning | Diagnostics
+DAP026 | Sql | Error | Diagnostics
+DAP200 | Sql | Warning | Diagnostics
+DAP201 | Sql | Error | Diagnostics
+DAP202 | Sql | Error | Diagnostics
+DAP203 | Sql | Error | Diagnostics
+DAP204 | Sql | Info | Diagnostics
+DAP205 | Sql | Warning | Diagnostics
+DAP206 | Sql | Error | Diagnostics
+DAP207 | Sql | Error | Diagnostics
+DAP208 | Sql | Error | Diagnostics
+DAP209 | Sql | Error | Diagnostics
+DAP210 | Sql | Error | Diagnostics
+DAP211 | Sql | Error | Diagnostics
+DAP212 | Sql | Warning | Diagnostics

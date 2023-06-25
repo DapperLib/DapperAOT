@@ -7,6 +7,8 @@ namespace UsageLinker;
 [DapperAot(true)]
 public class Product
 {
+    public static dynamic GetProductDynamic(DbConnection connection, int productId) => connection.QueryFirst(
+        "select * from Production.Product where ProductId=@productId", new { productId });
 
     public static Product GetProduct(DbConnection connection, int productId) => connection.QueryFirst<Product>(
         "select * from Production.Product where ProductId=@productId", new { productId });

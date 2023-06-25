@@ -7,20 +7,23 @@
         <WarningsAsErrors>true</WarningsAsErrors>
         <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
         <PackageReadmeFile>readme.md</PackageReadmeFile>
+        <Deterministic>true</Deterministic>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
         <PackageReference Include="System.Memory" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'=='net48'" />
-        
+
         <!-- don't reference Dapper at all; leave things open to the consumer esp re Dapper.StrongName -->
         <!--<PackageReference Include="Dapper" />-->
-        
+
         <!-- we don't *super* need this (although it is nice to have) - mostly it fixes a generator init glitch -->
         <PackageReference Include="System.Collections.Immutable" />
 
-        <None Include="../Dapper.AOT.Analyzers/bin/Release/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
-
+        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
+        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Microsoft.SqlServer.TransactSql.ScriptDom.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
         <None Include="../../docs/readme.md" Link="readme.md" Pack="true" PackagePath="/" />
 
         <Compile Update="CommandT.*.cs">

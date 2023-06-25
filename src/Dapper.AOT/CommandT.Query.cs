@@ -33,11 +33,11 @@ partial struct Command<TArgs>
                     ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], state.Reader.FieldCount)
                     : state.Lease();
 
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
+                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
                 ReadOnlySpan<int> readOnlyTokens = readWriteTokens; // avoid multiple conversions
                 do
                 {
-                    results.Add(rowFactory.Read(state.Reader, readOnlyTokens, 0));
+                    results.Add(rowFactory.Read(state.Reader, readOnlyTokens, 0, tokenState));
                 }
                 while (state.Reader.Read());
                 state.Return();
@@ -66,10 +66,10 @@ partial struct Command<TArgs>
             var results = new List<TRow>();
             if (await state.Reader.ReadAsync(cancellationToken))
             {
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
+                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
                 do
                 {
-                    results.Add(rowFactory.Read(state.Reader, state.Tokens, 0));
+                    results.Add(rowFactory.Read(state.Reader, state.Tokens, 0, tokenState));
                 }
                 while (await state.Reader.ReadAsync(cancellationToken));
                 state.Return();
@@ -98,10 +98,10 @@ partial struct Command<TArgs>
 
             if (await state.Reader.ReadAsync(cancellationToken))
             {
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
+                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
                 do
                 {
-                    yield return rowFactory.Read(state.Reader, state.Tokens, 0);
+                    yield return rowFactory.Read(state.Reader, state.Tokens, 0, tokenState);
                 }
                 while (await state.Reader.ReadAsync(cancellationToken));
                 state.Return();
@@ -128,10 +128,10 @@ partial struct Command<TArgs>
 
             if (state.Reader.Read())
             {
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
+                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
                 do
                 {
-                    yield return rowFactory.Read(state.Reader, state.Tokens, 0);
+                    yield return rowFactory.Read(state.Reader, state.Tokens, 0, tokenState);
                 }
                 while (state.Reader.Read());
                 state.Return();
@@ -171,8 +171,8 @@ partial struct Command<TArgs>
                     ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], state.Reader.FieldCount)
                     : state.Lease();
 
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
-                result = rowFactory.Read(state.Reader, readWriteTokens, 0);
+                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
+                result = rowFactory.Read(state.Reader, readWriteTokens, 0, tokenState);
                 state.Return();
 
                 if (state.Reader.Read())
@@ -215,9 +215,9 @@ partial struct Command<TArgs>
             TRow? result = default;
             if (await state.Reader.ReadAsync(cancellationToken))
             {
-                (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
+                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
 
-                result = rowFactory.Read(state.Reader, state.Tokens, 0);
+                result = rowFactory.Read(state.Reader, state.Tokens, 0, tokenState);
                 state.Return();
 
                 if (await state.Reader.ReadAsync(cancellationToken))

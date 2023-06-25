@@ -40,6 +40,40 @@ internal static class TypeSymbolExtensions
     /// <remarks>Checks it type is a zero-based one-dimensional array</remarks>
     public static bool IsArray(this ITypeSymbol? typeSymbol) => typeSymbol is IArrayTypeSymbol { IsSZArray: true };
 
+    public static bool IsAsync(this ITypeSymbol? type, out ITypeSymbol? result)
+    {
+        if (type is not INamedTypeSymbol { Arity: <= 1 } named)
+        {
+            result = null;
+            return false;
+        }
+        result = named.Arity == 0 ? null : named.TypeArguments[0];
+        if (named.Name is "Task" or "ValueTask"
+            && named.ContainingType is null
+            && named.ContainingNamespace is
+            {
+                Name: "Tasks",
+                ContainingNamespace:
+                {
+                    Name: "Threading",
+                    ContainingNamespace:
+                    {
+                        Name: "System",
+                        ContainingNamespace.IsGlobalNamespace: true
+                    }
+                }
+            })
+        {
+            return true;
+        }
+        if (IsStandardCollection(type, "IAsyncEnumerable", kind: TypeKind.Interface))
+        {
+            return true;
+        }
+        result = null;
+        return false;
+    }
+
     /// <returns>
     /// True, if passed <param name="type"/> represents <see cref="List{T}"/>.
     /// False otherwise
@@ -58,7 +92,7 @@ internal static class TypeSymbolExtensions
             && named.TypeKind == kind
             && named.Arity == 1
             && named.ContainingSymbol is INamespaceSymbol ns
-            && ns.Name == ns.Name
+            && ns.Name == nsName
             && ns is
             {
                 ContainingNamespace:
@@ -67,7 +101,7 @@ internal static class TypeSymbolExtensions
                     ContainingNamespace:
                     {
                         Name: "System",
-                        ContainingNamespace: { IsGlobalNamespace: true }
+                        ContainingNamespace.IsGlobalNamespace: true
                     }
                 }
             };

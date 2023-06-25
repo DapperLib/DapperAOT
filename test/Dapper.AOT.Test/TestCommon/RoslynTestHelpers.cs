@@ -15,8 +15,32 @@ using System.Threading.Tasks;
 namespace Dapper.TestCommon;
 
 internal static class RoslynTestHelpers
-{
-    static readonly CSharpParseOptions ParseOptionsLatestLangVer = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest);
+{   
+    static readonly CSharpParseOptions ParseOptionsLatestLangVer = CSharpParseOptions.Default
+        .WithLanguageVersion(LanguageVersion.Latest)
+        .WithPreprocessorSymbols(new string[] {
+#if NETFRAMEWORK
+        "NETFRAMEWORK",
+#endif
+#if NET40_OR_GREATER
+        "NET40_OR_GREATER",
+#endif
+#if NET48_OR_GREATER
+        "NET48_OR_GREATER",
+#endif
+#if NET6_0_OR_GREATER
+        "NET6_0_OR_GREATER",
+#endif
+#if NET7_0_OR_GREATER
+        "NET7_0_OR_GREATER",
+#endif
+#if DEBUG
+        "DEBUG",
+#endif
+#if RELEASE
+        "RELEASE",
+#endif
+    });
 
     public static Compilation CreateCompilation(string source, string name, string fileName)
        => CSharpCompilation.Create(name,
