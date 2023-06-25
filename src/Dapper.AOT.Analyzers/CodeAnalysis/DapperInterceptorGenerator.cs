@@ -1,13 +1,10 @@
 ﻿using Dapper.Internal;
-using Dapper.Internal.Roslyn;
-using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis.Text;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -371,11 +368,13 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     return true;
                 }
                 var val = op.Value;
+                // work through any implict/explicit conversion steps
                 while (val is IConversionOperation conv)
                 {
                     val = conv.Operand;
                 }
 
+                // type-level constants
                 if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
                 {
                     value = (T?)field.Field.ConstantValue;
@@ -383,12 +382,23 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     return true;
                 }
 
+                // local constants
+                if (val is ILocalReferenceOperation local && local.Local.HasConstantValue)
+                {
+                    value = (T?)local.Local.ConstantValue;
+                    syntax = local.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                    return true;
+                }
+
+                // other non-trivial default constant values
                 if (val.ConstantValue.HasValue)
                 {
                     value = (T?)val.ConstantValue.Value;
                     syntax = val.Syntax;
                     return true;
                 }
+
+                // other trivial default constant values
                 if (val is ILiteralOperation or IDefaultValueOperation)
                 {
                     // we already ruled out explicit constant above, so: must be default
