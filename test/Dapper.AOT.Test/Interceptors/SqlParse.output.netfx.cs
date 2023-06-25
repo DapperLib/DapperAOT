@@ -1,9 +1,9 @@
 #nullable enable
 file static class DapperGeneratedInterceptors
 {
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 48, 12)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 56, 12)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 65, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 52, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 60, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 69, 12)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, Text
@@ -15,9 +15,9 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 50, 12)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 58, 12)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 67, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 54, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 62, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 71, 12)]
     internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters, Text
@@ -31,8 +31,8 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 52, 12)]
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 60, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 56, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 64, 12)]
     internal static int Execute2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters, Text
@@ -45,7 +45,7 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 69, 12)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 73, 12)]
     internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters, Text

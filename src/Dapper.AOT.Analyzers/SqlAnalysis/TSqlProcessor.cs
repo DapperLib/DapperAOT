@@ -16,6 +16,7 @@ internal class TSqlProcessor
         NoValue = 1 << 0,
         Parameter = 1 << 1,
         Table = 1 << 2,
+        Unconsumed = 1 << 3,
     }
     private readonly VariableTrackingVisitor visitor;
     public TSqlProcessor(bool caseSensitive = false, Action<string>? log = null)
@@ -40,6 +41,13 @@ internal class TSqlProcessor
             }
         }
         tree.Accept(visitor);
+        foreach (var variable in visitor.Variables)
+        {
+            if (variable.IsUnconsumed && !variable.IsTable && !variable.IsParameter)
+            {
+                OnVariableValueNotConsumed(variable);
+            }
+        }
         return true;
     }
 
@@ -59,6 +67,9 @@ internal class TSqlProcessor
 
     protected virtual void OnVariableAccessedBeforeDeclaration(Variable variable)
         => OnError($"Variable {variable.Name} accessed before declaration", variable.Location);
+
+    protected virtual void OnVariableValueNotConsumed(Variable variable)
+        => OnError($"Variable {variable.Name} has a value that is not consumed", variable.Location);
 
     protected virtual void OnVariableAccessedBeforeAssignment(Variable variable)
         => OnError($"Variable {variable.Name} accessed before being {(variable.IsTable ? "populated" : "assigned")}", variable.Location);
@@ -120,6 +131,7 @@ internal class TSqlProcessor
 
         public bool IsTable => (Flags & VariableFlags.Table) != 0;
         public bool NoValue => (Flags & VariableFlags.NoValue) != 0;
+        public bool IsUnconsumed => (Flags & VariableFlags.Unconsumed) != 0;
         public bool IsParameter => (Flags & VariableFlags.Parameter) != 0;
 
         public Variable(Identifier identifier, VariableFlags flags)
@@ -146,10 +158,11 @@ internal class TSqlProcessor
             Location = location;
         }
 
-        public Variable WithValue() => new(in this, Flags & ~VariableFlags.NoValue);
+        public Variable WithConsumed() => new(in this, (Flags & ~VariableFlags.Unconsumed));
+        public Variable WithUnconsumedValue() => new(in this, (Flags & ~VariableFlags.NoValue) | VariableFlags.Unconsumed);
         public Variable WithFlags(VariableFlags flags) => new(in this, flags);
 
-        internal Variable WithLocation(VariableReference node) => new(in this, new Location(node));
+        public Variable WithLocation(TSqlFragment node) => new(in this, new Location(node));
     }
     class LoggingVariableTrackingVisitor : VariableTrackingVisitor
     {
@@ -208,7 +221,7 @@ internal class TSqlProcessor
         //
         // - if you need to add some side-effect *before or after* the standard processing, you can override
         //   ExplicitVisit chaining base.ExplicitVisit, adding your logic; ExecuteParameter "output" params
-        //   (marking them as assigned so we don't report them as errors) is an exmaple
+        //   (marking them as assigned so we don't report them as errors) is an example
         //
         // - if you need to *change the order of evaluation*, bypass nodes, etc; then you will need to
         //   override ExplicitVisit, but look at what node.AcceptChildren does; be sure to call
@@ -282,7 +295,10 @@ internal class TSqlProcessor
             {
                 node.Value.Accept(this);
                 // mark assigned
-                if (name is not null) variables[name] = variables[name].WithValue();
+                if (name is not null)
+                {
+                    variables[name] = variables[name].WithUnconsumedValue();
+                }
             }
         }
 
@@ -426,6 +442,7 @@ internal class TSqlProcessor
             {
                 // don't demand a value before, so: just mark it assigned
                 MarkAssigned(variable, false);
+                EnsureAssigned(variable, false); // and mark consumed (there are corners here, but: keep things simple)
             }
             // don't need to change anything else
             base.ExplicitVisit(node);
@@ -467,10 +484,12 @@ internal class TSqlProcessor
             {
                 if (mark)
                 {
-                    if (existing.NoValue)
+                    if (existing.IsUnconsumed && !existing.IsTable)
                     {
-                        variables[node.Name] = existing.WithValue();
+                        parser.OnVariableValueNotConsumed(existing);
                     }
+                    // mark as has value + unconsumed
+                    variables[node.Name] = existing.WithUnconsumedValue().WithLocation(node);
                 }
                 else
                 {
@@ -489,6 +508,10 @@ internal class TSqlProcessor
                     if (existing.NoValue)
                     {
                         parser.OnVariableAccessedBeforeAssignment(blame);
+                    }
+                    else if (existing.IsUnconsumed)
+                    {
+                        variables[node.Name] = existing.WithConsumed();
                     }
                 }
             }

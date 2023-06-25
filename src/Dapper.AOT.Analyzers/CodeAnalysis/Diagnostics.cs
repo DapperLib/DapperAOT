@@ -90,7 +90,9 @@ internal static class Diagnostics
         VariableAccessedBeforeDeclaration = new("DAP211", "Variable used before declared",
             "Variable {0} is accessed before it is declared (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
         ExecVariable = new("DAP212", "EXEC with composed SQL",
-            "EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql, taking care to fully parameterize the composed query (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
+            "EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql, taking care to fully parameterize the composed query (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+        VariableValueNotConsumed = new("DAP213", "Variable used before declared",
+            "Variable {0} has a value that is not consumed (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true);
 
 
     // be careful moving this because of static field initialization order

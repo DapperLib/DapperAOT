@@ -41,6 +41,7 @@ public class TSqlParserTests
             select *
             from Customers
             where Id is null and Name is not null
+            select @s
             """);
 
         var args = parser.GetParameters(out var errors);
@@ -58,6 +59,7 @@ public class TSqlParserTests
             select SCOPE_IDENTITY();
             declare @id int = SCOPE_IDENTITY(); -- no warn
             set @id = @@identity; -- warn
+            select @id
             """);
 
         var args = parser.GetParameters(out var errors);
@@ -255,6 +257,7 @@ public class TSqlParserTests
             where Id = @id and S = @s
 
             declare @s int = 42;
+            select @s
             """);
 
         var args = parser.GetParameters(out var errors);

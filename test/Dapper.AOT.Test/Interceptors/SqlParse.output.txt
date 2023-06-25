@@ -1,4 +1,4 @@
-Generator produced 29 diagnostics:
+Generator produced 31 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 9 of 9 enabled call-sites using 4 interceptors, 3 commands and 0 readers
@@ -15,6 +15,12 @@ Variable @id is accessed before it is declared (L1 C5)
 Error DAP211 Interceptors/SqlParse.input.cs L18 C5
 Variable @id is accessed before it is declared (L1 C5)
 
+Warning DAP213 Interceptors/SqlParse.input.cs L18 C5
+Variable @id has a value that is not consumed (L1 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L18 C5
+Variable @id has a value that is not consumed (L1 C5)
+
 Error DAP202 Interceptors/SqlParse.input.cs L21 C9
 The variable @id is declared multiple times (L4 C9)
 
@@ -69,20 +75,20 @@ Scalar variable @id is used like a table (L23 C8)
 Error DAP207 Interceptors/SqlParse.input.cs L40 C8
 Scalar variable @id is used like a table (L23 C8)
 
-Error DAP206 Interceptors/SqlParse.input.cs L42 C1
-Incorrect syntax near gibb. (#46010 L25 C1)
+Error DAP206 Interceptors/SqlParse.input.cs L47 C1
+Incorrect syntax near gibb. (#46010 L30 C1)
 
-Error DAP206 Interceptors/SqlParse.input.cs L42 C1
-Incorrect syntax near gibb. (#46010 L25 C1)
+Error DAP206 Interceptors/SqlParse.input.cs L47 C1
+Incorrect syntax near gibb. (#46010 L30 C1)
 
-Error DAP020 Interceptors/SqlParse.input.cs L50 C12
+Error DAP020 Interceptors/SqlParse.input.cs L54 C12
 No member could be found for the SQL parameter 'Missing' from type 'global::Foo.Customer'
 
-Warning DAP018 Interceptors/SqlParse.input.cs L52 C12
+Warning DAP018 Interceptors/SqlParse.input.cs L56 C12
 Parameters are being supplied, but no parameters were detected in the command
 
-Error DAP020 Interceptors/SqlParse.input.cs L58 C12
+Error DAP020 Interceptors/SqlParse.input.cs L62 C12
 No member could be found for the SQL parameter 'Missing' from type 'global::Foo.Customer'
 
-Warning DAP018 Interceptors/SqlParse.input.cs L60 C12
+Warning DAP018 Interceptors/SqlParse.input.cs L64 C12
 Parameters are being supplied, but no parameters were detected in the command

@@ -82,4 +82,7 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
 
     protected override void OnVariableAccessedBeforeDeclaration(Variable variable)
         => AddDiagnostic(Diagnostics.VariableAccessedBeforeDeclaration, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+
+    protected override void OnVariableValueNotConsumed(Variable variable)
+        => AddDiagnostic(Diagnostics.VariableValueNotConsumed, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 }

@@ -39,8 +39,12 @@ select @s -- should be fine
 
 insert @id (id) values (4) -- 207
 
-gibb!eri -- 206
+select @id; -- should be fine, and marks id as consumed
 
+set @id = 16; -- marks id as unconsumed
+set @id = 17; -- should flag L45 as redundant, and should be flagged as redundant on exit
+
+gibb!eri -- 206
 """;
     // expect these to detect invalid SQL and that 'Missing' is not bound
     static void SystemData(System.Data.SqlClient.SqlConnection db, Customer customer)
