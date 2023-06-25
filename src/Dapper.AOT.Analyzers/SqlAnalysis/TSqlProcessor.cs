@@ -364,8 +364,12 @@ internal class TSqlProcessor
         {
             Visit(node);
             node.Expression?.Accept(this);
-            MarkAssigned(node.Variable, false);
-            node.Variable?.Accept(this);
+            if (node.Variable is not null)
+            {
+                MarkAssigned(node.Variable, false); // to prevent false flag
+                EnsureAssigned(node.Variable, false); // and mark consumed to avoid another false flag
+                node.Variable.Accept(this);
+            }
         }
 
         public override void Visit(DeclareTableVariableBody node)
@@ -482,18 +486,18 @@ internal class TSqlProcessor
         {
             if (variables.TryGetValue(node.Name, out var existing))
             {
+                var blame = existing.WithLocation(node);
                 if (mark)
                 {
                     if (existing.IsUnconsumed && !existing.IsTable)
                     {
-                        parser.OnVariableValueNotConsumed(existing);
+                        parser.OnVariableValueNotConsumed(blame);
                     }
                     // mark as has value + unconsumed
-                    variables[node.Name] = existing.WithUnconsumedValue().WithLocation(node);
+                    variables[node.Name] = existing.WithUnconsumedValue();
                 }
                 else
                 {
-                    var blame = existing.WithLocation(node);
                     if (existing.IsTable != isTable)
                     {
                         if (existing.IsTable)
