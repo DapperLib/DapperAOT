@@ -6,7 +6,7 @@ Output code has 1 diagnostics from 'Accessors/Data/Accessor.input.cs':
 
 Warning CS1998 Accessors/Data/Accessor.input.cs L9 C22
 This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread.
-Output code has 6 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs':
+Output code has 10 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs':
 
 Error CS0234 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L3 C45
 The type or namespace name 'InterceptsLocationAttribute' does not exist in the namespace 'System.Runtime.CompilerServices' (are you missing an assembly reference?)
@@ -25,3 +25,15 @@ The type or namespace name 'DapperAotAttribute' could not be found (are you miss
 
 Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L4 C71
 The type or namespace name 'TypeAccessor<>' could not be found (are you missing a using directive or an assembly reference?)
+
+Error CS1513 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L40 C28
+} expected
+
+Error CS1513 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L41 C28
+} expected
+
+Error CS1513 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L42 C28
+} expected
+
+Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L53 C24
+The type or namespace name 'Type' could not be found (are you missing a using directive or an assembly reference?)

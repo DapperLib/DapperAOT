@@ -111,15 +111,33 @@ namespace Dapper.CodeAnalysis
                 return;
             }
 
-            var sb = new TypeAccessorInterceptorCodeWriter();
+            var codeWriter = new CodeWriter();
+            var sb = new TypeAccessorInterceptorCodeWriter(codeWriter);
+
             sb.WriteFileHeader(state.Compilation);
-            sb.WriteClass(() =>
+            sb.WriteInterceptorsClass(() =>
             {
-                int typeCounter = 0;
+                int typeCounter = -1;
                 foreach (var group in state.Nodes.GroupBy(x => x, SourceStateByTypeComparer.Instance))
                 {
+                    typeCounter++;
+
                     var typeSymbol = group.Key.ParameterType;
                     var usages = group.Select(x => x.Location);
+
+                    ITypeSymbol? elementType;
+                    if (!Inspection.IsCollectionType(typeSymbol, out elementType))
+                    {
+                        elementType = typeSymbol;
+                    }
+
+                    var elementTypeName = elementType!.ToDisplayString();
+                    var members = ConstructTypeMembers(elementType!);
+                    if (members.Length == 0)
+                    {
+                        Log?.Invoke(DiagnosticSeverity.Hidden, $"Can't parse members for '{elementTypeName}'. Skipping generation for type...");
+                        continue;
+                    }
 
                     foreach (var location in usages)
                     {
@@ -127,11 +145,15 @@ namespace Dapper.CodeAnalysis
                         sb.WriteTypeAccessorCreateReaderMethod(typeCounter);
                     }
 
-                    // Inspection.IsCollectionType(typeSymbol, out var elementType);
-
-                    sb.WriteCustomTypeAccessorClass(typeCounter, () =>
+                    var accessorSb = new CustomTypeAccessorClassCodeWriter(codeWriter);
+                    accessorSb.WriteClass(typeCounter, elementTypeName, () =>
                     {
-
+                        accessorSb.WriteMemberCount(members.Length);
+                        accessorSb.WriteTryIndex(elementTypeName, members);
+                        accessorSb.WriteGetName(elementTypeName, members);
+                        accessorSb.WriteIndexer(elementTypeName, members);
+                        accessorSb.WriteIsNullable(members);
+                        accessorSb.WriteGetType(members);
                     });
                 }
             });
@@ -171,6 +193,10 @@ namespace Dapper.CodeAnalysis
         sealed class TypeAccessorInterceptorCodeWriter
         {
             readonly CodeWriter _sb = new();
+            public TypeAccessorInterceptorCodeWriter(CodeWriter codeWriter)
+            {
+                _sb = codeWriter;
+            }
 
             public void WriteFileHeader(Compilation compilation)
             {
@@ -181,7 +207,7 @@ namespace Dapper.CodeAnalysis
                 }
             }
 
-            public void WriteClass(Action innerWriter)
+            public void WriteInterceptorsClass(Action innerWriter)
             {
                 _sb.Append("file static class DapperTypeAccessorGeneratedInterceptors").Indent().NewLine();
                 innerWriter();
@@ -205,11 +231,23 @@ namespace Dapper.CodeAnalysis
                    .Outdent().NewLine().NewLine();
             }
 
-            public void WriteCustomTypeAccessorClass(int customTypeNum, Action innerWriter)
+            public SourceText GetSourceText() => SourceText.From(_sb.ToString(), Encoding.UTF8);
+        }
+
+        [DebuggerDisplay("code: '{_sb.ToString()}'")]
+        sealed class CustomTypeAccessorClassCodeWriter
+        {
+            readonly CodeWriter _sb;
+            public CustomTypeAccessorClassCodeWriter(CodeWriter codeWriter)
+            {
+                _sb = codeWriter;
+            }
+
+            public void WriteClass(int customTypeNum, string userType, Action innerWriter)
             {
                 var className = GetCustomTypeAccessorClassName(customTypeNum);
 
-                _sb.Append("private sealed class " + className)
+                _sb.Append("private sealed class " + className + " : global::Dapper.TypeAccessor<").Append(userType).Append(">")
                    .Indent().NewLine()
                    .Append($"internal static readonly {className} Instance = new();")
                    .NewLine();
@@ -217,9 +255,162 @@ namespace Dapper.CodeAnalysis
                 _sb.Outdent().NewLine();
             }
 
-            public SourceText GetSourceText() => SourceText.From(_sb.ToString(), Encoding.UTF8);
+            public void WriteMemberCount(int memberCount)
+                => _sb.Append("public override int MemberCount => ").Append(memberCount).Append(";").NewLine();
 
-            private string GetCustomTypeAccessorClassName(int num) => "DapperCustomTypeAccessor" + num;
+            public void WriteTryIndex(string userTypeName, MemberData[] members)
+            {
+                _sb.Append("public override int? TryIndex(string name, bool exact = false) => name switch")
+                   .Indent().NewLine();
+
+                foreach (var member in members)
+                {
+                    _sb.Append("nameof(").Append($"{userTypeName}.{member.Name}").Append(") => ").Append(member.Number).Append(",").NewLine();
+                }
+
+                _sb.Append("_ => base.TryIndex(name, exact)")
+                   .Outdent().Append(";").NewLine();
+            }
+
+            public void WriteGetName(string userTypeName, MemberData[] members)
+            {
+                _sb.Append("public override string GetName(int index) => index switch")
+                   .Indent().NewLine();
+
+                foreach (var member in members)
+                {
+                    _sb.Append(member.Number).Append(" => nameof(").Append($"{userTypeName}.{member.Name}").Append("),").NewLine();
+                }
+
+                _sb.Append("_ => base.GetName(index)")
+                   .Outdent().Append(";").NewLine();
+            }
+
+            public void WriteIndexer(string userTypeName, MemberData[] members)
+            {
+                _sb.Append("public override object? this[").Append(userTypeName).Append(" obj, int index]")
+                   .Indent().NewLine();
+
+                _sb.Append("get => index switch").Indent().NewLine();
+                foreach (var member in members)
+                {
+                    _sb.Append(member.Number).Append(" => obj.").Append(member.Name).Append(",").NewLine();
+                }
+                _sb.Append("_ => base[obj, index]").Outdent().Append(";").NewLine();
+
+
+                _sb.Append("set").Indent().NewLine()
+                   .Append("switch (index)").Indent().NewLine();
+                foreach (var member in members)
+                {
+                    _sb.Append("case ").Append(member.Number).Append(": => obj.")
+                       .Append(member.Name).Append(" = (").Append(member.Type).Append(")value!; break;").NewLine();
+                }
+                _sb.Append("default: base[obj, index] = value; break;")
+                   .Outdent().Append(";").Outdent();
+
+                _sb.Outdent().NewLine();
+            }
+
+            public void WriteIsNullable(MemberData[] members)
+            {
+                _sb.Append("public override bool IsNullable(int index) => index switch")
+                   .Indent().NewLine();
+
+                var strBuilder = new StringBuilder();
+                foreach (var item in members.Where(x => x.IsNullable))
+                {
+                    strBuilder.Append(item.Number).Append(" or ");
+                }
+                if (strBuilder.Length > 0)
+                {
+                    strBuilder.Length -= 4;
+                    _sb.Append(strBuilder.ToString()).Append(" => true,").NewLine();
+                }
+
+                strBuilder.Clear();
+                foreach (var item in members.Where(x => !x.IsNullable))
+                {
+                    strBuilder.Append(item.Number).Append(" or ");
+                }
+                if (strBuilder.Length > 0)
+                {
+                    strBuilder.Length -= 4;
+                    _sb.Append(strBuilder.ToString()).Append(" => false,").NewLine();
+                }
+
+                _sb.Append("_ => base.IsNullable(index)")
+                   .Outdent().Append(";").NewLine();
+            }
+
+            public void WriteGetType(MemberData[] members)
+            {
+                _sb.Append("public override global::System.Type GetType(int index) => index switch")
+                   .Indent().NewLine();
+
+                var tmpSb = new StringBuilder();
+                foreach (var typeGroup in members.GroupBy(x => x.Type))
+                {
+                    tmpSb.Clear();
+                    foreach (var mem in typeGroup)
+                    {
+                        tmpSb.Append(mem.Number).Append(" or ");
+                    }
+                    tmpSb.Length -= 4;
+                    _sb.Append(tmpSb.ToString()).Append(" => typeof(").Append(typeGroup.Key).Append("),").NewLine();
+                }
+
+                _sb.Append("_ => base.GetType(index)")
+                   .Outdent().Append(";").NewLine();
+            }
+        }
+
+        private static string GetCustomTypeAccessorClassName(int num) => "DapperCustomTypeAccessor" + num;
+
+        private MemberData[] ConstructTypeMembers(ITypeSymbol typeSymbol)
+        {
+            var members = new List<MemberData>();
+            int memberNumber = 0;
+
+            foreach (var type in typeSymbol.GetMembers())
+            {
+                if (!CodeWriter.IsGettableInstanceMember(type, out var member) || !CodeWriter.IsSettableInstanceMember(type, out _))
+                {
+                    // TODO not sure if we can use not settable or gettable field\property
+                    continue;
+                }
+
+                if (type is IPropertySymbol property)
+                {
+                    members.Add(new()
+                    {
+                        Name = property.Name,
+                        Type = member.ToDisplayString(),
+                        Number = memberNumber++,
+                        IsNullable = property.NullableAnnotation == NullableAnnotation.Annotated
+                    });
+                }
+                if (type is IFieldSymbol field)
+                {
+                    members.Add(new()
+                    {
+                        Name = field.Name,
+                        Type = member.ToDisplayString(),
+                        Number = memberNumber++,
+                        IsNullable = field.NullableAnnotation == NullableAnnotation.Annotated
+                    });
+                }
+            }
+
+            return members.ToArray();
+        }
+
+        struct MemberData
+        {
+            public int Number;
+            public bool IsNullable;
+            public string Name;
+            public string Type;
         }
 
         sealed class SourceStateByTypeComparer : IEqualityComparer<SourceState>
