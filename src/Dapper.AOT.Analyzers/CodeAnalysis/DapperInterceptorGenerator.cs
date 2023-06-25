@@ -93,7 +93,6 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         loc ??= op.Syntax.GetLocation();
         if (loc is null)
         {
-            Log?.Invoke(DiagnosticSeverity.Hidden, $"No location found; cannot intercept");
             return null;
         }
 
@@ -118,8 +117,6 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         {
             flags |= OperationFlags.CacheCommand;
         }
-
-        Log?.Invoke(DiagnosticSeverity.Hidden, $"Found {op.TargetMethod.Name}: {flags} at {loc}");
 
         ITypeSymbol? resultType = null, paramType = null;
         if (HasAny(flags, OperationFlags.TypedResult))
@@ -299,7 +296,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
         }
 
-        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags, Log);
+        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags);
 
         // if we have a good parser *and* the SQL isn't borked: check for obvious query/exec mismatch
         if ((parseFlags & (ParseFlags.Reliable | ParseFlags.SyntaxError)) == ParseFlags.Reliable)
@@ -413,8 +410,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             return false;
         }
 
-        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags,
-            Action<DiagnosticSeverity, string>? log)
+        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags)
         {
             if (HasAny(flags, OperationFlags.DoNotGenerate))
             {
@@ -440,7 +436,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             switch (IdentifySqlSyntax(op, out bool caseSensitive))
             {
                 case SqlSyntax.TransactSql:
-                    var proc = new DiagnosticTSqlProcessor(caseSensitive, diagnostics, loc, sqlSyntax, log);
+                    var proc = new DiagnosticTSqlProcessor(caseSensitive, diagnostics, loc, sqlSyntax);
                     try
                     {
                         proc.Execute(sql!);

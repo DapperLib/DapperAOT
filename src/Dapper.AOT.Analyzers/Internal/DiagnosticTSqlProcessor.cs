@@ -14,14 +14,12 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
     private readonly Microsoft.CodeAnalysis.Location? _location;
     private readonly LiteralExpressionSyntax? _literal;
     public object? DiagnosticsObject => _diagnostics;
-    private readonly Action<DiagnosticSeverity, string>? Log;
 
     public DiagnosticTSqlProcessor(bool caseSensitive, object? diagnostics,
-        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax, Action<DiagnosticSeverity, string>? log) : base(caseSensitive)
+        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(caseSensitive)
     {
         _diagnostics = diagnostics;
         _location = sqlSyntax?.GetLocation() ?? location;
-        Log = log;
 
         switch (sqlSyntax)
         {
@@ -33,11 +31,6 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
                 break;
            // other interesting possibilities include InterpolatedStringExpression, AddExpression
         }
-    }
-    public override bool Execute(string sql)
-    {
-        Log?.Invoke(DiagnosticSeverity.Info, sql);
-        return base.Execute(sql);
     }
 
     private Microsoft.CodeAnalysis.Location? GetLocation(in Location location)
