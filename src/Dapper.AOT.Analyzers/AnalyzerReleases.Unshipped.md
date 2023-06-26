@@ -46,3 +46,5 @@ DAP210 | Sql | Error | Diagnostics
 DAP211 | Sql | Error | Diagnostics
 DAP212 | Sql | Warning | Diagnostics
 DAP213 | Sql | Warning | Diagnostics
+DAP214 | Sql | Error | Diagnostics
+DAP215 | Sql | Warning | Diagnostics

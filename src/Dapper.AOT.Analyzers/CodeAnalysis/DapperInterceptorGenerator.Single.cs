@@ -217,7 +217,7 @@ public sealed partial class DapperInterceptorGenerator
             }
             else
             {
-                sb.Append("(").Append(parameterType).Append(")param");
+                sb.Append("(").Append(parameterType).Append(")param!");
             }
             return sb;
         }

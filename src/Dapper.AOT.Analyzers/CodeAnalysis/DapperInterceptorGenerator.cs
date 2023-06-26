@@ -98,7 +98,8 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
         // check whether we can use this method
         object? diagnostics = null;
-        if (Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out _, cancellationToken))
+        bool dapperEnabled = Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out _, cancellationToken);
+        if (dapperEnabled)
         {
             if (methodKind == DapperMethodKind.DapperUnsupported)
             {
@@ -131,75 +132,81 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         string? sql = null;
         SyntaxNode? sqlSyntax = null;
         bool? buffered = null;
-        if (!HasAny(flags, OperationFlags.DoNotGenerate))
+        
+        // check the args
+        foreach (var arg in op.Arguments)
         {
-            foreach (var arg in op.Arguments)
+            switch (arg.Parameter?.Name)
             {
-                switch (arg.Parameter?.Name)
-                {
-                    case "sql":
-                        if (TryGetConstantValueWithSyntax(arg, out string? s, out sqlSyntax))
+                case "sql":
+                    if (TryGetConstantValueWithSyntax(arg, out string? s, out sqlSyntax))
+                    {
+                        sql = s;
+                    }
+                    break;
+                case "buffered":
+                    if (TryGetConstantValue(arg, out bool b))
+                    {
+                        buffered = b;
+                    }
+                    break;
+                case "param":
+                    if (arg.Value is not IDefaultValueOperation)
+                    {
+                        var expr = arg.Value;
+                        if (expr is IConversionOperation conv && expr.Type?.SpecialType == SpecialType.System_Object)
                         {
-                            sql = s;
+                            expr = conv.Operand;
                         }
-                        break;
-                    case "buffered":
-                        if (TryGetConstantValue(arg, out bool b))
+                        paramType = expr?.Type;
+                        flags |= OperationFlags.HasParameters;
+                    }
+                    break;
+                case "cnn":
+                case "commandTimeout":
+                case "transaction":
+                    // nothing to do
+                    break;
+                case "commandType":
+                    if (TryGetConstantValue(arg, out int? ct))
+                    {
+                        switch (ct)
                         {
-                            buffered = b;
-                        }
-                        break;
-                    case "param":
-                        if (arg.Value is not IDefaultValueOperation)
-                        {
-                            var expr = arg.Value;
-                            if (expr is IConversionOperation conv && expr.Type?.SpecialType == SpecialType.System_Object)
-                            {
-                                expr = conv.Operand;
-                            }
-                            paramType = expr?.Type;
-                            flags |= OperationFlags.HasParameters;
-                        }
-                        break;
-                    case "cnn":
-                    case "commandTimeout":
-                    case "transaction":
-                        // nothing to do
-                        break;
-                    case "commandType":
-                        if (TryGetConstantValue(arg, out int? ct))
-                        {
-                            switch (ct)
-                            {
-                                case null when !string.IsNullOrWhiteSpace(sql):
-                                    // if no spaces: interpret as stored proc, else: text
-                                    flags |= sql!.Trim().IndexOf(' ') < 0 ? OperationFlags.StoredProcedure : OperationFlags.Text;
-                                    break;
-                                case null:
-                                    break; // flexible
-                                case 1:
-                                    flags |= OperationFlags.Text;
-                                    break;
-                                case 4:
-                                    flags |= OperationFlags.StoredProcedure;
-                                    break;
-                                case 512:
-                                    flags |= OperationFlags.TableDirect;
-                                    break;
-                                default:
-                                    flags |= OperationFlags.DoNotGenerate;
+                            case null when !string.IsNullOrWhiteSpace(sql):
+                                // if no spaces: interpret as stored proc, else: text
+                                flags |= sql!.Trim().IndexOf(' ') < 0 ? OperationFlags.StoredProcedure : OperationFlags.Text;
+                                break;
+                            case null:
+                                break; // flexible
+                            case 1:
+                                flags |= OperationFlags.Text;
+                                break;
+                            case 4:
+                                flags |= OperationFlags.StoredProcedure;
+                                break;
+                            case 512:
+                                flags |= OperationFlags.TableDirect;
+                                break;
+                            default:
+                                flags |= OperationFlags.DoNotGenerate;
+                                if (dapperEnabled)
+                                {
                                     Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedCommandType, arg.Syntax.GetLocation()));
-                                    break;
-                            }
+                                }
+                                break;
                         }
-                        break;
-                    default:
+                    }
+                    break;
+                default:
+                    if (dapperEnabled && !HasAny(flags, OperationFlags.DoNotGenerate))
+                    {
                         flags |= OperationFlags.DoNotGenerate;
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedArgument, arg.Syntax.GetLocation(), arg.Parameter?.Name));
-                        break;
-                }
+                    }
+                    break;
             }
         }
+
         if (HasAny(flags, OperationFlags.Query) && buffered.HasValue)
         {
             flags |= buffered.GetValueOrDefault() ? OperationFlags.Buffered : OperationFlags.Unbuffered;
@@ -296,6 +303,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
         }
 
+        // perform SQL inspection
         var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags);
 
         // if we have a good parser *and* the SQL isn't borked: check for obvious query/exec mismatch
@@ -412,11 +420,6 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
         static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags)
         {
-            if (HasAny(flags, OperationFlags.DoNotGenerate))
-            {
-                parseFlags = ParseFlags.MaybeQuery;
-                return "";
-            }
             // if command-type is known statically to be stored procedure etc: pass everything
             if (HasAny(flags, OperationFlags.StoredProcedure | OperationFlags.TableDirect))
             {
@@ -430,13 +433,19 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                 return HasAny(flags, OperationFlags.HasParameters) ? "?" : "";
             }
 
+            // check the arg type
+            if (!Inspection.IsCollectionType(parameterType, out var elementType))
+            {
+                elementType = parameterType;
+            }
+
             // so: we know statically that we have known command-text
             // first, try try to find any parameters
             ImmutableHashSet<string> paramNames;
             switch (IdentifySqlSyntax(op, out bool caseSensitive))
             {
                 case SqlSyntax.TransactSql:
-                    var proc = new DiagnosticTSqlProcessor(caseSensitive, diagnostics, loc, sqlSyntax);
+                    var proc = new DiagnosticTSqlProcessor(elementType, caseSensitive, diagnostics, loc, sqlSyntax);
                     try
                     {
                         proc.Execute(sql!);
@@ -468,12 +477,15 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             }
 
             // so, we definitely detect parameters (note: don't warn just for return)
-            if (!HasAny(flags, OperationFlags.HasParameters) && !paramNames.IsEmpty)
+            if (!HasAny(flags, OperationFlags.HasParameters))
             {
-                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
+                if (!paramNames.IsEmpty)
+                {
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
+                }
                 return "";
             }
-            if (parameterType is null)
+            if (HasAny(flags, OperationFlags.HasParameters) && Inspection.IsMissingOrObjectOrDynamic(elementType))
             {
                 // unknown parameter type; defer decision
                 return "?";
@@ -481,14 +493,6 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
             // ok, so the SQL is using parameters; check what we have
             var memberDbToCodeNames = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
-            if (!Inspection.IsCollectionType(parameterType, out var elementType))
-            {
-                elementType = parameterType;
-            }
-            if (elementType is null)
-            {
-                return "";
-            }
 
             string? returnCodeMember = null, rowCountMember = null;
             foreach (var member in Inspection.GetMembers(elementType))

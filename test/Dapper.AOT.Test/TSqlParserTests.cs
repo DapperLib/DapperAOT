@@ -1,9 +1,14 @@
 ﻿using Dapper.SqlAnalysis;
+using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Drawing;
 using System.Linq;
+using System.Security.Policy;
 using Xunit;
 using Xunit.Abstractions;
+using static Dapper.SqlAnalysis.TSqlProcessor;
 
 namespace Dapper.AOT.Test;
 
@@ -14,10 +19,12 @@ public class TSqlParserTests
 
     private readonly Action<string> _log;
 
+    private TestTSqlProcessor GetProcessor() => new TestTSqlProcessor(log: _log);
+
     [Fact]
     public void DetectBadNullLiteralUsage()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s int = null;
             select *
@@ -37,23 +44,25 @@ public class TSqlParserTests
     [Fact]
     public void DetectExecParams()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @a int, @c int;
+            print @b;
             exec @c = SomeProc @x = @a out, @y = @a, @z = @b out; -- middle a is not assigned, b is param
             select @a, @b, @c -- all fine
             """);
 
         var args = parser.GetParameters(out var errors);
         Assert.Equal("@b", Assert.Single(args));
-        Assert.Single(errors);
-        Assert.Equal("Variable @a accessed before being assigned L2 C38", errors[0]);
+        Assert.Equal(new[] {
+            "Variable @a accessed before being assigned L3 C38",
+            }, errors);
     }
 
     [Fact]
     public void ParseValidNullUsage()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s int = null;
             select *
@@ -70,7 +79,7 @@ public class TSqlParserTests
     [Fact]
     public void WarnOfIdentityUsage()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             insert customers (id) values (42);
             select @@identity;
@@ -92,7 +101,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidIdentityUsage()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             insert customers (Name)
             output INSERTED.Id
@@ -107,7 +116,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidInlineDeclarationAndAssignment()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s int = 42;
             select *
@@ -123,7 +132,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidSeparateDeclarationAndAssignment()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s int
             set @s = 42
@@ -141,7 +150,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidExecOutput()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s int
             exec someproc @s output
@@ -159,7 +168,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidExecAssignResult()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s int
             exec @s = someproc
@@ -177,7 +186,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidSelectInto()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s table (id int not null)
 
@@ -198,7 +207,7 @@ public class TSqlParserTests
     [Fact]
     public void ReportNotAssignedBeforeExec()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s int
             exec someproc @s
@@ -217,7 +226,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseTableVariableNotPopulated()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s table (id int not null)
             
@@ -234,7 +243,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidTableVariablePopulated()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s table (id int not null)
             insert @s (id) values (42);
@@ -251,7 +260,7 @@ public class TSqlParserTests
     [Fact]
     public void ParseValidSeparateDeclarationAndSelectAssignment()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s int
             select @s = 42
@@ -269,7 +278,7 @@ public class TSqlParserTests
     [Fact]
     public void ReportVariableAccessedBeforeDeclaration()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             select *
             from Customers
@@ -287,7 +296,7 @@ public class TSqlParserTests
     [Fact]
     public void ReportInvalidSelect()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @s int = 42;
 
@@ -304,7 +313,7 @@ public class TSqlParserTests
     [Fact]
     public void ReportBadExecUsage()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             declare @sql varchar(8000) = concat('select top 5 * from Sales.Store where BusinessEntityId=',@id)
             exec (@sql) -- bad
@@ -323,7 +332,7 @@ public class TSqlParserTests
     [Fact]
     public void ConditionalBail()
     {
-        var parser = new TestTSqlProcessor(log: _log);
+        var parser = GetProcessor();
         parser.Execute("""
             if @p > 1
             begin
@@ -344,23 +353,83 @@ public class TSqlParserTests
         Assert.Empty(errors); // because we just gave up
     }
 
+    [Theory]
+    [InlineData(ParameterDirection.Input)]
+    [InlineData(ParameterDirection.Output)]
+    [InlineData(ParameterDirection.InputOutput)]
+
+    public void HandleParameterAssignment(ParameterDirection direction)
+    {
+        var parser = GetProcessor();
+        parser.AddParameter("@a", direction); // consumed before assign
+        parser.AddParameter("@b", direction); // assigned, consumed
+        parser.AddParameter("@c", direction); // assigned, not consumed
+        parser.Execute("""
+            select @a;
+
+            set @b = 42;
+            print @b
+
+            set @c = 42;
+            """);
+
+        var args = parser.GetParameters(out var errors);
+        Assert.Equal(new[] { "@a", "@b", "@c" }, args);
+        switch (direction)
+        {
+            case ParameterDirection.Input:
+                Assert.Equal(new[]
+                {
+                    "Variable @b has a value that is not consumed L3 C5",
+                    "Variable @c has a value that is not consumed L6 C5", // once for the incoming
+                    "Variable @c has a value that is not consumed L6 C5", // once for the outgoing
+                }, errors);
+                break;
+            case ParameterDirection.Output:
+                Assert.Equal(new[]
+                {
+                    "Variable @a accessed before being assigned L1 C8",
+                }, errors);
+                break;
+            case ParameterDirection.InputOutput:
+                Assert.Equal(new[]
+                {
+                    "Variable @b has a value that is not consumed L3 C5",
+                    "Variable @c has a value that is not consumed L6 C5",
+                }, errors);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(direction));
+        }
+    }
+
     class TestTSqlProcessor : TSqlProcessor
     {
-        public TestTSqlProcessor(bool caseSensitive = false, Action<string>? log = null) : base(caseSensitive, log) { }
+        public TestTSqlProcessor(ITypeSymbol? parameterType = null, bool caseSensitive = false, Action<string>? log = null) : base(caseSensitive, log) { }
         public string[] GetParameters(out string[] errors)
         {
             var parameters = (from p in this.Variables
-                             where p.IsParameter
-                             orderby p.Name
-                             select p.Name).ToArray();
+                              where p.IsParameter
+                              orderby p.Name
+                              select p.Name).ToArray();
             errors = this.errors.ToArray();
             return parameters;
         }
+
+        private Dictionary<string, ParameterDirection>? _extraArgs;
+
+        public void AddParameter(string name, ParameterDirection direction) => (_extraArgs ??= new()).Add(name, direction);
 
         private readonly List<string> errors = new();
         protected override void OnError(string error, in Location location)
         {
             errors.Add($"{error} {location}");
+        }
+
+        protected override bool TryGetParameter(string name, out ParameterDirection direction)
+        {
+            if (_extraArgs is not null && _extraArgs.TryGetValue(name, out direction)) return true;
+            return base.TryGetParameter(name, out direction);
         }
     }
 }

@@ -342,8 +342,12 @@ internal static class Inspection
             && SymbolEqualityComparer.Default.Equals(Member, other.Member);
     }
 
-    public static IEnumerable<ElementMember> GetMembers(ITypeSymbol elementType)
+    public static IEnumerable<ElementMember> GetMembers(ITypeSymbol? elementType)
     {
+        if (elementType is null)
+        {
+            yield break;
+        }
         if (elementType is INamedTypeSymbol named && named.IsTupleType)
         {
             foreach (var field in named.TupleElements)
@@ -353,7 +357,7 @@ internal static class Inspection
         }
         else
         {
-            foreach (var member in elementType!.GetMembers())
+            foreach (var member in elementType.GetMembers())
             {
                 // instance only, must be able to access by name
                 if (member.IsStatic || !member.CanBeReferencedByName) continue;

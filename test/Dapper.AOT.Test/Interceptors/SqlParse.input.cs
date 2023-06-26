@@ -15,7 +15,7 @@ public static class Foo
         """;
 
     const string AllTheFail = """
-set @id = 3; -- 211
+set @id = 3; -- 211, 213
 declare @id int = 1;
 
 declare @id int = 1; -- 202
@@ -55,7 +55,7 @@ gibb!eri -- 206
 
         db.Execute(AllTheFail, customer);
     }
-    static void MicrosoftData(Microsoft.Data.SqlClient.SqlConnection db, Customer customer)
+    static void MicrosoftDataUntypedArgs(Microsoft.Data.SqlClient.SqlConnection db, object customer)
     {
         db.Execute(BadSql);
 
@@ -63,8 +63,8 @@ gibb!eri -- 206
 
         db.Execute(AllTheFail, customer);
     }
-    // don't expect this to be found
-    static void GeneralDatabase(System.Data.Common.DbConnection db, Customer customer)
+    // expect this to have limited detection
+    static void GeneralDatabaseUntypedArgs(System.Data.Common.DbConnection db, Customer customer)
     {
         db.Execute(BadSql);
 

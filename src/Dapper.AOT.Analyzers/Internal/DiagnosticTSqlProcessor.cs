@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
+using System.Data;
 
 namespace Dapper.Internal;
 
@@ -14,12 +15,13 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
     private readonly Microsoft.CodeAnalysis.Location? _location;
     private readonly LiteralExpressionSyntax? _literal;
     public object? DiagnosticsObject => _diagnostics;
-
-    public DiagnosticTSqlProcessor(bool caseSensitive, object? diagnostics,
+    private readonly ITypeSymbol? _parameterType;
+    public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, bool caseSensitive, object? diagnostics,
         Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(caseSensitive)
     {
         _diagnostics = diagnostics;
         _location = sqlSyntax?.GetLocation() ?? location;
+        _parameterType = parameterType;
 
         switch (sqlSyntax)
         {
@@ -80,9 +82,55 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
     protected override void OnVariableAccessedBeforeAssignment(Variable variable)
         => AddDiagnostic(variable.IsTable ? Diagnostics.TableVariableAccessedBeforePopulate : Diagnostics.VariableAccessedBeforeAssignment, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
+    protected override void OnVariableNotDeclared(Variable variable)
+        => AddDiagnostic(Diagnostics.VariableNotDeclared, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+
     protected override void OnVariableAccessedBeforeDeclaration(Variable variable)
         => AddDiagnostic(Diagnostics.VariableAccessedBeforeDeclaration, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
     protected override void OnVariableValueNotConsumed(Variable variable)
         => AddDiagnostic(Diagnostics.VariableValueNotConsumed, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+
+    protected override void OnTableVariableOutputParameter(Variable variable)
+        => AddDiagnostic(Diagnostics.TableVariableOutputParameter, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+
+    protected override bool TryGetParameter(string name, out ParameterDirection direction)
+    {
+        // we have knowledge of the type system; use it
+
+        if (_parameterType is null)
+        {
+            // no parameter
+            direction = default;
+            return false;
+        }
+
+        if (Inspection.IsMissingOrObjectOrDynamic(_parameterType))
+        {
+            // dynamic
+            direction = ParameterDirection.Input;
+            return true;
+        }
+
+        if (!string.IsNullOrEmpty(name) && name[0] == '@')
+        {
+            name = name.Substring(1);
+        }
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            bool caseSensitive = CaseSensitive;
+            foreach (var member in Inspection.GetMembers(_parameterType))
+            {
+                if (caseSensitive ? member.DbName == name : string.Equals(member.DbName, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    direction = member.Direction;
+                    return true;
+                }
+            }
+        }
+
+        // nope
+        direction = default;
+        return false;
+    }
 }

@@ -10,6 +10,7 @@ public static class Foo
         const string abc = nameof(abc);
 
         _ = db.Query("select 'abc';select @@identity;select 'def';");
+        _ = db.Query("select 'abc';\r\nselect @@identity;select 'def';");
         _ = db.Query($"select '{abc}';select @@identity;select 'def';");
         _ = db.Query("select \"abc\";select @@identity;select \"abc\";");
         _ = db.Query(@"select 'abc';select @@identity;select 'def';");

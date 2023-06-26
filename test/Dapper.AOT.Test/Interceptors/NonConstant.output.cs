@@ -23,7 +23,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, default, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).Execute((object?[])param);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, default, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).Execute((object?[])param!);
 
     }
 

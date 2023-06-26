@@ -60,8 +60,9 @@ internal sealed class CodeWriter
         return this;
     }
 
-    public static string GetTypeName(ITypeSymbol value)
+    public static string GetTypeName(ITypeSymbol? value)
     {
+        if (value is null) return "(none)";
         if (value.IsAnonymousType) return value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
 
         var s = value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
