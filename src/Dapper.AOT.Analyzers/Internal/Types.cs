@@ -7,5 +7,6 @@ internal static class Types
         DapperAotAttribute = nameof(DapperAotAttribute),
         DbValueAttribute = nameof(DbValueAttribute),
         RowCountAttribute = nameof(RowCountAttribute),
-        CacheCommandAttribute = nameof(CacheCommandAttribute);
+        CacheCommandAttribute = nameof(CacheCommandAttribute),
+        AnnotateSqlSourceAttribute = nameof(AnnotateSqlSourceAttribute);
 }

@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -205,6 +206,12 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     }
                     break;
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(sql) && HasAny(flags, OperationFlags.Text)
+            && Inspection.IsEnabled(ctx, op, Types.AnnotateSqlSourceAttribute, out _, cancellationToken))
+        {
+            flags |= OperationFlags.AnnotateSource;
         }
 
         if (HasAny(flags, OperationFlags.Query) && buffered.HasValue)
@@ -735,6 +742,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         BindTupleResultByName = 1 << 16,
         BindTupleParameterByName = 1 << 17,
         CacheCommand = 1 << 18,
+        AnnotateSource = 1 << 19, // include -- SomeFile.cs#40 when possible
     }
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
@@ -934,7 +942,20 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             // assertions
             var commandTypeMode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
             var methodParameters = grp.Key.Method.Parameters;
-            sb.Append("global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));").NewLine();
+            string? fixedSql = null;
+            if (HasAny(flags, OperationFlags.AnnotateSource))
+            {
+                var origin = grp.Single();
+                fixedSql = origin.Sql; // expect exactly one SQL
+                sb.Append("global::System.Diagnostics.Debug.Assert(sql == ")
+                    .AppendVerbatimLiteral(fixedSql).Append(");").NewLine();
+                var path = origin.Location.GetMappedLineSpan();
+                fixedSql = $"-- {path.Path}#{path.StartLinePosition.Line + 1}\r\n{fixedSql}";
+            }
+            else
+            {
+                sb.Append("global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));").NewLine();
+            }
             if (HasParam(methodParameters, "commandType"))
             {
                 if (commandTypeMode != 0)
@@ -951,9 +972,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
-            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories))
+            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql))
             {
-                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers);
+                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql);
             }
         }
 
@@ -1627,7 +1648,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         };
 
         public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) Group()
-            => new(Flags, Method, ParameterType, ParameterMap, (Flags & OperationFlags.CacheCommand) == 0 ? null : Location);
+            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.AnnotateSource)) == 0 ? null : Location);
     }
     private sealed class CommonComparer : IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation)>, IComparer<Location>
     {
