@@ -62,6 +62,10 @@ internal static class Diagnostics
             "The command has a query that will be ignored", Category.Sql, DiagnosticSeverity.Warning, true),
         QueryCommandMissingQuery = new("DAP026", "Query/scalar command lacks query",
             "The command lacks a query", Category.Sql, DiagnosticSeverity.Error, true),
+        UseSingleRowQuery = new("DAP027", "Use single-row query",
+            "Use {0}() instead of Query(...).{1}()", Category.Performance, DiagnosticSeverity.Warning, true),
+        UseQueryAsList = new("DAP028", "Use AsList instead of ToList",
+            "Use Query(...).AsList() instead of Query(...).ToList()", Category.Performance, DiagnosticSeverity.Warning, true),
 
 
     // SQL parse specific
@@ -108,6 +112,7 @@ internal static class Diagnostics
     {
         public const string Library = nameof(Library);
         public const string Sql = nameof(Sql);
+        public const string Performance = nameof(Performance);
     }
 
     internal static void Add(ref object? diagnostics, Diagnostic diagnostic)

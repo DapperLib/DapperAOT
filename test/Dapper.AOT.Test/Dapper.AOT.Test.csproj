@@ -11,6 +11,9 @@
         <None Update="**/*.output.*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>
         </None>
+        <None Update="**/*.output.netfx.*">
+            <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output.netfx', '.input.cs'))</DependentUpon>
+        </None>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
