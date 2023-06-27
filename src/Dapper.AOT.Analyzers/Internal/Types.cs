@@ -8,5 +8,6 @@ internal static class Types
         DbValueAttribute = nameof(DbValueAttribute),
         RowCountAttribute = nameof(RowCountAttribute),
         CacheCommandAttribute = nameof(CacheCommandAttribute),
-        IncludeSqlSourceAttribute = nameof(IncludeSqlSourceAttribute);
+        IncludeLocationAttribute = nameof(IncludeLocationAttribute),
+        SqlSyntaxAttribute = nameof(SqlSyntaxAttribute);
 }

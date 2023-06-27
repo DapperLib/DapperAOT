@@ -52,9 +52,7 @@ internal static class Inspection
         return hasNames = false;
     }
 
-    // support the fact that [DapperAot(bool)] can enable/disable generation at any level
-    // including method, type, module and assembly; first attribute found (walking up the tree): wins
-    public static bool IsEnabled(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out bool exists, CancellationToken cancellationToken)
+    public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, CancellationToken cancellationToken)
     {
         var method = GetContainingMethodSyntax(op);
         if (method is not null)
@@ -62,17 +60,12 @@ internal static class Inspection
             var symbol = ctx.SemanticModel.GetDeclaredSymbol(method, cancellationToken);
             while (symbol is not null)
             {
-                if (HasDapperAttribute(symbol, attributeName, out bool enabled))
-                {
-                    exists = true;
-                    return enabled;
-                }
+                var attrib = GetDapperAttribute(symbol, attributeName);
+                if (attrib is not null) return attrib;
                 symbol = symbol.ContainingSymbol;
             }
         }
-
-        // disabled globally by default
-        return exists = false;
+        return null;
 
         static SyntaxNode? GetContainingMethodSyntax(IOperation op)
         {
@@ -87,33 +80,21 @@ internal static class Inspection
             }
             return null;
         }
-        static bool HasDapperAttribute(ISymbol? symbol, string attributeName, out bool enabled)
-        {
-            if (symbol is not null)
-            {
-                foreach (var attrib in symbol.GetAttributes())
-                {
-                    if (attrib.AttributeClass is
-                        {
-                            ContainingNamespace:
-                            {
-                                Name: "Dapper",
-                                ContainingNamespace.IsGlobalNamespace: true
-                            }
-                        }
-                    && attrib.AttributeClass.Name == attributeName
-                    && attrib.ConstructorArguments.Length == 1
-                    && attrib.ConstructorArguments[0].Value is bool b)
-                    {
-                        enabled = b;
-                        return true;
-                    }
-                }
-            }
+    }
 
-            enabled = default;
-            return false;
+    // support the fact that [DapperAot(bool)] can enable/disable generation at any level
+    // including method, type, module and assembly; first attribute found (walking up the tree): wins
+    public static bool IsEnabled(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out bool exists, CancellationToken cancellationToken)
+    {
+        var attrib = GetClosestDapperAttribute(ctx, op, attributeName, cancellationToken);
+        if (attrib is not null && attrib.ConstructorArguments.Length == 1
+            && attrib.ConstructorArguments[0].Value is bool b)
+        {
+            exists = true;
+            return b;
         }
+        exists = false;
+        return false;
     }
 
     public static AttributeData? GetDapperAttribute(ISymbol? symbol, string attributeName)

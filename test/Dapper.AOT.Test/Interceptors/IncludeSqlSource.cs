@@ -2,7 +2,7 @@
 using System.Data.SqlClient;
 
 [module: DapperAot]
-[module: IncludeSqlSourceAttribute]
+[module: IncludeLocationAttribute]
 public static class Foo
 {
     static void SystemData(SqlConnection db)

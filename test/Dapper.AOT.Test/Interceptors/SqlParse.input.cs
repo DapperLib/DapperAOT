@@ -73,6 +73,17 @@ gibb!eri -- 206
         db.Execute(AllTheFail, customer);
     }
 
+    // treat like SQL Server
+    [SqlSyntax(SqlSyntax.SqlServer)]
+    static void GeneralDatabaseUntypedArgsWithHint(System.Data.Common.DbConnection db, Customer customer)
+    {
+        db.Execute(BadSql);
+
+        db.Execute(InsertSql, customer);
+
+        db.Execute(AllTheFail, customer);
+    }
+
     public class Customer
     {
         public int Id { get; set; }

@@ -209,9 +209,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
 
         if (!string.IsNullOrWhiteSpace(sql) && HasAny(flags, OperationFlags.Text)
-            && Inspection.IsEnabled(ctx, op, Types.IncludeSqlSourceAttribute, out _, cancellationToken))
+            && Inspection.IsEnabled(ctx, op, Types.IncludeLocationAttribute, out _, cancellationToken))
         {
-            flags |= OperationFlags.IncludeSqlSoource;
+            flags |= OperationFlags.IncludeLocation;
         }
 
         if (HasAny(flags, OperationFlags.Query) && buffered.HasValue)
@@ -311,7 +311,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
 
         // perform SQL inspection
-        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags);
+        var parameterMap = BuildParameterMap(ctx, op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags, cancellationToken);
 
         // if we have a good parser *and* the SQL isn't borked: check for obvious query/exec mismatch
         if ((parseFlags & (ParseFlags.Reliable | ParseFlags.SyntaxError)) == ParseFlags.Reliable)
@@ -428,7 +428,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             return false;
         }
 
-        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags)
+        static string BuildParameterMap(in GeneratorSyntaxContext ctx, IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags, CancellationToken cancellationToken)
         {
             // if command-type is known statically to be stored procedure etc: pass everything
             if (HasAny(flags, OperationFlags.StoredProcedure | OperationFlags.TableDirect))
@@ -452,7 +452,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             // so: we know statically that we have known command-text
             // first, try try to find any parameters
             ImmutableHashSet<string> paramNames;
-            switch (IdentifySqlSyntax(op, out bool caseSensitive))
+            switch (IdentifySqlSyntax(ctx, op, out bool caseSensitive, cancellationToken))
             {
                 case SqlSyntax.SqlServer:
                     var proc = new DiagnosticTSqlProcessor(elementType, caseSensitive, diagnostics, loc, sqlSyntax);
@@ -613,7 +613,8 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
     }
 
-    private static SqlSyntax IdentifySqlSyntax(IInvocationOperation op, out bool caseSensitive)
+    private static SqlSyntax IdentifySqlSyntax(in GeneratorSyntaxContext ctx, IInvocationOperation op, out bool caseSensitive,
+        CancellationToken cancellationToken)
     {
         caseSensitive = false;
         if (op.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
@@ -630,6 +631,13 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     return candidate.Syntax;
                 }
             }
+        }
+
+        // get fom [SqlSyntax(...)] hint
+        var attrib = Inspection.GetClosestDapperAttribute(ctx, op, Types.SqlSyntaxAttribute, cancellationToken);
+        if (attrib is not null && attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i)
+        {
+            return (SqlSyntax)i;
         }
 
         return SqlSyntax.General;
@@ -758,7 +766,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         BindTupleResultByName = 1 << 16,
         BindTupleParameterByName = 1 << 17,
         CacheCommand = 1 << 18,
-        IncludeSqlSoource = 1 << 19, // include -- SomeFile.cs#40 when possible
+        IncludeLocation = 1 << 19, // include -- SomeFile.cs#40 when possible
     }
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
@@ -959,7 +967,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             var commandTypeMode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
             var methodParameters = grp.Key.Method.Parameters;
             string? fixedSql = null;
-            if (HasAny(flags, OperationFlags.IncludeSqlSoource))
+            if (HasAny(flags, OperationFlags.IncludeLocation))
             {
                 var origin = grp.Single();
                 fixedSql = origin.Sql; // expect exactly one SQL
@@ -1664,7 +1672,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         };
 
         public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) Group()
-            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeSqlSoource)) == 0 ? null : Location);
+            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location);
     }
     private sealed class CommonComparer : IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation)>, IComparer<Location>
     {
