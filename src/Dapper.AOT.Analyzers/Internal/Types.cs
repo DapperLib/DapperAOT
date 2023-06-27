@@ -8,5 +8,5 @@ internal static class Types
         DbValueAttribute = nameof(DbValueAttribute),
         RowCountAttribute = nameof(RowCountAttribute),
         CacheCommandAttribute = nameof(CacheCommandAttribute),
-        AnnotateSqlSourceAttribute = nameof(AnnotateSqlSourceAttribute);
+        IncludeSqlSourceAttribute = nameof(IncludeSqlSourceAttribute);
 }

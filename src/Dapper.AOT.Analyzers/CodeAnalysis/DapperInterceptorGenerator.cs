@@ -209,9 +209,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
 
         if (!string.IsNullOrWhiteSpace(sql) && HasAny(flags, OperationFlags.Text)
-            && Inspection.IsEnabled(ctx, op, Types.AnnotateSqlSourceAttribute, out _, cancellationToken))
+            && Inspection.IsEnabled(ctx, op, Types.IncludeSqlSourceAttribute, out _, cancellationToken))
         {
-            flags |= OperationFlags.AnnotateSource;
+            flags |= OperationFlags.IncludeSqlSoource;
         }
 
         if (HasAny(flags, OperationFlags.Query) && buffered.HasValue)
@@ -454,7 +454,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             ImmutableHashSet<string> paramNames;
             switch (IdentifySqlSyntax(op, out bool caseSensitive))
             {
-                case SqlSyntax.TransactSql:
+                case SqlSyntax.SqlServer:
                     var proc = new DiagnosticTSqlProcessor(elementType, caseSensitive, diagnostics, loc, sqlSyntax);
                     try
                     {
@@ -613,42 +613,58 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
     }
 
-    private enum SqlSyntax
-    {
-        General = 0,
-        TransactSql = 1,
-    }
     private static SqlSyntax IdentifySqlSyntax(IInvocationOperation op, out bool caseSensitive)
     {
         caseSensitive = false;
-        if (op.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0 } type)
+        if (op.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
         {
-            if (type is
-                {
-                    Name: "SqlConnection", ContainingType: null,
-                    ContainingNamespace:
-                    {
-                        Name: "SqlClient",
-                        ContainingNamespace:
-                        {
-                            Name: "Data",
-                            ContainingNamespace:
-                            {
-                                Name: "System" or "Microsoft",
-                                ContainingNamespace.IsGlobalNamespace: true
-                            }
-                        }
-                    }
-                })
+            var ns = type.ContainingNamespace;
+            foreach (var candidate in KnownConnectionTypes)
             {
-                return SqlSyntax.TransactSql;
+                var current = ns;
+                if (type.Name == candidate.Connection
+                    && AssertAndAscend(ref current, candidate.Namespace0)
+                    && AssertAndAscend(ref current, candidate.Namespace1)
+                    && AssertAndAscend(ref current, candidate.Namespace2))
+                {
+                    return candidate.Syntax;
+                }
             }
         }
 
-        // TODO : attribute mechanism
-
         return SqlSyntax.General;
+
+        static bool AssertAndAscend(ref INamespaceSymbol ns, string? expected)
+        {
+            if (expected is null)
+            {
+                return ns.IsGlobalNamespace;
+            }
+            else
+            {
+                if (ns.Name == expected)
+                {
+                    ns = ns.ContainingNamespace;
+                    return true;
+                }
+                return false;
+            }
+        }
     }
+
+    private static readonly ImmutableArray<(string? Namespace2, string? Namespace1, string Namespace0, string Connection, SqlSyntax Syntax)> KnownConnectionTypes = new[]
+    {
+        ("System", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
+        ("Microsoft", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
+
+        (null, null, "Npgsql", "NpgsqlConnection", SqlSyntax.PostgreSql),
+
+        ("MySql", "Data", "MySqlClient", "MySqlConnection", SqlSyntax.MySql),
+
+        ("Oracle", "DataAccess", "Client", "OracleConnection", SqlSyntax.Oracle),
+
+        ("Microsoft", "Data", "Sqlite", "SqliteConnection", SqlSyntax.SQLite),
+    }.ToImmutableArray();
 
     enum DapperMethodKind
     {
@@ -742,7 +758,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         BindTupleResultByName = 1 << 16,
         BindTupleParameterByName = 1 << 17,
         CacheCommand = 1 << 18,
-        AnnotateSource = 1 << 19, // include -- SomeFile.cs#40 when possible
+        IncludeSqlSoource = 1 << 19, // include -- SomeFile.cs#40 when possible
     }
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
@@ -943,7 +959,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
             var commandTypeMode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
             var methodParameters = grp.Key.Method.Parameters;
             string? fixedSql = null;
-            if (HasAny(flags, OperationFlags.AnnotateSource))
+            if (HasAny(flags, OperationFlags.IncludeSqlSoource))
             {
                 var origin = grp.Single();
                 fixedSql = origin.Sql; // expect exactly one SQL
@@ -1648,7 +1664,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         };
 
         public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) Group()
-            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.AnnotateSource)) == 0 ? null : Location);
+            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeSqlSoource)) == 0 ? null : Location);
     }
     private sealed class CommonComparer : IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation)>, IComparer<Location>
     {

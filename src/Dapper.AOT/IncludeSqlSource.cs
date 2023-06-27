@@ -1,0 +1,19 @@
+﻿using System;
+using System.ComponentModel;
+using System.Diagnostics;
+
+namespace Dapper;
+
+/// <summary>
+/// Indicates whether to include, when possible, a comment in the SQL showing the code origin
+/// </summary>
+[Conditional("DEBUG")] // not needed post-build, so: evaporate
+[ImmutableObject(true)]
+[AttributeUsage(AttributeTargets.All, AllowMultiple = false)]
+public sealed class IncludeSqlSourceAttribute : Attribute
+{
+    /// <summary>
+    /// Indicates whether to include, when possible, a comment in the SQL showing the code origin
+    /// </summary>
+    public IncludeSqlSourceAttribute(bool enabled = true) { }
+}

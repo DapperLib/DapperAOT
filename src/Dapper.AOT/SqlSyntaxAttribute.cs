@@ -10,10 +10,10 @@ namespace Dapper;
 [Conditional("DEBUG")] // not needed post-build, so: evaporate
 [ImmutableObject(true)]
 [AttributeUsage(AttributeTargets.All, AllowMultiple = false)]
-public sealed class CacheCommandAttribute : Attribute
+public sealed class SqlSyntaxAttribute : Attribute
 {
     /// <summary>
     /// Indicates whether commands should, when possible, be re-used between operations
     /// </summary>
-    public CacheCommandAttribute(bool enabled = true) { }
+    public SqlSyntaxAttribute(SqlSyntax syntax) { }
 }
