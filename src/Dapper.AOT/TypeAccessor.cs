@@ -8,7 +8,7 @@ namespace Dapper;
 
 public static class TypeAccessor
 {
-    public static ObjectAccessor<T> CreateReader<T>(T obj, [DapperAot] TypeAccessor<T>? accessor = null)
+    public static ObjectAccessor<T> CreateAccessor<T>(T obj, [DapperAot] TypeAccessor<T>? accessor = null)
     {
         if (accessor is null) ThrowNull();
         return new ObjectAccessor<T>(obj, accessor!);

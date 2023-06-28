@@ -14,6 +14,7 @@ using System.Text;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Collections;
+using System.Reflection.Metadata.Ecma335;
 
 namespace Dapper.CodeAnalysis
 {
@@ -42,7 +43,7 @@ namespace Dapper.CodeAnalysis
         {
             if (node is InvocationExpressionSyntax invocation && invocation.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax memberAccess)
             {
-                return memberAccess.Expression.ToString() == "TypeAccessor" && memberAccess.Name.ToString() == "CreateReader";
+                return memberAccess.Expression.ToString() == "TypeAccessor" && memberAccess.Name.ToString() == "CreateAccessor";
             }
 
             return false;
@@ -103,9 +104,9 @@ namespace Dapper.CodeAnalysis
             }
         }
 
-        private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+        private void Generate(SourceProductionContext context, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
         {
-            if (!IsGenerateInputValid(ref ctx, state))
+            if (!IsGenerateInputValid(ref context, state))
             {
                 Log?.Invoke(DiagnosticSeverity.Hidden, $"Generate input for '{nameof(TypeAccessorInterceptorGenerator)}' does not allow generation.");
                 return;
@@ -125,17 +126,25 @@ namespace Dapper.CodeAnalysis
                     var typeSymbol = group.Key.ParameterType;
                     var usages = group.Select(x => x.Location);
 
-                    ITypeSymbol? elementType;
-                    if (!Inspection.IsCollectionType(typeSymbol, out elementType))
+                    // not allowing collections
+                    if (Inspection.IsCollectionType(typeSymbol, out _))
                     {
-                        elementType = typeSymbol;
+                        ReportDiagnosticInUsages(Diagnostics.TypeAccessorCollectionTypeNotAllowed);
+                        continue;
                     }
 
-                    var elementTypeName = elementType!.ToDisplayString();
-                    var members = ConstructTypeMembers(elementType!);
+                    // not allowing primitives
+                    if (Inspection.IsPrimitiveType(typeSymbol))
+                    {
+                        ReportDiagnosticInUsages(Diagnostics.TypeAccessorPrimitiveTypeNotAllowed);
+                        continue;
+                    }
+
+                    var typeSymbolName = typeSymbol!.ToDisplayString();
+                    var members = ConstructTypeMembers(typeSymbol!);
                     if (members.Length == 0)
                     {
-                        Log?.Invoke(DiagnosticSeverity.Hidden, $"Can't parse members for '{elementTypeName}'. Skipping generation for type...");
+                        context.ReportDiagnostic(Diagnostic.Create(Diagnostics.TypeAccessorMembersNotParsed, null));
                         continue;
                     }
 
@@ -146,19 +155,29 @@ namespace Dapper.CodeAnalysis
                     }
 
                     var accessorSb = new CustomTypeAccessorClassCodeWriter(codeWriter);
-                    accessorSb.WriteClass(typeCounter, elementTypeName, () =>
+                    accessorSb.WriteClass(typeCounter, typeSymbolName, () =>
                     {
                         accessorSb.WriteMemberCount(members.Length);
-                        accessorSb.WriteTryIndex(elementTypeName, members);
-                        accessorSb.WriteGetName(elementTypeName, members);
-                        accessorSb.WriteIndexer(elementTypeName, members);
+                        accessorSb.WriteTryIndex(typeSymbolName, members);
+                        accessorSb.WriteGetName(typeSymbolName, members);
+                        accessorSb.WriteIndexer(typeSymbolName, members);
                         accessorSb.WriteIsNullable(members);
                         accessorSb.WriteGetType(members);
+                        accessorSb.WriteGetValue(typeSymbolName, members);
+                        accessorSb.WriteSetValue(typeSymbolName, members);
                     });
+
+                    void ReportDiagnosticInUsages(DiagnosticDescriptor diagnosticDescriptor)
+                    {
+                        foreach (var usage in usages!)
+                        {
+                            context.ReportDiagnostic(Diagnostic.Create(diagnosticDescriptor, usage));
+                        }
+                    }
                 }
             });
 
-            ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.GetSourceText());
+            context.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.GetSourceText());
         }
 
         private bool IsGenerateInputValid(ref SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
@@ -362,6 +381,45 @@ namespace Dapper.CodeAnalysis
 
                 _sb.Append("_ => base.GetType(index)")
                    .Outdent().Append(";").NewLine();
+            }
+
+            public void WriteGetValue(string userTypeName, MemberData[] members)
+            {
+                _sb.Append("public override TValue GetValue<TValue>(").Append(userTypeName).Append(" obj, int index) => index switch")
+                    .Indent().NewLine();
+
+                foreach (var member in members)
+                {
+                    // TODO! important: we need to support integers for enums, using the correct underlying type. i.e:
+                    // 3 when typeof(TValue) == typeof(SomeEnum) || typeof(TValue) == typeof(int) => UnsafePun<SomeEnum, TValue>(obj.Foo),
+
+                    _sb.Append(member.Number).Append(" when typeof(TValue) == typeof(").Append(member.Type).Append(")")
+                       .Append(" => UnsafePun<").Append(member.Type).Append(", TValue>(obj.").Append(member.Name).Append("),").NewLine();
+                }
+
+                _sb.Append("_ => base.GetValue<TValue>(obj, index)")
+                   .Outdent().Append(";").NewLine();
+            }
+
+            public void WriteSetValue(string userTypeName, MemberData[] members)
+            {
+                _sb.Append("public override void SetValue<TValue>(").Append(userTypeName).Append(" obj, int index, TValue value)")
+                   .Indent().NewLine()
+                   .Append("switch (index)")
+                   .Indent().NewLine();
+
+                foreach (var member in members)
+                {
+                    // TODO! we need to support integers for enums, using the correct underlying type
+                    // case 3 when typeof(TValue) == typeof(SomeEnum) || typeof(TValue) == typeof(int):
+
+                    _sb.Append("case ").Append(member.Number).Append(" when typeof(TValue) == typeof(").Append(member.Type).Append("):").NewLine();
+                    _sb.Indent(withScope: false).Append("obj.").Append(member.Name).Append(" = UnsafePun<TValue, ").Append(member.Type).Append(">(value);").NewLine();
+                    _sb.Append("break;").NewLine().Outdent(withScope: false);
+                }
+
+                _sb.Outdent().NewLine()
+                   .Outdent().NewLine();
             }
         }
 

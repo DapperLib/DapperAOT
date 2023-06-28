@@ -18,7 +18,7 @@ public class AccessorTests
         };
 
         TypeAccessor<Customer> accessor = new HandWrittenCustomerAccessor();
-        var wrapped = TypeAccessor.CreateReader(customer, accessor);
+        var wrapped = TypeAccessor.CreateAccessor(customer, accessor);
 
         Assert.Equal(4, wrapped.MemberCount);
 

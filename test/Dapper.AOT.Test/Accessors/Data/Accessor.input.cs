@@ -9,8 +9,8 @@ public static class Foo
 {
     static async Task SomeCode(DbConnection connection, string bar)
     {
-        var customers = new List<Customer>();
-        _ = TypeAccessor.CreateReader(customers);   
+        var customer = new Customer { X = 1, Y = "hello", Z = 0.1 };
+        _ = TypeAccessor.CreateAccessor(customer);
     }
 
     public class Customer

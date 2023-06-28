@@ -35,6 +35,24 @@ internal static class TypeSymbolExtensions
     }
 
     /// <returns>
+    /// True, if passed <param name="typeSymbol"/> is a primitive type like <see cref="int"/>, <see cref="bool"/>, <see cref="string"/>, <see cref="object"/>, etc.
+    /// </returns>
+    public static bool IsPrimitiveType(this ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is null) return false;
+        return typeSymbol.SpecialType switch
+        {
+            SpecialType.System_Object or SpecialType.System_Enum or
+            SpecialType.System_Boolean or SpecialType.System_Char or SpecialType.System_SByte or SpecialType.System_Byte or
+            SpecialType.System_Int16 or SpecialType.System_UInt16 or SpecialType.System_Int32 or SpecialType.System_UInt32 or
+            SpecialType.System_Int64 or SpecialType.System_UInt64 or SpecialType.System_Decimal or SpecialType.System_Single or
+            SpecialType.System_Double or SpecialType.System_String or SpecialType.System_IntPtr or SpecialType.System_UIntPtr 
+              => true,
+            _ => false
+        };
+    }
+
+    /// <returns>
     /// True, if passed <param name="typeSymbol"/> represents array. False otherwise
     /// </returns>
     /// <remarks>Checks it type is a zero-based one-dimensional array</remarks>
@@ -174,7 +192,7 @@ internal static class TypeSymbolExtensions
         }
         else
         {
-            for (var i = 0; i < typeSymbol.AllInterfaces.Length; i++)
+            for (var i = typeSymbol.AllInterfaces.Length - 1; i >= 0; i--)
             {
                 var currentSymbol = typeSymbol.AllInterfaces[i];
 

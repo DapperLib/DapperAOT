@@ -51,13 +51,37 @@ file static class DapperTypeAccessorGeneratedInterceptors
             0 or 1 => false,
             _ => base.IsNullable(index)
         };
-        public override Type GetType(int index) => index switch
+        public override global::System.Type GetType(int index) => index switch
         {
             0 => typeof(int),
             1 => typeof(string),
             2 => typeof(double?),
             _ => base.GetType(index)
         };
+        public override TValue GetValue<TValue>(Foo.Customer obj, int index) => index switch
+        {
+            0 when typeof(TValue) == typeof(int) => UnsafePun<int, TValue>(obj.X),
+            1 when typeof(TValue) == typeof(string) => UnsafePun<string, TValue>(obj.Y),
+            2 when typeof(TValue) == typeof(double?) => UnsafePun<double?, TValue>(obj.Z),
+            _ => base.GetValue<TValue>(obj, index)
+        };
+        public override void SetValue<TValue>(Foo.Customer obj, int index, TValue value)
+        {
+            switch (index)
+            {
+                case 0 when typeof(TValue) == typeof(int):
+                    obj.X = UnsafePun<TValue, int>(value);
+                    break;
+                case 1 when typeof(TValue) == typeof(string):
+                    obj.Y = UnsafePun<TValue, string>(value);
+                    break;
+                case 2 when typeof(TValue) == typeof(double?):
+                    obj.Z = UnsafePun<TValue, double?>(value);
+                    break;
+
+            }
+
+        }
 
     }
 

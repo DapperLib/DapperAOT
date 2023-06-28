@@ -1,39 +1,42 @@
-Input code has 1 diagnostics from 'Accessors/Data/Accessor.input.cs':
+Input code has 2 diagnostics from 'Accessors/Data/Accessor.input.cs':
 
-Warning CS1998 Accessors/Data/Accessor.input.cs L9 C22
+Hidden CS8019 Accessors/Data/Accessor.input.cs L2 C1
+Unnecessary using directive.
+
+Warning CS1998 Accessors/Data/Accessor.input.cs L10 C23
 This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread.
-Output code has 1 diagnostics from 'Accessors/Data/Accessor.input.cs':
+Output code has 2 diagnostics from 'Accessors/Data/Accessor.input.cs':
 
-Warning CS1998 Accessors/Data/Accessor.input.cs L9 C22
+Hidden CS8019 Accessors/Data/Accessor.input.cs L2 C1
+Unnecessary using directive.
+
+Warning CS1998 Accessors/Data/Accessor.input.cs L10 C23
 This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread.
-Output code has 10 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs':
+Output code has 9 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs':
 
-Error CS0234 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L3 C45
+Error CS0234 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L4 C46
 The type or namespace name 'InterceptsLocationAttribute' does not exist in the namespace 'System.Runtime.CompilerServices' (are you missing an assembly reference?)
 
-Error CS0234 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L3 C45
+Error CS0234 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L4 C46
 The type or namespace name 'InterceptsLocationAttributeAttribute' does not exist in the namespace 'System.Runtime.CompilerServices' (are you missing an assembly reference?)
 
-Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L4 C18
+Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L5 C19
 The type or namespace name 'ObjectAccessor<>' could not be found (are you missing a using directive or an assembly reference?)
 
-Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L4 C60
+Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L5 C61
 The type or namespace name 'DapperAot' could not be found (are you missing a using directive or an assembly reference?)
 
-Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L4 C60
+Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L5 C61
 The type or namespace name 'DapperAotAttribute' could not be found (are you missing a using directive or an assembly reference?)
 
-Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L4 C71
+Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L5 C72
 The type or namespace name 'TypeAccessor<>' could not be found (are you missing a using directive or an assembly reference?)
 
-Error CS1513 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L40 C28
+Error CS1513 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L41 C29
 } expected
 
-Error CS1513 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L41 C28
+Error CS1513 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L42 C29
 } expected
 
-Error CS1513 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L42 C28
+Error CS1513 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L43 C29
 } expected
-
-Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.TypeAccessorInterceptorGenerator/Test.generated.cs L53 C24
-The type or namespace name 'Type' could not be found (are you missing a using directive or an assembly reference?)
