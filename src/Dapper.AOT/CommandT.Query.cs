@@ -19,14 +19,14 @@ partial struct Command<TArgs>
     /// <summary>
     /// Reads buffered rows from a query
     /// </summary>
-    public List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null)
+    public List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, int sizeHint = 0)
     {
         QueryState state = default;
         try
         {
             state.ExecuteReader(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
 
-            var results = new List<TRow>();
+            var results = new List<TRow>(sizeHint);
             if (state.Reader.Read())
             {
                 var readWriteTokens = state.Reader.FieldCount <= RowFactory.MAX_STACK_TOKENS
@@ -56,14 +56,14 @@ partial struct Command<TArgs>
     /// <summary>
     /// Reads buffered rows from a query
     /// </summary>
-    public async Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default)
+    public async Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, int sizeHint = 0, CancellationToken cancellationToken = default)
     {
         QueryState state = default;
         try
         {
             await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
 
-            var results = new List<TRow>();
+            var results = new List<TRow>(sizeHint);
             if (await state.Reader.ReadAsync(cancellationToken))
             {
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);

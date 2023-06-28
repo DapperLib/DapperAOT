@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Runtime.InteropServices;
+using System.Collections.Generic;
 
 namespace Dapper;
 
@@ -109,7 +110,6 @@ public abstract class RowFactory
             if (lease is not null) ArrayPool<int>.Shared.Return(lease);
             lease = ArrayPool<int>.Shared.Rent(fieldCount);
         }
-        lease = ArrayPool<int>.Shared.Rent(fieldCount);
 #if NET8_0_OR_GREATER
         return MemoryMarshal.CreateSpan(ref MemoryMarshal.GetArrayDataReference(lease), fieldCount);
 #else
@@ -146,53 +146,6 @@ public class RowFactory<T> : RowFactory
     public virtual T Read(DbDataReader reader, ReadOnlySpan<int> tokens, int columnOffset, object? state)
         => reader.IsDBNull(columnOffset) ? default! : tokens[0] == 0 ? GetValueExact<T>(reader, columnOffset) : GetValue<T>(reader, columnOffset);
 
-    /// <summary>
-    /// Reads the first row returned
-    /// </summary>
-    public T ReadFirst(DbDataReader reader)
-        => ReadSingleRow(reader, OneRowFlags.ThrowIfNone)!;
-
-    /// <summary>
-    /// Reads exactly one row
-    /// </summary>
-    public T ReadSingle(DbDataReader reader)
-        => ReadSingleRow(reader, OneRowFlags.ThrowIfNone | OneRowFlags.ThrowIfMultiple)!;
-
-    /// <summary>
-    /// Reads the first row, if any are returned
-    /// </summary>
-    public T? ReadFirstOrDefault(DbDataReader reader)
-        => ReadSingleRow(reader, OneRowFlags.None);
-
-    /// <summary>
-    /// Reads at most one row
-    /// </summary>
-    public T? ReadSingleOrDefault(DbDataReader reader)
-        => ReadSingleRow(reader, OneRowFlags.ThrowIfMultiple);
-
-    private T? ReadSingleRow(DbDataReader reader, OneRowFlags flags)
-    {
-        T? result = default;
-        if (reader.Read())
-        {
-            result = Read(reader);
-
-            if (reader.Read())
-            {
-                if ((flags & OneRowFlags.ThrowIfMultiple) != 0)
-                {
-                    CommandUtils.ThrowMultiple();
-                }
-                while (reader.Read()) { }
-            }
-        }
-        else if ((flags & OneRowFlags.ThrowIfNone) != 0)
-        {
-            CommandUtils.ThrowNone();
-        }
-        return result;
-    }
-
     /// <inheritdoc/>
     public sealed override object ReadObject(DbDataReader reader) => Read(reader)!;
 
@@ -202,14 +155,9 @@ public class RowFactory<T> : RowFactory
     public T Read(DbDataReader reader)
     {
         int[]? lease = null;
-        try
-        {
-            return Read(reader, ref lease);
-        }
-        finally
-        {
-            if (lease is not null) ArrayPool<int>.Shared.Return(lease);
-        }
+        var result = Read(reader, ref lease);
+        if (lease is not null) ArrayPool<int>.Shared.Return(lease);
+        return result;
     }
     internal T Read(DbDataReader reader, ref int[]? lease)
     {

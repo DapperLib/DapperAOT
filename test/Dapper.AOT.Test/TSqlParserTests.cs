@@ -16,7 +16,7 @@ public class TSqlParserTests
 
     private readonly Action<string> _log;
 
-    private TestTSqlProcessor GetProcessor() => new TestTSqlProcessor(log: _log);
+    private TestTSqlProcessor GetProcessor() => new(log: _log);
 
     [Fact]
     public void DetectBadNullLiteralUsage()
@@ -39,6 +39,7 @@ public class TSqlParserTests
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments", Justification = "Clearer for test")]
     public void DetectExecParams()
     {
         var parser = GetProcessor();
@@ -354,6 +355,7 @@ public class TSqlParserTests
     [InlineData(ParameterDirection.Input)]
     [InlineData(ParameterDirection.Output)]
     [InlineData(ParameterDirection.InputOutput)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments", Justification = "Clearer for test")]
 
     public void HandleParameterAssignment(ParameterDirection direction)
     {
@@ -402,7 +404,7 @@ public class TSqlParserTests
 
     class TestTSqlProcessor : TSqlProcessor
     {
-        public TestTSqlProcessor(ITypeSymbol? parameterType = null, bool caseSensitive = false, Action<string>? log = null) : base(caseSensitive, log) { }
+        public TestTSqlProcessor(bool caseSensitive = false, Action<string>? log = null) : base(caseSensitive, log) { }
         public string[] GetParameters(out string[] errors)
         {
             var parameters = (from p in this.Variables

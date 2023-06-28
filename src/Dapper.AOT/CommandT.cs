@@ -117,7 +117,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     /// <summary>
     /// Read the data as a <see cref="DbDataReader"/>
     /// </summary>
-    public DbDataReader ExecuteReader(TArgs args, CommandBehavior behavior)
+    public DbDataReader ExecuteReader(TArgs args, CommandBehavior behavior = CommandBehavior.Default)
     {
         QueryState state = default;
         try

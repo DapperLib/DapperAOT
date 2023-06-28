@@ -28,7 +28,7 @@ namespace Dapper
 
         public DbCommand? Command
         {
-            get => commandState.Command;
+            readonly get => commandState.Command;
             set => commandState.Command = value;
         }
 
@@ -59,7 +59,7 @@ namespace Dapper
 #endif
         }
 
-        public ReadOnlySpan<int> Tokens
+        public readonly ReadOnlySpan<int> Tokens
         {
             get
             {

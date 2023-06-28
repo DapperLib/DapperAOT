@@ -613,6 +613,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0042:Deconstruct variable declaration", Justification = "Fine as is; let's not pay the unwrap cost")]
     private static SqlSyntax IdentifySqlSyntax(in GeneratorSyntaxContext ctx, IInvocationOperation op, out bool caseSensitive,
         CancellationToken cancellationToken)
     {
