@@ -65,7 +65,14 @@ internal sealed class CodeWriter
         if (value is null) return "(none)";
         if (value.IsAnonymousType) return value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
 
-        var s = value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        string s = value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        if (value is INamedTypeSymbol named && named.Arity == 1 && named.TypeArguments[0].NullableAnnotation == NullableAnnotation.Annotated
+            && s.EndsWith(">") && !s.EndsWith("?>"))
+        {
+            // weird glitch in FQF - doesn't always add the annotation - example: Task<dynamic?>
+            s = s.Substring(0, s.Length - 1) + "?>";
+        }
+
         if (value.NullableAnnotation == NullableAnnotation.Annotated && !s.EndsWith("?"))
         {
             s += "?"; // weird glitch in FQF - doesn't always add the annotation - example: dynamic?

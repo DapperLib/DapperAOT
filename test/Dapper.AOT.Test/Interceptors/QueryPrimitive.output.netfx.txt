@@ -2,3 +2,7 @@ Generator produced 1 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 18 of 18 enabled call-sites using 18 interceptors, 0 commands and 0 readers
+Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+
+Error CS0029 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L214 C16
+Cannot implicitly convert type 'System.Threading.Tasks.Task<int>' to 'System.Threading.Tasks.Task<int?>'
