@@ -313,7 +313,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         // perform SQL inspection
         var parameterMap = BuildParameterMap(ctx, op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags, cancellationToken);
 
-        // if we have a good parser *and* the SQL isn't borked: check for obvious query/exec mismatch
+        // if we have a good parser *and* the SQL isn't invalid: check for obvious query/exec mismatch
         if ((parseFlags & (ParseFlags.Reliable | ParseFlags.SyntaxError)) == ParseFlags.Reliable)
         {
             switch (flags & (OperationFlags.Execute | OperationFlags.Query | OperationFlags.Scalar))
@@ -383,7 +383,7 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
                     return true;
                 }
                 var val = op.Value;
-                // work through any implict/explicit conversion steps
+                // work through any implicit/explicit conversion steps
                 while (val is IConversionOperation conv)
                 {
                     val = conv.Operand;
