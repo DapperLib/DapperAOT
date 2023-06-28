@@ -114,6 +114,23 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         }
     }
 
+    /// <summary>
+    /// Read the data as a <see cref="DbDataReader"/>
+    /// </summary>
+    public DbDataReader ExecuteReader(TArgs args, CommandBehavior behavior)
+    {
+        QueryState state = default;
+        try
+        {
+            state.ExecuteReader(GetCommand(args), behavior);
+            return new WrappedReader<TArgs>(commandFactory, args, ref state);
+        }
+        finally
+        {
+            state.Dispose();
+        }
+    }
+
     /// <inheritdoc/>
     public override string ToString() => sql;
 

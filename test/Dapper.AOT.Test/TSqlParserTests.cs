@@ -3,12 +3,9 @@ using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Security.Policy;
 using Xunit;
 using Xunit.Abstractions;
-using static Dapper.SqlAnalysis.TSqlProcessor;
 
 namespace Dapper.AOT.Test;
 

@@ -3,9 +3,9 @@
     <ItemGroup>
         <PackageVersion Include="BenchmarkDotNet" Version="0.13.5" />
         <PackageVersion Include="FastMember" Version="1.5.0" />
-        <PackageVersion Include="Dapper" Version="2.0.143" />
+        <PackageVersion Include="Dapper" Version="2.0.150-g90532504e9" />
         <PackageVersion Include="Dapper.AOT" Version="0.5.0-beta.49" />
-        <PackageVersion Include="Dapper.StrongName" Version="2.0.143" />
+        <PackageVersion Include="Dapper.StrongName" Version="2.0.150-g90532504e9" />
         <PackageVersion Include="System.Memory" Version="4.5.5" />
         <PackageVersion Include="Nerdbank.GitVersioning" Version="3.6.133" />
         <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="7.0.0" />
