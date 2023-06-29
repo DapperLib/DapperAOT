@@ -2,30 +2,30 @@
 file static class DapperTypeAccessorGeneratedInterceptors
 {
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Accessors\\Data\\Accessor.input.cs", 13, 26)]
-    public static ObjectAccessor<T> CreateReader<T>(T obj, [DapperAot] TypeAccessor<T>? accessor = null)
+    public static global::Dapper.ObjectAccessor<global::Foo.Customer> CreateAccessor(global::Foo.Customer obj, global::Dapper.TypeAccessor<global::Foo.Customer>? accessor = null)
     {
-        return DapperCustomTypeAccessor0.Instance;
+        return new global::Dapper.ObjectAccessor<global::Foo.Customer>(obj, accessor ?? DapperCustomTypeAccessor0.Instance);
     }
 
-    private sealed class DapperCustomTypeAccessor0 : global::Dapper.TypeAccessor<Foo.Customer>
+    private sealed class DapperCustomTypeAccessor0 : global::Dapper.TypeAccessor<global::Foo.Customer>
     {
         internal static readonly DapperCustomTypeAccessor0 Instance = new();
         public override int MemberCount => 3;
         public override int? TryIndex(string name, bool exact = false) => name switch
         {
-            nameof(Foo.Customer.X) => 0,
-            nameof(Foo.Customer.Y) => 1,
-            nameof(Foo.Customer.Z) => 2,
+            nameof(global::Foo.Customer.X) => 0,
+            nameof(global::Foo.Customer.Y) => 1,
+            nameof(global::Foo.Customer.Z) => 2,
             _ => base.TryIndex(name, exact)
         };
         public override string GetName(int index) => index switch
         {
-            0 => nameof(Foo.Customer.X),
-            1 => nameof(Foo.Customer.Y),
-            2 => nameof(Foo.Customer.Z),
+            0 => nameof(global::Foo.Customer.X),
+            1 => nameof(global::Foo.Customer.Y),
+            2 => nameof(global::Foo.Customer.Z),
             _ => base.GetName(index)
         };
-        public override object? this[Foo.Customer obj, int index]
+        public override object? this[global::Foo.Customer obj, int index]
         {
             get => index switch
             {
@@ -38,9 +38,9 @@ file static class DapperTypeAccessorGeneratedInterceptors
             {
                 switch (index)
                 {
-                    case 0: => obj.X = (int)value!; break;
-                    case 1: => obj.Y = (string)value!; break;
-                    case 2: => obj.Z = (double?)value!; break;
+                    case 0: obj.X = (int)value!; break;
+                    case 1: obj.Y = (string)value!; break;
+                    case 2: obj.Z = (double?)value!; break;
                     default: base[obj, index] = value; break;
                 };
             }
@@ -58,14 +58,14 @@ file static class DapperTypeAccessorGeneratedInterceptors
             2 => typeof(double?),
             _ => base.GetType(index)
         };
-        public override TValue GetValue<TValue>(Foo.Customer obj, int index) => index switch
+        public override TValue GetValue<TValue>(global::Foo.Customer obj, int index) => index switch
         {
             0 when typeof(TValue) == typeof(int) => UnsafePun<int, TValue>(obj.X),
             1 when typeof(TValue) == typeof(string) => UnsafePun<string, TValue>(obj.Y),
             2 when typeof(TValue) == typeof(double?) => UnsafePun<double?, TValue>(obj.Z),
             _ => base.GetValue<TValue>(obj, index)
         };
-        public override void SetValue<TValue>(Foo.Customer obj, int index, TValue value)
+        public override void SetValue<TValue>(global::Foo.Customer obj, int index, TValue value)
         {
             switch (index)
             {
@@ -85,4 +85,21 @@ file static class DapperTypeAccessorGeneratedInterceptors
 
     }
 
+}
+namespace System.Runtime.CompilerServices
+{
+    // this type is needed by the compiler to implement interceptors - it doesn't need to
+    // come from the runtime itself, though
+
+    [global::System.Diagnostics.Conditional("DEBUG")] // not needed post-build, so: evaporate
+    [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]
+    sealed file class InterceptsLocationAttribute : global::System.Attribute
+    {
+        public InterceptsLocationAttribute(string path, int lineNumber, int columnNumber)
+        {
+            _ = path;
+            _ = lineNumber;
+            _ = columnNumber;
+        }
+    }
 }

@@ -1,4 +1,5 @@
 ﻿using Dapper.CodeAnalysis.Abstractions;
+using Dapper.CodeAnalysis.Writers;
 using Dapper.Internal;
 using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
@@ -956,12 +957,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         sb.Outdent(); // ends our generated file-scoped class
 
-        // we need an accessible [InterceptsLocation] - if not; add our own in the generated code
-        var attrib = state.Compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute");
-        if (attrib is null || attrib.DeclaredAccessibility != Accessibility.Public)
-        {
-            sb.NewLine().Append(Resources.ReadString("Dapper.InterceptsLocationAttribute.cs"));
-        }
+        var interceptsLocationWriter = new InterceptorsLocationAttributeWriter(sb);
+        interceptsLocationWriter.Write(state.Compilation);
+
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, enabledCount, methodIndex, factories.Count(), readers.Count()));
     }

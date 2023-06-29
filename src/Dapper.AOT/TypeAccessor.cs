@@ -1,8 +1,13 @@
 ﻿using Dapper.Internal;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Data.Common;
+using System.Data;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace Dapper;
 
@@ -47,7 +52,11 @@ public readonly struct ObjectAccessor<T> // this is mostly a placeholder for the
     public bool IsNullable(int index) => accessor.IsNullable(index);
 }
 
-public abstract class TypeAccessor<T>
+/// <summary>
+/// 
+/// </summary>
+/// <typeparam name="T"></typeparam>
+public abstract partial class TypeAccessor<T> // contains only members to intercept
 {
     public virtual int? TryIndex(string name, bool exact = false) => null;
 

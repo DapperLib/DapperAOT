@@ -13,8 +13,8 @@ using Microsoft.CodeAnalysis.Text;
 using System.Text;
 using System.Diagnostics;
 using System.Collections.Generic;
-using System.Collections;
-using System.Reflection.Metadata.Ecma335;
+using Dapper.CodeAnalysis.Writers;
+using System.Runtime.CompilerServices;
 
 namespace Dapper.CodeAnalysis
 {
@@ -140,7 +140,7 @@ namespace Dapper.CodeAnalysis
                         continue;
                     }
 
-                    var typeSymbolName = typeSymbol!.ToDisplayString();
+                    var typeSymbolName = "global::" + typeSymbol!.ToDisplayString();
                     var members = ConstructTypeMembers(typeSymbol!);
                     if (members.Length == 0)
                     {
@@ -151,7 +151,7 @@ namespace Dapper.CodeAnalysis
                     foreach (var location in usages)
                     {
                         sb.WriteInterceptorsLocationAttribute(location);
-                        sb.WriteTypeAccessorCreateReaderMethod(typeCounter);
+                        sb.WriteTypeAccessorCreateReaderMethod(typeSymbolName, typeCounter);
                     }
 
                     var accessorSb = new CustomTypeAccessorClassCodeWriter(codeWriter);
@@ -176,6 +176,9 @@ namespace Dapper.CodeAnalysis
                     }
                 }
             });
+
+            var interceptsLocWriter = new InterceptorsLocationAttributeWriter(codeWriter);
+            interceptsLocWriter.Write(state.Compilation);
 
             context.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.GetSourceText());
         }
@@ -242,11 +245,15 @@ namespace Dapper.CodeAnalysis
                     .NewLine();
             }
 
-            public void WriteTypeAccessorCreateReaderMethod(int customTypeNum)
+            public void WriteTypeAccessorCreateReaderMethod(string userTypeName, int customTypeNum)
             {
-                _sb.Append("public static ObjectAccessor<T> CreateReader<T>(T obj, [DapperAot] TypeAccessor<T>? accessor = null)")
-                   .Indent().NewLine()
-                       .Append("return ").Append($"{GetCustomTypeAccessorClassName(customTypeNum)}.Instance").Append(";")
+                _sb.Append("public static global::Dapper.ObjectAccessor<").Append(userTypeName).Append("> ")
+                   .Append("CreateAccessor(").Append(userTypeName).Append(" obj, ")
+                   .Append("global::Dapper.TypeAccessor<").Append(userTypeName).Append(">? accessor = null)")
+                   .Indent().NewLine();
+
+                _sb.Append("return new global::Dapper.ObjectAccessor<").Append(userTypeName).Append(">")
+                   .Append("(obj, accessor ?? ").Append(GetCustomTypeAccessorClassName(customTypeNum)).Append(".Instance);")
                    .Outdent().NewLine().NewLine();
             }
 
@@ -322,7 +329,7 @@ namespace Dapper.CodeAnalysis
                    .Append("switch (index)").Indent().NewLine();
                 foreach (var member in members)
                 {
-                    _sb.Append("case ").Append(member.Number).Append(": => obj.")
+                    _sb.Append("case ").Append(member.Number).Append(": obj.")
                        .Append(member.Name).Append(" = (").Append(member.Type).Append(")value!; break;").NewLine();
                 }
                 _sb.Append("default: base[obj, index] = value; break;")

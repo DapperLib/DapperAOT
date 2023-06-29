@@ -34,6 +34,15 @@ internal static class TypeSymbolExtensions
         return null;
     }
 
+    public static string? GetUnderlyingEnumType(this ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is null) return null;
+        if (typeSymbol.SpecialType != SpecialType.System_Enum || typeSymbol.OriginalDefinition.SpecialType != SpecialType.System_Enum) return null;
+
+        // TODO
+        throw new System.NotImplementedException();
+    }
+
     /// <returns>
     /// True, if passed <param name="typeSymbol"/> is a primitive type like <see cref="int"/>, <see cref="bool"/>, <see cref="string"/>, <see cref="object"/>, etc.
     /// </returns>
