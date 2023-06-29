@@ -1,11 +1,27 @@
 ﻿namespace Dapper
 {
-    internal sealed class AotGridReader : global::Dapper.SqlMapper.GridReader
-    {
+    // these are DapperAOT library extensions that we can't implement this in DapperAOT itself because we don't have
+    // the library reference to Dapper (since we don't know whether the user is using "Dapper" vs "Dapper.StrongName")
+
+#if !DAPPERAOT_INTERNAL // used in integration tests
+    file
+#endif
+    sealed class AotWrappedDbDataReader : global::Dapper.WrappedDbDataReader, global::Dapper.IWrappedDataReader
+    {   // provides IWrappedDataReader support for WrappedDbDataReader, used via QueryMultiple and ExecuteReader
+        global::System.Data.IDataReader global::Dapper.IWrappedDataReader.Reader => Reader;
+        global::System.Data.IDbCommand global::Dapper.IWrappedDataReader.Command => Command;
+    }
+
+#if !DAPPERAOT_INTERNAL // used in integration tests
+    file
+#endif
+    sealed class AotGridReader : global::Dapper.SqlMapper.GridReader
+    {   // provides GridReader support, used via QueryMultiple
         public AotGridReader(
             global::System.Data.Common.DbDataReader reader,
             global::System.Threading.CancellationToken cancellationToken = default)
-            : base(null!, reader, null!, null, null, false, cancellationToken) { }
+            : base(reader is IWrappedDataReader wrapped ? wrapped.Command : null!, reader, null!, null, null, false, cancellationToken)
+        {}
 
         public T ReadSingle<T>(RowFactory<T> rowFactory) => ReadSingleRow(rowFactory, OneRowFlags.ThrowIfMultiple | OneRowFlags.ThrowIfNone)!;
         

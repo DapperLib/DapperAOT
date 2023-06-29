@@ -118,12 +118,21 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     /// Read the data as a <see cref="DbDataReader"/>
     /// </summary>
     public DbDataReader ExecuteReader(TArgs args, CommandBehavior behavior = CommandBehavior.Default)
+        => ExecuteReader<WrappedDbDataReader>(args, behavior);
+
+    /// <summary>
+    /// Read the data as a <see cref="DbDataReader"/>
+    /// </summary>
+    public DbDataReader ExecuteReader<TReader>(TArgs args, CommandBehavior behavior = CommandBehavior.Default)
+        where TReader : WrappedDbDataReader, new()
     {
         QueryState state = default;
         try
         {
             state.ExecuteReader(GetCommand(args), behavior);
-            return new WrappedReader<TArgs>(commandFactory, args, ref state);
+            var obj = new TReader();
+            obj.Initialize(commandFactory, args, ref state);
+            return obj;
         }
         finally
         {

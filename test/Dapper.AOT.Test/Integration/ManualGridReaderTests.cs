@@ -20,6 +20,7 @@ public class ManualGridReaderTests : IClassFixture<SqlClientFixture>
     public void VanillaUsage()
     {
         using var reader = Database.Connection.QueryMultiple(SQL);
+        Assert.NotNull(reader.Command);
         Assert.Equal(123, reader.ReadSingle<int>());
         Assert.Equal("abc", reader.ReadSingle<string>());
         Assert.Equal(new[] { null, "def", "ghi" }, reader.Read<string?>(buffered: true).ToArray());
@@ -31,7 +32,8 @@ public class ManualGridReaderTests : IClassFixture<SqlClientFixture>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments", Justification = "Clearer for test")]
     public void BasicUsage()
     {
-        using SqlMapper.GridReader reader = new AotGridReader(Database.Connection.Command<object?>(SQL).ExecuteReader(null));
+        using SqlMapper.GridReader reader = new AotGridReader(Database.Connection.Command<object?>(SQL).ExecuteReader<AotWrappedDbDataReader>(null));
+        Assert.NotNull(reader.Command);
         Assert.Equal(123, ((AotGridReader)reader).ReadSingle(RowFactory.Inbuilt.Value<int>()));
         Assert.Equal("abc", ((AotGridReader)reader).ReadSingle(RowFactory.Inbuilt.Value<string>()));
         Assert.Equal(new[] { null, "def", "ghi" }, ((AotGridReader)reader).Read(buffered: true, RowFactory.Inbuilt.Value<string>()).ToArray());
