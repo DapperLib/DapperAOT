@@ -71,7 +71,7 @@ public class QueryBenchmarks : IDisposable
     public async Task<int> DapperAotDynamicAsync() => (await connection.QueryAsync("select * from BenchmarkCustomers")).AsList().Count;
 
     [Benchmark, BenchmarkCategory("Async"), DapperAot, CacheCommand]
-    public async Task<int> DapperAotAsync() => (await connection.QueryAsync<Customer>("select * from BenchmarkCustomers")).AsList().Count;
+    public async Task<int> DapperAotAsync() => (await connection.QueryAsync<Customer>("select * from BenchmarkCustomers;")).AsList().Count;
 
     [Benchmark, BenchmarkCategory("Sync")]
     [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Needed for test")]

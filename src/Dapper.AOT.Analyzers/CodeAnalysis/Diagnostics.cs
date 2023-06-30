@@ -62,6 +62,10 @@ internal static class Diagnostics
             "The command has a query that will be ignored", Category.Sql, DiagnosticSeverity.Warning, true),
         QueryCommandMissingQuery = new("DAP026", "Query/scalar command lacks query",
             "The command lacks a query", Category.Sql, DiagnosticSeverity.Error, true),
+        UseSingleRowQuery = new("DAP027", "Use single-row query",
+            "Use {0}() instead of Query(...).{1}()", Category.Performance, DiagnosticSeverity.Warning, true),
+        UseQueryAsList = new("DAP028", "Use AsList instead of ToList",
+            "Use Query(...).AsList() instead of Query(...).ToList()", Category.Performance, DiagnosticSeverity.Warning, true),
 
     // TypeAccessor
         TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",
@@ -97,7 +101,13 @@ internal static class Diagnostics
         VariableAccessedBeforeDeclaration = new("DAP211", "Variable used before declared",
             "Variable {0} is accessed before it is declared (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
         ExecVariable = new("DAP212", "EXEC with composed SQL",
-            "EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql, taking care to fully parameterize the composed query (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
+            "EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql, taking care to fully parameterize the composed query (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+        VariableValueNotConsumed = new("DAP213", "Variable used before declared",
+            "Variable {0} has a value that is not consumed (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true),
+        VariableNotDeclared = new("DAP214", "Variable not declared",
+            "Variable {0} is not declared and no corresponding parameter exists (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
+        TableVariableOutputParameter = new("DAP215", "Variable used before declared",
+            "Table variable {0} cannot be used as an output parameter (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true);
 
 
     // be careful moving this because of static field initialization order
@@ -109,6 +119,7 @@ internal static class Diagnostics
     {
         public const string Library = nameof(Library);
         public const string Sql = nameof(Sql);
+        public const string Performance = nameof(Performance);
     }
 
     internal static void Add(ref object? diagnostics, Diagnostic diagnostic)

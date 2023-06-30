@@ -1,41 +1,44 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<TargetFrameworks>net6.0;net7.0;net48</TargetFrameworks>
-		<NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
-		<RootNamespace>Dapper.AOT.Test</RootNamespace>
-	</PropertyGroup>
-	<ItemGroup>
-		<Compile Remove="Interceptors/**/*.*.cs" />
-		<None Include="Interceptors/**/*.*" />
-		<None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
-
+    <PropertyGroup>
+        <TargetFrameworks>net6.0;net7.0;net48</TargetFrameworks>
+        <NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
+        <RootNamespace>Dapper.AOT.Test</RootNamespace>
+    </PropertyGroup>
+    <ItemGroup>
 		<Compile Remove="Accessors/Data/**/*.*.cs" />
 		<None Include="Accessors/Data/**/*.*" />
 		<None Update="Accessors/Data/**/*.*" CopyToOutputDirectory="PreserveNewest" />
 
-		<None Update="**/*.output.*">
-			<DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>
-		</None>
-	</ItemGroup>
-	<ItemGroup>
-		<PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
-		<PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
-		<PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net6.0'" />
-		<PackageReference Include="Microsoft.Build" VersionOverride="17.3.2" Condition="'$(TargetFramework)'=='net6.0'" />
-		<PackageReference Include="Microsoft.Build.Utilities.Core" />
-		<PackageReference Include="Oracle.ManagedDataAccess" Condition="'$(TargetFramework)'=='net48'" />
-		<PackageReference Include="Oracle.ManagedDataAccess.Core" Condition="'$(TargetFramework)'!='net48'" />
-		<PackageReference Include="System.Data.Common" />
-		<PackageReference Include="System.Data.SqlClient" />
-		<PackageReference Include="Microsoft.Data.SqlClient" />
-		<PackageReference Include="xunit" />
-		<PackageReference Include="xunit.runner.visualstudio">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
-		<PackageReference Include="Microsoft.NET.Test.Sdk" />
-		<ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
-		<ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
-	</ItemGroup>
+		<Compile Remove="Interceptors/**/*.*.cs" />
+        <None Include="Interceptors/**/*.*" />
+        <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
+		
+        <None Update="**/*.output.*">
+            <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>
+        </None>
+        <None Update="**/*.output.netfx.*">
+            <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output.netfx', '.input.cs'))</DependentUpon>
+        </None>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
+        <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
+        <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net6.0'" />
+        <PackageReference Include="Microsoft.Build" VersionOverride="17.3.2" Condition="'$(TargetFramework)'=='net6.0'" />
+        <PackageReference Include="Microsoft.Build.Utilities.Core" />
+        <PackageReference Include="Oracle.ManagedDataAccess" Condition="'$(TargetFramework)'=='net48'" />
+        <PackageReference Include="Oracle.ManagedDataAccess.Core" Condition="'$(TargetFramework)'!='net48'" />
+        <PackageReference Include="System.Data.Common" />
+        <PackageReference Include="System.Data.SqlClient" />
+        <PackageReference Include="Microsoft.Data.SqlClient" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
+        <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
+    </ItemGroup>
 </Project>

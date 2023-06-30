@@ -21,6 +21,7 @@
 
     <ItemGroup>
         <Compile Include="..\Dapper.AOT\Internal\StringHashing.cs" Link="Internal\StringHashing.cs" />
+        <Compile Include="..\Dapper.AOT\SqlSyntax.cs" Link="SqlSyntax.cs" />
     </ItemGroup>
 
     <ItemGroup>

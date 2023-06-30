@@ -15,7 +15,8 @@ public sealed partial class DapperInterceptorGenerator
         ITypeSymbol? parameterType,
         string map, bool cache,
         ImmutableArray<IParameterSymbol> methodParameters,
-        CommandFactoryState factories)
+        CommandFactoryState factories,
+        string? fixedSql)
     {
         if (!HasAny(flags, OperationFlags.Execute))
         {
@@ -43,14 +44,22 @@ public sealed partial class DapperInterceptorGenerator
             // return Command<type>(...).ExecuteAsync((cast)param, ...);
             bool isAsync = HasAny(flags, OperationFlags.Async);
             sb.Append("Execute").Append(isAsync ? "Async" : "").Append("(");
-            sb.Append("(").Append(castType).Append(")param").Append(");");
+            sb.Append("(").Append(castType).Append(")param!").Append(");");
             sb.NewLine().Outdent().NewLine().NewLine();
         }
 
         void WriteBatchCommandArguments(ITypeSymbol elementType)
         {
             // cnn, transaction, sql
-            sb.Append("(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", sql, ");
+            sb.Append("(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", ");
+            if (fixedSql is not null)
+            {
+                sb.AppendVerbatimLiteral(fixedSql).Append(", ");
+            }
+            else
+            {
+                sb.Append("sql, ");
+            }
 
             // commandType
             if (commandTypeMode == 0)

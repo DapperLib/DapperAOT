@@ -32,7 +32,8 @@ DAP023 | Sql | Warning | Diagnostics
 DAP024 | Sql | Warning | Diagnostics
 DAP025 | Sql | Warning | Diagnostics
 DAP026 | Sql | Error | Diagnostics
-DAP100 | // TODO add diagnostics
+DAP027 | Performance | Warning | Diagnostics
+DAP028 | Performance | Warning | Diagnostics
 DAP200 | Sql | Warning | Diagnostics
 DAP201 | Sql | Error | Diagnostics
 DAP202 | Sql | Error | Diagnostics
@@ -46,3 +47,6 @@ DAP209 | Sql | Error | Diagnostics
 DAP210 | Sql | Error | Diagnostics
 DAP211 | Sql | Error | Diagnostics
 DAP212 | Sql | Warning | Diagnostics
+DAP213 | Sql | Warning | Diagnostics
+DAP214 | Sql | Error | Diagnostics
+DAP215 | Sql | Warning | Diagnostics

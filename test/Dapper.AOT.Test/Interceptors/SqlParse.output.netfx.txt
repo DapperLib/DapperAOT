@@ -1,7 +1,7 @@
-Generator produced 29 diagnostics:
+Generator produced 50 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 9 of 9 enabled call-sites using 4 interceptors, 3 commands and 0 readers
+Dapper.AOT handled 10 of 12 enabled call-sites using 4 interceptors, 3 commands and 0 readers
 
 Error DAP206 Interceptors/SqlParse.input.cs L6 C18
 Incorrect syntax near as. (#46010 L1 C24)
@@ -9,11 +9,35 @@ Incorrect syntax near as. (#46010 L1 C24)
 Error DAP206 Interceptors/SqlParse.input.cs L6 C18
 Incorrect syntax near as. (#46010 L1 C24)
 
+Error DAP206 Interceptors/SqlParse.input.cs L6 C18
+Incorrect syntax near as. (#46010 L1 C24)
+
+Error DAP214 Interceptors/SqlParse.input.cs L12 C35
+Variable @Missing is not declared and no corresponding parameter exists (L3 C27)
+
+Error DAP214 Interceptors/SqlParse.input.cs L12 C35
+Variable @Missing is not declared and no corresponding parameter exists (L3 C27)
+
 Error DAP211 Interceptors/SqlParse.input.cs L18 C5
 Variable @id is accessed before it is declared (L1 C5)
 
 Error DAP211 Interceptors/SqlParse.input.cs L18 C5
 Variable @id is accessed before it is declared (L1 C5)
+
+Error DAP211 Interceptors/SqlParse.input.cs L18 C5
+Variable @id is accessed before it is declared (L1 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L18 C5
+Variable @id has a value that is not consumed (L1 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L18 C5
+Variable @id has a value that is not consumed (L1 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L18 C5
+Variable @id has a value that is not consumed (L1 C5)
+
+Error DAP202 Interceptors/SqlParse.input.cs L21 C9
+The variable @id is declared multiple times (L4 C9)
 
 Error DAP202 Interceptors/SqlParse.input.cs L21 C9
 The variable @id is declared multiple times (L4 C9)
@@ -27,11 +51,20 @@ Multiple batches are not permitted (L7 C1)
 Error DAP201 Interceptors/SqlParse.input.cs L24 C1
 Multiple batches are not permitted (L7 C1)
 
+Error DAP201 Interceptors/SqlParse.input.cs L24 C1
+Multiple batches are not permitted (L7 C1)
+
 Error DAP203 Interceptors/SqlParse.input.cs L24 C26
 @@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L7 C26)
 
 Error DAP203 Interceptors/SqlParse.input.cs L24 C26
 @@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L7 C26)
+
+Error DAP203 Interceptors/SqlParse.input.cs L24 C26
+@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L7 C26)
+
+Warning DAP205 Interceptors/SqlParse.input.cs L25 C38
+Literal null used in comparison; 'is null' or 'is not null' should be preferred (L8 C38)
 
 Warning DAP205 Interceptors/SqlParse.input.cs L25 C38
 Literal null used in comparison; 'is null' or 'is not null' should be preferred (L8 C38)
@@ -45,17 +78,17 @@ Literal null used in comparison; 'is null' or 'is not null' should be preferred 
 Warning DAP205 Interceptors/SqlParse.input.cs L25 C47
 Literal null used in comparison; 'is null' or 'is not null' should be preferred (L8 C47)
 
+Warning DAP205 Interceptors/SqlParse.input.cs L25 C47
+Literal null used in comparison; 'is null' or 'is not null' should be preferred (L8 C47)
+
+Error DAP209 Interceptors/SqlParse.input.cs L29 C15
+Table-variable @t is accessed before it populated (L12 C15)
+
 Error DAP209 Interceptors/SqlParse.input.cs L29 C15
 Table-variable @t is accessed before it populated (L12 C15)
 
 Error DAP209 Interceptors/SqlParse.input.cs L29 C15
 Table-variable @t is accessed before it populated (L12 C15)
-
-Error DAP208 Interceptors/SqlParse.input.cs L33 C5
-Table-variable @t is used like a scalar (L16 C5)
-
-Error DAP208 Interceptors/SqlParse.input.cs L33 C5
-Table-variable @t is used like a scalar (L16 C5)
 
 Error DAP210 Interceptors/SqlParse.input.cs L36 C8
 Variable @s is accessed before it is assigned a value (L19 C8)
@@ -63,45 +96,56 @@ Variable @s is accessed before it is assigned a value (L19 C8)
 Error DAP210 Interceptors/SqlParse.input.cs L36 C8
 Variable @s is accessed before it is assigned a value (L19 C8)
 
-Error DAP207 Interceptors/SqlParse.input.cs L40 C8
-Scalar variable @id is used like a table (L23 C8)
+Error DAP210 Interceptors/SqlParse.input.cs L36 C8
+Variable @s is accessed before it is assigned a value (L19 C8)
 
-Error DAP207 Interceptors/SqlParse.input.cs L40 C8
-Scalar variable @id is used like a table (L23 C8)
+Warning DAP213 Interceptors/SqlParse.input.cs L40 C8
+Variable @id has a value that is not consumed (L23 C8)
 
-Error DAP206 Interceptors/SqlParse.input.cs L42 C1
-Incorrect syntax near gibb. (#46010 L25 C1)
+Warning DAP213 Interceptors/SqlParse.input.cs L40 C8
+Variable @id has a value that is not consumed (L23 C8)
 
-Error DAP206 Interceptors/SqlParse.input.cs L42 C1
-Incorrect syntax near gibb. (#46010 L25 C1)
+Warning DAP213 Interceptors/SqlParse.input.cs L40 C8
+Variable @id has a value that is not consumed (L23 C8)
 
-Error DAP020 Interceptors/SqlParse.input.cs L50 C12
-No member could be found for the SQL parameter 'Missing' from type 'global::Foo.Customer'
+Warning DAP213 Interceptors/SqlParse.input.cs L45 C5
+Variable @id has a value that is not consumed (L28 C5)
 
-Warning DAP018 Interceptors/SqlParse.input.cs L52 C12
+Warning DAP213 Interceptors/SqlParse.input.cs L45 C5
+Variable @id has a value that is not consumed (L28 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L45 C5
+Variable @id has a value that is not consumed (L28 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L45 C5
+Variable @id has a value that is not consumed (L28 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L45 C5
+Variable @id has a value that is not consumed (L28 C5)
+
+Warning DAP213 Interceptors/SqlParse.input.cs L45 C5
+Variable @id has a value that is not consumed (L28 C5)
+
+Error DAP206 Interceptors/SqlParse.input.cs L47 C1
+Incorrect syntax near gibb. (#46010 L30 C1)
+
+Error DAP206 Interceptors/SqlParse.input.cs L47 C1
+Incorrect syntax near gibb. (#46010 L30 C1)
+
+Error DAP206 Interceptors/SqlParse.input.cs L47 C1
+Incorrect syntax near gibb. (#46010 L30 C1)
+
+Warning DAP018 Interceptors/SqlParse.input.cs L56 C12
 Parameters are being supplied, but no parameters were detected in the command
 
-Error DAP020 Interceptors/SqlParse.input.cs L58 C12
-No member could be found for the SQL parameter 'Missing' from type 'global::Foo.Customer'
+Info DAP015 Interceptors/SqlParse.input.cs L62 C12
+The parameter type could not be resolved
 
-Warning DAP018 Interceptors/SqlParse.input.cs L60 C12
+Info DAP015 Interceptors/SqlParse.input.cs L64 C12
+The parameter type could not be resolved
+
+Warning DAP018 Interceptors/SqlParse.input.cs L64 C12
 Parameters are being supplied, but no parameters were detected in the command
-Output code has 6 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
 
-Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L30 C190
-Converting null literal or possible null value to non-nullable type.
-
-Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L30 C190
-Possible null reference argument for parameter 'args' in 'int Command<Customer>.Execute(Customer args)'.
-
-Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L44 C190
-Converting null literal or possible null value to non-nullable type.
-
-Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L44 C190
-Possible null reference argument for parameter 'args' in 'int Command<object>.Execute(object args)'.
-
-Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L58 C190
-Converting null literal or possible null value to non-nullable type.
-
-Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L58 C190
-Possible null reference argument for parameter 'args' in 'int Command<Customer>.Execute(Customer args)'.
+Warning DAP018 Interceptors/SqlParse.input.cs L84 C12
+Parameters are being supplied, but no parameters were detected in the command

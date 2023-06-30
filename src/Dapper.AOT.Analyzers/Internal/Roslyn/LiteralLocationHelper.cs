@@ -22,21 +22,19 @@ internal static class LiteralLocationHelper
 
             switch (token.Kind())
             {
+                case SyntaxKind.StringLiteralToken when token.IsVerbatimStringLiteral():
+                    s = text.AsSpan().Slice(2); // take off the @"
+                    skip = 2 + SkipLines(ref s, location.Line - 1);
+                    skip += SkipVerbatimStringCharacters(ref s, location.Column - 1);
+                    take = SkipVerbatimStringCharacters(ref s, location.Length);
+                    break;
                 case SyntaxKind.StringLiteralToken:
-                    if (token.IsVerbatimStringLiteral())
-                    {
-                        s = text.AsSpan().Slice(2); // take off the @"
-                        skip = 2 + SkipLines(ref s, location.Line - 1);
-                        skip += SkipVerbatimStringCharacters(ref s, location.Column - 1);
-                        take = SkipVerbatimStringCharacters(ref s, location.Length);
-                    }
-                    else
-                    {
-                        s = text.AsSpan().Slice(1); // take off the "
-                        skip = 1 + SkipLines(ref s, location.Line - 1);
-                        skip += SkipEscapedStringCharacters(ref s, location.Column - 1);
-                        take = SkipEscapedStringCharacters(ref s, location.Length);
-                    }
+                    s = text.AsSpan().Slice(1); // take off the "
+                    skip = 1;
+                    // if line 1: can just use Column - otherwise input might have \r\n, or \xd\xa, or
+                    // a range of other things; use Offset
+                    skip += SkipEscapedStringCharacters(ref s, (location.Line == 1 ? location.Column : location.Offset) - 1);
+                    take = SkipEscapedStringCharacters(ref s, location.Length);
                     break;
                 case SyntaxKind.SingleLineRawStringLiteralToken when location.Line == 1:
                     // no escape sequences; just need to skip the preamble """ etc

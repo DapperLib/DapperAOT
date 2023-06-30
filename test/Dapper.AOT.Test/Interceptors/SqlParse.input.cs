@@ -15,7 +15,7 @@ public static class Foo
         """;
 
     const string AllTheFail = """
-set @id = 3; -- 211
+set @id = 3; -- 211, 213
 declare @id int = 1;
 
 declare @id int = 1; -- 202
@@ -39,8 +39,12 @@ select @s -- should be fine
 
 insert @id (id) values (4) -- 207
 
-gibb!eri -- 206
+select @id; -- should be fine, and marks id as consumed
 
+set @id = 16; -- marks id as unconsumed
+set @id = 17; -- should flag L45 as redundant, and should be flagged as redundant on exit
+
+gibb!eri -- 206
 """;
     // expect these to detect invalid SQL and that 'Missing' is not bound
     static void SystemData(System.Data.SqlClient.SqlConnection db, Customer customer)
@@ -51,7 +55,7 @@ gibb!eri -- 206
 
         db.Execute(AllTheFail, customer);
     }
-    static void MicrosoftData(Microsoft.Data.SqlClient.SqlConnection db, Customer customer)
+    static void MicrosoftDataUntypedArgs(Microsoft.Data.SqlClient.SqlConnection db, object customer)
     {
         db.Execute(BadSql);
 
@@ -59,8 +63,19 @@ gibb!eri -- 206
 
         db.Execute(AllTheFail, customer);
     }
-    // don't expect this to be found
-    static void GeneralDatabase(System.Data.Common.DbConnection db, Customer customer)
+    // expect this to have limited detection
+    static void GeneralDatabaseUntypedArgs(System.Data.Common.DbConnection db, Customer customer)
+    {
+        db.Execute(BadSql);
+
+        db.Execute(InsertSql, customer);
+
+        db.Execute(AllTheFail, customer);
+    }
+
+    // treat like SQL Server
+    [SqlSyntax(SqlSyntax.SqlServer)]
+    static void GeneralDatabaseUntypedArgsWithHint(System.Data.Common.DbConnection db, Customer customer)
     {
         db.Execute(BadSql);
 

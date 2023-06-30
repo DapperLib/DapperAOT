@@ -53,22 +53,3 @@ Tuple-type parameters are not currently supported
 
 Warning DAP011 Interceptors/MiscDiagnostics.input.cs L128 C20
 Dapper (original) does not support tuple results with bind-by-name semantics
-Output code has 6 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
-
-Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L51 C201
-Converting null literal or possible null value to non-nullable type.
-
-Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L51 C201
-Possible null reference argument for parameter 'args' in 'int Command<SomePublicType>.Execute(SomePublicType args)'.
-
-Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L78 C201
-Converting null literal or possible null value to non-nullable type.
-
-Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L78 C201
-Possible null reference argument for parameter 'args' in 'int Command<SomeInternalType>.Execute(SomeInternalType args)'.
-
-Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L105 C201
-Converting null literal or possible null value to non-nullable type.
-
-Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L105 C201
-Possible null reference argument for parameter 'args' in 'int Command<SomeProtectedInternalType>.Execute(SomeProtectedInternalType args)'.

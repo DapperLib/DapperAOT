@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -27,7 +28,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     /// <summary>
     /// Provide log feedback.
     /// </summary>
-    public event Action<DiagnosticSeverity, string>? Log;
+    public event Action<string>? Log;
 
     /// <inheritdoc />
     public override void Initialize(IncrementalGeneratorInitializationContext context)
@@ -86,7 +87,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         // check whether we can use this method
         object? diagnostics = null;
-        if (Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out _, cancellationToken))
+        bool dapperEnabled = Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out _, cancellationToken);
+        if (dapperEnabled)
         {
             if (methodKind == DapperMethodKind.DapperUnsupported)
             {
@@ -119,75 +121,87 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         string? sql = null;
         SyntaxNode? sqlSyntax = null;
         bool? buffered = null;
-        if (!HasAny(flags, OperationFlags.DoNotGenerate))
+
+        // check the args
+        foreach (var arg in op.Arguments)
         {
-            foreach (var arg in op.Arguments)
+            switch (arg.Parameter?.Name)
             {
-                switch (arg.Parameter?.Name)
-                {
-                    case "sql":
-                        if (TryGetConstantValueWithSyntax(arg, out string? s, out sqlSyntax))
+                case "sql":
+                    if (TryGetConstantValueWithSyntax(arg, out string? s, out sqlSyntax))
+                    {
+                        sql = s;
+                    }
+                    break;
+                case "buffered":
+                    if (TryGetConstantValue(arg, out bool b))
+                    {
+                        buffered = b;
+                    }
+                    break;
+                case "param":
+                    if (arg.Value is not IDefaultValueOperation)
+                    {
+                        var expr = arg.Value;
+                        if (expr is IConversionOperation conv && expr.Type?.SpecialType == SpecialType.System_Object)
                         {
-                            sql = s;
+                            expr = conv.Operand;
                         }
-                        break;
-                    case "buffered":
-                        if (TryGetConstantValue(arg, out bool b))
+                        paramType = expr?.Type;
+                        flags |= OperationFlags.HasParameters;
+                    }
+                    break;
+                case "cnn":
+                case "commandTimeout":
+                case "transaction":
+                    // nothing to do
+                    break;
+                case "commandType":
+                    if (TryGetConstantValue(arg, out int? ct))
+                    {
+                        switch (ct)
                         {
-                            buffered = b;
-                        }
-                        break;
-                    case "param":
-                        if (arg.Value is not IDefaultValueOperation)
-                        {
-                            var expr = arg.Value;
-                            if (expr is IConversionOperation conv && expr.Type?.SpecialType == SpecialType.System_Object)
-                            {
-                                expr = conv.Operand;
-                            }
-                            paramType = expr?.Type;
-                            flags |= OperationFlags.HasParameters;
-                        }
-                        break;
-                    case "cnn":
-                    case "commandTimeout":
-                    case "transaction":
-                        // nothing to do
-                        break;
-                    case "commandType":
-                        if (TryGetConstantValue(arg, out int? ct))
-                        {
-                            switch (ct)
-                            {
-                                case null when !string.IsNullOrWhiteSpace(sql):
-                                    // if no spaces: interpret as stored proc, else: text
-                                    flags |= sql!.Trim().IndexOf(' ') < 0 ? OperationFlags.StoredProcedure : OperationFlags.Text;
-                                    break;
-                                case null:
-                                    break; // flexible
-                                case 1:
-                                    flags |= OperationFlags.Text;
-                                    break;
-                                case 4:
-                                    flags |= OperationFlags.StoredProcedure;
-                                    break;
-                                case 512:
-                                    flags |= OperationFlags.TableDirect;
-                                    break;
-                                default:
-                                    flags |= OperationFlags.DoNotGenerate;
+                            case null when !string.IsNullOrWhiteSpace(sql):
+                                // if no spaces: interpret as stored proc, else: text
+                                flags |= sql!.Trim().IndexOf(' ') < 0 ? OperationFlags.StoredProcedure : OperationFlags.Text;
+                                break;
+                            case null:
+                                break; // flexible
+                            case 1:
+                                flags |= OperationFlags.Text;
+                                break;
+                            case 4:
+                                flags |= OperationFlags.StoredProcedure;
+                                break;
+                            case 512:
+                                flags |= OperationFlags.TableDirect;
+                                break;
+                            default:
+                                flags |= OperationFlags.DoNotGenerate;
+                                if (dapperEnabled)
+                                {
                                     Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedCommandType, arg.Syntax.GetLocation()));
-                                    break;
-                            }
+                                }
+                                break;
                         }
-                        break;
-                    default:
+                    }
+                    break;
+                default:
+                    if (dapperEnabled && !HasAny(flags, OperationFlags.DoNotGenerate))
+                    {
                         flags |= OperationFlags.DoNotGenerate;
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedArgument, arg.Syntax.GetLocation(), arg.Parameter?.Name));
-                        break;
-                }
+                    }
+                    break;
             }
         }
+
+        if (!string.IsNullOrWhiteSpace(sql) && HasAny(flags, OperationFlags.Text)
+            && Inspection.IsEnabled(ctx, op, Types.IncludeLocationAttribute, out _, cancellationToken))
+        {
+            flags |= OperationFlags.IncludeLocation;
+        }
+
         if (HasAny(flags, OperationFlags.Query) && buffered.HasValue)
         {
             flags |= buffered.GetValueOrDefault() ? OperationFlags.Buffered : OperationFlags.Unbuffered;
@@ -284,7 +298,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
         }
 
-        var parameterMap = BuildParameterMap(op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags);
+        // perform SQL inspection
+        var parameterMap = BuildParameterMap(ctx, op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags, cancellationToken);
 
         // if we have a good parser *and* the SQL isn't borked: check for obvious query/exec mismatch
         if ((parseFlags & (ParseFlags.Reliable | ParseFlags.SyntaxError)) == ParseFlags.Reliable)
@@ -320,6 +335,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             if (!canBeCached) flags &= ~OperationFlags.CacheCommand;
         }
+
+        CheckCallValidity(op, flags, ref diagnostics);
+
         return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, diagnostics);
 
         //static bool HasDiagnostic(object? diagnostics, DiagnosticDescriptor diagnostic)
@@ -398,13 +416,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return false;
         }
 
-        static string BuildParameterMap(IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags)
+        static string BuildParameterMap(in GeneratorSyntaxContext ctx, IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags, CancellationToken cancellationToken)
         {
-            if (HasAny(flags, OperationFlags.DoNotGenerate))
-            {
-                parseFlags = ParseFlags.MaybeQuery;
-                return "";
-            }
             // if command-type is known statically to be stored procedure etc: pass everything
             if (HasAny(flags, OperationFlags.StoredProcedure | OperationFlags.TableDirect))
             {
@@ -418,13 +431,19 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 return HasAny(flags, OperationFlags.HasParameters) ? "?" : "";
             }
 
+            // check the arg type
+            if (!Inspection.IsCollectionType(parameterType, out var elementType))
+            {
+                elementType = parameterType;
+            }
+
             // so: we know statically that we have known command-text
             // first, try try to find any parameters
             ImmutableHashSet<string> paramNames;
-            switch (IdentifySqlSyntax(op, out bool caseSensitive))
+            switch (IdentifySqlSyntax(ctx, op, out bool caseSensitive, cancellationToken))
             {
-                case SqlSyntax.TransactSql:
-                    var proc = new DiagnosticTSqlProcessor(caseSensitive, diagnostics, loc, sqlSyntax);
+                case SqlSyntax.SqlServer:
+                    var proc = new DiagnosticTSqlProcessor(elementType, caseSensitive, diagnostics, loc, sqlSyntax);
                     try
                     {
                         proc.Execute(sql!);
@@ -456,12 +475,15 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
 
             // so, we definitely detect parameters (note: don't warn just for return)
-            if (!HasAny(flags, OperationFlags.HasParameters) && !paramNames.IsEmpty)
+            if (!HasAny(flags, OperationFlags.HasParameters))
             {
-                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
+                if (!paramNames.IsEmpty)
+                {
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
+                }
                 return "";
             }
-            if (parameterType is null)
+            if (HasAny(flags, OperationFlags.HasParameters) && Inspection.IsMissingOrObjectOrDynamic(elementType))
             {
                 // unknown parameter type; defer decision
                 return "?";
@@ -469,14 +491,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             // ok, so the SQL is using parameters; check what we have
             var memberDbToCodeNames = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
-            if (!Inspection.IsCollectionType(parameterType, out var elementType))
-            {
-                elementType = parameterType;
-            }
-            if (elementType is null)
-            {
-                return "";
-            }
 
             string? returnCodeMember = null, rowCountMember = null;
             foreach (var member in Inspection.GetMembers(elementType))
@@ -545,42 +559,108 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private enum SqlSyntax
+    private void CheckCallValidity(IInvocationOperation op, OperationFlags flags, ref object? diagnostics)
     {
-        General = 0,
-        TransactSql = 1,
-    }
-    private static SqlSyntax IdentifySqlSyntax(IInvocationOperation op, out bool caseSensitive)
-    {
-        caseSensitive = false;
-        if (op.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0 } type)
-        {
-            if (type is
+        if (HasAny(flags, OperationFlags.Query) && !HasAny(flags, OperationFlags.SingleRow)
+            && op.Parent is IArgumentOperation arg
+            && arg.Parent is IInvocationOperation parent && parent.TargetMethod is
+            {
+                IsExtensionMethod: true,
+                Parameters.Length: 1, Arity: 1, ContainingType:
                 {
-                    Name: "SqlConnection", ContainingType: null,
+                    Name: nameof(Enumerable),
+                    ContainingType: null,
                     ContainingNamespace:
                     {
-                        Name: "SqlClient",
+                        Name: "Linq",
                         ContainingNamespace:
                         {
-                            Name: "Data",
-                            ContainingNamespace:
-                            {
-                                Name: "System" or "Microsoft",
-                                ContainingNamespace.IsGlobalNamespace: true
-                            }
+                            Name: "System",
+                            ContainingNamespace.IsGlobalNamespace: true
                         }
                     }
-                })
+                }
+            } target)
+        {
+            string? preferred = parent.TargetMethod.Name switch
             {
-                return SqlSyntax.TransactSql;
+                nameof(Enumerable.First) => "Query" + nameof(Enumerable.First),
+                nameof(Enumerable.Single) => "Query" + nameof(Enumerable.Single),
+                nameof(Enumerable.FirstOrDefault) => "Query" + nameof(Enumerable.FirstOrDefault),
+                nameof(Enumerable.SingleOrDefault) => "Query" + nameof(Enumerable.SingleOrDefault),
+                _ => null,
+            };
+            if (preferred is not null)
+            {
+                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UseSingleRowQuery, parent.Syntax.GetLocation(), preferred, parent.TargetMethod.Name));
+            }
+            else if (parent.TargetMethod.Name == nameof(Enumerable.ToList))
+            {
+                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UseQueryAsList, parent.Syntax.GetLocation()));
+            }
+        }
+    }
+
+    private static SqlSyntax IdentifySqlSyntax(in GeneratorSyntaxContext ctx, IInvocationOperation op, out bool caseSensitive,
+        CancellationToken cancellationToken)
+    {
+        caseSensitive = false;
+        if (op.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
+        {
+            var ns = type.ContainingNamespace;
+            foreach (var candidate in KnownConnectionTypes)
+            {
+                var current = ns;
+                if (type.Name == candidate.Connection
+                    && AssertAndAscend(ref current, candidate.Namespace0)
+                    && AssertAndAscend(ref current, candidate.Namespace1)
+                    && AssertAndAscend(ref current, candidate.Namespace2))
+                {
+                    return candidate.Syntax;
+                }
             }
         }
 
-        // TODO : attribute mechanism
+        // get fom [SqlSyntax(...)] hint
+        var attrib = Inspection.GetClosestDapperAttribute(ctx, op, Types.SqlSyntaxAttribute, cancellationToken);
+        if (attrib is not null && attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i)
+        {
+            return (SqlSyntax)i;
+        }
 
         return SqlSyntax.General;
+
+        static bool AssertAndAscend(ref INamespaceSymbol ns, string? expected)
+        {
+            if (expected is null)
+            {
+                return ns.IsGlobalNamespace;
+            }
+            else
+            {
+                if (ns.Name == expected)
+                {
+                    ns = ns.ContainingNamespace;
+                    return true;
+                }
+                return false;
+            }
+        }
     }
+
+    private static readonly ImmutableArray<(string? Namespace2, string? Namespace1, string Namespace0, string Connection, SqlSyntax Syntax)> KnownConnectionTypes = new[]
+    {
+        ("System", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
+        ("Microsoft", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
+
+        (null, null, "Npgsql", "NpgsqlConnection", SqlSyntax.PostgreSql),
+
+        ("MySql", "Data", "MySqlClient", "MySqlConnection", SqlSyntax.MySql),
+
+        ("Oracle", "DataAccess", "Client", "OracleConnection", SqlSyntax.Oracle),
+
+        ("Microsoft", "Data", "Sqlite", "SqliteConnection", SqlSyntax.SQLite),
+    }.ToImmutableArray();
 
     enum DapperMethodKind
     {
@@ -674,6 +754,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         BindTupleResultByName = 1 << 16,
         BindTupleParameterByName = 1 << 17,
         CacheCommand = 1 << 18,
+        IncludeLocation = 1 << 19, // include -- SomeFile.cs#40 when possible
     }
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
@@ -873,7 +954,20 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             // assertions
             var commandTypeMode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
             var methodParameters = grp.Key.Method.Parameters;
-            sb.Append("global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));").NewLine();
+            string? fixedSql = null;
+            if (HasAny(flags, OperationFlags.IncludeLocation))
+            {
+                var origin = grp.Single();
+                fixedSql = origin.Sql; // expect exactly one SQL
+                sb.Append("global::System.Diagnostics.Debug.Assert(sql == ")
+                    .AppendVerbatimLiteral(fixedSql).Append(");").NewLine();
+                var path = origin.Location.GetMappedLineSpan();
+                fixedSql = $"-- {path.Path}#{path.StartLinePosition.Line + 1}\r\n{fixedSql}";
+            }
+            else
+            {
+                sb.Append("global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));").NewLine();
+            }
             if (HasParam(methodParameters, "commandType"))
             {
                 if (commandTypeMode != 0)
@@ -890,9 +984,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
-            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories))
+            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql))
             {
-                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers);
+                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql);
             }
         }
 
@@ -1563,7 +1657,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         };
 
         public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) Group()
-            => new(Flags, Method, ParameterType, ParameterMap, (Flags & OperationFlags.CacheCommand) == 0 ? null : Location);
+            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location);
     }
     private sealed class CommonComparer : LocationComparer, IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation)>
     {

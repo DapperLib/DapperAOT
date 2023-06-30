@@ -2,6 +2,7 @@
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 
@@ -16,11 +17,14 @@ internal class TSqlProcessor
         NoValue = 1 << 0,
         Parameter = 1 << 1,
         Table = 1 << 2,
+        Unconsumed = 1 << 3,
+        OutputParameter = 1 << 4,
     }
-    private readonly VariableTrackingVisitor visitor;
+    private readonly VariableTrackingVisitor _visitor;
+    protected bool CaseSensitive => _visitor.CaseSensitive;
     public TSqlProcessor(bool caseSensitive = false, Action<string>? log = null)
     {
-        visitor = log is null ? new VariableTrackingVisitor(caseSensitive, this) : new LoggingVariableTrackingVisitor(caseSensitive, this, log);
+        _visitor = log is null ? new VariableTrackingVisitor(caseSensitive, this) : new LoggingVariableTrackingVisitor(caseSensitive, this, log);
     }
     public virtual bool Execute(string sql)
     {
@@ -39,17 +43,24 @@ internal class TSqlProcessor
                 }
             }
         }
-        tree.Accept(visitor);
+        tree.Accept(_visitor);
+        foreach (var variable in _visitor.Variables)
+        {
+            if (variable.IsUnconsumed && !variable.IsTable && !variable.IsOutputParameter)
+            {
+                if (_visitor.AssignmentTracking) OnVariableValueNotConsumed(variable);
+            }
+        }
         return true;
     }
 
-    public IEnumerable<Variable> Variables => visitor.Variables;
+    public IEnumerable<Variable> Variables => _visitor.Variables;
 
     public ParseFlags Flags { get; private set; }
     public virtual void Reset()
     {
         Flags = ParseFlags.Reliable;
-        visitor.Reset();
+        _visitor.Reset();
     }
 
     protected virtual void OnError(string error, in Location location) { }
@@ -60,8 +71,14 @@ internal class TSqlProcessor
     protected virtual void OnVariableAccessedBeforeDeclaration(Variable variable)
         => OnError($"Variable {variable.Name} accessed before declaration", variable.Location);
 
+    protected virtual void OnVariableValueNotConsumed(Variable variable)
+        => OnError($"Variable {variable.Name} has a value that is not consumed", variable.Location);
+
     protected virtual void OnVariableAccessedBeforeAssignment(Variable variable)
         => OnError($"Variable {variable.Name} accessed before being {(variable.IsTable ? "populated" : "assigned")}", variable.Location);
+
+    protected virtual void OnVariableNotDeclared(Variable variable)
+        => OnError($"Variable {variable.Name} is not declared and no corresponding parameter exists", variable.Location);
 
     protected virtual void OnDuplicateVariableDeclaration(Variable variable)
         => OnError($"Variable {variable.Name} is declared multiple times", variable.Location);
@@ -86,6 +103,9 @@ internal class TSqlProcessor
 
     protected virtual void OnExecVariable(Location location)
         => OnError($"EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters", location);
+
+    protected virtual void OnTableVariableOutputParameter(Variable variable)
+        => OnError($"Table variable {variable.Name} cannot be used as an output parameter", variable.Location);
 
     internal readonly struct Location
     {
@@ -120,7 +140,9 @@ internal class TSqlProcessor
 
         public bool IsTable => (Flags & VariableFlags.Table) != 0;
         public bool NoValue => (Flags & VariableFlags.NoValue) != 0;
+        public bool IsUnconsumed => (Flags & VariableFlags.Unconsumed) != 0;
         public bool IsParameter => (Flags & VariableFlags.Parameter) != 0;
+        public bool IsOutputParameter => (Flags & VariableFlags.OutputParameter) != 0;
 
         public Variable(Identifier identifier, VariableFlags flags)
         {
@@ -146,10 +168,11 @@ internal class TSqlProcessor
             Location = location;
         }
 
-        public Variable WithValue() => new(in this, Flags & ~VariableFlags.NoValue);
+        public Variable WithConsumed() => new(in this, (Flags & ~VariableFlags.Unconsumed));
+        public Variable WithUnconsumedValue() => new(in this, (Flags & ~VariableFlags.NoValue) | VariableFlags.Unconsumed);
         public Variable WithFlags(VariableFlags flags) => new(in this, flags);
 
-        internal Variable WithLocation(VariableReference node) => new(in this, new Location(node));
+        public Variable WithLocation(TSqlFragment node) => new(in this, new Location(node));
     }
     class LoggingVariableTrackingVisitor : VariableTrackingVisitor
     {
@@ -208,7 +231,7 @@ internal class TSqlProcessor
         //
         // - if you need to add some side-effect *before or after* the standard processing, you can override
         //   ExplicitVisit chaining base.ExplicitVisit, adding your logic; ExecuteParameter "output" params
-        //   (marking them as assigned so we don't report them as errors) is an exmaple
+        //   (marking them as assigned so we don't report them as errors) is an example
         //
         // - if you need to *change the order of evaluation*, bypass nodes, etc; then you will need to
         //   override ExplicitVisit, but look at what node.AcceptChildren does; be sure to call
@@ -222,14 +245,18 @@ internal class TSqlProcessor
             this.parser = parser;
         }
 
+        public bool CaseSensitive => ReferenceEquals(variables.Comparer, StringComparer.Ordinal);
+
         private readonly Dictionary<string, Variable> variables;
         private int batchCount;
         private readonly TSqlProcessor parser;
+        public bool AssignmentTracking { get; private set; }
 
         public IEnumerable<Variable> Variables => variables.Values;
 
         public virtual void Reset()
         {
+            AssignmentTracking = true;
             variables.Clear();
             batchCount = 0;
         }
@@ -252,7 +279,7 @@ internal class TSqlProcessor
                     // we previously assumed it was a parameter, but actually it was accessed before declaration
                     variables[variable.Name] = existing.WithFlags(variable.Flags);
                     // but the *original* one was accessed invalidly
-                    parser.OnVariableAccessedBeforeDeclaration(existing);
+                    if (AssignmentTracking) parser.OnVariableAccessedBeforeDeclaration(existing);
                 }
                 else
                 {
@@ -282,7 +309,10 @@ internal class TSqlProcessor
             {
                 node.Value.Accept(this);
                 // mark assigned
-                if (name is not null) variables[name] = variables[name].WithValue();
+                if (name is not null)
+                {
+                    variables[name] = variables[name].WithUnconsumedValue();
+                }
             }
         }
 
@@ -327,7 +357,7 @@ internal class TSqlProcessor
             if (node.Variable is not null)
             {
                 MarkAssigned(node.Variable, false);
-                node.Variable.Accept(this);
+                // but don't actually visit
             }
         }
 
@@ -343,13 +373,43 @@ internal class TSqlProcessor
             }
             base.Visit(node);
         }
-        
+
+        public override void ExplicitVisit(QuerySpecification node)
+        {
+            base.ExplicitVisit(node);
+            foreach (var el in node.SelectElements)
+            {
+                if (el is SelectSetVariable setVar && setVar.Variable is not null)
+                {
+                    // assign *after* the select
+                    MarkAssigned(setVar.Variable, false);
+                }
+            }
+        }
+
         public override void ExplicitVisit(SelectSetVariable node)
         {
             Visit(node);
             node.Expression?.Accept(this);
-            MarkAssigned(node.Variable, false);
-            node.Variable?.Accept(this);
+            // but don't visit variable - we'll do that in QuerySpecification
+        }
+
+        public override void ExplicitVisit(GoToStatement node)
+        {
+            AssignmentTracking = false; // give up
+            base.ExplicitVisit(node);
+        }
+
+        public override void ExplicitVisit(IfStatement node)
+        {
+            AssignmentTracking = false; // give up
+            base.ExplicitVisit(node);
+        }
+
+        public override void ExplicitVisit(WhileStatement node)
+        {
+            AssignmentTracking = false; // give up
+            base.ExplicitVisit(node);
         }
 
         public override void Visit(DeclareTableVariableBody node)
@@ -413,22 +473,35 @@ internal class TSqlProcessor
             if (node.Variable is not null)
             {
                 MarkAssigned(node.Variable, false);
-                node.Variable.Accept(this);
+                // but don't visit
             }
+            // mark any output parameters as assigned
+            if (node.ExecutableEntity is not null)
+            {
+                foreach (var p in node.ExecutableEntity.Parameters)
+                {
+                    if (p.IsOutput && p.ParameterValue is VariableReference variable)
+                    {
+                        MarkAssigned(variable, false);
+                    }
+                }
+            }
+
         }
 
         public override void ExplicitVisit(ExecuteParameter node)
         {
-            // it is *NOT* an accident that we don't call Visit here, since
-            // we're (unusually) using base.ExplicitVisit
-
-            if (node.IsOutput && node.ParameterValue is VariableReference variable)
+            Visit(node);
+            // node.Variable?.Accept(this); // this isn't our variable; don't demand it exists
+            if (node.IsOutput && node.ParameterValue is VariableReference)
             {
-                // don't demand a value before, so: just mark it assigned
-                MarkAssigned(variable, false);
+                // don't visit - we don't demand a value before
             }
-            // don't need to change anything else
-            base.ExplicitVisit(node);
+            else
+            {
+                // default handling
+                node.ParameterValue?.Accept(this);
+            }
         }
 
         public override void ExplicitVisit(InsertSpecification node)
@@ -444,9 +517,13 @@ internal class TSqlProcessor
             }
             if (node.Target is VariableTableReference variable)
             {
-                MarkAssigned(variable.Variable, true);
+                MarkAssigned(variable.Variable, true); // note we're effectively after insert-source, so: fine
+                // but don't visit
             }
-            node.Target?.Accept(this);
+            else
+            {
+                node.Target?.Accept(this);
+            }
         }
         public override void Visit(GlobalVariableExpression node)
         {
@@ -465,16 +542,18 @@ internal class TSqlProcessor
         {
             if (variables.TryGetValue(node.Name, out var existing))
             {
+                var blame = existing.WithLocation(node);
                 if (mark)
                 {
-                    if (existing.NoValue)
+                    if (existing.IsUnconsumed && !existing.IsTable)
                     {
-                        variables[node.Name] = existing.WithValue();
+                        if (AssignmentTracking) parser.OnVariableValueNotConsumed(blame);
                     }
+                    // mark as has value + unconsumed
+                    variables[node.Name] = existing.WithUnconsumedValue().WithLocation(node);
                 }
                 else
                 {
-                    var blame = existing.WithLocation(node);
                     if (existing.IsTable != isTable)
                     {
                         if (existing.IsTable)
@@ -488,14 +567,53 @@ internal class TSqlProcessor
                     }
                     if (existing.NoValue)
                     {
-                        parser.OnVariableAccessedBeforeAssignment(blame);
+                        if (AssignmentTracking) parser.OnVariableAccessedBeforeAssignment(blame);
+                    }
+                    else if (existing.IsUnconsumed)
+                    {
+                        variables[node.Name] = existing.WithConsumed();
                     }
                 }
             }
             else
             {
-                // assume it is a parameter with a value (we'll catch any later definition separately)
-                OnDeclare(new(node, VariableFlags.Parameter | (isTable ? VariableFlags.Table : VariableFlags.None)));
+                var flags = VariableFlags.Parameter | (isTable ? VariableFlags.Table : VariableFlags.None);
+
+                if (parser.TryGetParameter(node.Name, out var direction) && direction != ParameterDirection.ReturnValue)
+                {
+                    switch (direction)
+                    {
+                        case ParameterDirection.Output:
+                        case ParameterDirection.InputOutput:
+                            flags |= VariableFlags.OutputParameter;
+                            break;
+                    }
+
+                    if (mark && !isTable) flags |= VariableFlags.Unconsumed;
+
+                    var variable = new Variable(node, flags);
+                    OnDeclare(variable);
+
+                    if (!mark && direction == ParameterDirection.Output)
+                    {
+                        // pure output param, and first time we're seeing it is a read: that's not right
+                        parser.OnVariableAccessedBeforeAssignment(variable);
+                    }
+                    else if (mark && direction is ParameterDirection.Input or ParameterDirection.InputOutput)
+                    {
+                        // we haven't consumed the original value - but watch out for "if" etc
+                        if (AssignmentTracking) parser.OnVariableValueNotConsumed(variable);
+                    }
+
+                    if (variable.IsTable && variable.IsOutputParameter)
+                    {
+                        parser.OnTableVariableOutputParameter(variable);
+                    }
+                }
+                else
+                {
+                    parser.OnVariableNotDeclared(new (node, flags));
+                }
             }
         }
 
@@ -512,5 +630,12 @@ internal class TSqlProcessor
             // do *NOT* call  node.Variable?.Accept(this); - would trigger table/scalar warning
             node.Alias?.Accept(this);
         }
+    }
+
+    protected virtual bool TryGetParameter(string name, out ParameterDirection direction)
+    {
+        // simple mode; assume an input param exists
+        direction = ParameterDirection.Input;
+        return true;
     }
 }

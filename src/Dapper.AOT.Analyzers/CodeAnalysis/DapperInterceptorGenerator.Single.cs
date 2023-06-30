@@ -1,7 +1,6 @@
 ﻿using Dapper.Internal;
 using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Dapper.CodeAnalysis;
@@ -18,7 +17,8 @@ public sealed partial class DapperInterceptorGenerator
         string map, bool cache,
         ImmutableArray<IParameterSymbol> methodParameters,
         CommandFactoryState factories,
-        RowReaderState readers)
+        RowReaderState readers,
+        string? fixedSql)
     {
         sb.Append("return ");
         if (HasAll(flags, OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
@@ -26,7 +26,15 @@ public sealed partial class DapperInterceptorGenerator
             sb.Append("global::Dapper.DapperAotExtensions.AsEnumerableAsync(").Indent(false).NewLine();
         }
         // (DbConnection connection, DbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, CommandFactory<TArgs>? commandFactory)
-        sb.Append("global::Dapper.DapperAotExtensions.Command(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", sql, ");
+        sb.Append("global::Dapper.DapperAotExtensions.Command(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", ");
+        if (fixedSql is not null)
+        {
+            sb.AppendVerbatimLiteral(fixedSql).Append(", ");
+        }
+        else
+        {
+            sb.Append("sql, ");
+        }
         if (commandTypeMode == 0)
         {   // not hard-coded
             if (HasParam(methodParameters, "command"))
@@ -217,7 +225,7 @@ public sealed partial class DapperInterceptorGenerator
             }
             else
             {
-                sb.Append("(").Append(parameterType).Append(")param");
+                sb.Append("(").Append(parameterType).Append(")param!");
             }
             return sb;
         }
