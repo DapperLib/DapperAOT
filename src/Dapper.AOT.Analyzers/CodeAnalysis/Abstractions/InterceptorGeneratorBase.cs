@@ -1,8 +1,6 @@
 ﻿using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
-using System;
-using System.Threading;
 
 namespace Dapper.CodeAnalysis.Abstractions
 {

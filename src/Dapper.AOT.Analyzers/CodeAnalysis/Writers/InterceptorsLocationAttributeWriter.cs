@@ -1,6 +1,5 @@
 ﻿using Dapper.Internal;
 using Microsoft.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 namespace Dapper.CodeAnalysis.Writers
 {

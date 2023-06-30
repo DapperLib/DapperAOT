@@ -14,7 +14,6 @@ using System.Text;
 using System.Diagnostics;
 using System.Collections.Generic;
 using Dapper.CodeAnalysis.Writers;
-using System.Runtime.CompilerServices;
 using Dapper.Internal.Roslyn;
 
 namespace Dapper.CodeAnalysis
