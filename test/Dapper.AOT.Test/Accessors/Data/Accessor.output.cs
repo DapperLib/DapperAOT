@@ -10,12 +10,13 @@ file static class DapperTypeAccessorGeneratedInterceptors
     private sealed class DapperCustomTypeAccessor0 : global::Dapper.TypeAccessor<global::Foo.Customer>
     {
         internal static readonly DapperCustomTypeAccessor0 Instance = new();
-        public override int MemberCount => 3;
+        public override int MemberCount => 4;
         public override int? TryIndex(string name, bool exact = false) => name switch
         {
             nameof(global::Foo.Customer.X) => 0,
             nameof(global::Foo.Customer.Y) => 1,
             nameof(global::Foo.Customer.Z) => 2,
+            nameof(global::Foo.Customer.State) => 3,
             _ => base.TryIndex(name, exact)
         };
         public override string GetName(int index) => index switch
@@ -23,6 +24,7 @@ file static class DapperTypeAccessorGeneratedInterceptors
             0 => nameof(global::Foo.Customer.X),
             1 => nameof(global::Foo.Customer.Y),
             2 => nameof(global::Foo.Customer.Z),
+            3 => nameof(global::Foo.Customer.State),
             _ => base.GetName(index)
         };
         public override object? this[global::Foo.Customer obj, int index]
@@ -32,6 +34,7 @@ file static class DapperTypeAccessorGeneratedInterceptors
                 0 => obj.X,
                 1 => obj.Y,
                 2 => obj.Z,
+                3 => obj.State,
                 _ => base[obj, index]
             };
             set
@@ -41,6 +44,7 @@ file static class DapperTypeAccessorGeneratedInterceptors
                     case 0: obj.X = (int)value!; break;
                     case 1: obj.Y = (string)value!; break;
                     case 2: obj.Z = (double?)value!; break;
+                    case 3: obj.State = (Foo.State)value!; break;
                     default: base[obj, index] = value; break;
                 };
             }
@@ -48,7 +52,7 @@ file static class DapperTypeAccessorGeneratedInterceptors
         public override bool IsNullable(int index) => index switch
         {
             2 => true,
-            0 or 1 => false,
+            0 or 1 or 3 => false,
             _ => base.IsNullable(index)
         };
         public override global::System.Type GetType(int index) => index switch
@@ -56,6 +60,7 @@ file static class DapperTypeAccessorGeneratedInterceptors
             0 => typeof(int),
             1 => typeof(string),
             2 => typeof(double?),
+            3 => typeof(Foo.State),
             _ => base.GetType(index)
         };
         public override TValue GetValue<TValue>(global::Foo.Customer obj, int index) => index switch
@@ -63,6 +68,7 @@ file static class DapperTypeAccessorGeneratedInterceptors
             0 when typeof(TValue) == typeof(int) => UnsafePun<int, TValue>(obj.X),
             1 when typeof(TValue) == typeof(string) => UnsafePun<string, TValue>(obj.Y),
             2 when typeof(TValue) == typeof(double?) => UnsafePun<double?, TValue>(obj.Z),
+            3 when typeof(TValue) == typeof(Foo.State) || typeof(TValue) == typeof(int) => UnsafePun<Foo.State, TValue>(obj.State),
             _ => base.GetValue<TValue>(obj, index)
         };
         public override void SetValue<TValue>(global::Foo.Customer obj, int index, TValue value)
@@ -77,6 +83,9 @@ file static class DapperTypeAccessorGeneratedInterceptors
                     break;
                 case 2 when typeof(TValue) == typeof(double?):
                     obj.Z = UnsafePun<TValue, double?>(value);
+                    break;
+                case 3 when typeof(TValue) == typeof(Foo.State) || typeof(TValue) == typeof(int):
+                    obj.State = UnsafePun<TValue, Foo.State>(value);
                     break;
 
             }

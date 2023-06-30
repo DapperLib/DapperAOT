@@ -15,6 +15,7 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using Dapper.CodeAnalysis.Writers;
 using System.Runtime.CompilerServices;
+using Dapper.Internal.Roslyn;
 
 namespace Dapper.CodeAnalysis
 {
@@ -212,7 +213,7 @@ namespace Dapper.CodeAnalysis
         }
 
         [DebuggerDisplay("code: '{_sb.ToString()}'")]
-        sealed class TypeAccessorInterceptorCodeWriter
+        struct TypeAccessorInterceptorCodeWriter
         {
             readonly CodeWriter _sb = new();
             public TypeAccessorInterceptorCodeWriter(CodeWriter codeWriter)
@@ -261,7 +262,7 @@ namespace Dapper.CodeAnalysis
         }
 
         [DebuggerDisplay("code: '{_sb.ToString()}'")]
-        sealed class CustomTypeAccessorClassCodeWriter
+        struct CustomTypeAccessorClassCodeWriter
         {
             readonly CodeWriter _sb;
             public CustomTypeAccessorClassCodeWriter(CodeWriter codeWriter)
@@ -397,11 +398,16 @@ namespace Dapper.CodeAnalysis
 
                 foreach (var member in members)
                 {
-                    // TODO! important: we need to support integers for enums, using the correct underlying type. i.e:
-                    // 3 when typeof(TValue) == typeof(SomeEnum) || typeof(TValue) == typeof(int) => UnsafePun<SomeEnum, TValue>(obj.Foo),
+                    _sb.Append(member.Number).Append(" when typeof(TValue) == typeof(").Append(member.Type).Append(")");
 
-                    _sb.Append(member.Number).Append(" when typeof(TValue) == typeof(").Append(member.Type).Append(")")
-                       .Append(" => UnsafePun<").Append(member.Type).Append(", TValue>(obj.").Append(member.Name).Append("),").NewLine();
+                    // if memberType is enum, we need to figure out an underlying type and check on it
+                    var underlyingType = member.TypeSymbol.GetUnderlyingEnumTypeName();
+                    if (underlyingType is not null)
+                    {
+                        _sb.Append(" || typeof(TValue) == typeof(").Append(underlyingType).Append(")");
+                    }
+
+                    _sb.Append(" => UnsafePun<").Append(member.Type).Append(", TValue>(obj.").Append(member.Name).Append("),").NewLine();
                 }
 
                 _sb.Append("_ => base.GetValue<TValue>(obj, index)")
@@ -417,10 +423,16 @@ namespace Dapper.CodeAnalysis
 
                 foreach (var member in members)
                 {
-                    // TODO! we need to support integers for enums, using the correct underlying type
-                    // case 3 when typeof(TValue) == typeof(SomeEnum) || typeof(TValue) == typeof(int):
+                    _sb.Append("case ").Append(member.Number).Append(" when typeof(TValue) == typeof(").Append(member.Type).Append(")");
+                    
+                    // if memberType is enum, we need to figure out an underlying type and check on it
+                    var underlyingType = member.TypeSymbol.GetUnderlyingEnumTypeName();
+                    if (underlyingType is not null)
+                    {
+                        _sb.Append(" || typeof(TValue) == typeof(").Append(underlyingType).Append(")");
+                    }
+                    _sb.Append(":").NewLine();
 
-                    _sb.Append("case ").Append(member.Number).Append(" when typeof(TValue) == typeof(").Append(member.Type).Append("):").NewLine();
                     _sb.Indent(withScope: false).Append("obj.").Append(member.Name).Append(" = UnsafePun<TValue, ").Append(member.Type).Append(">(value);").NewLine();
                     _sb.Append("break;").NewLine().Outdent(withScope: false);
                 }
@@ -451,6 +463,7 @@ namespace Dapper.CodeAnalysis
                     {
                         Name = property.Name,
                         Type = member.ToDisplayString(),
+                        TypeSymbol = property.Type,
                         Number = memberNumber++,
                         IsNullable = property.NullableAnnotation == NullableAnnotation.Annotated
                     });
@@ -461,6 +474,7 @@ namespace Dapper.CodeAnalysis
                     {
                         Name = field.Name,
                         Type = member.ToDisplayString(),
+                        TypeSymbol = field.Type,
                         Number = memberNumber++,
                         IsNullable = field.NullableAnnotation == NullableAnnotation.Annotated
                     });
@@ -476,6 +490,7 @@ namespace Dapper.CodeAnalysis
             public bool IsNullable;
             public string Name;
             public string Type;
+            public ITypeSymbol TypeSymbol;
         }
 
         sealed class SourceStateByTypeComparer : IEqualityComparer<SourceState>

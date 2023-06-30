@@ -34,13 +34,11 @@ internal static class TypeSymbolExtensions
         return null;
     }
 
-    public static string? GetUnderlyingEnumType(this ITypeSymbol? typeSymbol)
+    public static string? GetUnderlyingEnumTypeName(this ITypeSymbol? typeSymbol)
     {
-        if (typeSymbol is null) return null;
-        if (typeSymbol.SpecialType != SpecialType.System_Enum || typeSymbol.OriginalDefinition.SpecialType != SpecialType.System_Enum) return null;
-
-        // TODO
-        throw new System.NotImplementedException();
+        if (typeSymbol is not INamedTypeSymbol { TypeKind: TypeKind.Enum } namedTypeSymbol) return null;
+        var enumUnderlyingType = namedTypeSymbol.EnumUnderlyingType;
+        return enumUnderlyingType is null ? null : enumUnderlyingType.ToDisplayString();
     }
 
     /// <returns>

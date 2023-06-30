@@ -18,5 +18,11 @@ public static class Foo
         public int X { get; set; }
         public string Y;
         public double? Z { get; set; }
+        public State State { get; set; }
+    }
+    public enum State
+    {
+        Active,
+        Disabled
     }
 }
