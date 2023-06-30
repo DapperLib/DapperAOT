@@ -1,13 +1,8 @@
 ﻿using Dapper.Internal;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Data.Common;
-using System.Data;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace Dapper;
 
@@ -52,10 +47,6 @@ public readonly struct ObjectAccessor<T> // this is mostly a placeholder for the
     public bool IsNullable(int index) => accessor.IsNullable(index);
 }
 
-/// <summary>
-/// 
-/// </summary>
-/// <typeparam name="T"></typeparam>
 public abstract partial class TypeAccessor<T> // contains only members to intercept
 {
     public virtual int? TryIndex(string name, bool exact = false) => null;
@@ -113,4 +104,14 @@ public abstract partial class TypeAccessor<T> // contains only members to interc
         }
         return Unsafe.As<TFrom, TTo>(ref value);
     }
+
+    /// <summary>
+    /// Provides a reliable string hashing function that ignores case, whitespace and underscores
+    /// </summary>
+    protected static uint NormalizedHash(string? value) => StringHashing.NormalizedHash(value);
+
+    /// <summary>
+    /// Compares a string for equality against a pre-normalized comparand, ignoring case, whitespace and underscores
+    /// </summary>
+    protected static bool NormalizedEquals(string? value, string? normalized) => StringHashing.NormalizedEquals(value, normalized);
 }

@@ -11,14 +11,31 @@ file static class DapperTypeAccessorGeneratedInterceptors
     {
         internal static readonly DapperCustomTypeAccessor0 Instance = new();
         public override int MemberCount => 4;
-        public override int? TryIndex(string name, bool exact = false) => name switch
+        public override int? TryIndex(string name, bool exact = false)
         {
-            nameof(global::Foo.Customer.X) => 0,
-            nameof(global::Foo.Customer.Y) => 1,
-            nameof(global::Foo.Customer.Z) => 2,
-            nameof(global::Foo.Customer.State) => 3,
-            _ => base.TryIndex(name, exact)
-        };
+            if (exact)
+            {
+                return name switch
+                {
+                    nameof(global::Foo.Customer.X) => 0,
+                    nameof(global::Foo.Customer.Y) => 1,
+                    nameof(global::Foo.Customer.Z) => 2,
+                    nameof(global::Foo.Customer.State) => 3,
+                    _ => base.TryIndex(name, exact)
+                };
+            }
+            else
+            {
+                return NormalizedHash(name) switch
+                {
+                    4245442695U when NormalizedEquals(name, "x") => 0,
+                    4228665076U when NormalizedEquals(name, "y") => 1,
+                    4278997933U when NormalizedEquals(name, "z") => 2,
+                    2016490230U when NormalizedEquals(name, "state") => 3,
+                    _ => base.TryIndex(name, exact)
+                };
+            }
+        }
         public override string GetName(int index) => index switch
         {
             0 => nameof(global::Foo.Customer.X),

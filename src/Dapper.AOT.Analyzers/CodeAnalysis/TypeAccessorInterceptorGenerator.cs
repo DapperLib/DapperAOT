@@ -287,16 +287,44 @@ namespace Dapper.CodeAnalysis
 
             public void WriteTryIndex(string userTypeName, MemberData[] members)
             {
-                _sb.Append("public override int? TryIndex(string name, bool exact = false) => name switch")
+                var sb = _sb;
+                sb.Append("public override int? TryIndex(string name, bool exact = false)")
                    .Indent().NewLine();
 
-                foreach (var member in members)
+                sb.Append("if (exact)").Indent().NewLine();
+                WriteDefaultImplementation();
+                sb.Outdent().NewLine();
+
+                sb.Append("else").Indent().NewLine();
+                WriteHashVersionImplementation();
+                sb.Outdent();
+
+                sb.Outdent().NewLine();
+
+                void WriteDefaultImplementation()
                 {
-                    _sb.Append("nameof(").Append($"{userTypeName}.{member.Name}").Append(") => ").Append(member.Number).Append(",").NewLine();
+                    sb.Append("return name switch").Indent().NewLine();
+                    foreach (var member in members)
+                    {
+                        sb.Append("nameof(").Append($"{userTypeName}.{member.Name}").Append(") => ").Append(member.Number).Append(",").NewLine();
+                    }
+
+                    sb.Append("_ => base.TryIndex(name, exact)")
+                       .Outdent().Append(";");
                 }
 
-                _sb.Append("_ => base.TryIndex(name, exact)")
-                   .Outdent().Append(";").NewLine();
+                void WriteHashVersionImplementation()
+                {
+                    sb.Append("return NormalizedHash(name) switch").Indent().NewLine();
+                    foreach (var member in members)
+                    {
+                        sb.Append(StringHashing.NormalizedHash(member.Name)).Append(" when NormalizedEquals(name, ").AppendVerbatimLiteral(StringHashing.Normalize(member.Name))
+                          .Append(") => ").Append(member.Number).Append(",").NewLine();
+                    }
+
+                    sb.Append("_ => base.TryIndex(name, exact)")
+                       .Outdent().Append(";");
+                }
             }
 
             public void WriteGetName(string userTypeName, MemberData[] members)
