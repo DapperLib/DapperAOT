@@ -219,6 +219,35 @@ public class BatchInsertBenchmarks : IDisposable
         }
     }
 
+    [Benchmark, BenchmarkCategory("Sync")]
+    public int SqlBulkCopyDapper()
+    {
+        bool close = false;
+        try
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+                close = true;
+            }
+            using var table = new SqlBulkCopy(connection)
+            {
+                DestinationTableName = "BenchmarkCustomers",
+                ColumnMappings =
+            {
+                { nameof(Customer.Name), nameof(Customer.Name) }
+            }
+            };
+            table.EnableStreaming = true;
+            table.WriteToServer(TypeAccessor.CreateDataReader(customers, new[] { nameof(Customer.Name) }));
+            return table.RowsCopied;
+        }
+        finally
+        {
+            if (close) connection.Close();
+        }
+    }
+
     [Benchmark, BenchmarkCategory("Async")]
     public async Task<int> SqlBulkCopyFastMemberAsync()
     {

@@ -9,7 +9,7 @@ static class Program
     public const string ConnectionString = "Server=.;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=True";
 
 #if RELEASE
-    static void Main(string[] args) => BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+    static void Main(string[] args) => BenchmarkDotNet.Running.BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
 #else
     static async Task Main()
     {
@@ -47,6 +47,7 @@ static class Program
             Console.WriteLine(await obj.EntityFrameworkAsync());
 
             Console.WriteLine(obj.SqlBulkCopyFastMember());
+            Console.WriteLine(obj.SqlBulkCopyDapper());
             Console.WriteLine(await obj.SqlBulkCopyFastMemberAsync());
         }
 
