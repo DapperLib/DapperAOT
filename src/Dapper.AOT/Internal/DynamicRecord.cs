@@ -5,7 +5,6 @@ using System.Data.Common;
 using System.Dynamic;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace Dapper.Internal;
 

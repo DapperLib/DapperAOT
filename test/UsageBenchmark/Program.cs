@@ -1,5 +1,4 @@
-﻿using BenchmarkDotNet.Running;
-using Dapper;
+﻿using Dapper;
 using System;
 using System.Threading.Tasks;
 
