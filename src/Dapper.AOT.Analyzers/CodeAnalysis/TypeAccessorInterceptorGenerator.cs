@@ -1,20 +1,20 @@
-﻿using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis;
-using System;
-using System.Collections.Immutable;
-using Dapper.CodeAnalysis.Abstractions;
-using System.Threading;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Linq;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Operations;
-using Dapper.Internal;
-using Microsoft.CodeAnalysis.Text;
-using System.Text;
-using System.Diagnostics;
-using System.Collections.Generic;
+﻿using Dapper.CodeAnalysis.Abstractions;
 using Dapper.CodeAnalysis.Writers;
+using Dapper.Internal;
 using Dapper.Internal.Roslyn;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Operations;
+using Microsoft.CodeAnalysis.Text;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading;
 
 namespace Dapper.CodeAnalysis
 {
@@ -43,7 +43,7 @@ namespace Dapper.CodeAnalysis
         {
             if (node is InvocationExpressionSyntax invocation && invocation.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax memberAccess)
             {
-                return memberAccess.Expression.ToString() == "TypeAccessor" && memberAccess.Name.ToString() == "CreateAccessor";
+                return memberAccess.Expression.ToString() == "TypeAccessor" && (memberAccess.Name.ToString() is "CreateAccessor" or "CreateDataReader");
             }
 
             return false;
@@ -66,25 +66,13 @@ namespace Dapper.CodeAnalysis
                 return null;
             }
 
-            return new SourceState(loc!, parameterType!);
+            return new SourceState(loc!, parameterType!, op.TargetMethod);
 
             bool TryParseParameterType(out ITypeSymbol? type)
             {
-                var arg = op.Arguments.FirstOrDefault(x => x.Parameter?.Name == "obj");
-                if (arg is null)
+                if (op.TargetMethod.IsGenericMethod && op.TargetMethod.Arity == 1)
                 {
-                    type = null;
-                    return false;
-                }
-
-                if (arg.Value is not IDefaultValueOperation)
-                {
-                    var expr = arg.Value;
-                    if (expr is IConversionOperation conv && expr.Type?.SpecialType == SpecialType.System_Object)
-                    {
-                        expr = conv.Operand;
-                    }
-                    type = expr?.Type;
+                    type = op.TargetMethod.TypeArguments[0];
                     return true;
                 }
 
@@ -118,13 +106,12 @@ namespace Dapper.CodeAnalysis
             sb.WriteFileHeader(state.Compilation);
             sb.WriteInterceptorsClass(() =>
             {
-                int typeCounter = -1;
+                int typeCounter = -1, methodCounter = 0;
                 foreach (var group in state.Nodes.GroupBy(x => x, SourceStateByTypeComparer.Instance))
                 {
                     typeCounter++;
 
                     var typeSymbol = group.Key.ParameterType;
-                    var usages = group.Select(x => x.Location);
 
                     // not allowing collections
                     if (Inspection.IsCollectionType(typeSymbol, out _))
@@ -148,10 +135,13 @@ namespace Dapper.CodeAnalysis
                         continue;
                     }
 
-                    foreach (var location in usages)
+                    foreach (var methodGroup in group.GroupBy(x => x.Method, SymbolEqualityComparer.Default))
                     {
-                        sb.WriteInterceptorsLocationAttribute(location);
-                        sb.WriteTypeAccessorCreateReaderMethod(typeSymbolName, typeCounter);
+                        foreach (var usage in methodGroup)
+                        {
+                            sb.WriteInterceptorsLocationAttribute(usage.Location);
+                        }
+                        sb.WriteMethodForwarder((IMethodSymbol)methodGroup.Key!, typeSymbolName, typeCounter, ref methodCounter);
                     }
 
                     var accessorSb = new CustomTypeAccessorClassCodeWriter(codeWriter);
@@ -169,9 +159,9 @@ namespace Dapper.CodeAnalysis
 
                     void ReportDiagnosticInUsages(DiagnosticDescriptor diagnosticDescriptor)
                     {
-                        foreach (var usage in usages!)
+                        foreach (var usage in group)
                         {
-                            context.ReportDiagnostic(Diagnostic.Create(diagnosticDescriptor, usage));
+                            context.ReportDiagnostic(Diagnostic.Create(diagnosticDescriptor, usage.Location));
                         }
                     }
                 }
@@ -198,13 +188,16 @@ namespace Dapper.CodeAnalysis
         {
             public Location Location { get; }
             public ITypeSymbol ParameterType { get; }
+            public IMethodSymbol Method { get; }
 
             public SourceState(
                 Location location,
-                ITypeSymbol parameterType)
+                ITypeSymbol parameterType,
+                IMethodSymbol method)
             {
                 Location = location;
                 ParameterType = parameterType;
+                Method = method;
             }
 
             public (ITypeSymbol ParameterType, Location? UniqueLocation) Group()
@@ -245,16 +238,38 @@ namespace Dapper.CodeAnalysis
                     .NewLine();
             }
 
-            public void WriteTypeAccessorCreateReaderMethod(string userTypeName, int customTypeNum)
+            public void WriteMethodForwarder(IMethodSymbol method, string userTypeName, int customTypeNum, ref int methodNumber)
             {
-                _sb.Append("public static global::Dapper.ObjectAccessor<").Append(userTypeName).Append("> ")
-                   .Append("CreateAccessor(").Append(userTypeName).Append(" obj, ")
-                   .Append("global::Dapper.TypeAccessor<").Append(userTypeName).Append(">? accessor = null)")
-                   .Indent().NewLine();
+                _sb.Append("internal static ").Append(method.ReturnType).Append(" ").Append("Forwarded").Append(methodNumber++).Append("(");
+                int i = 0;
+                foreach (var arg in method.Parameters)
+                {
+                    _sb.Append(i == 0 ? "" : ", ").Append(arg.Type).Append(" ").Append(arg.Name);
+                    i++;
+                }
+                _sb.Append(")").Indent(false).NewLine().Append("=> ");
 
-                _sb.Append("return new global::Dapper.ObjectAccessor<").Append(userTypeName).Append(">")
-                   .Append("(obj, accessor ?? ").Append(GetCustomTypeAccessorClassName(customTypeNum)).Append(".Instance);")
-                   .Outdent().NewLine().NewLine();
+                _sb.Append(method.ContainingType).Append(".").Append(method.Name).Append("(");
+                i = 0;
+                foreach (var arg in method.Parameters)
+                {
+                    _sb.Append(i == 0 ? "" : ", ").Append(arg.Name);
+                    if (arg.Type is INamedTypeSymbol { IsGenericType: true, Arity: 1, Name: "TypeAccessor", ContainingType: null, ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } } named)
+                    {
+                        _sb.Append(" ?? ").Append(GetCustomTypeAccessorClassName(customTypeNum)).Append(".Instance");
+                    }
+                    i++;
+                }
+                _sb.Append(");").Outdent(false).NewLine().NewLine();
+
+                //_sb.Append("public static global::Dapper.ObjectAccessor<").Append(userTypeName).Append("> ")
+                //   .Append("CreateAccessor(").Append(userTypeName).Append(" obj, ")
+                //   .Append("global::Dapper.TypeAccessor<").Append(userTypeName).Append(">? accessor = null)")
+                //   .Indent().NewLine();
+
+                //_sb.Append("return new global::Dapper.ObjectAccessor<").Append(userTypeName).Append(">")
+                //   .Append("(obj, accessor ?? ").Append(GetCustomTypeAccessorClassName(customTypeNum)).Append(".Instance);")
+                //   .Outdent().NewLine().NewLine();
             }
 
             public SourceText GetSourceText() => SourceText.From(_sb.ToString(), Encoding.UTF8);
@@ -451,7 +466,7 @@ namespace Dapper.CodeAnalysis
                 foreach (var member in members)
                 {
                     _sb.Append("case ").Append(member.Number).Append(" when typeof(TValue) == typeof(").Append(member.Type).Append(")");
-                    
+
                     // if memberType is enum, we need to figure out an underlying type and check on it
                     var underlyingType = member.TypeSymbol.GetUnderlyingEnumTypeName();
                     if (underlyingType is not null)

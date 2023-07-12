@@ -16,11 +16,11 @@ public static partial class TypeAccessor
     /// </summary>
     public static ObjectAccessor<T> CreateAccessor<T>(T obj, [DapperAot] TypeAccessor<T>? accessor = null)
     {
-        if (accessor is null) ThrowNull();
+        if (accessor is null) ThrowNullAccessor();
         return new ObjectAccessor<T>(obj, accessor!);
     }
 
-    static void ThrowNull() => throw new InvalidOperationException("The accessor was not provided (this is usually done via an 'interceptor' at build-time)");
+    static void ThrowNullAccessor() => throw new InvalidOperationException("The accessor was not provided (this is usually done via an 'interceptor' at build-time)");
 }
 
 /// <summary>

@@ -1,11 +1,13 @@
 #nullable enable
 file static class DapperTypeAccessorGeneratedInterceptors
 {
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Accessors\\Data\\Accessor.input.cs", 11, 26)]
-    public static global::Dapper.ObjectAccessor<global::Foo.Customer> CreateAccessor(global::Foo.Customer obj, global::Dapper.TypeAccessor<global::Foo.Customer>? accessor = null)
-    {
-        return new global::Dapper.ObjectAccessor<global::Foo.Customer>(obj, accessor ?? DapperCustomTypeAccessor0.Instance);
-    }
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Accessors\\Data\\Accessor.input.cs", 10, 26)]
+    internal static global::Dapper.ObjectAccessor<global::Foo.Customer> Forwarded0(global::Foo.Customer obj, global::Dapper.TypeAccessor<global::Foo.Customer>? accessor)
+        => global::Dapper.TypeAccessor.CreateAccessor(obj, accessor ?? DapperCustomTypeAccessor0.Instance);
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Accessors\\Data\\Accessor.input.cs", 13, 26)]
+    internal static global::System.Data.Common.DbDataReader Forwarded1(global::System.Collections.Generic.IEnumerable<global::Foo.Customer> source, string[]? members, bool exact, global::Dapper.TypeAccessor<global::Foo.Customer>? accessor)
+        => global::Dapper.TypeAccessor.CreateDataReader(source, members, exact, accessor ?? DapperCustomTypeAccessor0.Instance);
 
     private sealed class DapperCustomTypeAccessor0 : global::Dapper.TypeAccessor<global::Foo.Customer>
     {

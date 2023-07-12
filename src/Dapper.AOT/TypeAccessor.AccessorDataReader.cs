@@ -11,10 +11,32 @@ namespace Dapper;
 
 partial class TypeAccessor
 {
+    /// <summary>
+    /// Create a <see cref="DbDataReader"/> over the provided sequence, optionally specifying the members to include.
+    /// </summary>
+    public static DbDataReader CreateDataReader<T>(IEnumerable<T> source, string[]? members = null, bool exact = false, [DapperAot] TypeAccessor<T>? accessor = null)
+    {
+        if (accessor is null) ThrowNullAccessor();
+        if (source is null) ThrowNullSource();
+        return new SyncAccessorDataReader<T>(source!.GetEnumerator(), accessor!, members, exact);
+    }
+
+    /// <summary>
+    /// Create a <see cref="DbDataReader"/> over the provided sequence, optionally specifying the members to include.
+    /// </summary>
+    public static DbDataReader CreateDataReader<T>(IAsyncEnumerable<T> source, string[]? members = null, bool exact = false, CancellationToken cancellationToken = default, [DapperAot] TypeAccessor<T>? accessor = null)
+    {
+        if (accessor is null) ThrowNullAccessor();
+        if (source is null) ThrowNullSource();
+        return new AsyncAccessorDataReader<T>(source!.GetAsyncEnumerator(cancellationToken), accessor!, members, exact);
+    }
+
+    static void ThrowNullSource() => throw new ArgumentNullException("source");
+
     private static readonly Task<bool> s_CompletedTrue = Task.FromResult(true), s_CompletedFalse = Task.FromResult(false);
     internal sealed class SyncAccessorDataReader<T> : AccessorDataReader<T>
     {
-        public SyncAccessorDataReader(IEnumerator<T> source, TypeAccessor<T> accessor, string[] members, bool exact)
+        public SyncAccessorDataReader(IEnumerator<T> source, TypeAccessor<T> accessor, string[]? members, bool exact)
             : base(accessor, members, exact) => _source = source;
 
         private IEnumerator<T>? _source;
@@ -49,8 +71,9 @@ partial class TypeAccessor
 
     internal sealed class AsyncAccessorDataReader<T> : AccessorDataReader<T>
     {
-        public AsyncAccessorDataReader(IAsyncEnumerator<T> source, TypeAccessor<T> accessor, string[] members, bool exact)
+        public AsyncAccessorDataReader(IAsyncEnumerator<T> source, TypeAccessor<T> accessor, string[]? members, bool exact)
             : base(accessor, members, exact) => _source = source;
+
         private IAsyncEnumerator<T>? _source;
 
         public override bool Read()
@@ -134,7 +157,7 @@ partial class TypeAccessor
             get => _current;
             set => _current = value!;
         }
-        public AccessorDataReader(TypeAccessor<T> accessor, string[] members, bool exact)
+        public AccessorDataReader(TypeAccessor<T> accessor, string[]? members, bool exact)
         {
             _accessor = accessor;
             _exact = exact;
