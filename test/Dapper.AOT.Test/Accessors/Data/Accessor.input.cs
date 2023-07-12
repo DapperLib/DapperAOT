@@ -1,13 +1,11 @@
 ﻿using Dapper;
-using System.Collections.Generic;
 using System.Data.Common;
-using System.Threading.Tasks;
 
 [module: DapperAot]
 
 public static class Foo
 {
-    static async Task SomeCode(DbConnection connection, string bar)
+    static void SomeCode(DbConnection connection, string bar)
     {
         var customer = new Customer { X = 1, Y = "hello", Z = 0.1 };
         _ = TypeAccessor.CreateAccessor(customer);
