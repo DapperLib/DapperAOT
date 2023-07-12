@@ -27,7 +27,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     /// <summary>
     /// Provide log feedback.
     /// </summary>
+#pragma warning disable CS0067 // unused; retaining for now
     public event Action<string>? Log;
+#pragma warning restore CS0067
 
     /// <inheritdoc />
     public override void Initialize(IncrementalGeneratorInitializationContext context)
@@ -600,6 +602,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0042:Deconstruct variable declaration", Justification = "Readability is fine as-is")]
     private static SqlSyntax IdentifySqlSyntax(in GeneratorSyntaxContext ctx, IInvocationOperation op, out bool caseSensitive,
         CancellationToken cancellationToken)
     {
