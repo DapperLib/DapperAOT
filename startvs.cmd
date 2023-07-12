@@ -8,6 +8,7 @@
 : cd roslyn
 : git checkout features/interceptors
 : .\Restore.cmd
+: eng\enable-long-paths.reg
 : .\Build.cmd -Configuration Release -deployExtensions -launch
 :
 : 

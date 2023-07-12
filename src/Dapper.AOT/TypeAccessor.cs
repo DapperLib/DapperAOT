@@ -9,7 +9,7 @@ namespace Dapper;
 /// <summary>
 /// Provides an API to access object properties via indexers.
 /// </summary>
-public static class TypeAccessor
+public static partial class TypeAccessor
 {
     /// <summary>
     /// Create a <see cref="ObjectAccessor{T}"/> that accesses the specified typed instance.
@@ -139,6 +139,11 @@ public abstract partial class TypeAccessor<T> // contains only members to interc
         get => throw new IndexOutOfRangeException(nameof(index));
         set => throw new IndexOutOfRangeException(nameof(index));
     }
+
+    /// <summary>
+    /// Indicates whether the specified value is null.
+    /// </summary>
+    public virtual bool IsNull(T obj, int index) => this[obj, index] is null or DBNull;
 
     /// <summary>
     /// Gets or sets member values by name.
