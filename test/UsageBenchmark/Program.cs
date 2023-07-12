@@ -31,34 +31,22 @@ static class Program
             obj.IsOpen = isOpen;
             obj.Setup();
 
-            obj.ResetIds();
             Console.WriteLine(obj.Manual());
-            obj.ResetIds();
             Console.WriteLine(await obj.ManualAsync());
 
-            obj.ResetIds();
             Console.WriteLine(obj.Dapper());
-            obj.ResetIds();
             Console.WriteLine(await obj.DapperAsync());
 
-            obj.ResetIds();
             Console.WriteLine(obj.DapperAotManual());
-            obj.ResetIds();
             Console.WriteLine(await obj.DapperAotAsync());
 
-            obj.ResetIds();
             Console.WriteLine(obj.DapperAot_PreparedManual());
-            obj.ResetIds();
             Console.WriteLine(await obj.DapperAot_PreparedAsync());
 
-            obj.ResetIds();
             Console.WriteLine(obj.EntityFramework());
-            obj.ResetIds();
             Console.WriteLine(await obj.EntityFrameworkAsync());
 
-            obj.ResetIds();
             Console.WriteLine(obj.SqlBulkCopyFastMember());
-            obj.ResetIds();
             Console.WriteLine(await obj.SqlBulkCopyFastMemberAsync());
         }
 
