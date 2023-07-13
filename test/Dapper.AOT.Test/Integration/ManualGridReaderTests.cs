@@ -43,7 +43,7 @@ public class ManualGridReaderTests : IClassFixture<SqlClientFixture>
 
     [Fact]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments", Justification = "Clearer for test")]
-    public void BasicUsageWithOnTheFlyIdenity()
+    public void BasicUsageWithOnTheFlyIdentity()
     {
         using SqlMapper.GridReader reader = new AotGridReader(Database.Connection.Command<object?>(SQL).ExecuteReader<AotWrappedDbDataReader>(null));
         Assert.NotNull(reader.Command);
