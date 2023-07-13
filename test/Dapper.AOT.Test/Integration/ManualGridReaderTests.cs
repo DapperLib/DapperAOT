@@ -40,4 +40,17 @@ public class ManualGridReaderTests : IClassFixture<SqlClientFixture>
         Assert.Equal(new[] { 456, 789 }, ((AotGridReader)reader).Read(buffered: false, RowFactory.Inbuilt.Value<int>()).ToArray());
         Assert.True(reader.IsConsumed);
     }
+
+    [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments", Justification = "Clearer for test")]
+    public void BasicUsageWithOnTheFlyIdenity()
+    {
+        using SqlMapper.GridReader reader = new AotGridReader(Database.Connection.Command<object?>(SQL).ExecuteReader<AotWrappedDbDataReader>(null));
+        Assert.NotNull(reader.Command);
+        Assert.Equal(123, reader.ReadSingle<int>());
+        Assert.Equal("abc", reader.ReadSingle<string>());
+        Assert.Equal(new[] { null, "def", "ghi" }, reader.Read<string>(buffered: true).ToArray());
+        Assert.Equal(new[] { 456, 789 }, reader.Read<int>(buffered: false).ToArray());
+        Assert.True(reader.IsConsumed);
+    }
 }
