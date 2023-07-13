@@ -1,7 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
 using System;
 using System.Data;
 using System.Data.Common;
@@ -16,7 +15,6 @@ public class BatchInsertBenchmarks : IDisposable
 {
     private readonly SqlConnection connection = new(Program.ConnectionString);
     private Customer[] customers = Array.Empty<Customer>();
-    private readonly MyContext ctx = new();
 
     public BatchInsertBenchmarks()
     {
@@ -34,9 +32,9 @@ public class BatchInsertBenchmarks : IDisposable
     public void Setup()
     {
         var arr = new Customer[Count];
-        for (int i = 0; i < arr.Length; i++)
+        for (int i = 1; i <= arr.Length; i++)
         {
-            arr[i] = new Customer { Id = i, Name = "Name " + i };
+            arr[i - 1] = new Customer { Id = i, Name = "Name " + i };
         }
         customers = arr;
         if (IsOpen)
@@ -172,20 +170,10 @@ public class BatchInsertBenchmarks : IDisposable
         }
     }
 
-    [RunOncePerIteration]
-    public void ResetIds()
-    {
-        // this is mostly because EF is going to update the values,
-        // triggering identity-insert violations on the *next* attempt
-        foreach (var customer in customers)
-        {
-            customer.Id = 0;
-        }
-    }
-
     [Benchmark, BenchmarkCategory("Sync")]
     public int EntityFramework()
     {
+        using var ctx = new MyContext();
         ctx.Customers.AddRange(customers);
         var result = ctx.SaveChanges();
         ctx.ChangeTracker.Clear();
@@ -195,6 +183,7 @@ public class BatchInsertBenchmarks : IDisposable
     [Benchmark, BenchmarkCategory("Async")]
     public async Task<int> EntityFrameworkAsync()
     {
+        using var ctx = new MyContext();
         ctx.Customers.AddRange(customers);
         var result = await ctx.SaveChangesAsync();
         ctx.ChangeTracker.Clear();
@@ -222,6 +211,35 @@ public class BatchInsertBenchmarks : IDisposable
             };
             table.EnableStreaming = true;
             table.WriteToServer(FastMember.ObjectReader.Create(customers, nameof(Customer.Name)));
+            return table.RowsCopied;
+        }
+        finally
+        {
+            if (close) connection.Close();
+        }
+    }
+
+    [Benchmark, BenchmarkCategory("Sync")]
+    public int SqlBulkCopyDapper()
+    {
+        bool close = false;
+        try
+        {
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+                close = true;
+            }
+            using var table = new SqlBulkCopy(connection)
+            {
+                DestinationTableName = "BenchmarkCustomers",
+                ColumnMappings =
+            {
+                { nameof(Customer.Name), nameof(Customer.Name) }
+            }
+            };
+            table.EnableStreaming = true;
+            table.WriteToServer(TypeAccessor.CreateDataReader(customers, new[] { nameof(Customer.Name) }));
             return table.RowsCopied;
         }
         finally
@@ -262,7 +280,6 @@ public class BatchInsertBenchmarks : IDisposable
     public void Dispose()
     {
         connection.Dispose();
-        ctx.Dispose();
         GC.SuppressFinalize(this);
     }
 

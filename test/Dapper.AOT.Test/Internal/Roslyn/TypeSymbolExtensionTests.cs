@@ -79,6 +79,21 @@ namespace Dapper.Internal.Roslyn
         }
 
         [Fact]
+        public void CheckEnum()
+        {
+            var text = BuildDapperCodeText(
+            """
+            _ = connection.Execute("def", State.Active);
+            """);
+
+            var argumentOperation = GetInvocationArgumentOperation(text);
+            var typeSymbol = GetConversionTypeSymbol(argumentOperation);
+
+            Assert.Equal("int", typeSymbol.GetUnderlyingEnumTypeName());
+            Assert.Equal("global::Foo.State", typeSymbol.GetTypeDisplayName());
+        }
+
+        [Fact]
         public void CheckCollectionType_GenericList()
         {
             var text = BuildDapperCodeText(
@@ -175,6 +190,11 @@ namespace Dapper.Internal.Roslyn
                     public int X { get; set; }
                     public string Y;
                     public double? Z { get; set; }
+                }
+                public enum State
+                {
+                    Active,
+                    Disabled
                 }
             }
         """;

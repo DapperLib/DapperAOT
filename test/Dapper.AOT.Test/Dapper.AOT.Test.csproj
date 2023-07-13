@@ -6,10 +6,15 @@
         <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
     </PropertyGroup>
     <ItemGroup>
-        <Compile Remove="Interceptors/**/*.*.cs" />
+		<Compile Remove="Accessors/Data/**/*.*.cs" />
+		<None Include="Accessors/Data/**/*.*" />
+		<None Update="Accessors/Data/**/*.*" CopyToOutputDirectory="PreserveNewest" />
+
+		<Compile Remove="Interceptors/**/*.*.cs" />
         <None Include="Interceptors/**/*.*" />
         <Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
         <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
+		
         <None Update="**/*.output.*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>
         </None>

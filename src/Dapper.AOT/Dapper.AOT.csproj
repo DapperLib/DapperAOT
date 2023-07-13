@@ -29,5 +29,8 @@
         <Compile Update="CommandT.*.cs">
             <DependentUpon>CommandT.cs</DependentUpon>
         </Compile>
+        <Compile Update="TypeAccessor.*.cs">
+            <DependentUpon>TypeAccessor.cs</DependentUpon>
+        </Compile>
     </ItemGroup>
 </Project>

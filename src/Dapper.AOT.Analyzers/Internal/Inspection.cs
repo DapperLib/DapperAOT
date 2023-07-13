@@ -204,6 +204,8 @@ internal static class Inspection
         };
     }
 
+    public static bool IsPrimitiveType(ITypeSymbol? parameterType) => parameterType.IsPrimitiveType();
+
     public static bool IsCollectionType(ITypeSymbol? parameterType, out ITypeSymbol? elementType)
         => IsCollectionType(parameterType, out elementType, out _, false);
     public static bool IsCollectionType(ITypeSymbol? parameterType, out ITypeSymbol? elementType,

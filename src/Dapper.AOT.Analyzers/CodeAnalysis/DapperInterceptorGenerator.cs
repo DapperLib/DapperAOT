@@ -1,4 +1,7 @@
-﻿using Dapper.Internal;
+﻿using Dapper.CodeAnalysis.Abstractions;
+using Dapper.CodeAnalysis.Writers;
+using Dapper.Internal;
+using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -9,7 +12,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -20,30 +22,17 @@ namespace Dapper.CodeAnalysis;
 /// Analyses source for Dapper syntax and generates suitable interceptors where possible.
 /// </summary>
 [Generator(LanguageNames.CSharp), DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIncrementalGenerator
+public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBase
 {
-    /// <inheritdoc/>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Diagnostics.All;
-
-    /// <inheritdoc/>
-    public override void Initialize(AnalysisContext context)
-    {
-        context.EnableConcurrentExecution();
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        // we won't register anything; all we really want here is to report our supported diagnostics
-    }
-
-    /// <summary>
-    /// Whether to emit interceptors even if the "interceptors" feature is not detected
-    /// </summary>
-    public bool OverrideFeatureEnabled { get; set; }
-
     /// <summary>
     /// Provide log feedback.
     /// </summary>
+#pragma warning disable CS0067 // unused; retaining for now
     public event Action<string>? Log;
+#pragma warning restore CS0067
 
-    void IIncrementalGenerator.Initialize(IncrementalGeneratorInitializationContext context)
+    /// <inheritdoc />
+    public override void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var nodes = context.SyntaxProvider.CreateSyntaxProvider(PreFilter, Parse)
                     .Where(x => x is not null)
@@ -1064,12 +1053,9 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
 
         sb.Outdent(); // ends our generated file-scoped class
 
-        // we need an accessible [InterceptsLocation] - if not; add our own in the generated code
-        var attrib = state.Compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute");
-        if (attrib is null || attrib.DeclaredAccessibility != Accessibility.Public)
-        {
-            sb.NewLine().Append(Resources.ReadString("Dapper.InterceptsLocationAttribute.cs"));
-        }
+        var interceptsLocationWriter = new InterceptorsLocationAttributeWriter(sb);
+        interceptsLocationWriter.Write(state.Compilation);
+
         ctx.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, enabledCount, methodIndex, factories.Count(), readers.Count()));
     }
@@ -1675,28 +1661,10 @@ public sealed partial class DapperInterceptorGenerator : DiagnosticAnalyzer, IIn
         public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) Group()
             => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location);
     }
-    private sealed class CommonComparer : IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation)>, IComparer<Location>
+    private sealed class CommonComparer : LocationComparer, IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation)>
     {
         public static readonly CommonComparer Instance = new();
         private CommonComparer() { }
-
-        public int Compare(Location x, Location y)
-        {
-            if (x is null) { return y is null ? 0 : 1; }
-            if (y is null) return -1;
-            var xSpan = x.GetLineSpan();
-            var ySpan = y.GetLineSpan();
-            var delta = StringComparer.InvariantCulture.Compare(xSpan.Path, ySpan.Path);
-            if (delta == 0)
-            {
-                delta = xSpan.StartLinePosition.CompareTo(ySpan.StartLinePosition);
-            }
-            if (delta == 0)
-            {
-                delta = xSpan.EndLinePosition.CompareTo(ySpan.EndLinePosition);
-            }
-            return delta;
-        }
 
         public bool Equals((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) x, (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) y) => x.Flags == y.Flags
                 && x.ParameterMap == y.ParameterMap

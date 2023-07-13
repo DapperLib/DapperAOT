@@ -1,7 +1,5 @@
 ﻿using Dapper.Internal;
-using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Dapper.CodeAnalysis;
