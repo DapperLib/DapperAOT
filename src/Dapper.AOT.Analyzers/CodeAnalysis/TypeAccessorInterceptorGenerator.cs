@@ -127,7 +127,7 @@ namespace Dapper.CodeAnalysis
                         continue;
                     }
 
-                    var typeSymbolName = "global::" + typeSymbol!.ToDisplayString();
+                    var typeSymbolName = CodeWriter.GetTypeName(typeSymbol);
                     var members = ConstructTypeMembers(typeSymbol!);
                     if (members.Length == 0)
                     {
@@ -141,7 +141,7 @@ namespace Dapper.CodeAnalysis
                         {
                             sb.WriteInterceptorsLocationAttribute(usage.Location);
                         }
-                        sb.WriteMethodForwarder((IMethodSymbol)methodGroup.Key!, typeSymbolName, typeCounter, ref methodCounter);
+                        sb.WriteMethodForwarder((IMethodSymbol)methodGroup.Key!, typeCounter, ref methodCounter);
                     }
 
                     var accessorSb = new CustomTypeAccessorClassCodeWriter(codeWriter);
@@ -205,7 +205,7 @@ namespace Dapper.CodeAnalysis
         }
 
         [DebuggerDisplay("code: '{_sb.ToString()}'")]
-        struct TypeAccessorInterceptorCodeWriter
+        readonly struct TypeAccessorInterceptorCodeWriter
         {
             readonly CodeWriter _sb = new();
             public TypeAccessorInterceptorCodeWriter(CodeWriter codeWriter)
@@ -238,7 +238,7 @@ namespace Dapper.CodeAnalysis
                     .NewLine();
             }
 
-            public void WriteMethodForwarder(IMethodSymbol method, string userTypeName, int customTypeNum, ref int methodNumber)
+            public void WriteMethodForwarder(IMethodSymbol method, int customTypeNum, ref int methodNumber)
             {
                 _sb.Append("internal static ").Append(method.ReturnType).Append(" ").Append("Forwarded").Append(methodNumber++).Append("(");
                 int i = 0;
@@ -254,7 +254,7 @@ namespace Dapper.CodeAnalysis
                 foreach (var arg in method.Parameters)
                 {
                     _sb.Append(i == 0 ? "" : ", ").Append(arg.Name);
-                    if (arg.Type is INamedTypeSymbol { IsGenericType: true, Arity: 1, Name: "TypeAccessor", ContainingType: null, ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } } named)
+                    if (arg.Type is INamedTypeSymbol { IsGenericType: true, Arity: 1, Name: "TypeAccessor", ContainingType: null, ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } })
                     {
                         _sb.Append(" ?? ").Append(GetCustomTypeAccessorClassName(customTypeNum)).Append(".Instance");
                     }
@@ -276,7 +276,7 @@ namespace Dapper.CodeAnalysis
         }
 
         [DebuggerDisplay("code: '{_sb.ToString()}'")]
-        struct CustomTypeAccessorClassCodeWriter
+        readonly struct CustomTypeAccessorClassCodeWriter
         {
             readonly CodeWriter _sb;
             public CustomTypeAccessorClassCodeWriter(CodeWriter codeWriter)

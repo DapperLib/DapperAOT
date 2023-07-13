@@ -24,7 +24,9 @@ partial class TypeAccessor
     /// <summary>
     /// Create a <see cref="DbDataReader"/> over the provided sequence, optionally specifying the members to include.
     /// </summary>
+#pragma warning disable CA1068 // CancellationToken parameters must come last
     public static DbDataReader CreateDataReader<T>(IAsyncEnumerable<T> source, string[]? members = null, bool exact = false, CancellationToken cancellationToken = default, [DapperAot] TypeAccessor<T>? accessor = null)
+#pragma warning restore CA1068 // CancellationToken parameters must come last
     {
         if (accessor is null) ThrowNullAccessor();
         if (source is null) ThrowNullSource();
@@ -199,17 +201,16 @@ partial class TypeAccessor
         public sealed override int GetInt32(int ordinal) => GetFieldValue<int>(ordinal);
         public sealed override long GetInt64(int ordinal) => GetFieldValue<long>(ordinal);
         public sealed override string GetString(int ordinal) => GetFieldValue<string>(ordinal);
-        public sealed override int GetValues(object?[] values)
+        public sealed override int GetValues(object[] values)
         {
             var current = _current;
             var accessor = _accessor;
-
             ReadOnlySpan<int> tokens = _tokens;
             if (values.Length < tokens.Length) tokens = tokens.Slice(0, values.Length);
             int i = 0;
             foreach (var token in tokens)
             {
-                values[i++] = accessor[current, token];
+                values[i++] = accessor[current, token] ?? DBNull.Value;
             }
             return i;
         }
