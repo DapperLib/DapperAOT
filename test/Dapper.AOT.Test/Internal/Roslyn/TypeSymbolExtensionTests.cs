@@ -10,6 +10,20 @@ namespace Dapper.Internal.Roslyn
     public class TypeSymbolExtensionsTests
     {
         [Fact]
+        public void CheckSystemObject()
+        {
+            var text = BuildDapperCodeText(
+            """
+            _ = connection.Execute("def", new Customer());
+            """);
+
+            var argumentOperation = GetInvocationArgumentOperation(text);
+            var typeSymbol = GetConversionTypeSymbol(argumentOperation);
+
+            Assert.True(typeSymbol.IsNullable());
+        }
+
+        [Fact]
         public void CheckCollectionType_TwoDimensionalArray()
         {
             var text = BuildDapperCodeText(

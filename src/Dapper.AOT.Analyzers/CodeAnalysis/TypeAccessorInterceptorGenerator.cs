@@ -152,6 +152,7 @@ namespace Dapper.CodeAnalysis
                         accessorSb.WriteGetName(typeSymbolName, members);
                         accessorSb.WriteIndexer(typeSymbolName, members);
                         accessorSb.WriteIsNullable(members);
+                        accessorSb.WriteIsNull(typeSymbolName, members);
                         accessorSb.WriteGetType(members);
                         accessorSb.WriteGetValue(typeSymbolName, members);
                         accessorSb.WriteSetValue(typeSymbolName, members);
@@ -412,6 +413,36 @@ namespace Dapper.CodeAnalysis
                    .Outdent().Append(";").NewLine();
             }
 
+            public void WriteIsNull(string userTypeName, MemberData[] members)
+            {
+                _sb.Append("public override bool IsNull(").Append(userTypeName).Append(" obj, int index) => index switch")
+                   .Indent().NewLine();
+
+                var strBuilder = new StringBuilder();
+                foreach (var item in members.Where(x => !x.IsNullable))
+                {
+                    strBuilder.Append(item.Number).Append(" or ");
+                }
+                if (strBuilder.Length > 0)
+                {
+                    strBuilder.Length -= 4;
+                    _sb.Append(strBuilder.ToString()).Append(" => false,").NewLine();
+                }
+
+                foreach (var member in members.Where(x => x.IsNullable))
+                {
+                    _sb.Append(member.Number).Append(" => obj.").Append(member.Name).Append(" is null");
+                    if (member.TypeSymbol.IsSystemObject())
+                    {
+                        _sb.Append(" or global::System.DBNull");
+                    }
+                    _sb.Append(",").NewLine();
+                }
+
+                _sb.Append("_ => base.IsNull(obj, index)")
+                   .Outdent().Append(";").NewLine();
+            }
+
             public void WriteGetType(MemberData[] members)
             {
                 _sb.Append("public override global::System.Type GetType(int index) => index switch")
@@ -507,7 +538,7 @@ namespace Dapper.CodeAnalysis
                         Type = member.ToDisplayString(),
                         TypeSymbol = property.Type,
                         Number = memberNumber++,
-                        IsNullable = property.NullableAnnotation == NullableAnnotation.Annotated
+                        IsNullable = property.Type.IsNullable()
                     });
                 }
                 if (type is IFieldSymbol field)
@@ -526,6 +557,7 @@ namespace Dapper.CodeAnalysis
             return members.ToArray();
         }
 
+        [DebuggerDisplay("{TypeSymbol} {Name}")]
         struct MemberData
         {
             public int Number;
