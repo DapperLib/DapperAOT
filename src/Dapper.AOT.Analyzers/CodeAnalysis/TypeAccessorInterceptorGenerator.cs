@@ -431,6 +431,13 @@ namespace Dapper.CodeAnalysis
 
                 foreach (var member in members.Where(x => x.IsNullable))
                 {
+                    if (IsDBNull(member.TypeSymbol))
+                    {
+                        // if member is of type DBNull, then it is always null => simply return true
+                        _sb.Append(member.Number).Append(" => true,").NewLine();
+                        continue;
+                    }
+
                     _sb.Append(member.Number).Append(" => obj.").Append(member.Name).Append(" is null");
                     if (member.TypeSymbol.IsSystemObject())
                     {
@@ -441,6 +448,12 @@ namespace Dapper.CodeAnalysis
 
                 _sb.Append("_ => base.IsNull(obj, index)")
                    .Outdent().Append(";").NewLine();
+
+                bool IsDBNull(ITypeSymbol typeSymbol)
+                {
+                    return typeSymbol.ContainingNamespace.Name == "System"
+                        && typeSymbol.Name == "DBNull";
+                }
             }
 
             public void WriteGetType(MemberData[] members)
