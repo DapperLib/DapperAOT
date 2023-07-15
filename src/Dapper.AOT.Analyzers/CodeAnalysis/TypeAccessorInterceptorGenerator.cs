@@ -451,7 +451,8 @@ namespace Dapper.CodeAnalysis
 
                 bool IsDBNull(ITypeSymbol typeSymbol)
                 {
-                    return typeSymbol.ContainingNamespace.Name == "System"
+                    return typeSymbol.ContainingNamespace.ContainingNamespace?.IsGlobalNamespace == true
+                        && typeSymbol.ContainingNamespace.Name == "System"
                         && typeSymbol.Name == "DBNull";
                 }
             }
