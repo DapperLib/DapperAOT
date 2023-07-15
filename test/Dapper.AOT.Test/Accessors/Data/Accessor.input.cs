@@ -1,4 +1,5 @@
-﻿using Dapper;
+﻿using System;
+using Dapper;
 
 [module: DapperAot]
 
@@ -19,6 +20,8 @@ public static class Foo
         public string Y;
         public double? Z { get; set; }
         public State State { get; set; }
+        public object Obj { get; set; }
+        public DBNull DbNullProp { get; set; }
     }
     public enum State
     {

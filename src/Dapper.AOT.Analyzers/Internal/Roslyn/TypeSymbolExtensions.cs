@@ -59,6 +59,24 @@ internal static class TypeSymbolExtensions
         };
     }
 
+    public static bool IsNullable(this ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated) return true;
+        return typeSymbol.TypeKind is 
+            TypeKind.Class or TypeKind.Array or
+            TypeKind.Delegate or TypeKind.Dynamic or
+            TypeKind.Interface;
+    }
+
+    /// <returns>
+    /// Returns true, if <paramref name="typeSymbol"/> represents an <see cref="object"/> type.
+    /// </returns>
+    public static bool IsSystemObject(this ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is null) return false;
+        return typeSymbol.SpecialType == SpecialType.System_Object;
+    }
+
     /// <returns>
     /// True, if passed <param name="typeSymbol"/> represents array. False otherwise
     /// </returns>
