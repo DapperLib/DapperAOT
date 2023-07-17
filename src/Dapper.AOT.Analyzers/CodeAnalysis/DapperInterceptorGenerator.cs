@@ -1135,7 +1135,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 
                 sb.Append("public override bool SupportBatch => true;").NewLine();
 
-                sb.Append("public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+                sb.Append("public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbConnection conn, ").Append(declaredType).Append(" args)").Indent().NewLine();
                 WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags, true);
                 sb.Outdent().NewLine();
 
@@ -1321,6 +1321,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
 
         var source = "args";
+
         if (parameterType.IsAnonymousType)
         {
             sb.Append("var typed = Cast(args, ");
@@ -1379,6 +1380,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 {
                     case WriteArgsMode.Add:
                         sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
+                        if (batch)
+                        {
+                            sb.Append("global::System.Data.Common.DbCommand? paramFactory = null;").NewLine();
+                        }
                         break;
                 }
                 first = false;
@@ -1403,7 +1408,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             switch (mode)
             {
                 case WriteArgsMode.Add:
-                    sb.Append("p = cmd.CreateParameter();").NewLine()
+                    sb.Append(batch ? "p = (paramFactory ??= conn.CreateCommand()).CreateParameter();" : "p = cmd.CreateParameter();").NewLine()
                         .Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
 
                     var dbType = member.GetDbType(out _);

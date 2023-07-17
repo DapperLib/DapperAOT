@@ -112,12 +112,13 @@ file static class DapperGeneratedInterceptors
 
         }
         public override bool SupportBatch => true;
-        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, object? args)
+        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbConnection conn, object? args)
         {
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
             var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
-            p = cmd.CreateParameter();
+            global::System.Data.Common.DbCommand? paramFactory = null;
+            p = (paramFactory ??= conn.CreateCommand()).CreateParameter();
             p.ParameterName = "B";
             p.DbType = global::System.Data.DbType.Int32;
             p.Direction = global::System.Data.ParameterDirection.Input;

@@ -2,22 +2,3 @@ Generator produced 1 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 9 of 9 enabled call-sites using 9 interceptors, 3 commands and 0 readers
-Output code has 6 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
-
-Error CS1061 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L192 C21
-'DbBatchCommand' does not contain a definition for 'CreateParameter' and no accessible extension method 'CreateParameter' accepting a first argument of type 'DbBatchCommand' could be found (are you missing a using directive or an assembly reference?)
-
-Error CS1061 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L199 C21
-'DbBatchCommand' does not contain a definition for 'CreateParameter' and no accessible extension method 'CreateParameter' accepting a first argument of type 'DbBatchCommand' could be found (are you missing a using directive or an assembly reference?)
-
-Error CS1061 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L207 C21
-'DbBatchCommand' does not contain a definition for 'CreateParameter' and no accessible extension method 'CreateParameter' accepting a first argument of type 'DbBatchCommand' could be found (are you missing a using directive or an assembly reference?)
-
-Error CS1061 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L257 C21
-'DbBatchCommand' does not contain a definition for 'CreateParameter' and no accessible extension method 'CreateParameter' accepting a first argument of type 'DbBatchCommand' could be found (are you missing a using directive or an assembly reference?)
-
-Error CS1061 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L264 C21
-'DbBatchCommand' does not contain a definition for 'CreateParameter' and no accessible extension method 'CreateParameter' accepting a first argument of type 'DbBatchCommand' could be found (are you missing a using directive or an assembly reference?)
-
-Error CS1061 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L303 C21
-'DbBatchCommand' does not contain a definition for 'CreateParameter' and no accessible extension method 'CreateParameter' accepting a first argument of type 'DbBatchCommand' could be found (are you missing a using directive or an assembly reference?)

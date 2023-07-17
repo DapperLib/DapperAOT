@@ -245,7 +245,7 @@ public class CommandFactory<T> : CommandFactory
     /// <summary>
     /// Add parameters with values.
     /// </summary>
-    public virtual void AddParameters(DbBatchCommand command, T args) { }
+    public virtual void AddParameters(DbBatchCommand command, DbConnection connection, T args) { }
 
     /// <summary>
     /// Allows an implementation to process output parameters etc after an operation has completed.
@@ -266,7 +266,7 @@ public class CommandFactory<T> : CommandFactory
         var cmd = batch.CreateBatchCommand();
         cmd.CommandText = sql;
         cmd.CommandType = commandType != 0 ? commandType : sql.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure; // assume text if at least one space
-        AddParameters(cmd, args);
+        AddParameters(cmd, batch.Connection!, args);
         return cmd;
     }
 #endif
