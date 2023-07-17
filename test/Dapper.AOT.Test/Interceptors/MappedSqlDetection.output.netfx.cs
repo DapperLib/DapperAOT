@@ -125,6 +125,8 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = AsValue(args.A);
 
         }
+        public override bool RequirePostProcess => true;
+
         public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args, int rowCount)
         {
             args.RowCount = rowCount;
@@ -163,6 +165,8 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = AsValue(args.B);
 
         }
+        public override bool RequirePostProcess => true;
+
         public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args, int rowCount)
         {
             args.RowCount = rowCount;
@@ -195,6 +199,8 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = AsValue(args.D);
 
         }
+        public override bool RequirePostProcess => true;
+
         public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args, int rowCount)
         {
             args.RowCount = rowCount;
@@ -226,6 +232,8 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = global::System.DBNull.Value;
 
         }
+        public override bool RequirePostProcess => true;
+
         public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
         {
             var ps = cmd.Parameters;
@@ -262,6 +270,8 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = AsValue(args.X);
 
         }
+        public override bool RequirePostProcess => true;
+
         public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeOtherArg args, int rowCount)
         {
             args.RowCount = rowCount;

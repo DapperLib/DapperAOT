@@ -164,6 +164,7 @@ public class CommandFactory<T> : CommandFactory
         AddParameters(cmd, args);
         return cmd;
     }
+
     /// <summary>
     /// Allows an implementation to process output parameters etc after an operation has completed
     /// </summary>
@@ -229,4 +230,44 @@ public class CommandFactory<T> : CommandFactory
         }
         return cmd;
     }
+
+    /// <summary>
+    /// Indicates where it is <em>required</em> to invoke post-operation logic to update parameter values.
+    /// </summary>
+    public virtual bool RequirePostProcess => false;
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Indicates whether this instance supports the <see cref="DbBatch"/> API.
+    /// </summary>
+    public virtual bool SupportBatch => false;
+
+    /// <summary>
+    /// Add parameters with values.
+    /// </summary>
+    public virtual void AddParameters(DbBatchCommand command, T args) { }
+
+    /// <summary>
+    /// Allows an implementation to process output parameters etc after an operation has completed.
+    /// </summary>
+    public virtual void PostProcess(DbBatchCommand command, T args, int rowCount) => PostProcess(command, args);
+
+    /// <summary>
+    /// Allows an implementation to process output parameters etc after an operation has completed.
+    /// </summary>
+    public virtual void PostProcess(DbBatchCommand command, T args) { }
+
+    /// <summary>
+    /// Provide and configure an ADO.NET command that can perform the requested operation.
+    /// </summary>
+    public virtual DbBatchCommand GetCommand(DbBatch batch, string sql, CommandType commandType, T args)
+    {
+        // default behavior assumes no args, no special logic
+        var cmd = batch.CreateBatchCommand();
+        cmd.CommandText = sql;
+        cmd.CommandType = commandType != 0 ? commandType : sql.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure; // assume text if at least one space
+        AddParameters(cmd, args);
+        return cmd;
+    }
+#endif
 }

@@ -111,6 +111,20 @@ file static class DapperGeneratedInterceptors
             ps[0].Value = AsValue(typed.B);
 
         }
+        public override bool SupportBatch => true;
+        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, object? args)
+        {
+            var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
+            var ps = cmd.Parameters;
+            global::System.Data.Common.DbParameter p;
+            p = cmd.CreateParameter();
+            p.ParameterName = "B";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.B);
+            ps.Add(p);
+
+        }
         public override bool CanPrepare => true;
 
     }

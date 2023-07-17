@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data.Common;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -150,6 +152,14 @@ partial struct Command<TArgs>
 
     private int ExecuteMulti(ReadOnlySpan<TArgs> source)
     {
+#if NET6_0_OR_GREATER
+        if (UseBatch) return ExecuteMultiBatch(source);
+#endif
+        return ExecuteMultiSequential(source);
+    }
+
+    private int ExecuteMultiSequential(ReadOnlySpan<TArgs> source)
+    {
         Debug.Assert(source.Length > 1);
         CommandState state = default;
         try
@@ -180,7 +190,94 @@ partial struct Command<TArgs>
         }
     }
 
+#if NET6_0_OR_GREATER
+    private bool UseBatch => connection is { CanCreateBatch: true } && commandFactory is { SupportBatch: true };
+    private DbBatchCommand AddCommand(ref DbBatch? batch, TArgs args)
+    {
+        if (batch is null)
+        {
+            batch = connection.CreateBatch();
+            batch.Connection = connection;
+        }
+        var cmd = commandFactory.GetCommand(batch, sql, commandType, args);
+        batch.BatchCommands.Add(cmd);
+        return cmd;
+    }
+    private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source)
+    {
+        Debug.Assert(source.Length > 1);
+        DbBatch? batch = null;
+        try
+        {
+            foreach (var arg in source)
+            {
+                AddCommand(ref batch, arg);
+            }
+            if (batch is null) return 0;
+
+            var result = batch.ExecuteNonQuery();
+
+            if (commandFactory.RequirePostProcess)
+            {
+                int i = 0;
+                foreach (var arg in source)
+                {
+                    var cmd = batch.BatchCommands[i++];
+                    commandFactory.PostProcess(cmd, arg, cmd.RecordsAffected);
+                }
+            }
+            return result;
+        }
+        finally
+        {
+            batch?.Dispose();
+        }
+    }
+    private int ExecuteMultiBatch(IEnumerable<TArgs> source)
+    {
+        if (commandFactory.RequirePostProcess)
+        {
+            // try to ensure it is repeatable
+            source = (source as IReadOnlyCollection<TArgs>) ?? source.ToList();
+        }
+        
+        DbBatch? batch = null;
+        try
+        {
+            foreach (var arg in source)
+            {
+                AddCommand(ref batch, arg);
+            }
+            if (batch is null) return 0;
+
+            var result = batch.ExecuteNonQuery();
+            if (commandFactory.RequirePostProcess)
+            {
+                int i = 0;
+                foreach (var arg in source)
+                {
+                    var cmd = batch.BatchCommands[i++];
+                    commandFactory.PostProcess(cmd, arg, cmd.RecordsAffected);
+                }
+            }
+            return result;
+        }
+        finally
+        {
+            batch?.Dispose();
+        }
+    }
+#endif
+
     private int ExecuteMulti(IEnumerable<TArgs> source)
+    {
+#if NET6_0_OR_GREATER
+        if (UseBatch) return ExecuteMultiBatch(source);
+#endif
+        return ExecuteMultiSequential(source);
+    }
+    
+    private int ExecuteMultiSequential(IEnumerable<TArgs> source)
     {
         CommandState state = default;
         var iterator = source.GetEnumerator();

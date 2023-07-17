@@ -11,7 +11,10 @@ Parameters are being supplied, but no parameters were detected in the command
 
 Warning DAP018 Interceptors/SqlDetection.input.cs L34 C20
 Parameters are being supplied, but no parameters were detected in the command
-Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
 
 Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L68 C190
 Argument of type 'object?[]' cannot be used for parameter 'values' of type 'object[]' in 'int Command<object>.Execute(object[] values)' due to differences in the nullability of reference types.
+
+Error CS1061 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L120 C21
+'DbBatchCommand' does not contain a definition for 'CreateParameter' and no accessible extension method 'CreateParameter' accepting a first argument of type 'DbBatchCommand' could be found (are you missing a using directive or an assembly reference?)

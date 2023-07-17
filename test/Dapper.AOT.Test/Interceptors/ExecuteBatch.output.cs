@@ -184,6 +184,34 @@ file static class DapperGeneratedInterceptors
             ps[2].Value = AsValue(args.Z);
 
         }
+        public override bool SupportBatch => true;
+        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::Foo.Customer args)
+        {
+            var ps = cmd.Parameters;
+            global::System.Data.Common.DbParameter p;
+            p = cmd.CreateParameter();
+            p.ParameterName = "X";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(args.X);
+            ps.Add(p);
+
+            p = cmd.CreateParameter();
+            p.ParameterName = "Y";
+            p.DbType = global::System.Data.DbType.String;
+            p.Size = -1;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(args.Y);
+            ps.Add(p);
+
+            p = cmd.CreateParameter();
+            p.ParameterName = "Z";
+            p.DbType = global::System.Data.DbType.Double;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(args.Z);
+            ps.Add(p);
+
+        }
         public override bool CanPrepare => true;
 
     }
@@ -220,6 +248,28 @@ file static class DapperGeneratedInterceptors
             ps[1].Value = AsValue(typed.bar);
 
         }
+        public override bool SupportBatch => true;
+        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, object? args)
+        {
+            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            var ps = cmd.Parameters;
+            global::System.Data.Common.DbParameter p;
+            p = cmd.CreateParameter();
+            p.ParameterName = "Foo";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.Foo);
+            ps.Add(p);
+
+            p = cmd.CreateParameter();
+            p.ParameterName = "bar";
+            p.DbType = global::System.Data.DbType.String;
+            p.Size = -1;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.bar);
+            ps.Add(p);
+
+        }
         public override bool CanPrepare => true;
 
     }
@@ -243,6 +293,19 @@ file static class DapperGeneratedInterceptors
         {
             var ps = cmd.Parameters;
             ps[0].Value = AsValue(args.X);
+
+        }
+        public override bool SupportBatch => true;
+        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::Foo.Customer args)
+        {
+            var ps = cmd.Parameters;
+            global::System.Data.Common.DbParameter p;
+            p = cmd.CreateParameter();
+            p.ParameterName = "X";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(args.X);
+            ps.Add(p);
 
         }
         public override bool CanPrepare => true;

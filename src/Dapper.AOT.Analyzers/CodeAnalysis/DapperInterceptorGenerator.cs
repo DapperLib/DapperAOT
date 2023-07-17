@@ -872,7 +872,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return;
         }
 
-        var dbCommandTypes = IdentifyDbCommandTypes(state.Compilation, out var needsCommandPrep);
+        var dbCommandTypes = IdentifyDbCommandTypes(state.Compilation, out var needsCommandPrep, out bool frameworkHasBatchAPI);
 
         bool allowUnsafe = state.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
@@ -1046,9 +1046,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             WriteRowFactory(sb, pair.Type, pair.Index);
         }
 
+
         foreach (var tuple in factories)
         {
-            WriteCommandFactory(baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount);
+            WriteCommandFactory(baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount, tuple.SupportBatch && frameworkHasBatchAPI);
         }
 
         sb.Outdent(); // ends our generated file-scoped class
@@ -1060,7 +1061,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, enabledCount, methodIndex, factories.Count(), readers.Count()));
     }
 
-    private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount)
+    private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount, bool supportBatch)
     {
         var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
         sb.Append("private ").Append(cacheCount <= 1 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
@@ -1102,27 +1103,56 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         else
         {
             sb.Append("public override void AddParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-            WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags);
+            WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags, false);
             sb.Outdent().NewLine();
 
             sb.Append("public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-            WriteArgs(type, sb, WriteArgsMode.Update, map, ref flags);
+            WriteArgs(type, sb, WriteArgsMode.Update, map, ref flags, false);
             sb.Outdent().NewLine();
 
+            if ((flags & (WriteArgsFlags.NeedsRowCount | WriteArgsFlags.NeedsPostProcess)) != 0)
+            {
+                sb.Append("public override bool RequirePostProcess => true;").NewLine().NewLine();
+            }
 
             if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
             {
                 sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-                WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
+                WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags, false);
                 sb.Outdent().NewLine();
             }
 
             if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
             {
                 sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
-                WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
+                WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags, false);
                 sb.Append("PostProcess(cmd, args);");
                 sb.Outdent().NewLine();
+            }
+
+            if (supportBatch)
+            {
+                
+                sb.Append("public override bool SupportBatch => true;").NewLine();
+
+                sb.Append("public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+                WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags, true);
+                sb.Outdent().NewLine();
+
+                if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
+                {
+                    sb.Append("public override void PostProcess(global::System.Data.Common.DbBatchCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+                    WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags, true);
+                    sb.Outdent().NewLine();
+                }
+
+                if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
+                {
+                    sb.Append("public override void PostProcess(global::System.Data.Common.DbBatchCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
+                    WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags, true);
+                    sb.Append("PostProcess(cmd, args);");
+                    sb.Outdent().NewLine();
+                }
             }
         }
 
@@ -1283,7 +1313,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         SetRowCount
     }
 
-    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags)
+    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags, bool batch)
     {
         if (parameterType is null)
         {
@@ -1545,15 +1575,18 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         InitialLONGFetchSize = 1 << 1,
     }
 
-    private ImmutableArray<ITypeSymbol> IdentifyDbCommandTypes(Compilation compilation, out bool needsPrepare)
+    private ImmutableArray<ITypeSymbol> IdentifyDbCommandTypes(Compilation compilation, out bool needsPrepare, out bool hasBatchAPI)
     {
         needsPrepare = false;
         var dbCommand = compilation.GetTypeByMetadataName("System.Data.Common.DbCommand");
         if (dbCommand is null)
         {
             // if we can't find DbCommand, we're out of luck
+            hasBatchAPI = false;
             return ImmutableArray<ITypeSymbol>.Empty;
         }
+        hasBatchAPI = compilation.GetTypeByMetadataName("System.Data.Common.DbBatch") is not null;
+
         var pending = new Queue<INamespaceOrTypeSymbol>();
         foreach (var assemblyName in compilation.References)
         {
