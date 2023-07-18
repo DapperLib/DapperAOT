@@ -114,7 +114,7 @@ file static class DapperGeneratedInterceptors
 
         }
         public override bool SupportBatch => true;
-        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbConnection conn, object? args)
+        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbBatch batch, object? args)
         {
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
             var ps = cmd.Parameters;
@@ -124,7 +124,7 @@ file static class DapperGeneratedInterceptors
             var commandType = cmd.CommandType;
             if (Include(sql, commandType, "A"))
             {
-                p = (paramFactory ??= conn.CreateCommand()).CreateParameter();
+                p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
                 p.ParameterName = "A";
                 p.DbType = global::System.Data.DbType.Int32;
                 p.Direction = global::System.Data.ParameterDirection.Input;
@@ -135,7 +135,7 @@ file static class DapperGeneratedInterceptors
 
             if (Include(sql, commandType, "B"))
             {
-                p = (paramFactory ??= conn.CreateCommand()).CreateParameter();
+                p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
                 p.ParameterName = "B";
                 p.DbType = global::System.Data.DbType.Int32;
                 p.Direction = global::System.Data.ParameterDirection.Input;
@@ -146,7 +146,7 @@ file static class DapperGeneratedInterceptors
 
             if (Include(sql, commandType, "C"))
             {
-                p = (paramFactory ??= conn.CreateCommand()).CreateParameter();
+                p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
                 p.ParameterName = "C";
                 p.DbType = global::System.Data.DbType.Int32;
                 p.Direction = global::System.Data.ParameterDirection.Input;

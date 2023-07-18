@@ -134,7 +134,7 @@ public abstract class CommandFactory
     /// <summary>
     /// Gets a shared command-factory with minimal command processing
     /// </summary>
-    public static CommandFactory<object?> Simple  => CommandFactory<object?>.Default;
+    public static CommandFactory<object?> Simple => CommandFactory<object?>.Default;
 }
 
 /// <summary>
@@ -245,7 +245,7 @@ public class CommandFactory<T> : CommandFactory
     /// <summary>
     /// Add parameters with values.
     /// </summary>
-    public virtual void AddParameters(DbBatchCommand command, DbConnection connection, T args) { }
+    public virtual void AddParameters(DbBatchCommand command, DbBatch batch, T args) { }
 
     /// <summary>
     /// Allows an implementation to process output parameters etc after an operation has completed.
@@ -262,11 +262,10 @@ public class CommandFactory<T> : CommandFactory
     /// </summary>
     public virtual DbBatchCommand GetCommand(DbBatch batch, string sql, CommandType commandType, T args)
     {
-        // default behavior assumes no args, no special logic
         var cmd = batch.CreateBatchCommand();
         cmd.CommandText = sql;
         cmd.CommandType = commandType != 0 ? commandType : sql.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure; // assume text if at least one space
-        AddParameters(cmd, batch.Connection!, args);
+        AddParameters(cmd, batch, args);
         return cmd;
     }
 #endif

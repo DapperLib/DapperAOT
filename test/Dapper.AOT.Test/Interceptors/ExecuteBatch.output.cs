@@ -185,19 +185,19 @@ file static class DapperGeneratedInterceptors
 
         }
         public override bool SupportBatch => true;
-        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbConnection conn, global::Foo.Customer args)
+        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbBatch batch, global::Foo.Customer args)
         {
             var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             global::System.Data.Common.DbCommand? paramFactory = null;
-            p = (paramFactory ??= conn.CreateCommand()).CreateParameter();
+            p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
             p.ParameterName = "X";
             p.DbType = global::System.Data.DbType.Int32;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(args.X);
             ps.Add(p);
 
-            p = (paramFactory ??= conn.CreateCommand()).CreateParameter();
+            p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
             p.ParameterName = "Y";
             p.DbType = global::System.Data.DbType.String;
             p.Size = -1;
@@ -205,7 +205,7 @@ file static class DapperGeneratedInterceptors
             p.Value = AsValue(args.Y);
             ps.Add(p);
 
-            p = (paramFactory ??= conn.CreateCommand()).CreateParameter();
+            p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
             p.ParameterName = "Z";
             p.DbType = global::System.Data.DbType.Double;
             p.Direction = global::System.Data.ParameterDirection.Input;
@@ -250,20 +250,20 @@ file static class DapperGeneratedInterceptors
 
         }
         public override bool SupportBatch => true;
-        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbConnection conn, object? args)
+        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbBatch batch, object? args)
         {
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
             var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             global::System.Data.Common.DbCommand? paramFactory = null;
-            p = (paramFactory ??= conn.CreateCommand()).CreateParameter();
+            p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
             p.ParameterName = "Foo";
             p.DbType = global::System.Data.DbType.Int32;
             p.Direction = global::System.Data.ParameterDirection.Input;
             p.Value = AsValue(typed.Foo);
             ps.Add(p);
 
-            p = (paramFactory ??= conn.CreateCommand()).CreateParameter();
+            p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
             p.ParameterName = "bar";
             p.DbType = global::System.Data.DbType.String;
             p.Size = -1;
@@ -298,12 +298,12 @@ file static class DapperGeneratedInterceptors
 
         }
         public override bool SupportBatch => true;
-        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbConnection conn, global::Foo.Customer args)
+        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbBatch batch, global::Foo.Customer args)
         {
             var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             global::System.Data.Common.DbCommand? paramFactory = null;
-            p = (paramFactory ??= conn.CreateCommand()).CreateParameter();
+            p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
             p.ParameterName = "X";
             p.DbType = global::System.Data.DbType.Int32;
             p.Direction = global::System.Data.ParameterDirection.Input;
