@@ -1,11 +1,15 @@
-﻿using Dapper.Internal.Roslyn;
+﻿using Dapper.CodeAnalysis;
+using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 
 namespace Dapper.Internal;
@@ -275,6 +279,21 @@ internal static class Inspection
         return false;
     }
 
+    [DebuggerDisplay("Order: {Order}; Type: {Type}; Name: {Name}")]
+    public readonly struct ConstructorParameter
+    {
+        public int Order { get; }
+        public ITypeSymbol Type { get; }
+        public string Name { get; }
+
+        public ConstructorParameter(int order, ITypeSymbol type, string name)
+        {
+            Order = order;
+            Type = type;
+            Name = name;
+        }
+    }
+
     public readonly struct ElementMember
     {
         private readonly AttributeData? _dbValue;
@@ -323,6 +342,114 @@ internal static class Inspection
         public override string ToString() => Member?.Name ?? "";
         public override bool Equals(object obj) => obj is ElementMember other
             && SymbolEqualityComparer.Default.Equals(Member, other.Member);
+    }
+
+    /// <summary>
+    /// Chooses a single constructor of type which to use for type's instances creation.
+    /// </summary>
+    /// <param name="typeSymbol">symbol for type to analyze</param>
+    /// <param name="parameters">parameters of chosen constructor</param>
+    /// <param name="errorDiagnostic">if constructor selection was invalid, contains a diagnostic with error to emit to generation context</param>
+    /// <returns></returns>
+    public static bool TryGetSingleCompatibleDapperAotConstructor(
+        ITypeSymbol? typeSymbol,
+        out IReadOnlyCollection<ConstructorParameter>? parameters,
+        out Diagnostic? errorDiagnostic)
+    {
+        var (standardCtors, dapperAotEnabledCtors) = ChooseDapperAotCompatibleConstructors(typeSymbol);
+        if (standardCtors.Count == 0 && dapperAotEnabledCtors.Count == 0)
+        {
+            errorDiagnostic = null;
+            parameters = null;
+            return false;
+        }
+
+        // if multiple constructors remain, and multiple are marked [DapperAot]/[DapperAot(true)], a generator error is emitted and no constructor is selected
+        if (dapperAotEnabledCtors.Count > 1)
+        {
+            // attaching diagnostic to first location of first ctor
+            var loc = dapperAotEnabledCtors.First().Locations.First();
+
+            parameters = null;
+            errorDiagnostic = Diagnostic.Create(Diagnostics.TooManyDapperAotEnabledConstructors, loc);
+            return false;
+        }
+
+        if (dapperAotEnabledCtors.Count == 1)
+        {
+            parameters = ParseConstructorParameters(dapperAotEnabledCtors.First());
+            errorDiagnostic = null;
+            return true;
+        }
+
+        if (standardCtors.Count == 1)
+        {
+            parameters = ParseConstructorParameters(standardCtors.First());
+            errorDiagnostic = null;
+            return true;
+        }
+
+        // we cant choose a constructor, so we simply dont choose any
+        parameters = null;
+        errorDiagnostic = null;
+        return false;
+
+        IReadOnlyCollection<ConstructorParameter> ParseConstructorParameters(IMethodSymbol constructorSymbol)
+        {
+            var parameters = new List<ConstructorParameter>();
+            int order = 0;
+            foreach (var parameter in constructorSymbol.Parameters)
+            {
+                parameters.Add(new ConstructorParameter(order: order++, type: parameter.Type, name: parameter.Name));
+            }
+            return parameters;
+        }
+    }
+
+    /// <summary>
+    /// Builds a collection of type constructors, which are NOT:
+    /// a) parameterless
+    /// b) marked with [DapperAot(false)]
+    /// </summary>
+    private static (IReadOnlyCollection<IMethodSymbol> standardConstructors, IReadOnlyCollection<IMethodSymbol> dapperAotEnabledConstructors) ChooseDapperAotCompatibleConstructors(ITypeSymbol? typeSymbol)
+    {
+        if (!typeSymbol.TryGetConstructors(out var constructors))
+        {
+            return (standardConstructors: Array.Empty<IMethodSymbol>(), dapperAotEnabledConstructors: Array.Empty<IMethodSymbol>());
+        }
+
+        var standardCtors = new List<IMethodSymbol>();
+        var dapperAotEnabledCtors = new List<IMethodSymbol>();
+
+        foreach (var constructorMethodSymbol in constructors!)
+        {
+            // not taking into an account parameterless constructors
+            if (constructorMethodSymbol.Parameters.Length == 0) continue;
+
+            var dapperAotAttribute= GetDapperAttribute(constructorMethodSymbol, Types.DapperAotAttribute);
+            if (dapperAotAttribute is null)
+            {
+                // picking constructor which is not marked with [DapperAot] attribute at all
+                standardCtors.Add(constructorMethodSymbol);
+                continue;
+            }
+
+            if (dapperAotAttribute.ConstructorArguments.Length == 0)
+            {
+                // picking constructor which is marked with [DapperAot] attribute without arguments (its enabled by default)
+                dapperAotEnabledCtors.Add(constructorMethodSymbol);
+                continue;
+            }
+
+            var typedArg = dapperAotAttribute.ConstructorArguments.First();
+            if (typedArg.Value is bool isAot && isAot)
+            {
+                // picking constructor which is marked with explicit [DapperAot(true)]
+                dapperAotEnabledCtors.Add(constructorMethodSymbol);
+            }
+        }
+
+        return (standardCtors, dapperAotEnabledCtors);
     }
 
     public static IEnumerable<ElementMember> GetMembers(ITypeSymbol? elementType)

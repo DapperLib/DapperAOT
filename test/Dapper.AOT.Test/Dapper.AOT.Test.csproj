@@ -41,4 +41,15 @@
         <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
         <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
     </ItemGroup>
+    <ItemGroup>
+      <None Update="Interceptors\QueryCustomConstructor.output.netfx.cs">
+        <DependentUpon>QueryCustomConstructor.input.cs</DependentUpon>
+      </None>
+      <None Update="Interceptors\QueryCustomConstructor.output.netfx.txt">
+        <DependentUpon>QueryCustomConstructor.input.cs</DependentUpon>
+      </None>
+      <None Update="Interceptors\QueryCustomConstructor.output.txt">
+        <DependentUpon>QueryCustomConstructor.input.cs</DependentUpon>
+      </None>
+    </ItemGroup>
 </Project>

@@ -66,6 +66,10 @@ internal static class Diagnostics
             "Use {0}() instead of Query(...).{1}()", Category.Performance, DiagnosticSeverity.Warning, true),
         UseQueryAsList = new("DAP028", "Use AsList instead of ToList",
             "Use Query(...).AsList() instead of Query(...).ToList()", Category.Performance, DiagnosticSeverity.Warning, true),
+        TooManyDapperAotEnabledConstructors = new("DAP029", "Too many Dapper.AOT enabled constructors",
+            "Only one constructor can be Dapper.AOT enabled per type", Category.Library, DiagnosticSeverity.Error, true),
+        TooManyStandardConstructors = new("DAP030", "Type has more than 1 constructor to choose for creating an instance",
+            "Type has more than 1 constructor. Please, either mark one constructor with [DapperAot] or reduce amount of constructors", Category.Library, DiagnosticSeverity.Error, true),
 
     // TypeAccessor
         TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",

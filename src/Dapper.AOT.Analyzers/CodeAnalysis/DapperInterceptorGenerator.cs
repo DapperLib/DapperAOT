@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 
@@ -1043,7 +1044,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var pair in readers)
         {
-            WriteRowFactory(sb, pair.Type, pair.Index);
+            WriteRowFactory(ctx, sb, pair.Type, pair.Index);
         }
 
         foreach (var tuple in factories)
@@ -1167,8 +1168,15 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         sb.Outdent().NewLine().NewLine();
     }
 
-    private static void WriteRowFactory(CodeWriter sb, ITypeSymbol type, int index)
+    private static void WriteRowFactory(SourceProductionContext context, CodeWriter sb, ITypeSymbol type, int index)
     {
+        var hasDapperAotCompatibleConstructor = Inspection.TryGetSingleCompatibleDapperAotConstructor(type, out var constructorParameters, out var errorDiagnostic);
+        if (!hasDapperAotCompatibleConstructor && errorDiagnostic is not null)
+        {
+            context.ReportDiagnostic(errorDiagnostic);
+            return;
+        }
+
         var members = Inspection.GetMembers(type).ToImmutableArray();
         var memberCount = 0;
         foreach (var member in members)
@@ -1184,83 +1192,97 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             .Append("internal static readonly RowFactory").Append(index).Append(" Instance = new();").NewLine()
             .Append("private RowFactory").Append(index).Append("() {}").NewLine();
 
-        if (memberCount != 0)
-        {
-            sb.Append("public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
-            sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
-                .Append("int token = -1;").NewLine()
-                .Append("var name = reader.GetName(columnOffset);").NewLine()
-                .Append("var type = reader.GetFieldType(columnOffset);").NewLine()
-                .Append("switch (NormalizedHash(name))").Indent().NewLine();
-
-            int token = 0;
-            foreach (var member in members)
-            {
-                if (CodeWriter.IsSettableInstanceMember(member.Member, out var memberType))
-                {
-                    var dbName = member.DbName;
-                    sb.Append("case ").Append(StringHashing.NormalizedHash(dbName))
-                        .Append(" when NormalizedEquals(name, ")
-                        .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine()
-                        .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(memberType)).Append(") ? ").Append(token)
-                        .Append(" : ").Append(token + memberCount).Append(";")
-                        .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
-                        .Append("break;").Outdent(false).NewLine();
-                    token++;
-                }
-            }
-            sb.Outdent().NewLine()
-                .Append("tokens[i] = token;").NewLine()
-                .Append("columnOffset++;").NewLine();
-            sb.Outdent().NewLine().Append("return null;").Outdent().NewLine();
-        }
-        sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
-
-        sb.Append(type.NullableAnnotation == NullableAnnotation.Annotated
-            ? type.WithNullableAnnotation(NullableAnnotation.None) : type).Append(" result = new();").NewLine();
-
-        if (memberCount != 0)
-        {
-            sb.Append("foreach (var token in tokens)").Indent().NewLine()
-            .Append("switch (token)").Indent().NewLine();
-
-            int token = 0;
-            foreach (var member in members)
-            {
-                if (CodeWriter.IsSettableInstanceMember(member.Member, out var memberType))
-                {
-                    member.GetDbType(out var readerMethod);
-                    var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
-                    sb.Append("case ").Append(token).Append(":").NewLine().Indent(false)
-                        .Append("result.").Append(member.CodeName).Append(" = ").Append(nullCheck);
-
-                    if (readerMethod is null)
-                    {
-                        sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
-                    }
-                    else
-                    {
-                        sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
-                    }
-                    sb.NewLine().Append("break;").NewLine().Outdent(false)
-                        .Append("case ").Append(token + memberCount).Append(":").NewLine().Indent(false)
-                        .Append("result.").Append(member.CodeName).Append(" = ").Append(nullCheck)
-                        .Append("GetValue<")
-                        .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
-                        .Append("break;").NewLine().Outdent(false);
-                    token++;
-                }
-            }
-
-            sb.Outdent().NewLine().Append("columnOffset++;").NewLine().Outdent().NewLine();
-        }
-        sb.Append("return result;").NewLine().Outdent().NewLine();
-
+        WriteTokenize();
+        WriteRead();
 
         sb.Outdent().NewLine().NewLine();
 
+        void WriteTokenize()
+        {
+            if (memberCount != 0)
+            {
+                sb.Append("public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
+                sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
+                    .Append("int token = -1;").NewLine()
+                    .Append("var name = reader.GetName(columnOffset);").NewLine()
+                    .Append("var type = reader.GetFieldType(columnOffset);").NewLine()
+                    .Append("switch (NormalizedHash(name))").Indent().NewLine();
 
+                int token = 0;
+                foreach (var member in members)
+                {
+                    if (CodeWriter.IsSettableInstanceMember(member.Member, out var memberType))
+                    {
+                        var dbName = member.DbName;
+                        sb.Append("case ").Append(StringHashing.NormalizedHash(dbName))
+                            .Append(" when NormalizedEquals(name, ")
+                            .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine()
+                            .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(memberType)).Append(") ? ").Append(token)
+                            .Append(" : ").Append(token + memberCount).Append(";")
+                            .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
+                            .Append("break;").Outdent(false).NewLine();
+                        token++;
+                    }
+                }
+                sb.Outdent().NewLine()
+                    .Append("tokens[i] = token;").NewLine()
+                    .Append("columnOffset++;").NewLine();
+                sb.Outdent().NewLine().Append("return null;").Outdent().NewLine();
+            }
+        }
+        void WriteRead()
+        {
+            sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
 
+            sb.Append(type.NullableAnnotation == NullableAnnotation.Annotated
+                ? type.WithNullableAnnotation(NullableAnnotation.None) : type).Append(" result = new();").NewLine();
+
+            if (memberCount != 0)
+            {
+                int token = 0;
+                if (hasDapperAotCompatibleConstructor)
+                {
+                    foreach (var member in members)
+                    {
+
+                    }
+                }
+
+                sb.Append("foreach (var token in tokens)").Indent().NewLine()
+                .Append("switch (token)").Indent().NewLine();
+
+                token = 0;
+                foreach (var member in members)
+                {
+                    if (CodeWriter.IsSettableInstanceMember(member.Member, out var memberType))
+                    {
+                        member.GetDbType(out var readerMethod);
+                        var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
+                        sb.Append("case ").Append(token).Append(":").NewLine().Indent(false)
+                            .Append("result.").Append(member.CodeName).Append(" = ").Append(nullCheck);
+
+                        if (readerMethod is null)
+                        {
+                            sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                        }
+                        else
+                        {
+                            sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
+                        }
+                        sb.NewLine().Append("break;").NewLine().Outdent(false)
+                            .Append("case ").Append(token + memberCount).Append(":").NewLine().Indent(false)
+                            .Append("result.").Append(member.CodeName).Append(" = ").Append(nullCheck)
+                            .Append("GetValue<")
+                            .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
+                            .Append("break;").NewLine().Outdent(false);
+                        token++;
+                    }
+                }
+
+                sb.Outdent().NewLine().Append("columnOffset++;").NewLine().Outdent().NewLine();
+            }
+            sb.Append("return result;").NewLine().Outdent().NewLine();
+        }
 
         static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
             ? symbol.NullableAnnotation == NullableAnnotation.Annotated

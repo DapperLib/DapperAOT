@@ -10,6 +10,22 @@ namespace Dapper.Internal.Roslyn
     public class TypeSymbolExtensionsTests
     {
         [Fact]
+        public void CheckTypeUsage_WithCustomConstructor()
+        {
+            var text = BuildDapperCodeTextWithConstructor(
+            """
+            _ = connection.Execute("def", new Customer());
+            """);
+
+            var argumentOperation = GetInvocationArgumentOperation(text);
+            var typeSymbol = GetConversionTypeSymbol(argumentOperation);
+
+            var result = typeSymbol.TryGetConstructors(out var constructors);
+            Assert.True(result);
+            Assert.Single(constructors!);
+        }
+
+        [Fact]
         public void CheckSystemObject()
         {
             var text = BuildDapperCodeText(
@@ -185,6 +201,40 @@ namespace Dapper.Internal.Roslyn
             Assert.NotNull(arg);
             return arg;
         }
+
+        static string BuildDapperCodeTextWithConstructor(string implementation) => $$"""
+            using Dapper;
+            using System.Collections.Generic;
+            using System.Collections.Immutable;
+            using System.Data;
+            using System.Data.Common;
+
+            public static class Foo
+            {
+                static void SomeCode(DbConnection connection, string bar)
+                {
+                    {{implementation}}
+                }
+                public class Customer
+                {
+                    public int X { get; set; }
+                    public string Y;
+                    public double? Z { get; set; }
+
+                    public Customer(int x, string y, double? z)
+                    {
+                        X = x;
+                        Y = y;
+                        Z = z;
+                    }
+                }
+                public enum State
+                {
+                    Active,
+                    Disabled
+                }
+            }
+        """;
 
         static string BuildDapperCodeText(string implementation) => $$"""
             using Dapper;
