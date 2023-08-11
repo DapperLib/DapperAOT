@@ -1,0 +1,18 @@
+Input code has 2 diagnostics from 'Interceptors/EstimatedRowCount.input.cs':
+
+Hidden CS8019 Interceptors/EstimatedRowCount.input.cs L2 C1
+Unnecessary using directive.
+
+Warning CS1998 Interceptors/EstimatedRowCount.input.cs L11 C23
+This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread.
+Generator produced 1 diagnostics:
+
+Hidden DAP000  L1 C1
+Dapper.AOT handled 3 of 3 enabled call-sites using 3 interceptors, 2 commands and 1 readers
+Output code has 2 diagnostics from 'Interceptors/EstimatedRowCount.input.cs':
+
+Hidden CS8019 Interceptors/EstimatedRowCount.input.cs L2 C1
+Unnecessary using directive.
+
+Warning CS1998 Interceptors/EstimatedRowCount.input.cs L11 C23
+This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread.

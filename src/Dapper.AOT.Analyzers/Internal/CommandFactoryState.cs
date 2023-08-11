@@ -2,15 +2,17 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Dapper.Internal;
 
-internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, string Map, int Index, int CacheCount)>
+internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, string Map, ImmutableArray<EstimatedRowCountState> RowCounts, int Index, int CacheCount)>
 {
+
     public CommandFactoryState(Compilation compilation) => systemObject = compilation.GetSpecialType(SpecialType.System_Object);
     private readonly ITypeSymbol systemObject;
-    private readonly Dictionary<(ITypeSymbol Type, string Map, bool Cached), (int Index, int CacheCount)> parameterTypes = new(ParameterTypeMapComparer.Instance);
+    private readonly Dictionary<(ITypeSymbol Type, string Map, bool Cached, ImmutableArray<EstimatedRowCountState> RowCounts), (int Index, int CacheCount)> parameterTypes = new(ParameterTypeMapComparer.Instance);
 
     public int Count()
     {
@@ -23,22 +25,22 @@ internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, st
         return total;
     }
 
-    public IEnumerator<(ITypeSymbol Type, string Map, int Index, int CacheCount)> GetEnumerator()
+    public IEnumerator<(ITypeSymbol Type, string Map, ImmutableArray<EstimatedRowCountState> RowCounts, int Index, int CacheCount)> GetEnumerator()
     {
         // retain discovery order
-        return parameterTypes.OrderBy(x => x.Value.Index).Select(x => (x.Key.Type, x.Key.Map, x.Value.Index, x.Value.CacheCount)).GetEnumerator();
+        return parameterTypes.OrderBy(x => x.Value.Index).Select(x => (x.Key.Type, x.Key.Map, x.Key.RowCounts, x.Value.Index, x.Value.CacheCount)).GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public int GetIndex(ITypeSymbol type, string map, bool cache, out int? subIndex)
+    public int GetIndex(ITypeSymbol type, string map, bool cache, ImmutableArray<EstimatedRowCountState> rowCounts, out int? subIndex)
     {
         if (string.IsNullOrWhiteSpace(map) && type.IsReferenceType)
         {
             // just use object if there's nothing to map
             type = systemObject;
         }
-        var key = (type!, map, cache);
+        var key = (type!, map, cache, rowCounts);
         int index;
         if (parameterTypes.TryGetValue(key, out var value))
         {

@@ -199,6 +199,12 @@ public class CommandFactory<T> : CommandFactory
     public virtual bool CanPrepare => false;
 
     /// <summary>
+    /// Indicates the estimated number of results we expect from this query
+    /// </summary>
+    /// <remarks>This value may be used to optimize read buffers, etc</remarks>
+    public virtual int EstimatedRowCount(T args, int resultIndex) => 0;
+
+    /// <summary>
     /// Provides an opportunity to recycle and reuse command instances
     /// </summary>
     public virtual bool TryRecycle(DbCommand command) => false;

@@ -1,5 +1,6 @@
 ﻿using Dapper.Internal;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
@@ -82,6 +83,12 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
             cmd.CommandTimeout = timeout;
         }
         return cmd;
+    }
+
+    private List<TRow> GetRowBuffer<TRow>(TArgs args, int resultIndex)
+    {
+        var count = commandFactory.EstimatedRowCount(args, resultIndex);
+        return count <= 0 ? new() : new(count);
     }
 
     internal void PostProcessAndRecycle(ref CommandState state, TArgs args)

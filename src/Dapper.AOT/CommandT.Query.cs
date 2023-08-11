@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,7 +27,7 @@ partial struct Command<TArgs>
         {
             state.ExecuteReader(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
 
-            var results = new List<TRow>();
+            List<TRow> results;
             if (state.Reader.Read())
             {
                 var readWriteTokens = state.Reader.FieldCount <= MAX_STACK_TOKENS
@@ -34,6 +35,7 @@ partial struct Command<TArgs>
                     : state.Lease();
 
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
+                results = GetRowBuffer<TRow>(args, 0);
                 ReadOnlySpan<int> readOnlyTokens = readWriteTokens; // avoid multiple conversions
                 do
                 {
@@ -42,6 +44,11 @@ partial struct Command<TArgs>
                 while (state.Reader.Read());
                 state.Return();
             }
+            else
+            {
+                results = new();
+            }
+
             // consume entire results (avoid unobserved TDS error messages)
             while (state.Reader.NextResult()) { }
             PostProcessAndRecycle(ref state, args);
@@ -63,10 +70,11 @@ partial struct Command<TArgs>
         {
             await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
 
-            var results = new List<TRow>();
+            List<TRow> results;
             if (await state.Reader.ReadAsync(cancellationToken))
             {
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
+                results = GetRowBuffer<TRow>(args, 0);
                 do
                 {
                     results.Add(rowFactory.Read(state.Reader, state.Tokens, 0, tokenState));
@@ -74,6 +82,11 @@ partial struct Command<TArgs>
                 while (await state.Reader.ReadAsync(cancellationToken));
                 state.Return();
             }
+            else
+            {
+                results = new();
+            }
+
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
             PostProcessAndRecycle(ref state, args);

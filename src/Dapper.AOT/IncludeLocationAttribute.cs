@@ -9,7 +9,7 @@ namespace Dapper;
 /// </summary>
 [Conditional("DEBUG")] // not needed post-build, so: evaporate
 [ImmutableObject(true)]
-[AttributeUsage(AttributeTargets.All, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Module | AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = false)]
 public sealed class IncludeLocationAttribute : Attribute
 {
     /// <summary>

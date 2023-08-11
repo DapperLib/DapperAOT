@@ -8,7 +8,7 @@ namespace Dapper;
 /// Indicates whether name-based result-binding for value tuples is enabled for this element
 /// </summary>
 [ImmutableObject(true), Conditional("DEBUG")]
-[AttributeUsage(AttributeTargets.All, AllowMultiple = false, Inherited = true)]
+[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Module | AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
 public sealed class BindTupleByNameAttribute
     : Attribute
 {
