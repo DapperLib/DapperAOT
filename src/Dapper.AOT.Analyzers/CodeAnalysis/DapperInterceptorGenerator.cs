@@ -13,8 +13,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 
@@ -1175,9 +1173,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             .Where(member => CodeWriter.IsSettableInstanceMember(member.Member, out _))
             .ToImmutableArray();
         var membersCount = members.Length;
-        if (membersCount == 0)
+
+        var hasDapperAotCompatibleConstructor = Inspection.TryGetSingleCompatibleDapperAotConstructor(type, out var constructorParameterUsages, out var errorDiagnostic);
+        if (!hasDapperAotCompatibleConstructor && errorDiagnostic is not null)
         {
-            context.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, type.Locations.First()));
+            context.ReportDiagnostic(errorDiagnostic);
 
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
             WriteRowFactoryHeader();
@@ -1186,10 +1186,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return;
         }
 
-        var hasDapperAotCompatibleConstructor = Inspection.TryGetSingleCompatibleDapperAotConstructor(type, out var constructorParameterUsages, out var errorDiagnostic);
-        if (!hasDapperAotCompatibleConstructor && errorDiagnostic is not null)
+        
+        if (membersCount == 0 && !hasDapperAotCompatibleConstructor)
         {
-            context.ReportDiagnostic(errorDiagnostic);
+            // there are so settable members + there is no constructor to use
+            context.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, type.Locations.First()));
 
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
             WriteRowFactoryHeader();
