@@ -14,7 +14,8 @@ public sealed partial class DapperInterceptorGenerator
         string map, bool cache,
         ImmutableArray<IParameterSymbol> methodParameters,
         CommandFactoryState factories,
-        string? fixedSql)
+        string? fixedSql,
+        EstimatedRowCountState estimatedRowCount)
     {
         if (!HasAny(flags, OperationFlags.Execute))
         {

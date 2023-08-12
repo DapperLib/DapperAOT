@@ -18,7 +18,8 @@ public sealed partial class DapperInterceptorGenerator
         ImmutableArray<IParameterSymbol> methodParameters,
         CommandFactoryState factories,
         RowReaderState readers,
-        string? fixedSql)
+        string? fixedSql,
+        EstimatedRowCountState estimatedRowCount)
     {
         sb.Append("return ");
         if (HasAll(flags, OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))

@@ -85,11 +85,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         return cmd;
     }
 
-    private List<TRow> GetRowBuffer<TRow>(TArgs args, int resultIndex)
-    {
-        var count = commandFactory.EstimatedRowCount(args, resultIndex);
-        return count <= 0 ? new() : new(count);
-    }
+    private static List<TRow> GetRowBuffer<TRow>(int rowCountHint) => rowCountHint <= 0 ? new() : new(rowCountHint);
 
     internal void PostProcessAndRecycle(ref CommandState state, TArgs args)
     {

@@ -20,7 +20,7 @@ partial struct Command<TArgs>
     /// <summary>
     /// Reads buffered rows from a query
     /// </summary>
-    public List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null)
+    public List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, int rowCountHint = 0)
     {
         QueryState state = default;
         try
@@ -35,7 +35,7 @@ partial struct Command<TArgs>
                     : state.Lease();
 
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
-                results = GetRowBuffer<TRow>(args, 0);
+                results = GetRowBuffer<TRow>(rowCountHint);
                 ReadOnlySpan<int> readOnlyTokens = readWriteTokens; // avoid multiple conversions
                 do
                 {
@@ -63,7 +63,8 @@ partial struct Command<TArgs>
     /// <summary>
     /// Reads buffered rows from a query
     /// </summary>
-    public async Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default)
+    public async Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null,
+        int rowCountHint = 0, CancellationToken cancellationToken = default)
     {
         QueryState state = default;
         try
@@ -74,7 +75,7 @@ partial struct Command<TArgs>
             if (await state.Reader.ReadAsync(cancellationToken))
             {
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
-                results = GetRowBuffer<TRow>(args, 0);
+                results = GetRowBuffer<TRow>(rowCountHint);
                 do
                 {
                     results.Add(rowFactory.Read(state.Reader, state.Tokens, 0, tokenState));
