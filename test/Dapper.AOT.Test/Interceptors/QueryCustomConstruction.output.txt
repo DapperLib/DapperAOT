@@ -1,7 +1,7 @@
 Generator produced 2 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 10 of 10 enabled call-sites using 10 interceptors, 0 commands and 10 readers
+Dapper.AOT handled 12 of 12 enabled call-sites using 12 interceptors, 0 commands and 12 readers
 
-Error DAP029 Interceptors/QueryCustomConstruction.input.cs L126 C16
+Error DAP029 Interceptors/QueryCustomConstruction.input.cs L132 C16
 Only one constructor can be Dapper.AOT enabled per type 'Foo.MultipleDapperAotCtors'

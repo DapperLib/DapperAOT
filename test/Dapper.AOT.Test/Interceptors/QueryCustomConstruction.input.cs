@@ -10,7 +10,9 @@ public static class Foo
         _ = connection.Query<ParameterlessCtor>("def");
         _ = connection.Query<GetOnlyPropertiesViaConstructor>("def");
         _ = connection.Query<RecordClass>("def");
+        _ = connection.Query<RecordClassSimpleCtor>("def");
         _ = connection.Query<RecordStruct>("def");
+        _ = connection.Query<RecordStructSimpleCtor>("def");
         _ = connection.Query<InitPropsOnly>("def");
         _ = connection.Query<InitPropsAndDapperAotCtor>("def");
         _ = connection.Query<OnlyNonDapperAotCtor>("def");
@@ -52,12 +54,16 @@ public static class Foo
         public double? Z { get; set; }
     }
 
+    public record RecordClassSimpleCtor(int X, string Y, double? Z);
+
     public record struct RecordStruct
     {
         public int X { get; set; }
         public string Y;
         public double? Z { get; set; }
     }
+
+    public record struct RecordStructSimpleCtor(int X, string Y, double? Z);
 
     public class InitPropsOnly
     {

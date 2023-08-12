@@ -1358,16 +1358,20 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     sb.Append(')');
                 }
 
-                sb.Indent().NewLine();
-                token = -1;
-                foreach (var member in members)
+                // if all members are constructor arguments, no need to set them again
+                if (constructorArgumentsOrdered.Count != members.Length)
                 {
-                    token++;
-                    if (member.ConstructorParameterOrder is not null) continue; // already used in constructor arguments
-                    sb.Append(member.CodeName).Append(" = ").Append(DeferredConstructionVariableName).Append(token).Append(',').NewLine();
+                    sb.Indent().NewLine();
+                    token = -1;
+                    foreach (var member in members)
+                    {
+                        token++;
+                        if (member.ConstructorParameterOrder is not null) continue; // already used in constructor arguments
+                        sb.Append(member.CodeName).Append(" = ").Append(DeferredConstructionVariableName).Append(token).Append(',').NewLine();
+                    }
+                    sb.Outdent(withScope: false).Append("}");
                 }
-                sb.Outdent(withScope: false).Append("}");
-                    
+
                 sb.Append(";").Outdent();
             }
             else

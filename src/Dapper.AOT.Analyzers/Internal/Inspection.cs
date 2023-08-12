@@ -437,6 +437,20 @@ internal static class Inspection
         {
             return (standardConstructors: Array.Empty<IMethodSymbol>(), dapperAotEnabledConstructors: Array.Empty<IMethodSymbol>());
         }
+        
+        // special case
+        if (typeSymbol!.IsRecord && constructors?.Length == 2)
+        {
+            // in case of record syntax with primary constructor like:
+            // `public record MyRecord(int Id, string Name);`
+            // we need to pick the first constructor, which is the primary one. The second one would contain single parameter of type itself.
+            // So checking second constructor suits this rule and picking the first one.
+
+            if (constructors.Value[1].Parameters.Length == 1 && constructors.Value[1].Parameters.First().Type.ToDisplayString() == typeSymbol.ToDisplayString())
+            {
+                return (standardConstructors: new[] { constructors.Value.First() }, dapperAotEnabledConstructors: Array.Empty<IMethodSymbol>());
+            }
+        }
 
         var standardCtors = new List<IMethodSymbol>();
         var dapperAotEnabledCtors = new List<IMethodSymbol>();
