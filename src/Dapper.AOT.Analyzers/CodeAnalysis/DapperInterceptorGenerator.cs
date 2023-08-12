@@ -1177,7 +1177,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         var membersCount = members.Length;
         if (membersCount == 0)
         {
-            // report diagnostic? Or do we want to allow returning empty instance like `return new UserType();` ?
             context.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, type.Locations.First()));
 
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
