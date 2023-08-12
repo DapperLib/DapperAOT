@@ -48,6 +48,13 @@ internal sealed class CodeWriter
 
     public string Tab { get; set; } = "    "; // "\t"
 
+    public CodeWriter RemoveLast(int symbolsNumber)
+    {
+        if (Core.Length < symbolsNumber) throw new ArgumentOutOfRangeException(nameof(symbolsNumber));
+        Core.Length -= symbolsNumber;
+        return this;
+    }
+
     public CodeWriter Append(bool value) => Append(value ? "true" : "false");
     public CodeWriter Append(int? value) => value.HasValue ? Append(value.GetValueOrDefault()) : this;
 
@@ -167,6 +174,21 @@ internal sealed class CodeWriter
                     return true;
                 case IFieldSymbol field when !field.IsReadOnly:
                     type = field.Type;
+                    return true;
+            }
+        }
+        type = default!;
+        return false;
+    }
+
+    public static bool IsInitInstanceMember(ISymbol symbol, out ITypeSymbol type)
+    {
+        if (symbol.DeclaredAccessibility == Accessibility.Public && !symbol.IsStatic)
+        {
+            switch (symbol)
+            {
+                case IPropertySymbol prop when !prop.IsIndexer && prop.SetMethod is { DeclaredAccessibility: Accessibility.Public, IsInitOnly: true }:
+                    type = prop.Type;
                     return true;
             }
         }

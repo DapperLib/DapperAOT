@@ -67,9 +67,11 @@ internal static class Diagnostics
         UseQueryAsList = new("DAP028", "Use AsList instead of ToList",
             "Use Query(...).AsList() instead of Query(...).ToList()", Category.Performance, DiagnosticSeverity.Warning, true),
         TooManyDapperAotEnabledConstructors = new("DAP029", "Too many Dapper.AOT enabled constructors",
-            "Only one constructor can be Dapper.AOT enabled per type", Category.Library, DiagnosticSeverity.Error, true),
+            "Only one constructor can be Dapper.AOT enabled per type '{0}'", Category.Library, DiagnosticSeverity.Error, true),
         TooManyStandardConstructors = new("DAP030", "Type has more than 1 constructor to choose for creating an instance",
-            "Type has more than 1 constructor. Please, either mark one constructor with [DapperAot] or reduce amount of constructors", Category.Library, DiagnosticSeverity.Error, true),
+            "Type has more than 1 constructor, please, either mark one constructor with [DapperAot] or reduce amount of constructors", Category.Library, DiagnosticSeverity.Error, true),
+        UserTypeNoSettableMembersFound = new("DAP031", "No settable members exist for user type",
+            "Type has none of settable members (fields or properties)", Category.Library, DiagnosticSeverity.Error, true),
 
     // TypeAccessor
         TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",

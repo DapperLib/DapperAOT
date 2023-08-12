@@ -279,14 +279,33 @@ internal static class Inspection
         return false;
     }
 
-    [DebuggerDisplay("Order: {Order}; Type: {Type}; Name: {Name}")]
-    public readonly struct ConstructorParameter
+    /// <summary>
+    /// Helper type for code generation of constructor call
+    /// </summary>
+    [DebuggerDisplay("Order: {Order}; Name: {Name}; Variable: {VariableName}")]
+    public class ConstructorParameterUsage
     {
+        /// <summary>
+        /// Order of parameter in constructor.
+        /// Will be 1 for member1 in constructor(member0, member1, ...)
+        /// </summary>
         public int Order { get; }
+        /// <summary>
+        /// Type of constructor parameter
+        /// </summary>
         public ITypeSymbol Type { get; }
+        /// <summary>
+        /// Name of constructor parameter
+        /// </summary>
         public string Name { get; }
 
-        public ConstructorParameter(int order, ITypeSymbol type, string name)
+        /// <summary>
+        /// Name of variable to pass to constructor.
+        /// <remarks>Use for code generation</remarks>
+        /// </summary>
+        public string? VariableName { get; set; } = default!;
+
+        public ConstructorParameterUsage(int order, ITypeSymbol type, string name)
         {
             Order = order;
             Type = type;
@@ -348,19 +367,19 @@ internal static class Inspection
     /// Chooses a single constructor of type which to use for type's instances creation.
     /// </summary>
     /// <param name="typeSymbol">symbol for type to analyze</param>
-    /// <param name="parameters">parameters of chosen constructor</param>
+    /// <param name="parameterNameUsages">parameters of chosen constructor</param>
     /// <param name="errorDiagnostic">if constructor selection was invalid, contains a diagnostic with error to emit to generation context</param>
     /// <returns></returns>
     public static bool TryGetSingleCompatibleDapperAotConstructor(
         ITypeSymbol? typeSymbol,
-        out IReadOnlyCollection<ConstructorParameter>? parameters,
+        out IDictionary<string, ConstructorParameterUsage>? parameterNameUsages,
         out Diagnostic? errorDiagnostic)
     {
         var (standardCtors, dapperAotEnabledCtors) = ChooseDapperAotCompatibleConstructors(typeSymbol);
         if (standardCtors.Count == 0 && dapperAotEnabledCtors.Count == 0)
         {
             errorDiagnostic = null;
-            parameters = null;
+            parameterNameUsages = null;
             return false;
         }
 
@@ -370,37 +389,37 @@ internal static class Inspection
             // attaching diagnostic to first location of first ctor
             var loc = dapperAotEnabledCtors.First().Locations.First();
 
-            parameters = null;
-            errorDiagnostic = Diagnostic.Create(Diagnostics.TooManyDapperAotEnabledConstructors, loc);
+            parameterNameUsages = null;
+            errorDiagnostic = Diagnostic.Create(Diagnostics.TooManyDapperAotEnabledConstructors, loc, typeSymbol!.ToDisplayString());
             return false;
         }
 
         if (dapperAotEnabledCtors.Count == 1)
         {
-            parameters = ParseConstructorParameters(dapperAotEnabledCtors.First());
+            parameterNameUsages = ParseConstructorParameters(dapperAotEnabledCtors.First());
             errorDiagnostic = null;
             return true;
         }
 
         if (standardCtors.Count == 1)
         {
-            parameters = ParseConstructorParameters(standardCtors.First());
+            parameterNameUsages = ParseConstructorParameters(standardCtors.First());
             errorDiagnostic = null;
             return true;
         }
 
         // we cant choose a constructor, so we simply dont choose any
-        parameters = null;
+        parameterNameUsages = null;
         errorDiagnostic = null;
         return false;
 
-        IReadOnlyCollection<ConstructorParameter> ParseConstructorParameters(IMethodSymbol constructorSymbol)
+        IDictionary<string, ConstructorParameterUsage> ParseConstructorParameters(IMethodSymbol constructorSymbol)
         {
-            var parameters = new List<ConstructorParameter>();
+            var parameters = new Dictionary<string, ConstructorParameterUsage>(StringComparer.InvariantCultureIgnoreCase);
             int order = 0;
             foreach (var parameter in constructorSymbol.Parameters)
             {
-                parameters.Add(new ConstructorParameter(order: order++, type: parameter.Type, name: parameter.Name));
+                parameters.Add(parameter.Name, new ConstructorParameterUsage(order: order++, type: parameter.Type, name: parameter.Name));
             }
             return parameters;
         }
@@ -425,7 +444,7 @@ internal static class Inspection
         {
             // not taking into an account parameterless constructors
             if (constructorMethodSymbol.Parameters.Length == 0) continue;
-
+            
             var dapperAotAttribute= GetDapperAttribute(constructorMethodSymbol, Types.DapperAotAttribute);
             if (dapperAotAttribute is null)
             {

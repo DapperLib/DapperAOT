@@ -1,15 +1,15 @@
 ﻿using Dapper;
-using System.Data;
 using System.Data.Common;
-using System.Threading.Tasks;
 
 [module: DapperAot]
 
 public static class Foo
 {
-    static async Task SomeCode(DbConnection connection, string bar, bool isBuffered)
+    static void SomeCode(DbConnection connection, string bar, bool isBuffered)
     {
         _ = connection.Query<ParameterlessCtor>("def");
+        _ = connection.Query<InitPropsOnly>("def");
+        _ = connection.Query<InitPropsAndDapperAotCtor>("def");
         _ = connection.Query<OnlyNonDapperAotCtor>("def");
         _ = connection.Query<SingleDefaultCtor>("def");
         _ = connection.Query<MultipleDapperAotCtors>("def");
@@ -25,6 +25,26 @@ public static class Foo
         public ParameterlessCtor()
         {
 
+        }
+    }
+
+    public class InitPropsOnly
+    {
+        public int X { get; init; }
+        public string Y { get; init; }
+        public double? Z { get; init; }
+    }
+
+    public class InitPropsAndDapperAotCtor
+    {
+        public int X { get; init; }
+        public string Y;
+        public double? Z { get; init; }
+
+        [DapperAot(true)]
+        public InitPropsAndDapperAotCtor(string y)
+        {
+            Y = y;
         }
     }
 

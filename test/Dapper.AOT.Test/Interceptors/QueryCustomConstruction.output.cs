@@ -1,7 +1,7 @@
 #nullable enable
 file static class DapperGeneratedInterceptors
 {
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstructor.input.cs", 12, 24)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 10, 24)]
     internal static global::System.Collections.Generic.IEnumerable<global::Foo.ParameterlessCtor> Query0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
@@ -15,11 +15,11 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstructor.input.cs", 13, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.OnlyNonDapperAotCtor> Query1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 11, 24)]
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.InitPropsOnly> Query1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
-        // returns data: global::Foo.OnlyNonDapperAotCtor
+        // returns data: global::Foo.InitPropsOnly
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(buffered is true);
@@ -29,11 +29,11 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstructor.input.cs", 14, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.SingleDefaultCtor> Query2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 12, 24)]
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.InitPropsAndDapperAotCtor> Query2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
-        // returns data: global::Foo.SingleDefaultCtor
+        // returns data: global::Foo.InitPropsAndDapperAotCtor
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(buffered is true);
@@ -43,11 +43,11 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstructor.input.cs", 15, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.MultipleDapperAotCtors> Query3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 13, 24)]
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.OnlyNonDapperAotCtor> Query3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
-        // returns data: global::Foo.MultipleDapperAotCtors
+        // returns data: global::Foo.OnlyNonDapperAotCtor
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(buffered is true);
@@ -57,8 +57,36 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstructor.input.cs", 16, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.SingleDapperAotCtor> Query4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 14, 24)]
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.SingleDefaultCtor> Query4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, TypedResult, Buffered, StoredProcedure
+        // returns data: global::Foo.SingleDefaultCtor
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(buffered is true);
+        global::System.Diagnostics.Debug.Assert(param is null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory4.Instance);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 15, 24)]
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.MultipleDapperAotCtors> Query5(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, TypedResult, Buffered, StoredProcedure
+        // returns data: global::Foo.MultipleDapperAotCtors
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(buffered is true);
+        global::System.Diagnostics.Debug.Assert(param is null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory5.Instance);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 16, 24)]
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.SingleDapperAotCtor> Query6(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.SingleDapperAotCtor
@@ -67,7 +95,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is null);
 
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory4.Instance);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory6.Instance);
 
     }
 
@@ -156,10 +184,151 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class RowFactory1 : global::Dapper.RowFactory<global::Foo.OnlyNonDapperAotCtor>
+    private sealed class RowFactory1 : global::Dapper.RowFactory<global::Foo.InitPropsOnly>
     {
         internal static readonly RowFactory1 Instance = new();
         private RowFactory1() {}
+        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
+        {
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                int token = -1;
+                var name = reader.GetName(columnOffset);
+                var type = reader.GetFieldType(columnOffset);
+                switch (NormalizedHash(name))
+                {
+                    case 4245442695U when NormalizedEquals(name, "x"):
+                        token = type == typeof(int) ? 0 : 3; // two tokens for right-typed and type-flexible
+                        break;
+                    case 4228665076U when NormalizedEquals(name, "y"):
+                        token = type == typeof(string) ? 1 : 4;
+                        break;
+                    case 4278997933U when NormalizedEquals(name, "z"):
+                        token = type == typeof(double) ? 2 : 5;
+                        break;
+
+                }
+                tokens[i] = token;
+                columnOffset++;
+
+            }
+            return null;
+        }
+        public override global::Foo.InitPropsOnly Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
+        {
+            int value0 = default;
+            string? value1 = default;
+            double? value2 = default;
+            foreach (var token in tokens)
+            {
+                switch (token)
+                {
+                    case 0:
+                        value0 = reader.GetInt32(columnOffset);
+                        break;
+                    case 3:
+                        value0 = GetValue<int>(reader, columnOffset);
+                        break;
+                    case 1:
+                        value1 = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
+                        break;
+                    case 4:
+                        value1 = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
+                        break;
+                    case 2:
+                        value2 = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
+                        break;
+                    case 5:
+                        value2 = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
+                        break;
+
+                }
+                columnOffset++;
+
+            }
+            return new global::Foo.InitPropsOnly
+            {
+                X = value0,
+                Y = value1,
+                Z = value2,
+            };
+        }
+    }
+
+    private sealed class RowFactory2 : global::Dapper.RowFactory<global::Foo.InitPropsAndDapperAotCtor>
+    {
+        internal static readonly RowFactory2 Instance = new();
+        private RowFactory2() {}
+        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
+        {
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                int token = -1;
+                var name = reader.GetName(columnOffset);
+                var type = reader.GetFieldType(columnOffset);
+                switch (NormalizedHash(name))
+                {
+                    case 4245442695U when NormalizedEquals(name, "x"):
+                        token = type == typeof(int) ? 0 : 3; // two tokens for right-typed and type-flexible
+                        break;
+                    case 4228665076U when NormalizedEquals(name, "y"):
+                        token = type == typeof(string) ? 1 : 4;
+                        break;
+                    case 4278997933U when NormalizedEquals(name, "z"):
+                        token = type == typeof(double) ? 2 : 5;
+                        break;
+
+                }
+                tokens[i] = token;
+                columnOffset++;
+
+            }
+            return null;
+        }
+        public override global::Foo.InitPropsAndDapperAotCtor Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
+        {
+            int value0 = default;
+            string? value1 = default;
+            double? value2 = default;
+            foreach (var token in tokens)
+            {
+                switch (token)
+                {
+                    case 0:
+                        value0 = reader.GetInt32(columnOffset);
+                        break;
+                    case 3:
+                        value0 = GetValue<int>(reader, columnOffset);
+                        break;
+                    case 1:
+                        value1 = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
+                        break;
+                    case 4:
+                        value1 = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
+                        break;
+                    case 2:
+                        value2 = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
+                        break;
+                    case 5:
+                        value2 = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
+                        break;
+
+                }
+                columnOffset++;
+
+            }
+            return new global::Foo.InitPropsAndDapperAotCtor(value1)
+            {
+                X = value0,
+                Z = value2,
+            };
+        }
+    }
+
+    private sealed class RowFactory3 : global::Dapper.RowFactory<global::Foo.OnlyNonDapperAotCtor>
+    {
+        internal static readonly RowFactory3 Instance = new();
+        private RowFactory3() {}
         public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
         {
             for (int i = 0; i < tokens.Length; i++)
@@ -222,139 +391,7 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class RowFactory2 : global::Dapper.RowFactory<global::Foo.SingleDefaultCtor>
-    {
-        internal static readonly RowFactory2 Instance = new();
-        private RowFactory2() {}
-        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
-        {
-            for (int i = 0; i < tokens.Length; i++)
-            {
-                int token = -1;
-                var name = reader.GetName(columnOffset);
-                var type = reader.GetFieldType(columnOffset);
-                switch (NormalizedHash(name))
-                {
-                    case 4245442695U when NormalizedEquals(name, "x"):
-                        token = type == typeof(int) ? 0 : 3; // two tokens for right-typed and type-flexible
-                        break;
-                    case 4228665076U when NormalizedEquals(name, "y"):
-                        token = type == typeof(string) ? 1 : 4;
-                        break;
-                    case 4278997933U when NormalizedEquals(name, "z"):
-                        token = type == typeof(double) ? 2 : 5;
-                        break;
-
-                }
-                tokens[i] = token;
-                columnOffset++;
-
-            }
-            return null;
-        }
-        public override global::Foo.SingleDefaultCtor Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
-        {
-            global::Foo.SingleDefaultCtor result = new();
-            foreach (var token in tokens)
-            {
-                switch (token)
-                {
-                    case 0:
-                        result.X = reader.GetInt32(columnOffset);
-                        break;
-                    case 3:
-                        result.X = GetValue<int>(reader, columnOffset);
-                        break;
-                    case 1:
-                        result.Y = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
-                        break;
-                    case 4:
-                        result.Y = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
-                        break;
-                    case 2:
-                        result.Z = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
-                        break;
-                    case 5:
-                        result.Z = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
-                        break;
-
-                }
-                columnOffset++;
-
-            }
-            return result;
-
-        }
-
-    }
-
-    private sealed class RowFactory3 : global::Dapper.RowFactory<global::Foo.MultipleDapperAotCtors>
-    {
-        internal static readonly RowFactory3 Instance = new();
-        private RowFactory3() {}
-        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
-        {
-            for (int i = 0; i < tokens.Length; i++)
-            {
-                int token = -1;
-                var name = reader.GetName(columnOffset);
-                var type = reader.GetFieldType(columnOffset);
-                switch (NormalizedHash(name))
-                {
-                    case 4245442695U when NormalizedEquals(name, "x"):
-                        token = type == typeof(int) ? 0 : 3; // two tokens for right-typed and type-flexible
-                        break;
-                    case 4228665076U when NormalizedEquals(name, "y"):
-                        token = type == typeof(string) ? 1 : 4;
-                        break;
-                    case 4278997933U when NormalizedEquals(name, "z"):
-                        token = type == typeof(double) ? 2 : 5;
-                        break;
-
-                }
-                tokens[i] = token;
-                columnOffset++;
-
-            }
-            return null;
-        }
-        public override global::Foo.MultipleDapperAotCtors Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
-        {
-            global::Foo.MultipleDapperAotCtors result = new();
-            foreach (var token in tokens)
-            {
-                switch (token)
-                {
-                    case 0:
-                        result.X = reader.GetInt32(columnOffset);
-                        break;
-                    case 3:
-                        result.X = GetValue<int>(reader, columnOffset);
-                        break;
-                    case 1:
-                        result.Y = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
-                        break;
-                    case 4:
-                        result.Y = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
-                        break;
-                    case 2:
-                        result.Z = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
-                        break;
-                    case 5:
-                        result.Z = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
-                        break;
-
-                }
-                columnOffset++;
-
-            }
-            return result;
-
-        }
-
-    }
-
-    private sealed class RowFactory4 : global::Dapper.RowFactory<global::Foo.SingleDapperAotCtor>
+    private sealed class RowFactory4 : global::Dapper.RowFactory<global::Foo.SingleDefaultCtor>
     {
         internal static readonly RowFactory4 Instance = new();
         private RowFactory4() {}
@@ -384,40 +421,117 @@ file static class DapperGeneratedInterceptors
             }
             return null;
         }
-        public override global::Foo.SingleDapperAotCtor Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
+        public override global::Foo.SingleDefaultCtor Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
         {
-            global::Foo.SingleDapperAotCtor result = new();
+            int value0 = default;
+            string? value1 = default;
+            double? value2 = default;
             foreach (var token in tokens)
             {
                 switch (token)
                 {
                     case 0:
-                        result.X = reader.GetInt32(columnOffset);
+                        value0 = reader.GetInt32(columnOffset);
                         break;
                     case 3:
-                        result.X = GetValue<int>(reader, columnOffset);
+                        value0 = GetValue<int>(reader, columnOffset);
                         break;
                     case 1:
-                        result.Y = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
+                        value1 = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
                         break;
                     case 4:
-                        result.Y = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
+                        value1 = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
                         break;
                     case 2:
-                        result.Z = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
+                        value2 = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
                         break;
                     case 5:
-                        result.Z = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
+                        value2 = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
                         break;
 
                 }
                 columnOffset++;
 
             }
-            return result;
-
+            return new global::Foo.SingleDefaultCtor(value0,value1,value2)
+            {
+            };
         }
+    }
 
+    private sealed class RowFactory5 : global::Dapper.RowFactory<global::Foo.MultipleDapperAotCtors>
+    {
+        internal static readonly RowFactory5 Instance = new();
+        private RowFactory5() {}
+
+    }
+
+    private sealed class RowFactory6 : global::Dapper.RowFactory<global::Foo.SingleDapperAotCtor>
+    {
+        internal static readonly RowFactory6 Instance = new();
+        private RowFactory6() {}
+        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
+        {
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                int token = -1;
+                var name = reader.GetName(columnOffset);
+                var type = reader.GetFieldType(columnOffset);
+                switch (NormalizedHash(name))
+                {
+                    case 4245442695U when NormalizedEquals(name, "x"):
+                        token = type == typeof(int) ? 0 : 3; // two tokens for right-typed and type-flexible
+                        break;
+                    case 4228665076U when NormalizedEquals(name, "y"):
+                        token = type == typeof(string) ? 1 : 4;
+                        break;
+                    case 4278997933U when NormalizedEquals(name, "z"):
+                        token = type == typeof(double) ? 2 : 5;
+                        break;
+
+                }
+                tokens[i] = token;
+                columnOffset++;
+
+            }
+            return null;
+        }
+        public override global::Foo.SingleDapperAotCtor Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
+        {
+            int value0 = default;
+            string? value1 = default;
+            double? value2 = default;
+            foreach (var token in tokens)
+            {
+                switch (token)
+                {
+                    case 0:
+                        value0 = reader.GetInt32(columnOffset);
+                        break;
+                    case 3:
+                        value0 = GetValue<int>(reader, columnOffset);
+                        break;
+                    case 1:
+                        value1 = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
+                        break;
+                    case 4:
+                        value1 = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
+                        break;
+                    case 2:
+                        value2 = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
+                        break;
+                    case 5:
+                        value2 = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
+                        break;
+
+                }
+                columnOffset++;
+
+            }
+            return new global::Foo.SingleDapperAotCtor(value0,value1,value2)
+            {
+            };
+        }
     }
 
 
