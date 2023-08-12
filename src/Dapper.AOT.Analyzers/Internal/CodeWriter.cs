@@ -181,7 +181,7 @@ internal sealed class CodeWriter
         return false;
     }
 
-    public static bool IsInitInstanceMember(ISymbol symbol, out ITypeSymbol type)
+    public static bool IsInitOnlyInstanceMember(ISymbol symbol, out ITypeSymbol type)
     {
         if (symbol.DeclaredAccessibility == Accessibility.Public && !symbol.IsStatic)
         {

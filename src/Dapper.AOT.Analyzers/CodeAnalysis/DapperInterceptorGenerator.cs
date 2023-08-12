@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis.Text;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
@@ -1169,13 +1170,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     private static void WriteRowFactory(SourceProductionContext context, CodeWriter sb, ITypeSymbol type, int index)
     {
-        var members = Inspection.GetMembers(type)
-            .Where(member => CodeWriter.IsSettableInstanceMember(member.Member, out _))
-            .ToImmutableArray();
-        var membersCount = members.Length;
-
-        var hasDapperAotCompatibleConstructor = Inspection.TryGetSingleCompatibleDapperAotConstructor(type, out var constructorParameterUsages, out var errorDiagnostic);
-        if (!hasDapperAotCompatibleConstructor && errorDiagnostic is not null)
+        var hasExplicitConstructor = Inspection.TryGetSingleCompatibleDapperAotConstructor(type, out var constructor, out var errorDiagnostic);
+        if (!hasExplicitConstructor && errorDiagnostic is not null)
         {
             context.ReportDiagnostic(errorDiagnostic);
 
@@ -1186,8 +1182,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return;
         }
 
-        
-        if (membersCount == 0 && !hasDapperAotCompatibleConstructor)
+        var members = Inspection.GetMembers(type, dapperAotConstructor: constructor).ToImmutableArray();
+        var membersCount = members.Length;
+
+        if (membersCount == 0 && !hasExplicitConstructor)
         {
             // there are so settable members + there is no constructor to use
             context.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, type.Locations.First()));
@@ -1199,8 +1197,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return;
         }
 
-        var hasInitOnlyMembers = members.Any(member => CodeWriter.IsInitInstanceMember(member.Member, out _));
-        var useDeferredConstruction = hasDapperAotCompatibleConstructor || hasInitOnlyMembers;
+        var hasInitOnlyMembers = members.Any(member => member.IsInitOnly);
+        var hasGetOnlyMembers = members.Any(member => member.IsGettable && !member.IsSettable && !member.IsInitOnly);
+        var useDeferredConstruction = hasExplicitConstructor || hasInitOnlyMembers || hasGetOnlyMembers;
 
         WriteRowFactoryHeader();        
 
@@ -1255,6 +1254,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
 
             int token = 0;
+            var constructorArgumentsOrdered = new SortedList<int, string>();
             if (useDeferredConstruction)
             {
                 // dont create an instance now, but define the variables to create an instance later like 
@@ -1271,11 +1271,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     else sb.Append(CodeWriter.GetTypeName(member.CodeType));
                     sb.Append(' ').Append(variableName).Append(" = default;").NewLine();
 
-                    // for future lookup we want to mark which variable represents which constructor argument
-                    if (constructorParameterUsages?.ContainsKey(member.CodeName) == true)
+                    // filling in the constructor arguments in first iteration through members
+                    // will be used afterwards to create the instance
+                    if (member.ConstructorParameterOrder is not null)
                     {
-                        var constructorParameterUsage = constructorParameterUsages[member.CodeName];
-                        constructorParameterUsage.VariableName = variableName;
+                        constructorArgumentsOrdered.Add(member.ConstructorParameterOrder.Value, variableName);
                     }
 
                     token++;
@@ -1346,13 +1346,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 // ```
 
                 sb.Append("return new ").Append(type);
-                if (hasDapperAotCompatibleConstructor)
+                if (hasExplicitConstructor && constructorArgumentsOrdered.Count != 0)
                 {
                     // write `(member0, member1, member2, ...)` part of constructor
                     sb.Append('(');
-                    foreach (var paramUsage in constructorParameterUsages!.Values.OrderBy(x => x.Order))
+                    foreach (var constructorArg in constructorArgumentsOrdered)
                     {
-                        sb.Append(paramUsage.VariableName).Append(',');
+                        sb.Append(constructorArg.Value).Append(',');
                     }
                     sb.RemoveLast(1); // remove last comma generated in the loop
                     sb.Append(')');
@@ -1363,10 +1363,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 foreach (var member in members)
                 {
                     token++;
-                    if (constructorParameterUsages?.ContainsKey(member.CodeName) == true) continue; // already used in constructor
+                    if (member.ConstructorParameterOrder is not null) continue; // already used in constructor arguments
                     sb.Append(member.CodeName).Append(" = ").Append(DeferredConstructionVariableName).Append(token).Append(',').NewLine();
                 }
-                sb.Outdent(withScope: false).Append("};").Outdent();
+                sb.Outdent(withScope: false).Append("}");
+                    
+                sb.Append(";").Outdent();
             }
             else
             {

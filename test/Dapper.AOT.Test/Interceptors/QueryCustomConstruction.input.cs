@@ -8,6 +8,9 @@ public static class Foo
     static void SomeCode(DbConnection connection, string bar, bool isBuffered)
     {
         _ = connection.Query<ParameterlessCtor>("def");
+        _ = connection.Query<GetOnlyPropertiesViaConstructor>("def");
+        _ = connection.Query<RecordClass>("def");
+        _ = connection.Query<RecordStruct>("def");
         _ = connection.Query<InitPropsOnly>("def");
         _ = connection.Query<InitPropsAndDapperAotCtor>("def");
         _ = connection.Query<OnlyNonDapperAotCtor>("def");
@@ -26,6 +29,34 @@ public static class Foo
         {
 
         }
+    }
+
+    public class GetOnlyPropertiesViaConstructor
+    {
+        public int X { get; }
+        public string Y { get; }
+        public double? Z { get; }
+
+        public GetOnlyPropertiesViaConstructor(int x, string y, double? z)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+        }
+    }
+
+    public record RecordClass
+    {
+        public int X { get; set; }
+        public string Y;
+        public double? Z { get; set; }
+    }
+
+    public record struct RecordStruct
+    {
+        public int X { get; set; }
+        public string Y;
+        public double? Z { get; set; }
     }
 
     public class InitPropsOnly
