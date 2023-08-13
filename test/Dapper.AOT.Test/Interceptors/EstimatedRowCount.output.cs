@@ -43,7 +43,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).QueryBuffered((global::Foo.DynamicHint)param!, RowFactory0.Instance, rowCountHint: param.Count);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).QueryBuffered((global::Foo.DynamicHint)param!, RowFactory0.Instance((global::Foo.DynamicHint)param).Count);
 
     }
 

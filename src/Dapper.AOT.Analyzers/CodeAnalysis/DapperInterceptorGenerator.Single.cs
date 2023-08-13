@@ -191,14 +191,13 @@ public sealed partial class DapperInterceptorGenerator
         }
         if (HasAny(flags, OperationFlags.Query) && estimatedRowCount.HasValue)
         {
-            sb.Append(", rowCountHint: ");
             if (estimatedRowCount.MemberName is null)
             {
-                sb.Append(estimatedRowCount.Count);
+                sb.Append(", rowCountHint: ").Append(estimatedRowCount.Count);
             }
-            else
+            else if (parameterType is not null && !parameterType.IsAnonymousType)
             {
-                sb.Append("param.").Append(estimatedRowCount.MemberName);
+                sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param).").Append(estimatedRowCount.MemberName);
             }
         }
         if (isAsync && HasParam(methodParameters, "cancellationToken"))

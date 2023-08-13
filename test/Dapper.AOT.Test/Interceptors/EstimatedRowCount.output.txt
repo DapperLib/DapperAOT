@@ -1,16 +1,11 @@
-Input code has 1 diagnostics from 'Interceptors/EstimatedRowCount.input.cs':
-
-Error CS7036 Interceptors/EstimatedRowCount.input.cs L25 C10
-There is no argument given that corresponds to the required parameter 'count' of 'EstimatedRowCountAttribute.EstimatedRowCountAttribute(int)'
-Generator produced 1 diagnostics:
+Generator produced 2 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 3 of 3 enabled call-sites using 3 interceptors, 2 commands and 1 readers
-Output code has 1 diagnostics from 'Interceptors/EstimatedRowCount.input.cs':
 
-Error CS7036 Interceptors/EstimatedRowCount.input.cs L25 C10
-There is no argument given that corresponds to the required parameter 'count' of 'EstimatedRowCountAttribute.EstimatedRowCountAttribute(int)'
+Info DAP029 Interceptors/EstimatedRowCount.input.cs L9 C17
+The [EstimatedRowCount] will be ignored due to parameter member 'Count'
 Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
 
-Error CS1061 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L46 C282
-'object' does not contain a definition for 'Count' and no accessible extension method 'Count' accepting a first argument of type 'object' could be found (are you missing a using directive or an assembly reference?)
+Error CS1955 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L46 C252
+Non-invocable member 'DapperGeneratedInterceptors.RowFactory0.Instance' cannot be used like a method.
