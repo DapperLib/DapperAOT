@@ -6,6 +6,7 @@ internal readonly struct EstimatedRowCountState : IEquatable<EstimatedRowCountSt
 {
     public readonly int Count;
     public readonly string? MemberName;
+    public bool HasValue => Count > 0 || MemberName is not null;
 
     public EstimatedRowCountState(string memberName)
     {

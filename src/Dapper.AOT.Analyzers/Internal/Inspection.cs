@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
 using System.Threading;
 
 namespace Dapper.Internal;
@@ -51,8 +52,9 @@ internal static class Inspection
         }
         return hasNames = false;
     }
-
     public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, CancellationToken cancellationToken)
+        => GetClosestDapperAttribute(ctx, op, attributeName, out _, cancellationToken);
+    public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out Location? location, CancellationToken cancellationToken)
     {
         var method = GetContainingMethodSyntax(op);
         if (method is not null)
@@ -61,7 +63,11 @@ internal static class Inspection
             while (symbol is not null)
             {
                 var attrib = GetDapperAttribute(symbol, attributeName);
-                if (attrib is not null) return attrib;
+                if (attrib is not null)
+                {
+                    location = symbol.Locations.FirstOrDefault();
+                    return attrib;
+                }
                 symbol = symbol.ContainingSymbol;
             }
         }
@@ -333,6 +339,8 @@ internal static class Inspection
         public override string ToString() => Member?.Name ?? "";
         public override bool Equals(object obj) => obj is ElementMember other
             && SymbolEqualityComparer.Default.Equals(Member, other.Member);
+
+        public Location? GetLocation() => Member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
     }
 
     public static IEnumerable<ElementMember> GetMembers(ITypeSymbol? elementType)
