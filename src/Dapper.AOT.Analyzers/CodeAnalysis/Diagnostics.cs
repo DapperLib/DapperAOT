@@ -66,6 +66,14 @@ internal static class Diagnostics
             "Use {0}() instead of Query(...).{1}()", Category.Performance, DiagnosticSeverity.Warning, true),
         UseQueryAsList = new("DAP028", "Use AsList instead of ToList",
             "Use Query(...).AsList() instead of Query(...).ToList()", Category.Performance, DiagnosticSeverity.Warning, true),
+        MethodRowCountHintRedundant = new("DAP029", "Method-level row-count hint redundant",
+            "The [EstimatedRowCount] will be ignored due to parameter member '{0}'", Category.Library, DiagnosticSeverity.Info, true),
+        MethodRowCountHintInvalid = new("DAP030", "Method-level row-count hint invalid",
+            "The [EstimatedRowCount] parameters are invalid; a positive integer must be supplied", Category.Library, DiagnosticSeverity.Error, true),
+        MemberRowCountHintInvalid = new("DAP031", "Member-level row-count hint invalid",
+            "The [EstimatedRowCount] parameters are invalid; no parameter should be supplied", Category.Library, DiagnosticSeverity.Error, true),
+        MemberRowCountHintDuplicated = new("DAP032", "Member-level row-count hint duplicated",
+            "Only a single member should be marked [EstimatedRowCount]", Category.Library, DiagnosticSeverity.Error, true),
 
     // TypeAccessor
         TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",

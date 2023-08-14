@@ -337,9 +337,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (!canBeCached) flags &= ~OperationFlags.CacheCommand;
         }
 
+        var estimatedRowCount = ReadEstimatedRowCount(ctx, op, paramType, ref diagnostics, cancellationToken);
         CheckCallValidity(op, flags, ref diagnostics);
 
-        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, diagnostics);
+        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, estimatedRowCount, diagnostics);
 
         //static bool HasDiagnostic(object? diagnostics, DiagnosticDescriptor diagnostic)
         //{
@@ -360,6 +361,46 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         static bool TryGetConstantValue<T>(IArgumentOperation op, out T? value)
             => TryGetConstantValueWithSyntax<T>(op, out value, out _);
+
+        static EstimatedRowCountState ReadEstimatedRowCount(GeneratorSyntaxContext ctx, IOperation op, ITypeSymbol? paramType, ref object? diagnostics, CancellationToken cancellationToken)
+        {
+            string? estimatedRowCountMember = null;
+            if (paramType is not null)
+            {
+                foreach (var member in Inspection.GetMembers(paramType))
+                {
+                    if (member.IsEstimatedRowCount)
+                    {
+                        if (estimatedRowCountMember is not null)
+                        {
+                            Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.MemberRowCountHintDuplicated, member.GetLocation()));
+                        }
+                        estimatedRowCountMember = member.Member.Name;
+                    }
+                }
+            }
+            var attrib = Inspection.GetClosestDapperAttribute(in ctx, op, Types.EstimatedRowCountAttribute, out var attribLoc, cancellationToken);
+
+            if (estimatedRowCountMember is not null)
+            {
+                if (attrib is not null)
+                {
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.MethodRowCountHintRedundant, attribLoc, estimatedRowCountMember));
+                }
+                return new EstimatedRowCountState(estimatedRowCountMember);
+            }
+
+            if (attrib is not null)
+            {
+                if (attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i
+                    && i > 0)
+                {
+                    return new EstimatedRowCountState(i);
+                }
+                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.MethodRowCountHintInvalid, attribLoc));
+            }
+            return default;
+        }
 
         static bool TryGetConstantValueWithSyntax<T>(IArgumentOperation op, out T? value, out SyntaxNode? syntax)
         {
@@ -510,6 +551,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     {
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.RowCountDbValue, loc, member.CodeName));
                     }
+                }
+                if (member.Kind != Inspection.ElementMemberKind.None)
+                {
                     continue; // not treated as parameters for naming etc purposes
                 }
                 var dbName = member.DbName;
@@ -885,24 +929,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         foreach (var grp in state.Nodes.Where(x => !HasAny(x.Flags, OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
             // first, try to resolve the helper method that we're going to use for this
-            var (flags, method, parameterType, parameterMap, _) = grp.Key;
-            int arity = HasAny(flags, OperationFlags.TypedResult) ? 2 : 1, argCount = 8;
+            var (flags, method, parameterType, parameterMap, _, estimatedRowCount) = grp.Key;
             const bool useUnsafe = false;
-            var helperName = method.Name;
-            if (helperName == "Query")
-            {
-                if (HasAny(flags, OperationFlags.Buffered | OperationFlags.Unbuffered))
-                {
-                    //dedicated mode
-                    helperName = HasAny(flags, OperationFlags.Buffered) ? "QueryBuffered" : "QueryUnbuffered";
-                }
-                else
-                {
-                    // fallback mode, needs an extra arg to pass in "buffered"
-                    argCount++;
-                }
-            }
-
             int usageCount = 0;
 
             foreach (var op in grp.OrderBy(row => row.Location, CommonComparer.Instance))
@@ -988,7 +1016,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql))
             {
-                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql);
+                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql, estimatedRowCount);
             }
         }
 
@@ -1630,8 +1658,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public IMethodSymbol Method { get; }
         public ITypeSymbol? ResultType { get; }
         public ITypeSymbol? ParameterType { get; }
+        public EstimatedRowCountState EstimatedRowCount { get; }
         public SourceState(Location location, IMethodSymbol method, OperationFlags flags, string? sql,
-            ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap, object? diagnostics = null)
+            ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap,
+            EstimatedRowCountState estimatedRowCount, object? diagnostics = null)
         {
             Location = location;
             Flags = flags;
@@ -1640,6 +1670,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             ParameterType = parameterType;
             Method = method;
             ParameterMap = parameterMap;
+            EstimatedRowCount = estimatedRowCount;
             this.diagnostics = diagnostics;
         }
 
@@ -1658,21 +1689,25 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             _ => throw new IndexOutOfRangeException(nameof(index)),
         };
 
-        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) Group()
-            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location);
+        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, EstimatedRowCountState EstimatedRowCount) Group()
+            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location, EstimatedRowCount);
     }
-    private sealed class CommonComparer : LocationComparer, IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation)>
+    private sealed class CommonComparer : LocationComparer, IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, EstimatedRowCountState EstimatedRowCount)>
     {
         public static readonly CommonComparer Instance = new();
         private CommonComparer() { }
 
-        public bool Equals((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) x, (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) y) => x.Flags == y.Flags
+        public bool Equals(
+            
+            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, EstimatedRowCountState EstimatedRowCount) x,
+            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, EstimatedRowCountState EstimatedRowCount) y) => x.Flags == y.Flags
                 && x.ParameterMap == y.ParameterMap
                 && SymbolEqualityComparer.Default.Equals(x.Method, y.Method)
                 && SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType)
-                && x.UniqueLocation == y.UniqueLocation;
+                && x.UniqueLocation == y.UniqueLocation
+                && x.EstimatedRowCount.Equals(y.EstimatedRowCount);
 
-        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) obj)
+        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, EstimatedRowCountState EstimatedRowCount) obj)
         {
             var hash = (int)obj.Flags;
             hash *= -47;
@@ -1689,6 +1724,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             {
                 hash += obj.UniqueLocation.GetHashCode();
             }
+            hash *= -47;
+            hash += obj.EstimatedRowCount.GetHashCode();
             return hash;
         }
     }

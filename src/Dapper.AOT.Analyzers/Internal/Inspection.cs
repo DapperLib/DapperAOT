@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
 using System.Threading;
 
 namespace Dapper.Internal;
@@ -51,8 +52,9 @@ internal static class Inspection
         }
         return hasNames = false;
     }
-
     public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, CancellationToken cancellationToken)
+        => GetClosestDapperAttribute(ctx, op, attributeName, out _, cancellationToken);
+    public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out Location? location, CancellationToken cancellationToken)
     {
         var method = GetContainingMethodSyntax(op);
         if (method is not null)
@@ -61,7 +63,11 @@ internal static class Inspection
             while (symbol is not null)
             {
                 var attrib = GetDapperAttribute(symbol, attributeName);
-                if (attrib is not null) return attrib;
+                if (attrib is not null)
+                {
+                    location = symbol.Locations.FirstOrDefault();
+                    return attrib;
+                }
                 symbol = symbol.ContainingSymbol;
             }
         }
@@ -275,6 +281,13 @@ internal static class Inspection
         return false;
     }
 
+    [Flags]
+    public enum ElementMemberKind
+    {
+        None = 0,
+        RowCount = 1 << 0,
+        EstimatedRowCount = 1 << 1,
+    }
     public readonly struct ElementMember
     {
         private readonly AttributeData? _dbValue;
@@ -291,7 +304,10 @@ internal static class Inspection
         public ParameterDirection Direction => TryGetAttributeValue(_dbValue, nameof(Direction), out int direction)
             ? (ParameterDirection)direction : ParameterDirection.Input;
 
-        public bool IsRowCount { get; }
+        public ElementMemberKind Kind { get; }
+
+        public bool IsRowCount => (Kind & ElementMemberKind.RowCount) != 0;
+        public bool IsEstimatedRowCount => (Kind & ElementMemberKind.EstimatedRowCount) != 0;
         public bool HasDbValueAttribute => _dbValue is not null;
 
         public T? TryGetValue<T>(string memberName) where T : struct
@@ -311,11 +327,11 @@ internal static class Inspection
             return dbType;
         }
 
-        public ElementMember(ISymbol member, AttributeData? dbValue, bool isRowCount)
+        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind)
         {
             Member = member;
             _dbValue = dbValue;
-            IsRowCount = isRowCount;
+            Kind = kind;
         }
 
         public override int GetHashCode() => SymbolEqualityComparer.Default.GetHashCode(Member);
@@ -323,6 +339,8 @@ internal static class Inspection
         public override string ToString() => Member?.Name ?? "";
         public override bool Equals(object obj) => obj is ElementMember other
             && SymbolEqualityComparer.Default.Equals(Member, other.Member);
+
+        public Location? GetLocation() => Member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
     }
 
     public static IEnumerable<ElementMember> GetMembers(ITypeSymbol? elementType)
@@ -335,7 +353,7 @@ internal static class Inspection
         {
             foreach (var field in named.TupleElements)
             {
-                yield return new(field, null, false);
+                yield return new(field, null, ElementMemberKind.None);
             }
         }
         else
@@ -347,8 +365,17 @@ internal static class Inspection
 
                 // public or annotated only; not explicitly ignored
                 var dbValue = GetDapperAttribute(member, Types.DbValueAttribute);
-                var isRowCount = GetDapperAttribute(member, Types.RowCountAttribute) is not null;
-                if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && !isRowCount) continue;
+                var kind = ElementMemberKind.None;
+                if (GetDapperAttribute(member, Types.RowCountAttribute) is not null)
+                {
+                    kind |= ElementMemberKind.RowCount;
+                }
+                if (GetDapperAttribute(member, Types.EstimatedRowCountAttribute) is not null)
+                {
+                    kind |= ElementMemberKind.EstimatedRowCount;
+                }
+
+                if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && kind == ElementMemberKind.None) continue;
                 if (TryGetAttributeValue(dbValue, "Ignore", out bool ignore) && ignore)
                 {
                     continue;
@@ -365,7 +392,7 @@ internal static class Inspection
                 }
 
                 // all good, then!
-                yield return new(member, dbValue, isRowCount);
+                yield return new(member, dbValue, kind);
             }
         }
     }

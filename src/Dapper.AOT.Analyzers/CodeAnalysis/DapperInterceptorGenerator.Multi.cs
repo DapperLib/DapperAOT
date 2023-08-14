@@ -42,7 +42,12 @@ public sealed partial class DapperInterceptorGenerator
             // return Command<type>(...).ExecuteAsync((cast)param, ...);
             bool isAsync = HasAny(flags, OperationFlags.Async);
             sb.Append("Execute").Append(isAsync ? "Async" : "").Append("(");
-            sb.Append("(").Append(castType).Append(")param!").Append(");");
+            sb.Append("(").Append(castType).Append(")param!");
+            if (isAsync && HasParam(methodParameters, "cancellationToken"))
+            {
+                sb.Append(", cancellationToken: ").Append(Forward(methodParameters, "cancellationToken"));
+            }
+            sb.Append(");");
             sb.NewLine().Outdent().NewLine().NewLine();
         }
 

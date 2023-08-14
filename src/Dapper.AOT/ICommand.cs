@@ -59,11 +59,11 @@ public interface ICommand<TArgs>
     /// <inheritdoc cref="Command{TArgs}.Query{TRow}(TArgs, bool, RowFactory{TRow}?)"/>
     IEnumerable<TRow> Query<TRow>(TArgs args, bool buffered, [DapperAot] RowFactory<TRow>? rowFactory = null);
 
-    /// <inheritdoc cref="Command{TArgs}.QueryBuffered{TRow}(TArgs, RowFactory{TRow}?)"/>
-    List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null);
+    /// <inheritdoc cref="Command{TArgs}.QueryBuffered{TRow}(TArgs, RowFactory{TRow}?, int)"/>
+    List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, int rowCountHint = 0);
 
-    /// <inheritdoc cref="Command{TArgs}.QueryBufferedAsync{TRow}(TArgs, RowFactory{TRow}?, CancellationToken)"/>
-    Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default);
+    /// <inheritdoc cref="Command{TArgs}.QueryBufferedAsync{TRow}(TArgs, RowFactory{TRow}?, int, CancellationToken)"/>
+    Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, int rowCountHint = 0, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="Command{TArgs}.QueryUnbufferedAsync{TRow}(TArgs, RowFactory{TRow}?, CancellationToken)"/>
     IAsyncEnumerable<TRow> QueryUnbufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null,
