@@ -1133,7 +1133,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             WriteGetCommandHeader(sb, declaredType);
             if (additionalCommandState is not null && additionalCommandState.HasCommandProperties)
             {
-                sb.Indent().Append("var cmd = TryReuse(ref Storage, sql, commandType, args);")
+                sb.Indent()
+                    .NewLine().Append("var cmd = TryReuse(ref Storage, sql, commandType, args);")
                     .NewLine().Append("if (cmd is null)").Indent()
                     .NewLine().Append("cmd = base.GetCommand(connection, sql, commandType, args);");
                 WriteCommandProperties(ctx, sb, "cmd", additionalCommandState.CommandProperties);
