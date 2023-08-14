@@ -14,7 +14,8 @@ public sealed partial class DapperInterceptorGenerator
         string map, bool cache,
         ImmutableArray<IParameterSymbol> methodParameters,
         CommandFactoryState factories,
-        string? fixedSql)
+        string? fixedSql,
+        AdditionalCommandState? additionalCommandState)
     {
         if (!HasAny(flags, OperationFlags.Execute))
         {
@@ -90,7 +91,7 @@ public sealed partial class DapperInterceptorGenerator
             // commandFactory
             if (HasAny(flags, OperationFlags.HasParameters))
             {
-                var index = factories.GetIndex(elementType, map, cache, out var subIndex);
+                var index = factories.GetIndex(elementType, map, cache, additionalCommandState, out var subIndex);
                 sb.Append("CommandFactory").Append(index).Append(".Instance").Append(subIndex);
             }
             else

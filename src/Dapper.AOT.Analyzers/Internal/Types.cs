@@ -10,5 +10,6 @@ internal static class Types
         CacheCommandAttribute = nameof(CacheCommandAttribute),
         IncludeLocationAttribute = nameof(IncludeLocationAttribute),
         SqlSyntaxAttribute = nameof(SqlSyntaxAttribute),
-        EstimatedRowCountAttribute = nameof(EstimatedRowCountAttribute);
+        EstimatedRowCountAttribute = nameof(EstimatedRowCountAttribute),
+        CommandPropertyAttribute = nameof(CommandPropertyAttribute);
 }
