@@ -8,25 +8,28 @@ namespace Dapper.Internal;
 
 internal readonly struct CommandProperty : IEquatable<CommandProperty>
 {
-    public readonly ITypeSymbol CommandType;
+    public readonly INamedTypeSymbol CommandType;
     public readonly string Name;
     public readonly object Value;
-    public CommandProperty(ITypeSymbol commandType, string name, object value)
+    public readonly Location? Location;
+
+    public CommandProperty(INamedTypeSymbol commandType, string name, object value, Location? location)
     {
         CommandType = commandType;
         Name = name;
         Value = value;
+        Location = location;
     }
 
     public override string ToString() => $"{CommandType.Name}.{Name}={Value}";
 
-    public override int GetHashCode() => SymbolEqualityComparer.Default.GetHashCode(CommandType) & Name.GetHashCode() ^ (Value?.GetHashCode() ?? 0);
+    public override int GetHashCode() => SymbolEqualityComparer.Default.GetHashCode(CommandType) & Name.GetHashCode() ^ (Value?.GetHashCode() ?? 0) ^ (Location?.GetHashCode() ?? 0);
 
     public override bool Equals(object obj) => obj is CommandProperty other && Equals(in other);
 
     bool IEquatable<CommandProperty>.Equals(CommandProperty other) => Equals(in other);
     public bool Equals(in CommandProperty other)
-        => SymbolEqualityComparer.Default.Equals(CommandType, other.CommandType) && string.Equals(Name, other.Name) && Equals(Value, other.Value);
+        => SymbolEqualityComparer.Default.Equals(CommandType, other.CommandType) && string.Equals(Name, other.Name) && Equals(Value, other.Value) && Equals(Location, other.Location);
 }
 
 internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState>
@@ -36,6 +39,8 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
     public readonly ImmutableArray<CommandProperty> CommandProperties;
 
     public bool HasEstimatedRowCount => EstimatedRowCount > 0 || EstimatedRowCountMemberName is not null;
+
+    public bool HasCommandProperties => !CommandProperties.IsDefaultOrEmpty;
 
     public static AdditionalCommandState? Parse(ISymbol? target, ITypeSymbol? parameterType, ref object? diagnostics)
     {
@@ -108,13 +113,14 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
             var builder = ImmutableArray.CreateBuilder<CommandProperty>(cmdPropsCount);
             foreach (var attrib in attribs)
             {
-                if (Inspection.IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == Types.CacheCommandAttribute
+                if (Inspection.IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == Types.CommandPropertyAttribute
                     && attrib.AttributeClass.Arity == 1
+                    && attrib.AttributeClass.TypeArguments[0] is INamedTypeSymbol cmdType
                     && attrib.ConstructorArguments.Length == 2
                     && attrib.ConstructorArguments[0].Value is string name
                     && attrib.ConstructorArguments[1].Value is object value)
                 {
-                    cmdProps.Add(new(attrib.AttributeClass.TypeArguments[0], name, value));
+                    builder.Add(new(cmdType, name, value, location));
                 }
             }
             cmdProps = builder.ToImmutable();

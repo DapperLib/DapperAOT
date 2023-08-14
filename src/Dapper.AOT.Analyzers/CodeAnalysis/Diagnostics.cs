@@ -74,6 +74,8 @@ internal static class Diagnostics
             "The [EstimatedRowCount] parameters are invalid; no parameter should be supplied", Category.Library, DiagnosticSeverity.Error, true),
         MemberRowCountHintDuplicated = new("DAP032", "Member-level row-count hint duplicated",
             "Only a single member should be marked [EstimatedRowCount]", Category.Library, DiagnosticSeverity.Error, true),
+        CommandPropertyNotFound = new("DAP033", "Command property not found",
+            "Command property {0}.{1} was not found or was not valid", Category.Library, DiagnosticSeverity.Warning, true),
 
     // TypeAccessor
         TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",

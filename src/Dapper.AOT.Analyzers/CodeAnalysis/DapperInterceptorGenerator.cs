@@ -12,6 +12,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
+using System.Data.Common;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -974,7 +976,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
-            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql))
+            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
             {
                 WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql, additionalCommandState);
             }
@@ -1036,7 +1038,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var tuple in factories)
         {
-            WriteCommandFactory(baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount);
+            WriteCommandFactory(ctx, baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount, tuple.AdditionalCommandState);
         }
 
         sb.Outdent(); // ends our generated file-scoped class
@@ -1048,7 +1050,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, enabledCount, methodIndex, factories.Count(), readers.Count()));
     }
 
-    private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount)
+    private static void WriteCommandFactory(SourceProductionContext ctx, string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount, AdditionalCommandState? additionalCommandState)
     {
         var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
         sb.Append("private ").Append(cacheCount <= 1 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
@@ -1128,11 +1130,20 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
 
             // provide overrides to fetch/store cached commands
-            sb.NewLine().Append("public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,").Indent(false).NewLine()
-                .Append("string sql, global::System.Data.CommandType commandType, ")
-                .Append(declaredType).Append(" args)").NewLine()
-                .Append(" => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false)
-                .NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine();
+            WriteGetCommandHeader(sb, declaredType);
+            if (additionalCommandState is not null && additionalCommandState.HasCommandProperties)
+            {
+                sb.Indent().Append("var cmd = TryReuse(ref Storage, sql, commandType, args);")
+                    .NewLine().Append("if (cmd is null)").Indent()
+                    .NewLine().Append("cmd = base.GetCommand(connection, sql, commandType, args);");
+                WriteCommandProperties(ctx, sb, "cmd", additionalCommandState.CommandProperties);
+                sb.Outdent().NewLine().Append("return cmd;").Outdent();
+            }
+            else
+            {
+                sb.Indent(false).NewLine().Append(" => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false);
+            }
+            sb.NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine();
 
             if (cacheCount == 1)
             {
@@ -1151,8 +1162,102 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 }
             }
         }
+        else if (additionalCommandState is not null && additionalCommandState.HasCommandProperties)
+        {
+            WriteGetCommandHeader(sb, declaredType).Indent().NewLine().Append("var cmd = base.GetCommand(connection, sql, commandType, args);");
+            WriteCommandProperties(ctx, sb, "cmd", additionalCommandState.CommandProperties);
+            sb.NewLine().Append("return cmd;").Outdent();
+        }
 
         sb.Outdent().NewLine().NewLine();
+
+        static CodeWriter WriteGetCommandHeader(CodeWriter sb, string declaredType) => sb.NewLine()
+            .Append("public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,").Indent(false).NewLine()
+            .Append("string sql, global::System.Data.CommandType commandType, ")
+            .Append(declaredType).Append(" args)").Outdent(false);
+    }
+
+    private static void WriteCommandProperties(SourceProductionContext ctx, CodeWriter sb, string source, ImmutableArray<CommandProperty> properties, int index = 0)
+    {
+        foreach (var grp in properties.GroupBy(x => x.CommandType, SymbolEqualityComparer.Default))
+        {
+            var type = (INamedTypeSymbol)grp.Key!;
+            bool isDbCmd = type is
+            {
+                Name: "DbCommand", ContainingType: null, Arity: 0, TypeKind: TypeKind.Class, ContainingNamespace:
+                {
+                    Name: "Common",
+                    ContainingNamespace:
+                    {
+                        Name: "Data",
+                        ContainingNamespace:
+                        {
+                            Name: "System",
+                            ContainingNamespace.IsGlobalNamespace: true
+                        }
+                    }
+                }
+            };
+
+            bool firstForType = true; // defer starting the if-test in case all invalid
+            foreach (var prop in grp)
+            {
+                if (!HasPublicSettableInstanceMember(type, prop.Name))
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CommandPropertyNotFound, prop.Location, type.Name, prop.Name));
+                    continue;
+                }
+                if (firstForType && !isDbCmd)
+                {
+                    sb.NewLine().Append("if (cmd is ").Append(type).Append(" cmd").Append(index).Append(")").Indent();
+                    firstForType = false;
+                }
+
+                sb.NewLine();
+                if (isDbCmd) sb.Append(source);
+                else sb.Append("cmd").Append(index);
+                sb.Append(".").Append(prop.Name).Append(" = ");
+                switch (prop.Value)
+                {
+                    case null:
+                        sb.Append("null");
+                        break;
+                    case bool b:
+                        sb.Append(b);
+                        break;
+                    case string s:
+                        sb.AppendVerbatimLiteral(s);
+                        break;
+                    case int i:
+                        sb.Append(i);
+                        break;
+                    default:
+                        sb.Append(Convert.ToString(prop.Value, CultureInfo.InvariantCulture));
+                        break;
+                }
+                sb.Append(";").NewLine();
+            }
+            if (!firstForType && !isDbCmd) // at least one was emitted; close the type test
+            {
+                sb.Outdent();
+                index++;
+            }
+        }
+
+        static bool HasPublicSettableInstanceMember(ITypeSymbol type, string name)
+        {
+            foreach (var member in type.GetMembers())
+            {
+                if (member.IsStatic || member.Name != name || member.DeclaredAccessibility != Accessibility.Public) continue;
+                switch (member.Kind)
+                {
+                    case SymbolKind.Field when member is IFieldSymbol field: return field.IsReadOnly;
+                    case SymbolKind.Property when member is IPropertySymbol prop: return prop.SetMethod is not null;
+                    default: return false;
+                }
+            }
+            return false;
+        }
     }
 
     private static void WriteRowFactory(CodeWriter sb, ITypeSymbol type, int index)
@@ -1658,14 +1763,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         private CommonComparer() { }
 
         public bool Equals(
-            
+
             (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) x,
             (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) y) => x.Flags == y.Flags
                 && x.ParameterMap == y.ParameterMap
                 && SymbolEqualityComparer.Default.Equals(x.Method, y.Method)
                 && SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType)
                 && x.UniqueLocation == y.UniqueLocation
-                && EqualityComparer<AdditionalCommandState?>.Default.Equals(x.AdditionalCommandState, y.AdditionalCommandState);
+                && Equals(x.AdditionalCommandState, y.AdditionalCommandState);
 
         public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) obj)
         {
