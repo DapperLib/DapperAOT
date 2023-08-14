@@ -21,7 +21,31 @@ public sealed class CommandPropertyAttribute<T> : Attribute where T : DbCommand
     /// <param name="name">The name of the member to assign; consider using <c>nameof</c> here, to avoid errors</param>
     /// <param name="value">The value of the member to assign</param>
     /// <remarks>This can be used to provide granular (location-specific) or global command configuration</remarks>
-    public CommandPropertyAttribute(string name, object? value)
+    public CommandPropertyAttribute(string name, bool value)
+    {
+        Name = name;
+        Value = value;
+    }
+
+    /// <summary>
+    /// Defines additional provider-specific configuration rules to apply to commands
+    /// </summary>
+    /// <param name="name">The name of the member to assign; consider using <c>nameof</c> here, to avoid errors</param>
+    /// <param name="value">The value of the member to assign</param>
+    /// <remarks>This can be used to provide granular (location-specific) or global command configuration</remarks>
+    public CommandPropertyAttribute(string name, string value)
+    {
+        Name = name;
+        Value = value;
+    }
+
+    /// <summary>
+    /// Defines additional provider-specific configuration rules to apply to commands
+    /// </summary>
+    /// <param name="name">The name of the member to assign; consider using <c>nameof</c> here, to avoid errors</param>
+    /// <param name="value">The value of the member to assign</param>
+    /// <remarks>This can be used to provide granular (location-specific) or global command configuration</remarks>
+    public CommandPropertyAttribute(string name, int value)
     {
         Name = name;
         Value = value;
