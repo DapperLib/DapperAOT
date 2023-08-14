@@ -197,7 +197,7 @@ public sealed partial class DapperInterceptorGenerator
             }
             else if (parameterType is not null && !parameterType.IsAnonymousType)
             {
-                sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param).").Append(estimatedRowCount.MemberName);
+                sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param!).").Append(estimatedRowCount.MemberName);
             }
         }
         if (isAsync && HasParam(methodParameters, "cancellationToken"))

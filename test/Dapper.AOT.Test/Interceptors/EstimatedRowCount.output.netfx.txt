@@ -5,10 +5,3 @@ Dapper.AOT handled 3 of 3 enabled call-sites using 3 interceptors, 2 commands an
 
 Info DAP029 Interceptors/EstimatedRowCount.input.cs L9 C17
 The [EstimatedRowCount] will be ignored due to parameter member 'Count'
-Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
-
-Error CS1955 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L46 C252
-Non-invocable member 'DapperGeneratedInterceptors.RowFactory0.Instance' cannot be used like a method.
-
-Warning CS8600 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L46 C261
-Converting null literal or possible null value to non-nullable type.
