@@ -15,5 +15,5 @@ public sealed class SqlSyntaxAttribute : Attribute
     /// <summary>
     /// Indicates whether commands should, when possible, be re-used between operations
     /// </summary>
-    public SqlSyntaxAttribute(SqlSyntax syntax) { }
+    public SqlSyntaxAttribute(SqlSyntax syntax) => _ = syntax;
 }

@@ -56,23 +56,25 @@ internal static class Inspection
         => GetClosestDapperAttribute(ctx, op, attributeName, out _, cancellationToken);
     public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out Location? location, CancellationToken cancellationToken)
     {
-        var method = GetContainingMethodSyntax(op);
-        if (method is not null)
+        var symbol = GetSymbol(ctx, op, cancellationToken);
+        while (symbol is not null)
         {
-            var symbol = ctx.SemanticModel.GetDeclaredSymbol(method, cancellationToken);
-            while (symbol is not null)
+            var attrib = GetDapperAttribute(symbol, attributeName);
+            if (attrib is not null)
             {
-                var attrib = GetDapperAttribute(symbol, attributeName);
-                if (attrib is not null)
-                {
-                    location = symbol.Locations.FirstOrDefault();
-                    return attrib;
-                }
-                symbol = symbol.ContainingSymbol;
+                location = symbol.Locations.FirstOrDefault();
+                return attrib;
             }
+            symbol = symbol is IAssemblySymbol ? null : symbol.ContainingSymbol;
         }
+        location = null;
         return null;
+    }
 
+    public static ISymbol? GetSymbol(in GeneratorSyntaxContext ctx, IOperation operation, CancellationToken cancellationToken)
+    {
+        var method = GetContainingMethodSyntax(operation);
+        return method is null ? null : ctx.SemanticModel.GetDeclaredSymbol(method, cancellationToken);
         static SyntaxNode? GetContainingMethodSyntax(IOperation op)
         {
             var syntax = op.Syntax;
@@ -103,21 +105,23 @@ internal static class Inspection
         return false;
     }
 
+    public static bool IsDapperAttribute(AttributeData attrib)
+        => attrib.AttributeClass is
+        {
+            ContainingNamespace:
+            {
+                Name: "Dapper",
+                ContainingNamespace.IsGlobalNamespace: true
+            }
+        };
+
     public static AttributeData? GetDapperAttribute(ISymbol? symbol, string attributeName)
     {
         if (symbol is not null)
         {
             foreach (var attrib in symbol.GetAttributes())
             {
-                if (attrib.AttributeClass is
-                    {
-                        ContainingNamespace:
-                        {
-                            Name: "Dapper",
-                            ContainingNamespace.IsGlobalNamespace: true
-                        }
-                    }
-                && attrib.AttributeClass.Name == attributeName)
+                if (IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == attributeName)
                 {
                     return attrib;
                 }

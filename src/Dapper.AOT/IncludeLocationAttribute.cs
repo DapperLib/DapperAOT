@@ -15,5 +15,5 @@ public sealed class IncludeLocationAttribute : Attribute
     /// <summary>
     /// Indicates whether to include, when possible, a comment in the SQL showing the code origin
     /// </summary>
-    public IncludeLocationAttribute(bool enabled = true) { }
+    public IncludeLocationAttribute(bool enabled = true) => _ = enabled;
 }
