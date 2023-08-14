@@ -39,6 +39,7 @@ DAP030 | Library | Error | Diagnostics
 DAP031 | Library | Error | Diagnostics
 DAP032 | Library | Error | Diagnostics
 DAP033 | Library | Warning | Diagnostics
+DAP034 | Library | Warning | Diagnostics
 DAP100 | Library | Error | Diagnostics
 DAP101 | Library | Error | Diagnostics
 DAP102 | Library | Error | Diagnostics

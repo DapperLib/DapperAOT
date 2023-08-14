@@ -1203,7 +1203,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             bool firstForType = true; // defer starting the if-test in case all invalid
             foreach (var prop in grp)
             {
-                if (!HasPublicSettableInstanceMember(type, prop.Name))
+                if (IsReserved(prop.Name))
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CommandPropertyReserved, prop.Location, prop.Name));
+                    continue;
+                }
+                else if (!HasPublicSettableInstanceMember(type, prop.Name))
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CommandPropertyNotFound, prop.Location, type.Name, prop.Name));
                     continue;
@@ -1258,6 +1263,28 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 }
             }
             return false;
+        }
+
+        static bool IsReserved(string name)
+        {
+            switch (name)
+            {
+                // pretty much everything on DbCommand
+                case nameof(DbCommand.CommandText):
+                case nameof(DbCommand.CommandTimeout):
+                case nameof(DbCommand.CommandType):
+                case nameof(DbCommand.Connection):
+                case nameof(DbCommand.Parameters):
+                case nameof(DbCommand.Site):
+                case nameof(DbCommand.Transaction):
+                case nameof(DbCommand.UpdatedRowSource):
+                // see SpecialCommandFlags
+                case "InitialLONGFetchSize":
+                case "BindByName":
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 

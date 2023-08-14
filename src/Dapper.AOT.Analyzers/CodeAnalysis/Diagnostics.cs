@@ -75,7 +75,9 @@ internal static class Diagnostics
         MemberRowCountHintDuplicated = new("DAP032", "Member-level row-count hint duplicated",
             "Only a single member should be marked [EstimatedRowCount]", Category.Library, DiagnosticSeverity.Error, true),
         CommandPropertyNotFound = new("DAP033", "Command property not found",
-            "Command property {0}.{1} was not found or was not valid", Category.Library, DiagnosticSeverity.Warning, true),
+            "Command property {0}.{1} was not found or was not valid; attribute will be ignored", Category.Library, DiagnosticSeverity.Warning, true),
+        CommandPropertyReserved = new("DAP034", "Command property reserved",
+            "Command property {1} is reserved for internal usage; attribute will be ignored", Category.Library, DiagnosticSeverity.Warning, true),
 
     // TypeAccessor
         TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",
