@@ -13,6 +13,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
+using System.Data.Common;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -338,9 +340,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (!canBeCached) flags &= ~OperationFlags.CacheCommand;
         }
 
+        var estimatedRowCount = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op, cancellationToken), paramType, ref diagnostics);
         CheckCallValidity(op, flags, ref diagnostics);
 
-        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, diagnostics);
+        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, estimatedRowCount, diagnostics);
 
         //static bool HasDiagnostic(object? diagnostics, DiagnosticDescriptor diagnostic)
         //{
@@ -511,6 +514,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     {
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.RowCountDbValue, loc, member.CodeName));
                     }
+                }
+                if (member.Kind != Inspection.ElementMemberKind.None)
+                {
                     continue; // not treated as parameters for naming etc purposes
                 }
                 var dbName = member.DbName;
@@ -886,24 +892,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         foreach (var grp in state.Nodes.Where(x => !HasAny(x.Flags, OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
             // first, try to resolve the helper method that we're going to use for this
-            var (flags, method, parameterType, parameterMap, _) = grp.Key;
-            int arity = HasAny(flags, OperationFlags.TypedResult) ? 2 : 1, argCount = 8;
+            var (flags, method, parameterType, parameterMap, _, additionalCommandState) = grp.Key;
             const bool useUnsafe = false;
-            var helperName = method.Name;
-            if (helperName == "Query")
-            {
-                if (HasAny(flags, OperationFlags.Buffered | OperationFlags.Unbuffered))
-                {
-                    //dedicated mode
-                    helperName = HasAny(flags, OperationFlags.Buffered) ? "QueryBuffered" : "QueryUnbuffered";
-                }
-                else
-                {
-                    // fallback mode, needs an extra arg to pass in "buffered"
-                    argCount++;
-                }
-            }
-
             int usageCount = 0;
 
             foreach (var op in grp.OrderBy(row => row.Location, CommonComparer.Instance))
@@ -987,9 +977,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
-            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql))
+            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
             {
-                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql);
+                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql, additionalCommandState);
             }
         }
 
@@ -1049,7 +1039,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var tuple in factories)
         {
-            WriteCommandFactory(baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount);
+            WriteCommandFactory(ctx, baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount, tuple.AdditionalCommandState);
         }
 
         sb.Outdent(); // ends our generated file-scoped class
@@ -1061,7 +1051,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, enabledCount, methodIndex, factories.Count(), readers.Count()));
     }
 
-    private static void WriteCommandFactory(string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount)
+    private static void WriteCommandFactory(SourceProductionContext ctx, string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount, AdditionalCommandState? additionalCommandState)
     {
         var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
         sb.Append("private ").Append(cacheCount <= 1 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
@@ -1141,11 +1131,21 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
 
             // provide overrides to fetch/store cached commands
-            sb.NewLine().Append("public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,").Indent(false).NewLine()
-                .Append("string sql, global::System.Data.CommandType commandType, ")
-                .Append(declaredType).Append(" args)").NewLine()
-                .Append(" => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false)
-                .NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine();
+            WriteGetCommandHeader(sb, declaredType);
+            if (additionalCommandState is not null && additionalCommandState.HasCommandProperties)
+            {
+                sb.Indent()
+                    .NewLine().Append("var cmd = TryReuse(ref Storage, sql, commandType, args);")
+                    .NewLine().Append("if (cmd is null)").Indent()
+                    .NewLine().Append("cmd = base.GetCommand(connection, sql, commandType, args);");
+                WriteCommandProperties(ctx, sb, "cmd", additionalCommandState.CommandProperties);
+                sb.Outdent().NewLine().Append("return cmd;").Outdent();
+            }
+            else
+            {
+                sb.Indent(false).NewLine().Append(" => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false);
+            }
+            sb.NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine();
 
             if (cacheCount == 1)
             {
@@ -1164,8 +1164,129 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 }
             }
         }
+        else if (additionalCommandState is not null && additionalCommandState.HasCommandProperties)
+        {
+            WriteGetCommandHeader(sb, declaredType).Indent().NewLine().Append("var cmd = base.GetCommand(connection, sql, commandType, args);");
+            WriteCommandProperties(ctx, sb, "cmd", additionalCommandState.CommandProperties);
+            sb.NewLine().Append("return cmd;").Outdent();
+        }
 
         sb.Outdent().NewLine().NewLine();
+
+        static CodeWriter WriteGetCommandHeader(CodeWriter sb, string declaredType) => sb.NewLine()
+            .Append("public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,").Indent(false).NewLine()
+            .Append("string sql, global::System.Data.CommandType commandType, ")
+            .Append(declaredType).Append(" args)").Outdent(false);
+    }
+
+    private static void WriteCommandProperties(SourceProductionContext ctx, CodeWriter sb, string source, ImmutableArray<CommandProperty> properties, int index = 0)
+    {
+        foreach (var grp in properties.GroupBy(x => x.CommandType, SymbolEqualityComparer.Default))
+        {
+            var type = (INamedTypeSymbol)grp.Key!;
+            bool isDbCmd = type is
+            {
+                Name: "DbCommand", ContainingType: null, Arity: 0, TypeKind: TypeKind.Class, ContainingNamespace:
+                {
+                    Name: "Common",
+                    ContainingNamespace:
+                    {
+                        Name: "Data",
+                        ContainingNamespace:
+                        {
+                            Name: "System",
+                            ContainingNamespace.IsGlobalNamespace: true
+                        }
+                    }
+                }
+            };
+
+            bool firstForType = true; // defer starting the if-test in case all invalid
+            foreach (var prop in grp)
+            {
+                if (IsReserved(prop.Name))
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CommandPropertyReserved, prop.Location, prop.Name));
+                    continue;
+                }
+                else if (!HasPublicSettableInstanceMember(type, prop.Name))
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CommandPropertyNotFound, prop.Location, type.Name, prop.Name));
+                    continue;
+                }
+                if (firstForType && !isDbCmd)
+                {
+                    sb.NewLine().Append("if (cmd is ").Append(type).Append(" cmd").Append(index).Append(")").Indent();
+                    firstForType = false;
+                }
+
+                sb.NewLine();
+                if (isDbCmd) sb.Append(source);
+                else sb.Append("cmd").Append(index);
+                sb.Append(".").Append(prop.Name).Append(" = ");
+                switch (prop.Value)
+                {
+                    case null:
+                        sb.Append("null");
+                        break;
+                    case bool b:
+                        sb.Append(b);
+                        break;
+                    case string s:
+                        sb.AppendVerbatimLiteral(s);
+                        break;
+                    case int i:
+                        sb.Append(i);
+                        break;
+                    default:
+                        sb.Append(Convert.ToString(prop.Value, CultureInfo.InvariantCulture));
+                        break;
+                }
+                sb.Append(";").NewLine();
+            }
+            if (!firstForType && !isDbCmd) // at least one was emitted; close the type test
+            {
+                sb.Outdent();
+                index++;
+            }
+        }
+
+        static bool HasPublicSettableInstanceMember(ITypeSymbol type, string name)
+        {
+            foreach (var member in type.GetMembers())
+            {
+                if (member.IsStatic || member.Name != name || member.DeclaredAccessibility != Accessibility.Public) continue;
+                switch (member.Kind)
+                {
+                    case SymbolKind.Field when member is IFieldSymbol field: return field.IsReadOnly;
+                    case SymbolKind.Property when member is IPropertySymbol prop: return prop.SetMethod is not null;
+                    default: return false;
+                }
+            }
+            return false;
+        }
+
+        static bool IsReserved(string name)
+        {
+            switch (name)
+            {
+                // pretty much everything on DbCommand
+                case nameof(DbCommand.CommandText):
+                case nameof(DbCommand.CommandTimeout):
+                case nameof(DbCommand.CommandType):
+                case nameof(DbCommand.Connection):
+                case nameof(DbCommand.Parameters):
+                case nameof(DbCommand.Site):
+                case nameof(DbCommand.Transaction):
+                case nameof(DbCommand.UpdatedRowSource):
+                // see SpecialCommandFlags
+                case "InitialLONGFetchSize":
+                case "BindByName":
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 
     private static void WriteRowFactory(SourceProductionContext context, CodeWriter sb, ITypeSymbol type, int index)
@@ -1749,8 +1870,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public IMethodSymbol Method { get; }
         public ITypeSymbol? ResultType { get; }
         public ITypeSymbol? ParameterType { get; }
+        public AdditionalCommandState? AdditionalCommandState { get; }
         public SourceState(Location location, IMethodSymbol method, OperationFlags flags, string? sql,
-            ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap, object? diagnostics = null)
+            ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap,
+            AdditionalCommandState? additionalCommandState, object? diagnostics = null)
         {
             Location = location;
             Flags = flags;
@@ -1759,6 +1882,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             ParameterType = parameterType;
             Method = method;
             ParameterMap = parameterMap;
+            AdditionalCommandState = additionalCommandState;
             this.diagnostics = diagnostics;
         }
 
@@ -1777,21 +1901,25 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             _ => throw new IndexOutOfRangeException(nameof(index)),
         };
 
-        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) Group()
-            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location);
+        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) Group()
+            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location, AdditionalCommandState);
     }
-    private sealed class CommonComparer : LocationComparer, IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation)>
+    private sealed class CommonComparer : LocationComparer, IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState)>
     {
         public static readonly CommonComparer Instance = new();
         private CommonComparer() { }
 
-        public bool Equals((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) x, (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) y) => x.Flags == y.Flags
+        public bool Equals(
+
+            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) x,
+            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) y) => x.Flags == y.Flags
                 && x.ParameterMap == y.ParameterMap
                 && SymbolEqualityComparer.Default.Equals(x.Method, y.Method)
                 && SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType)
-                && x.UniqueLocation == y.UniqueLocation;
+                && x.UniqueLocation == y.UniqueLocation
+                && Equals(x.AdditionalCommandState, y.AdditionalCommandState);
 
-        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation) obj)
+        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) obj)
         {
             var hash = (int)obj.Flags;
             hash *= -47;
@@ -1807,6 +1935,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (obj.UniqueLocation is not null)
             {
                 hash += obj.UniqueLocation.GetHashCode();
+            }
+            hash *= -47;
+            if (obj.AdditionalCommandState is not null)
+            {
+                hash += obj.AdditionalCommandState.GetHashCode();
             }
             return hash;
         }

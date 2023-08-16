@@ -55,22 +55,29 @@ internal static class Inspection
         }
         return hasNames = false;
     }
-
     public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, CancellationToken cancellationToken)
+        => GetClosestDapperAttribute(ctx, op, attributeName, out _, cancellationToken);
+    public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out Location? location, CancellationToken cancellationToken)
     {
-        var method = GetContainingMethodSyntax(op);
-        if (method is not null)
+        var symbol = GetSymbol(ctx, op, cancellationToken);
+        while (symbol is not null)
         {
-            var symbol = ctx.SemanticModel.GetDeclaredSymbol(method, cancellationToken);
-            while (symbol is not null)
+            var attrib = GetDapperAttribute(symbol, attributeName);
+            if (attrib is not null)
             {
-                var attrib = GetDapperAttribute(symbol, attributeName);
-                if (attrib is not null) return attrib;
-                symbol = symbol.ContainingSymbol;
+                location = symbol.Locations.FirstOrDefault();
+                return attrib;
             }
+            symbol = symbol is IAssemblySymbol ? null : symbol.ContainingSymbol;
         }
+        location = null;
         return null;
+    }
 
+    public static ISymbol? GetSymbol(in GeneratorSyntaxContext ctx, IOperation operation, CancellationToken cancellationToken)
+    {
+        var method = GetContainingMethodSyntax(operation);
+        return method is null ? null : ctx.SemanticModel.GetDeclaredSymbol(method, cancellationToken);
         static SyntaxNode? GetContainingMethodSyntax(IOperation op)
         {
             var syntax = op.Syntax;
@@ -101,21 +108,23 @@ internal static class Inspection
         return false;
     }
 
+    public static bool IsDapperAttribute(AttributeData attrib)
+        => attrib.AttributeClass is
+        {
+            ContainingNamespace:
+            {
+                Name: "Dapper",
+                ContainingNamespace.IsGlobalNamespace: true
+            }
+        };
+
     public static AttributeData? GetDapperAttribute(ISymbol? symbol, string attributeName)
     {
         if (symbol is not null)
         {
             foreach (var attrib in symbol.GetAttributes())
             {
-                if (attrib.AttributeClass is
-                    {
-                        ContainingNamespace:
-                        {
-                            Name: "Dapper",
-                            ContainingNamespace.IsGlobalNamespace: true
-                        }
-                    }
-                && attrib.AttributeClass.Name == attributeName)
+                if (IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == attributeName)
                 {
                     return attrib;
                 }
@@ -304,6 +313,13 @@ internal static class Inspection
         }
     }
 
+    [Flags]
+    public enum ElementMemberKind
+    {
+        None = 0,
+        RowCount = 1 << 0,
+        EstimatedRowCount = 1 << 1,
+    }
     public readonly struct ElementMember
     {
         private readonly AttributeData? _dbValue;
@@ -320,7 +336,10 @@ internal static class Inspection
         public ParameterDirection Direction => TryGetAttributeValue(_dbValue, nameof(Direction), out int direction)
             ? (ParameterDirection)direction : ParameterDirection.Input;
 
-        public bool IsRowCount { get; }
+        public ElementMemberKind Kind { get; }
+
+        public bool IsRowCount => (Kind & ElementMemberKind.RowCount) != 0;
+        public bool IsEstimatedRowCount => (Kind & ElementMemberKind.EstimatedRowCount) != 0;
         public bool HasDbValueAttribute => _dbValue is not null;
 
         public T? TryGetValue<T>(string memberName) where T : struct
@@ -349,18 +368,18 @@ internal static class Inspection
         /// </summary>
         public int? ConstructorParameterOrder { get; }
 
-        public ElementMember(ISymbol member, AttributeData? dbValue, bool isRowCount)
+        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind)
         {
             Member = member;
             _dbValue = dbValue;
-            IsRowCount = isRowCount;
+            Kind = kind;
         }
 
-        public ElementMember(ISymbol member, AttributeData? dbValue, bool isRowCount, bool isGettable, bool isSettable, bool isInitOnly, int? constructorParameterOrder)
+        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind, bool isGettable, bool isSettable, bool isInitOnly, int? constructorParameterOrder)
         {
             Member = member;
             _dbValue = dbValue;
-            IsRowCount = isRowCount;
+            Kind = kind;
 
             IsGettable = isGettable;
             IsSettable = isSettable;
@@ -373,6 +392,8 @@ internal static class Inspection
         public override string ToString() => Member?.Name ?? "";
         public override bool Equals(object obj) => obj is ElementMember other
             && SymbolEqualityComparer.Default.Equals(Member, other.Member);
+
+        public Location? GetLocation() => Member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
     }
 
     /// <summary>
@@ -501,7 +522,7 @@ internal static class Inspection
         {
             foreach (var field in named.TupleElements)
             {
-                yield return new(member: field, dbValue: null, isRowCount: false);
+                yield return new(field, null, ElementMemberKind.None);
             }
         }
         else
@@ -514,8 +535,17 @@ internal static class Inspection
 
                 // public or annotated only; not explicitly ignored
                 var dbValue = GetDapperAttribute(member, Types.DbValueAttribute);
-                var isRowCount = GetDapperAttribute(member, Types.RowCountAttribute) is not null;
-                if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && !isRowCount) continue;
+                var kind = ElementMemberKind.None;
+                if (GetDapperAttribute(member, Types.RowCountAttribute) is not null)
+                {
+                    kind |= ElementMemberKind.RowCount;
+                }
+                if (GetDapperAttribute(member, Types.EstimatedRowCountAttribute) is not null)
+                {
+                    kind |= ElementMemberKind.EstimatedRowCount;
+                }
+
+                if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && kind == ElementMemberKind.None) continue;
                 if (TryGetAttributeValue(dbValue, "Ignore", out bool ignore) && ignore)
                 {
                     continue;
@@ -540,7 +570,7 @@ internal static class Inspection
                 var isInitOnly = CodeWriter.IsInitOnlyInstanceMember(member, out _);
 
                 // all good, then!
-                yield return new(member, dbValue, isRowCount, isGettable, isSettable, isInitOnly, constructorParameterOrder);
+                yield return new(member, dbValue, kind, isGettable, isSettable, isInitOnly, constructorParameterOrder);
             }
         }
 

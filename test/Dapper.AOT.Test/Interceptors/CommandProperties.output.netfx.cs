@@ -1,22 +1,73 @@
 #nullable enable
 file static class DapperGeneratedInterceptors
 {
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 13, 24)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\CommandProperties.input.cs", 14, 24)]
     internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, Buffered, StoredProcedure
+        // Query, TypedResult, HasParameters, Buffered, StoredProcedure, CacheCommand
+        // takes parameter: <anonymous type: int Foo>
+        // parameter map: (everything)
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(buffered is true);
-        global::System.Diagnostics.Debug.Assert(param is null);
+        global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance0).QueryBuffered(param, RowFactory0.Instance);
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 14, 24)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\CommandProperties.input.cs", 16, 24)]
     internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, TypedResult, HasParameters, Buffered, StoredProcedure, CacheCommand
+        // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: (everything)
+        // returns data: global::Foo.Customer
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(buffered is true);
+        global::System.Diagnostics.Debug.Assert(param is not null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance0).QueryBuffered(param, RowFactory0.Instance);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\CommandProperties.input.cs", 17, 24)]
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, TypedResult, HasParameters, Buffered, StoredProcedure, CacheCommand
+        // takes parameter: <anonymous type: int Foo, string bar>
+        // parameter map: (everything)
+        // returns data: global::Foo.Customer
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(buffered is true);
+        global::System.Diagnostics.Debug.Assert(param is not null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance1).QueryBuffered(param, RowFactory0.Instance);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\CommandProperties.input.cs", 23, 24)]
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, TypedResult, HasParameters, Buffered, StoredProcedure
+        // takes parameter: <anonymous type: int Foo>
+        // parameter map: (everything)
+        // returns data: global::Foo.Customer
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(buffered is true);
+        global::System.Diagnostics.Debug.Assert(param is not null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), CommandFactory2.Instance).QueryBuffered(param, RowFactory0.Instance);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\CommandProperties.input.cs", 25, 24)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\CommandProperties.input.cs", 26, 24)]
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, HasParameters, Buffered, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>
@@ -27,110 +78,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).QueryBuffered(param, RowFactory0.Instance);
-
-    }
-
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 15, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, TypedResult, HasParameters, StoredProcedure
-        // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: (everything)
-        // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
-        global::System.Diagnostics.Debug.Assert(param is not null);
-
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).Query(param, buffered, RowFactory0.Instance);
-
-    }
-
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 16, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, TypedResult, Unbuffered, StoredProcedure
-        // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
-        global::System.Diagnostics.Debug.Assert(buffered is false);
-        global::System.Diagnostics.Debug.Assert(param is null);
-
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryUnbuffered(param, RowFactory0.Instance);
-
-    }
-
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 17, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, TypedResult, HasParameters, Buffered, Text
-        // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: Foo
-        // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
-        global::System.Diagnostics.Debug.Assert(buffered is true);
-        global::System.Diagnostics.Debug.Assert(param is not null);
-
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).QueryBuffered(param, RowFactory0.Instance);
-
-    }
-
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 19, 30)]
-    internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Customer>> QueryAsync5(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, Async, TypedResult, Buffered, StoredProcedure
-        // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
-        global::System.Diagnostics.Debug.Assert(param is null);
-
-        return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
-            global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBufferedAsync(param, RowFactory0.Instance));
-
-    }
-
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 20, 30)]
-    internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Customer>> QueryAsync6(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, Async, TypedResult, HasParameters, Buffered, StoredProcedure
-        // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: (everything)
-        // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
-        global::System.Diagnostics.Debug.Assert(param is not null);
-
-        return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
-            global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).QueryBufferedAsync(param, RowFactory0.Instance));
-
-    }
-
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 22, 47)]
-    internal static global::System.Collections.Generic.IAsyncEnumerable<global::Foo.Customer> QueryUnbufferedAsync7(this global::System.Data.Common.DbConnection cnn, string sql, object param, global::System.Data.Common.DbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, Async, TypedResult, Unbuffered, StoredProcedure
-        // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
-        global::System.Diagnostics.Debug.Assert(param is null);
-
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryUnbufferedAsync(param, RowFactory0.Instance);
-
-    }
-
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 23, 47)]
-    internal static global::System.Collections.Generic.IAsyncEnumerable<global::Foo.Customer> QueryUnbufferedAsync8(this global::System.Data.Common.DbConnection cnn, string sql, object param, global::System.Data.Common.DbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Query, Async, TypedResult, HasParameters, Unbuffered, Text
-        // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: Foo
-        // returns data: global::Foo.Customer
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
-        global::System.Diagnostics.Debug.Assert(param is not null);
-
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).QueryUnbufferedAsync(param, RowFactory0.Instance);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), CommandFactory3.Instance).QueryBuffered(param, RowFactory0.Instance);
 
     }
 
@@ -219,9 +167,58 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
+    private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int Foo>
     {
-        internal static readonly CommandFactory0 Instance = new();
+        internal static readonly CommandFactory0 Instance0 = new();
+        public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
+        {
+            var typed = Cast(args, static () => new { Foo = default(int) }); // expected shape
+            var ps = cmd.Parameters;
+            global::System.Data.Common.DbParameter p;
+            p = cmd.CreateParameter();
+            p.ParameterName = "Foo";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.Foo);
+            ps.Add(p);
+
+        }
+        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
+        {
+            var typed = Cast(args, static () => new { Foo = default(int) }); // expected shape
+            var ps = cmd.Parameters;
+            ps[0].Value = AsValue(typed.Foo);
+
+        }
+        public override bool CanPrepare => true;
+
+        public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,
+            string sql, global::System.Data.CommandType commandType, object? args)
+        {
+            var cmd = TryReuse(ref Storage, sql, commandType, args);
+            if (cmd is null)
+            {
+                cmd = base.GetCommand(connection, sql, commandType, args);
+                if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
+                {
+                    cmd0.FetchSize = 1024;
+
+                }
+            }
+            return cmd;
+        }
+
+        public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);
+        private static global::System.Data.Common.DbCommand? Storage;
+
+    }
+
+    private abstract class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
+    {
+        // these represent different call-sites (and most likely all have different SQL etc)
+        internal static readonly CommandFactory1.Cached0 Instance0 = new();
+        internal static readonly CommandFactory1.Cached1 Instance1 = new();
+
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
@@ -253,14 +250,46 @@ file static class DapperGeneratedInterceptors
         }
         public override bool CanPrepare => true;
 
+        public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,
+            string sql, global::System.Data.CommandType commandType, object? args)
+        {
+            var cmd = TryReuse(ref Storage, sql, commandType, args);
+            if (cmd is null)
+            {
+                cmd = base.GetCommand(connection, sql, commandType, args);
+                if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
+                {
+                    cmd0.FetchSize = 1024;
+
+                }
+            }
+            return cmd;
+        }
+
+        public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);
+        protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}
+
+        internal sealed class Cached0 : CommandFactory1
+        {
+            protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;
+            private static global::System.Data.Common.DbCommand? s_Storage;
+
+        }
+        internal sealed class Cached1 : CommandFactory1
+        {
+            protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;
+            private static global::System.Data.Common.DbCommand? s_Storage;
+
+        }
+
     }
 
-    private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
+    private sealed class CommandFactory2 : CommonCommandFactory<object?> // <anonymous type: int Foo>
     {
-        internal static readonly CommandFactory1 Instance = new();
+        internal static readonly CommandFactory2 Instance = new();
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
-            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            var typed = Cast(args, static () => new { Foo = default(int) }); // expected shape
             var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             p = cmd.CreateParameter();
@@ -273,13 +302,71 @@ file static class DapperGeneratedInterceptors
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
         {
-            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            var typed = Cast(args, static () => new { Foo = default(int) }); // expected shape
             var ps = cmd.Parameters;
             ps[0].Value = AsValue(typed.Foo);
 
         }
         public override bool CanPrepare => true;
 
+        public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,
+            string sql, global::System.Data.CommandType commandType, object? args)
+        {
+            var cmd = base.GetCommand(connection, sql, commandType, args);
+            if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
+            {
+                cmd0.FetchSize = 1024;
+
+            }
+            return cmd;
+        }
+    }
+
+    private sealed class CommandFactory3 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
+    {
+        internal static readonly CommandFactory3 Instance = new();
+        public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
+        {
+            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            var ps = cmd.Parameters;
+            global::System.Data.Common.DbParameter p;
+            p = cmd.CreateParameter();
+            p.ParameterName = "Foo";
+            p.DbType = global::System.Data.DbType.Int32;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.Foo);
+            ps.Add(p);
+
+            p = cmd.CreateParameter();
+            p.ParameterName = "bar";
+            p.DbType = global::System.Data.DbType.String;
+            p.Size = -1;
+            p.Direction = global::System.Data.ParameterDirection.Input;
+            p.Value = AsValue(typed.bar);
+            ps.Add(p);
+
+        }
+        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
+        {
+            var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
+            var ps = cmd.Parameters;
+            ps[0].Value = AsValue(typed.Foo);
+            ps[1].Value = AsValue(typed.bar);
+
+        }
+        public override bool CanPrepare => true;
+
+        public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,
+            string sql, global::System.Data.CommandType commandType, object? args)
+        {
+            var cmd = base.GetCommand(connection, sql, commandType, args);
+            if (cmd is global::Oracle.ManagedDataAccess.Client.OracleCommand cmd0)
+            {
+                cmd0.FetchSize = 1024;
+
+            }
+            return cmd;
+        }
     }
 
 
