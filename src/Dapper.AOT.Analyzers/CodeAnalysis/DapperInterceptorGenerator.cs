@@ -1309,7 +1309,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         if (membersCount == 0 && !hasExplicitConstructor)
         {
             // there are so settable members + there is no constructor to use
-            context.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, type.Locations.First()));
+            context.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, type.Locations.First(), type.ToDisplayString()));
 
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
             WriteRowFactoryHeader();

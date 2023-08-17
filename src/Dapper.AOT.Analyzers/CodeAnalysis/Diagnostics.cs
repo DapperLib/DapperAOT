@@ -83,7 +83,7 @@ internal static class Diagnostics
         TooManyStandardConstructors = new("DAP036", "Type has more than 1 constructor to choose for creating an instance",
             "Type has more than 1 constructor, please, either mark one constructor with [DapperAot] or reduce amount of constructors", Category.Library, DiagnosticSeverity.Error, true),
         UserTypeNoSettableMembersFound = new("DAP037", "No settable members exist for user type",
-            "Type has none of settable members (fields or properties)", Category.Library, DiagnosticSeverity.Error, true),
+            "Type '{0}' has no settable members (fields or properties)", Category.Library, DiagnosticSeverity.Error, true),
 
     // TypeAccessor
         TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",
