@@ -1473,9 +1473,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     sb.Append('(');
                     foreach (var constructorArg in constructorArgumentsOrdered)
                     {
-                        sb.Append(constructorArg.Value).Append(',');
+                        sb.Append(constructorArg.Value).Append(", ");
                     }
-                    sb.RemoveLast(1); // remove last comma generated in the loop
+                    sb.RemoveLast(2); // remove last ', ' generated in the loop
                     sb.Append(')');
                 }
 

@@ -316,7 +316,7 @@ file static class DapperGeneratedInterceptors
                 columnOffset++;
 
             }
-            return new global::Foo.GetOnlyPropertiesViaConstructor(value0,value1,value2);
+            return new global::Foo.GetOnlyPropertiesViaConstructor(value0, value1, value2);
         }
     }
 
@@ -453,7 +453,7 @@ file static class DapperGeneratedInterceptors
                 columnOffset++;
 
             }
-            return new global::Foo.RecordClassSimpleCtor(value0,value1,value2);
+            return new global::Foo.RecordClassSimpleCtor(value0, value1, value2);
         }
     }
 
@@ -585,7 +585,7 @@ file static class DapperGeneratedInterceptors
                 columnOffset++;
 
             }
-            return new global::Foo.RecordStructSimpleCtor(value0,value1,value2);
+            return new global::Foo.RecordStructSimpleCtor(value0, value1, value2);
         }
     }
 
@@ -858,7 +858,7 @@ file static class DapperGeneratedInterceptors
                 columnOffset++;
 
             }
-            return new global::Foo.SingleDefaultCtor(value0,value1,value2);
+            return new global::Foo.SingleDefaultCtor(value0, value1, value2);
         }
     }
 
@@ -931,7 +931,7 @@ file static class DapperGeneratedInterceptors
                 columnOffset++;
 
             }
-            return new global::Foo.SingleDapperAotCtor(value0,value1,value2);
+            return new global::Foo.SingleDapperAotCtor(value0, value1, value2);
         }
     }
 
