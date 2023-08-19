@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis.Text;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
@@ -1033,7 +1034,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var pair in readers)
         {
-            WriteRowFactory(sb, pair.Type, pair.Index);
+            WriteRowFactory(ctx, sb, pair.Type, pair.Index);
         }
 
         foreach (var tuple in factories)
@@ -1288,24 +1289,59 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private static void WriteRowFactory(CodeWriter sb, ITypeSymbol type, int index)
+    private static void WriteRowFactory(SourceProductionContext context, CodeWriter sb, ITypeSymbol type, int index)
     {
-        var members = Inspection.GetMembers(type).ToImmutableArray();
-        var memberCount = 0;
-        foreach (var member in members)
+        var hasExplicitConstructor = Inspection.TryGetSingleCompatibleDapperAotConstructor(type, out var constructor, out var errorDiagnostic);
+        if (!hasExplicitConstructor && errorDiagnostic is not null)
         {
-            if (CodeWriter.IsSettableInstanceMember(member.Member, out _))
-            {
-                memberCount++;
-            }
+            context.ReportDiagnostic(errorDiagnostic);
+
+            // error is emitted, but we still generate default RowFactory to not emit more errors for this type
+            WriteRowFactoryHeader();
+            WriteRowFactoryFooter();
+
+            return;
         }
 
-        sb.Append("private sealed class RowFactory").Append(index).Append(" : global::Dapper.RowFactory").Append("<").Append(type).Append(">")
+        var members = Inspection.GetMembers(type, dapperAotConstructor: constructor).ToImmutableArray();
+        var membersCount = members.Length;
+
+        if (membersCount == 0 && !hasExplicitConstructor)
+        {
+            // there are so settable members + there is no constructor to use
+            context.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, type.Locations.First(), type.ToDisplayString()));
+
+            // error is emitted, but we still generate default RowFactory to not emit more errors for this type
+            WriteRowFactoryHeader();
+            WriteRowFactoryFooter();
+
+            return;
+        }
+
+        var hasInitOnlyMembers = members.Any(member => member.IsInitOnly);
+        var hasGetOnlyMembers = members.Any(member => member.IsGettable && !member.IsSettable && !member.IsInitOnly);
+        var useDeferredConstruction = hasExplicitConstructor || hasInitOnlyMembers || hasGetOnlyMembers;
+
+        WriteRowFactoryHeader();        
+
+        WriteTokenizeMethod();
+        WriteReadMethod();
+
+        WriteRowFactoryFooter();
+
+        void WriteRowFactoryHeader()
+        {
+            sb.Append("private sealed class RowFactory").Append(index).Append(" : global::Dapper.RowFactory").Append("<").Append(type).Append(">")
             .Indent().NewLine()
             .Append("internal static readonly RowFactory").Append(index).Append(" Instance = new();").NewLine()
             .Append("private RowFactory").Append(index).Append("() {}").NewLine();
+        }
+        void WriteRowFactoryFooter()
+        {
+            sb.Outdent().NewLine().NewLine();
+        }
 
-        if (memberCount != 0)
+        void WriteTokenizeMethod()
         {
             sb.Append("public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
             sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
@@ -1317,71 +1353,154 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             int token = 0;
             foreach (var member in members)
             {
-                if (CodeWriter.IsSettableInstanceMember(member.Member, out var memberType))
-                {
-                    var dbName = member.DbName;
-                    sb.Append("case ").Append(StringHashing.NormalizedHash(dbName))
-                        .Append(" when NormalizedEquals(name, ")
-                        .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine()
-                        .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(memberType)).Append(") ? ").Append(token)
-                        .Append(" : ").Append(token + memberCount).Append(";")
-                        .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
-                        .Append("break;").Outdent(false).NewLine();
-                    token++;
-                }
+                var dbName = member.DbName;
+                sb.Append("case ").Append(StringHashing.NormalizedHash(dbName))
+                    .Append(" when NormalizedEquals(name, ")
+                    .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine()
+                    .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(token)
+                    .Append(" : ").Append(token + membersCount).Append(";")
+                    .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
+                    .Append("break;").Outdent(false).NewLine();
+                token++;
             }
             sb.Outdent().NewLine()
                 .Append("tokens[i] = token;").NewLine()
                 .Append("columnOffset++;").NewLine();
             sb.Outdent().NewLine().Append("return null;").Outdent().NewLine();
         }
-        sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
-
-        sb.Append(type.NullableAnnotation == NullableAnnotation.Annotated
-            ? type.WithNullableAnnotation(NullableAnnotation.None) : type).Append(" result = new();").NewLine();
-
-        if (memberCount != 0)
+        void WriteReadMethod()
         {
-            sb.Append("foreach (var token in tokens)").Indent().NewLine()
-            .Append("switch (token)").Indent().NewLine();
+            const string DeferredConstructionVariableName = "value";
+
+            sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
 
             int token = 0;
-            foreach (var member in members)
+            var constructorArgumentsOrdered = new SortedList<int, string>();
+            if (useDeferredConstruction)
             {
-                if (CodeWriter.IsSettableInstanceMember(member.Member, out var memberType))
-                {
-                    member.GetDbType(out var readerMethod);
-                    var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
-                    sb.Append("case ").Append(token).Append(":").NewLine().Indent(false)
-                        .Append("result.").Append(member.CodeName).Append(" = ").Append(nullCheck);
+                // dont create an instance now, but define the variables to create an instance later like 
+                // ```
+                // Type? member0 = default;
+                // Type? member1 = default;
+                // ```
 
-                    if (readerMethod is null)
+                foreach (var member in members)
+                {
+                    var variableName = DeferredConstructionVariableName + token;
+
+                    if (CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
+                    else sb.Append(CodeWriter.GetTypeName(member.CodeType));
+                    sb.Append(' ').Append(variableName).Append(" = default;").NewLine();
+
+                    // filling in the constructor arguments in first iteration through members
+                    // will be used afterwards to create the instance
+                    if (member.ConstructorParameterOrder is not null)
                     {
-                        sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                        constructorArgumentsOrdered.Add(member.ConstructorParameterOrder.Value, variableName);
                     }
-                    else
-                    {
-                        sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
-                    }
-                    sb.NewLine().Append("break;").NewLine().Outdent(false)
-                        .Append("case ").Append(token + memberCount).Append(":").NewLine().Indent(false)
-                        .Append("result.").Append(member.CodeName).Append(" = ").Append(nullCheck)
-                        .Append("GetValue<")
-                        .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
-                        .Append("break;").NewLine().Outdent(false);
+
                     token++;
                 }
             }
+            else
+            {
+                // we are not using a constructor, so we need to create an instance now
+                sb.Append(type.NullableAnnotation == NullableAnnotation.Annotated
+                    ? type.WithNullableAnnotation(NullableAnnotation.None) : type).Append(" result = new();").NewLine();
+            }
+
+            sb.Append("foreach (var token in tokens)").Indent().NewLine()
+            .Append("switch (token)").Indent().NewLine();
+
+            token = 0;
+            foreach (var member in members)
+            {
+                var memberType = member.CodeType;
+
+                member.GetDbType(out var readerMethod);
+                var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
+                sb.Append("case ").Append(token).Append(":").NewLine().Indent(false);
+
+                // write `result.X = ` or `member0 = `
+                if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
+                else sb.Append("result.").Append(member.CodeName);
+                sb.Append(" = ");
+
+                sb.Append(nullCheck);
+                if (readerMethod is null)
+                {
+                    sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                }
+                else
+                {
+                    sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
+                }
+
+                
+                sb.NewLine().Append("break;").NewLine().Outdent(false)
+                    .Append("case ").Append(token + membersCount).Append(":").NewLine().Indent(false);
+
+                // write `result.X = ` or `member0 = `
+                if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
+                else sb.Append("result.").Append(member.CodeName);
+                
+                sb.Append(" = ")
+                    .Append(nullCheck)
+                    .Append("GetValue<")
+                    .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
+                    .Append("break;").NewLine().Outdent(false);
+                
+                token++;
+            }
 
             sb.Outdent().NewLine().Append("columnOffset++;").NewLine().Outdent().NewLine();
+
+            if (useDeferredConstruction)
+            {
+                // create instance using constructor. like
+                // ```
+                // return new Type(member0, member1, member2, ...)
+                // {
+                //     SettableMember1 = member3,
+                //     SettableMember2 = member4,
+                // }
+                // ```
+
+                sb.Append("return new ").Append(type);
+                if (hasExplicitConstructor && constructorArgumentsOrdered.Count != 0)
+                {
+                    // write `(member0, member1, member2, ...)` part of constructor
+                    sb.Append('(');
+                    foreach (var constructorArg in constructorArgumentsOrdered)
+                    {
+                        sb.Append(constructorArg.Value).Append(", ");
+                    }
+                    sb.RemoveLast(2); // remove last ', ' generated in the loop
+                    sb.Append(')');
+                }
+
+                // if all members are constructor arguments, no need to set them again
+                if (constructorArgumentsOrdered.Count != members.Length)
+                {
+                    sb.Indent().NewLine();
+                    token = -1;
+                    foreach (var member in members)
+                    {
+                        token++;
+                        if (member.ConstructorParameterOrder is not null) continue; // already used in constructor arguments
+                        sb.Append(member.CodeName).Append(" = ").Append(DeferredConstructionVariableName).Append(token).Append(',').NewLine();
+                    }
+                    sb.Outdent(withScope: false).Append("}");
+                }
+
+                sb.Append(";").Outdent();
+            }
+            else
+            {
+                // return instance constructed before
+                sb.Append("return result;").NewLine().Outdent().NewLine();
+            }
         }
-        sb.Append("return result;").NewLine().Outdent().NewLine();
-
-
-        sb.Outdent().NewLine().NewLine();
-
-
-
 
         static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
             ? symbol.NullableAnnotation == NullableAnnotation.Annotated

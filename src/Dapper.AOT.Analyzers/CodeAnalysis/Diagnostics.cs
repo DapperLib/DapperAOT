@@ -78,6 +78,12 @@ internal static class Diagnostics
             "Command property {0}.{1} was not found or was not valid; attribute will be ignored", Category.Library, DiagnosticSeverity.Warning, true),
         CommandPropertyReserved = new("DAP034", "Command property reserved",
             "Command property {1} is reserved for internal usage; attribute will be ignored", Category.Library, DiagnosticSeverity.Warning, true),
+        TooManyDapperAotEnabledConstructors = new("DAP035", "Too many Dapper.AOT enabled constructors",
+            "Only one constructor can be Dapper.AOT enabled per type '{0}'", Category.Library, DiagnosticSeverity.Error, true),
+        TooManyStandardConstructors = new("DAP036", "Type has more than 1 constructor to choose for creating an instance",
+            "Type has more than 1 constructor, please, either mark one constructor with [DapperAot] or reduce amount of constructors", Category.Library, DiagnosticSeverity.Error, true),
+        UserTypeNoSettableMembersFound = new("DAP037", "No settable members exist for user type",
+            "Type '{0}' has no settable members (fields or properties)", Category.Library, DiagnosticSeverity.Error, true),
 
     // TypeAccessor
         TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",
