@@ -40,12 +40,6 @@ file static class DapperGeneratedInterceptors
     {
         internal static readonly RowFactory0 Instance = new();
         private RowFactory0() {}
-        public override global::SomeApp.SomeQueryType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
-        {
-            global::SomeApp.SomeQueryType result = new();
-            return result;
-
-        }
 
     }
 

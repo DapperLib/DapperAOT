@@ -1,5 +1,4 @@
-﻿using Dapper.Internal;
-using System;
+﻿using System;
 using System.Buffers;
 using System.Data;
 using System.Data.Common;
@@ -9,37 +8,19 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Dapper
+namespace Dapper.Internal
 {
 
-    internal struct QueryState // note mutable; deliberately not : IDisposable, as that creates a *copy*
+    internal class AsyncQueryState : AsyncCommandState
     {
-        private CommandState commandState;
         public DbDataReader? Reader;
         private int[]? leased;
         private int fieldCount;
 
-        public void Dispose()
-        {
-            Return();
-            Reader?.Dispose();
-            commandState.Dispose();
-        }
-
-        public DbCommand? Command
-        {
-            get => commandState.Command;
-            set => commandState.Command = value;
-        }
-
 #pragma warning disable CS8774 // Member must have a non-null value when exiting. - validated
-        [MemberNotNull(nameof(Reader), nameof(Command))]
-        public void ExecuteReader(DbCommand command, CommandBehavior flags)
-            => Reader = commandState.ExecuteReader(command, flags);
-
-        [MemberNotNull(nameof(Reader), nameof(Command))]
-        public async Task ExecuteReaderAsync(DbCommand command, CommandBehavior flags, CancellationToken cancellationToken)
-            => Reader = await commandState.ExecuteReaderAsync(command, flags, cancellationToken);
+        [MemberNotNull(nameof(Reader))]
+        public async new Task ExecuteReaderAsync(DbCommand command, CommandBehavior flags, CancellationToken cancellationToken)
+            => Reader = await base.ExecuteReaderAsync(command, flags, cancellationToken);
 #pragma warning restore CS8774 // Member must have a non-null value when exiting.
 
         public Span<int> Lease()
@@ -82,24 +63,32 @@ namespace Dapper
             }
         }
 
-#if NETCOREAPP3_1_OR_GREATER
-        public async Task DisposeAsync()
+        public override ValueTask DisposeAsync()
         {
             Return();
             if (Reader is not null)
             {
-                await Reader.DisposeAsync();
-            }
-            await commandState.DisposeAsync();
-        }
+#if NETCOREAPP3_1_OR_GREATER
+                var pending = Reader.DisposeAsync();
+                if (pending.IsCompletedSuccessfully)
+                {
+                    pending.GetAwaiter().GetResult(); // ensure observed (for IValueTaskSource)
+                }
+                else
+                {
+                    return DisposeAsync(pending);
+                }
 #else
-        public Task DisposeAsync()
-        {
-            Dispose();
-            return Task.CompletedTask;
-        }
+                Reader.Dispose();
 #endif
-
+            }
+            return base.DisposeAsync();
+        }
+        private async ValueTask DisposeAsync(ValueTask pending)
+        {
+            await pending;
+            await base.DisposeAsync();
+        }
     }
 }
 

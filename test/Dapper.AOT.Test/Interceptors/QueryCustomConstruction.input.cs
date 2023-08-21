@@ -162,3 +162,8 @@ public static class Foo
         }
     }
 }
+
+namespace System.Runtime.CompilerServices
+{
+    internal static class IsExternalInit { }
+}

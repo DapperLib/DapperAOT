@@ -22,7 +22,7 @@ partial struct Command<TArgs>
     /// </summary>
     public List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, int rowCountHint = 0)
     {
-        QueryState state = default;
+        SyncQueryState state = default;
         try
         {
             state.ExecuteReader(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
@@ -66,7 +66,7 @@ partial struct Command<TArgs>
     public async Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null,
         int rowCountHint = 0, CancellationToken cancellationToken = default)
     {
-        QueryState state = default;
+        AsyncQueryState state = new();
         try
         {
             await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
@@ -90,7 +90,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(state, args);
             return results;
         }
         finally
@@ -105,7 +105,7 @@ partial struct Command<TArgs>
     public async IAsyncEnumerable<TRow> QueryUnbufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        QueryState state = default;
+        AsyncQueryState state = new();
         try
         {
             await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
@@ -122,7 +122,7 @@ partial struct Command<TArgs>
             }
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(state, args);
         }
         finally
         {
@@ -135,7 +135,7 @@ partial struct Command<TArgs>
     /// </summary>
     public IEnumerable<TRow> QueryUnbuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null)
     {
-        QueryState state = default;
+        SyncQueryState state = default;
         try
         {
             state.ExecuteReader(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
@@ -173,7 +173,7 @@ partial struct Command<TArgs>
         OneRowFlags flags,
         RowFactory<TRow>? rowFactory)
     {
-        QueryState state = default;
+        SyncQueryState state = default;
         try
         {
             state.ExecuteReader(GetCommand(args), SingleFlags(flags));
@@ -220,7 +220,7 @@ partial struct Command<TArgs>
         RowFactory<TRow>? rowFactory,
         CancellationToken cancellationToken)
     {
-        QueryState state = default;
+        AsyncQueryState state = new();
 
         try
         {
@@ -250,7 +250,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(state, args);
             return result;
         }
         finally
