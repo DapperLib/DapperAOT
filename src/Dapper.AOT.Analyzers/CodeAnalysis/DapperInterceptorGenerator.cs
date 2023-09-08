@@ -1291,22 +1291,21 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     private static void WriteRowFactory(SourceProductionContext context, CodeWriter sb, ITypeSymbol type, int index)
     {
-        var hasExplicitConstructor = Inspection.TryGetSingleCompatibleDapperAotConstructor(type, out var constructor, out var errorDiagnostic);
-        if (!hasExplicitConstructor && errorDiagnostic is not null)
+        var hasDapperConstructor = Inspection.TryGetSingleCompatibleDapperAotConstructor(type, out var constructor, out var constructorSearchErrorDiagnostic);
+        var hasDapperFactoryMethod = Inspection.TryGetSingleCompatibleDapperAotFactoryMethod(type, out var factoryMethod, out var factorySearchErrorDiagnostic);
+        if (!hasDapperConstructor && constructorSearchErrorDiagnostic is not null)
         {
-            context.ReportDiagnostic(errorDiagnostic);
-
+            context.ReportDiagnostic(constructorSearchErrorDiagnostic);
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
             WriteRowFactoryHeader();
             WriteRowFactoryFooter();
-
             return;
         }
 
         var members = Inspection.GetMembers(type, dapperAotConstructor: constructor).ToImmutableArray();
         var membersCount = members.Length;
 
-        if (membersCount == 0 && !hasExplicitConstructor)
+        if (membersCount == 0 && !hasDapperConstructor)
         {
             // there are so settable members + there is no constructor to use
             context.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, type.Locations.First(), type.ToDisplayString()));
@@ -1320,7 +1319,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         var hasInitOnlyMembers = members.Any(member => member.IsInitOnly);
         var hasGetOnlyMembers = members.Any(member => member.IsGettable && !member.IsSettable && !member.IsInitOnly);
-        var useDeferredConstruction = hasExplicitConstructor || hasInitOnlyMembers || hasGetOnlyMembers;
+        var useDeferredConstruction = hasDapperConstructor || hasInitOnlyMembers || hasGetOnlyMembers;
 
         WriteRowFactoryHeader();        
 
@@ -1467,7 +1466,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 // ```
 
                 sb.Append("return new ").Append(type);
-                if (hasExplicitConstructor && constructorArgumentsOrdered.Count != 0)
+                if (hasDapperConstructor && constructorArgumentsOrdered.Count != 0)
                 {
                     // write `(member0, member1, member2, ...)` part of constructor
                     sb.Append('(');

@@ -118,6 +118,21 @@ internal static class Inspection
             }
         };
 
+    public static bool HasDapperAotEnabledAttribute(ISymbol? symbol)
+    {
+        var dapperAotAttribute = GetDapperAttribute(symbol, Types.DapperAotAttribute);
+        
+        // no attribute at all
+        if (dapperAotAttribute is null) return false;
+
+        // `[DapperAot]`
+        if (dapperAotAttribute.ConstructorArguments.Length == 0) return true;
+        
+        // `[DapperAot(true)]`
+        var typedArg = dapperAotAttribute.ConstructorArguments.First();
+        return (typedArg.Value is true);
+    }
+
     public static AttributeData? GetDapperAttribute(ISymbol? symbol, string attributeName)
     {
         if (symbol is not null)
@@ -396,6 +411,19 @@ internal static class Inspection
         public Location? GetLocation() => Member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
     }
 
+    public static bool TryGetSingleCompatibleDapperAotFactoryMethod(
+        ITypeSymbol? typeSymbol,
+        out IMethodSymbol? factoryMethod,
+        out Diagnostic? errorDiagnostic)
+    {
+        errorDiagnostic = null;
+        factoryMethod = null!;
+        
+        var (standardFactories, dapperAotFactories) = ChooseDapperAotCompatibleFactoryMethods(typeSymbol);
+        
+        return false;
+    }
+    
     /// <summary>
     /// Chooses a single constructor of type which to use for type's instances creation.
     /// </summary>
@@ -446,6 +474,52 @@ internal static class Inspection
         constructor = null!;
         return false;
     }
+    
+    private static (IReadOnlyCollection<IMethodSymbol> standardFactories, IReadOnlyCollection<IMethodSymbol> dapperAotFactories) ChooseDapperAotCompatibleFactoryMethods(ITypeSymbol? typeSymbol)
+    {
+        bool FilterFactoryMethods(IMethodSymbol methodSymbol) 
+            => methodSymbol is { IsStatic: true, DeclaredAccessibility: Accessibility.Public } 
+               && SymbolEqualityComparer.Default.Equals(methodSymbol.ReturnType, typeSymbol);
+
+        var methodSymbols = typeSymbol.GetMethods(filter: FilterFactoryMethods);
+        // TODO general question: do I need to avoid another enumeration here? cast to array?
+        if (methodSymbols?.Any() == false)
+        {
+            return (standardFactories: Array.Empty<IMethodSymbol>(), dapperAotFactories: Array.Empty<IMethodSymbol>());
+        }
+        
+        var standardFactories = new List<IMethodSymbol>();
+        var dapperAotFactories = new List<IMethodSymbol>();
+        foreach (var methodSymbol in methodSymbols)
+        {
+            // not taking into an account parameterless methods
+            if (methodSymbol.Parameters.Length == 0) continue;
+            
+            var dapperAotAttribute = HasDapperAotEnabledAttribute(methodSymbol);
+            if (dapperAotAttribute is null)
+            {
+                // picking constructor which is not marked with [DapperAot] attribute at all
+                standardFactories.Add(methodSymbol);
+                continue;
+            }
+
+            if (dapperAotAttribute.ConstructorArguments.Length == 0)
+            {
+                // picking constructor which is marked with [DapperAot] attribute without arguments (its enabled by default)
+                dapperAotFactories.Add(methodSymbol);
+                continue;
+            }
+
+            var typedArg = dapperAotAttribute.ConstructorArguments.First();
+            if (typedArg.Value is true)
+            {
+                // picking constructor which is marked with explicit [DapperAot(true)]
+                dapperAotFactories.Add(methodSymbol);
+            }
+        }
+
+        return (standardFactories, dapperAotFactories);
+    }
 
     /// <summary>
     /// Builds a collection of type constructors, which are NOT:
@@ -481,7 +555,7 @@ internal static class Inspection
             // not taking into an account parameterless constructors
             if (constructorMethodSymbol.Parameters.Length == 0) continue;
             
-            var dapperAotAttribute= GetDapperAttribute(constructorMethodSymbol, Types.DapperAotAttribute);
+            var dapperAotAttribute = GetDapperAttribute(constructorMethodSymbol, Types.DapperAotAttribute);
             if (dapperAotAttribute is null)
             {
                 // picking constructor which is not marked with [DapperAot] attribute at all
@@ -497,7 +571,7 @@ internal static class Inspection
             }
 
             var typedArg = dapperAotAttribute.ConstructorArguments.First();
-            if (typedArg.Value is bool isAot && isAot)
+            if (typedArg.Value is true)
             {
                 // picking constructor which is marked with explicit [DapperAot(true)]
                 dapperAotEnabledCtors.Add(constructorMethodSymbol);
