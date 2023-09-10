@@ -304,23 +304,23 @@ internal static class Inspection
     }
 
     [DebuggerDisplay("Order: {Order}; Name: {Name}")]
-    public readonly struct ConstructorParameter
+    public readonly struct MethodParameter
     {
         /// <summary>
-        /// Order of parameter in constructor.
-        /// Will be 1 for member1 in constructor(member0, member1, ...)
+        /// Order of parameter in method.
+        /// Will be 1 for member1 in method(member0, member1, ...)
         /// </summary>
         public int Order { get; }
         /// <summary>
-        /// Type of constructor parameter
+        /// Type of method parameter
         /// </summary>
         public ITypeSymbol Type { get; }
         /// <summary>
-        /// Name of constructor parameter
+        /// Name of method parameter
         /// </summary>
         public string Name { get; }
 
-        public ConstructorParameter(int order, ITypeSymbol type, string name)
+        public MethodParameter(int order, ITypeSymbol type, string name)
         {
             Order = order;
             Type = type;
@@ -382,6 +382,10 @@ internal static class Inspection
         /// Order of member in constructor parameter list (starts from 0).
         /// </summary>
         public int? ConstructorParameterOrder { get; }
+        /// <summary>
+        /// Order of member in factory method parameter list (starts from 0).
+        /// </summary>
+        public int? FactoryMethodParameterOrder { get; }
 
         public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind)
         {
@@ -390,7 +394,15 @@ internal static class Inspection
             Kind = kind;
         }
 
-        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind, bool isGettable, bool isSettable, bool isInitOnly, int? constructorParameterOrder)
+        public ElementMember(
+            ISymbol member,
+            AttributeData? dbValue,
+            ElementMemberKind kind,
+            bool isGettable,
+            bool isSettable,
+            bool isInitOnly,
+            int? constructorParameterOrder,
+            int? factoryMethodParameterOrder)
         {
             Member = member;
             _dbValue = dbValue;
@@ -400,6 +412,7 @@ internal static class Inspection
             IsSettable = isSettable;
             IsInitOnly = isInitOnly;
             ConstructorParameterOrder = constructorParameterOrder;
+            FactoryMethodParameterOrder = factoryMethodParameterOrder;
         }
 
         public override int GetHashCode() => SymbolEqualityComparer.Default.GetHashCode(Member);
@@ -420,7 +433,42 @@ internal static class Inspection
         factoryMethod = null!;
         
         var (standardFactories, dapperAotFactories) = ChooseDapperAotCompatibleFactoryMethods(typeSymbol);
+        if (standardFactories.Count == 0 && dapperAotFactories.Count == 0)
+        {
+            errorDiagnostic = null;
+            factoryMethod = null!;
+            return false;
+        }
         
+        // if multiple factory methods remain, and multiple are marked [DapperAot]/[DapperAot(true)],
+        // a generator error is emitted and no constructor is selected
+        if (dapperAotFactories.Count > 1)
+        {
+            // attaching diagnostic to first location of first ctor
+            var loc = dapperAotFactories.First().Locations.First();
+
+            errorDiagnostic = Diagnostic.Create(Diagnostics.TooManyDapperAotEnabledFactoryMethods, loc, typeSymbol!.ToDisplayString());
+            factoryMethod = null!;
+            return false;
+        }
+
+        if (dapperAotFactories.Count == 1)
+        {
+            errorDiagnostic = null;
+            factoryMethod = dapperAotFactories.First();
+            return true;
+        }
+
+        if (standardFactories.Count == 1)
+        {
+            errorDiagnostic = null;
+            factoryMethod = standardFactories.First();
+            return true;
+        }
+        
+        // we cant choose anything
+        errorDiagnostic = null;
+        factoryMethod = null!;
         return false;
     }
     
@@ -481,8 +529,7 @@ internal static class Inspection
             => methodSymbol is { IsStatic: true, DeclaredAccessibility: Accessibility.Public } 
                && SymbolEqualityComparer.Default.Equals(methodSymbol.ReturnType, typeSymbol);
 
-        var methodSymbols = typeSymbol.GetMethods(filter: FilterFactoryMethods);
-        // TODO general question: do I need to avoid another enumeration here? cast to array?
+        var methodSymbols = typeSymbol.GetMethods(filter: FilterFactoryMethods)?.ToImmutableArray();
         if (methodSymbols?.Any() == false)
         {
             return (standardFactories: Array.Empty<IMethodSymbol>(), dapperAotFactories: Array.Empty<IMethodSymbol>());
@@ -490,32 +537,15 @@ internal static class Inspection
         
         var standardFactories = new List<IMethodSymbol>();
         var dapperAotFactories = new List<IMethodSymbol>();
-        foreach (var methodSymbol in methodSymbols)
+        foreach (var methodSymbol in methodSymbols!)
         {
             // not taking into an account parameterless methods
             if (methodSymbol.Parameters.Length == 0) continue;
             
-            var dapperAotAttribute = HasDapperAotEnabledAttribute(methodSymbol);
-            if (dapperAotAttribute is null)
-            {
-                // picking constructor which is not marked with [DapperAot] attribute at all
-                standardFactories.Add(methodSymbol);
-                continue;
-            }
-
-            if (dapperAotAttribute.ConstructorArguments.Length == 0)
-            {
-                // picking constructor which is marked with [DapperAot] attribute without arguments (its enabled by default)
-                dapperAotFactories.Add(methodSymbol);
-                continue;
-            }
-
-            var typedArg = dapperAotAttribute.ConstructorArguments.First();
-            if (typedArg.Value is true)
-            {
-                // picking constructor which is marked with explicit [DapperAot(true)]
-                dapperAotFactories.Add(methodSymbol);
-            }
+            var hasDapperAotEnabled = HasDapperAotEnabledAttribute(methodSymbol);
+            
+            if (hasDapperAotEnabled) dapperAotFactories.Add(methodSymbol);
+            else standardFactories.Add(methodSymbol);
         }
 
         return (standardFactories, dapperAotFactories);
@@ -555,27 +585,10 @@ internal static class Inspection
             // not taking into an account parameterless constructors
             if (constructorMethodSymbol.Parameters.Length == 0) continue;
             
-            var dapperAotAttribute = GetDapperAttribute(constructorMethodSymbol, Types.DapperAotAttribute);
-            if (dapperAotAttribute is null)
-            {
-                // picking constructor which is not marked with [DapperAot] attribute at all
-                standardCtors.Add(constructorMethodSymbol);
-                continue;
-            }
-
-            if (dapperAotAttribute.ConstructorArguments.Length == 0)
-            {
-                // picking constructor which is marked with [DapperAot] attribute without arguments (its enabled by default)
-                dapperAotEnabledCtors.Add(constructorMethodSymbol);
-                continue;
-            }
-
-            var typedArg = dapperAotAttribute.ConstructorArguments.First();
-            if (typedArg.Value is true)
-            {
-                // picking constructor which is marked with explicit [DapperAot(true)]
-                dapperAotEnabledCtors.Add(constructorMethodSymbol);
-            }
+            var hasDapperAotEnabled = HasDapperAotEnabledAttribute(constructorMethodSymbol);
+            
+            if (hasDapperAotEnabled) dapperAotEnabledCtors.Add(constructorMethodSymbol);
+            else standardCtors.Add(constructorMethodSymbol);
         }
 
         return (standardCtors, dapperAotEnabledCtors);
@@ -583,10 +596,14 @@ internal static class Inspection
 
     /// <summary>
     /// Yields the type's members.
-    /// If <param name="dapperAotConstructor"/> is passed, will be used to associate element member with the constructor parameter by name (case-insensitive).
     /// </summary>
     /// <param name="elementType">type, which elements to parse</param>
-    public static IEnumerable<ElementMember> GetMembers(ITypeSymbol? elementType, IMethodSymbol? dapperAotConstructor = null)
+    /// <param name="dapperAotConstructor"> If is passed, will be used to associate element member with the constructor parameter by name (case-insensitive).</param>
+    /// <param name="dapperAotFactoryMethod"> If is passed, will be used to associate element member with the factoryMethod parameter by name (case-insensitive).</param>
+    public static IEnumerable<ElementMember> GetMembers(
+        ITypeSymbol? elementType,
+        IMethodSymbol? dapperAotConstructor = null,
+        IMethodSymbol? dapperAotFactoryMethod = null)
     {
         if (elementType is null)
         {
@@ -601,7 +618,9 @@ internal static class Inspection
         }
         else
         {
-            var constructorParameters = (dapperAotConstructor is not null) ? ParseConstructorParameters(dapperAotConstructor) : null;
+            var constructorParameters = (dapperAotConstructor is not null) ? ParseMethodParameters(dapperAotConstructor) : null;
+            var factoryMethodParameters = (dapperAotFactoryMethod is not null) ? ParseMethodParameters(dapperAotFactoryMethod) : null;
+            
             foreach (var member in elementType.GetMembers())
             {
                 // instance only, must be able to access by name
@@ -638,23 +657,26 @@ internal static class Inspection
                 int? constructorParameterOrder = constructorParameters?.TryGetValue(member.Name, out var constructorParameter) == true
                     ? constructorParameter.Order
                     : null;
+                int? factoryMethodParameterOrder = factoryMethodParameters?.TryGetValue(member.Name, out var factoryMethodParameter) == true
+                    ? factoryMethodParameter.Order
+                    : null;
 
                 var isGettable = CodeWriter.IsGettableInstanceMember(member, out _);
                 var isSettable = CodeWriter.IsSettableInstanceMember(member, out _);
                 var isInitOnly = CodeWriter.IsInitOnlyInstanceMember(member, out _);
 
                 // all good, then!
-                yield return new(member, dbValue, kind, isGettable, isSettable, isInitOnly, constructorParameterOrder);
+                yield return new(member, dbValue, kind, isGettable, isSettable, isInitOnly, constructorParameterOrder, factoryMethodParameterOrder);
             }
         }
 
-        IReadOnlyDictionary<string, ConstructorParameter> ParseConstructorParameters(IMethodSymbol constructorSymbol)
+        IReadOnlyDictionary<string, MethodParameter> ParseMethodParameters(IMethodSymbol constructorSymbol)
         {
-            var parameters = new Dictionary<string, ConstructorParameter>(StringComparer.InvariantCultureIgnoreCase);
+            var parameters = new Dictionary<string, MethodParameter>(StringComparer.InvariantCultureIgnoreCase);
             int order = 0;
             foreach (var parameter in constructorSymbol.Parameters)
             {
-                parameters.Add(parameter.Name, new ConstructorParameter(order: order++, type: parameter.Type, name: parameter.Name));
+                parameters.Add(parameter.Name, new MethodParameter(order: order++, type: parameter.Type, name: parameter.Name));
             }
             return parameters;
         }

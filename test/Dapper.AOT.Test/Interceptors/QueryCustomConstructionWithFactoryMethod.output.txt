@@ -1,4 +1,7 @@
-Generator produced 1 diagnostics:
+Generator produced 2 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 1 of 1 enabled call-sites using 1 interceptors, 0 commands and 1 readers
+Dapper.AOT handled 2 of 2 enabled call-sites using 2 interceptors, 0 commands and 2 readers
+
+Error DAP038 Interceptors/QueryCustomConstructionWithFactoryMethod.input.cs L32 C46
+Only one factory method can be Dapper.AOT enabled per type 'Foo.MultipleFactoryMethods'

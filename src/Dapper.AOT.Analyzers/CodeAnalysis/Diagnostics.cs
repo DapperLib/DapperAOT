@@ -84,6 +84,8 @@ internal static class Diagnostics
             "Type has more than 1 constructor, please, either mark one constructor with [DapperAot] or reduce amount of constructors", Category.Library, DiagnosticSeverity.Error, true),
         UserTypeNoSettableMembersFound = new("DAP037", "No settable members exist for user type",
             "Type '{0}' has no settable members (fields or properties)", Category.Library, DiagnosticSeverity.Error, true),
+        TooManyDapperAotEnabledFactoryMethods = new("DAP038", "Too many Dapper.AOT enabled factory methods",
+            "Only one factory method can be Dapper.AOT enabled per type '{0}'", Category.Library, DiagnosticSeverity.Error, true),
 
     // TypeAccessor
         TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",

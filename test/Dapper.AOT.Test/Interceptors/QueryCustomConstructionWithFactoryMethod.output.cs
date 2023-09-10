@@ -15,6 +15,20 @@ file static class DapperGeneratedInterceptors
 
     }
 
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstructionWithFactoryMethod.input.cs", 11, 24)]
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.MultipleFactoryMethods> Query1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, TypedResult, Buffered, StoredProcedure
+        // returns data: global::Foo.MultipleFactoryMethods
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
+        global::System.Diagnostics.Debug.Assert(buffered is true);
+        global::System.Diagnostics.Debug.Assert(param is null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory1.Instance);
+
+    }
+
     private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
     {
         public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
@@ -66,37 +80,44 @@ file static class DapperGeneratedInterceptors
         }
         public override global::Foo.PublicPropertiesNoConstructor Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
         {
-            global::Foo.PublicPropertiesNoConstructor result = new();
+            int value0 = default;
+            string? value1 = default;
+            double? value2 = default;
             foreach (var token in tokens)
             {
                 switch (token)
                 {
                     case 0:
-                        result.X = reader.GetInt32(columnOffset);
+                        value0 = reader.GetInt32(columnOffset);
                         break;
                     case 3:
-                        result.X = GetValue<int>(reader, columnOffset);
+                        value0 = GetValue<int>(reader, columnOffset);
                         break;
                     case 1:
-                        result.Y = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
+                        value1 = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
                         break;
                     case 4:
-                        result.Y = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
+                        value1 = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
                         break;
                     case 2:
-                        result.Z = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
+                        value2 = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
                         break;
                     case 5:
-                        result.Z = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
+                        value2 = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
                         break;
 
                 }
                 columnOffset++;
 
             }
-            return result;
-
+            return global::Foo.PublicPropertiesNoConstructor.Construct(value0, value1, value2);
         }
+    }
+
+    private sealed class RowFactory1 : global::Dapper.RowFactory<global::Foo.MultipleFactoryMethods>
+    {
+        internal static readonly RowFactory1 Instance = new();
+        private RowFactory1() {}
 
     }
 
