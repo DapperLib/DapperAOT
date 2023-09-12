@@ -2,7 +2,7 @@
 file static class DapperGeneratedInterceptors
 {
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 10, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.ParameterlessCtor> Query0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.ParameterlessCtor> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.ParameterlessCtor
@@ -16,7 +16,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 11, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.GetOnlyPropertiesViaConstructor> Query1(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.GetOnlyPropertiesViaConstructor> Query1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.GetOnlyPropertiesViaConstructor
@@ -30,7 +30,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 12, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.RecordClass> Query2(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.RecordClass> Query2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.RecordClass
@@ -44,7 +44,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 13, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.RecordClassSimpleCtor> Query3(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.RecordClassSimpleCtor> Query3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.RecordClassSimpleCtor
@@ -58,7 +58,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 14, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.RecordStruct> Query4(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.RecordStruct> Query4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.RecordStruct
@@ -72,7 +72,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 15, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.RecordStructSimpleCtor> Query5(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.RecordStructSimpleCtor> Query5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.RecordStructSimpleCtor
@@ -86,7 +86,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 16, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.InitPropsOnly> Query6(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.InitPropsOnly> Query6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.InitPropsOnly
@@ -100,7 +100,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 17, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.InitPropsAndDapperAotCtor> Query7(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.InitPropsAndDapperAotCtor> Query7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.InitPropsAndDapperAotCtor
@@ -114,7 +114,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 18, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.OnlyNonDapperAotCtor> Query8(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.OnlyNonDapperAotCtor> Query8(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.OnlyNonDapperAotCtor
@@ -128,7 +128,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 19, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.SingleDefaultCtor> Query9(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.SingleDefaultCtor> Query9(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.SingleDefaultCtor
@@ -142,7 +142,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 20, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.MultipleDapperAotCtors> Query10(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.MultipleDapperAotCtors> Query10(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.MultipleDapperAotCtors
@@ -156,7 +156,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryCustomConstruction.input.cs", 21, 24)]
-    internal static global::System.Collections.Generic.IEnumerable<global::Foo.SingleDapperAotCtor> Query11(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::Foo.SingleDapperAotCtor> Query11(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: global::Foo.SingleDapperAotCtor

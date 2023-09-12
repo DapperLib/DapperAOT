@@ -76,8 +76,15 @@ namespace Dapper.AOT.Test
 
             // Run the generation pass
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)
-            driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
+            driver = driver.RunGenerators(inputCompilation); // AndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
+
+            // update syntax trees to have same "options" (work around "Inconsistent syntax tree features" glitch
+            // in RunGeneratorsAndUpdateCompilation via Compilation.SyntaxTreeCommonFeatures)
             var runResult = driver.GetRunResult();
+            var outputCompilation = inputCompilation.AddSyntaxTrees(runResult.GeneratedTrees.Select(x => x.WithRootAndOptions(
+                x.GetRoot(), RoslynTestHelpers.ParseOptionsLatestLangVer)));
+            var diagnostics = runResult.Diagnostics;
+
             foreach (var result in runResult.Results)
             {
                 if (result.Exception is not null) throw result.Exception;
