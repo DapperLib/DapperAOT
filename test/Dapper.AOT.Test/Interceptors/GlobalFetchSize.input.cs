@@ -15,7 +15,7 @@ namespace SomeApp
         static List<SomeQueryType> SomeCode(DbConnection connection, string bar)
             => connection.Query<SomeQueryType>("def", new { Foo = 12, bar }).AsList();
     }
-    public class SomeQueryType { /* ... */ }
+    public class SomeQueryType { public int Dummy { get; set; } }
 
     public static class GlobalSettings
     {

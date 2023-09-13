@@ -1,7 +1,4 @@
-Generator produced 2 diagnostics:
+Generator produced 1 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 1 of 1 enabled call-sites using 1 interceptors, 1 commands and 1 readers
-
-Error DAP037 Interceptors/GlobalFetchSize.input.cs L18 C18
-Type 'SomeApp.SomeQueryType' has no settable members (fields or properties)

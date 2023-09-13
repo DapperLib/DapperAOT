@@ -40,6 +40,47 @@ file static class DapperGeneratedInterceptors
     {
         internal static readonly RowFactory0 Instance = new();
         private RowFactory0() {}
+        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
+        {
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                int token = -1;
+                var name = reader.GetName(columnOffset);
+                var type = reader.GetFieldType(columnOffset);
+                switch (NormalizedHash(name))
+                {
+                    case 2776090843U when NormalizedEquals(name, "dummy"):
+                        token = type == typeof(int) ? 0 : 1; // two tokens for right-typed and type-flexible
+                        break;
+
+                }
+                tokens[i] = token;
+                columnOffset++;
+
+            }
+            return null;
+        }
+        public override global::SomeApp.SomeQueryType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
+        {
+            global::SomeApp.SomeQueryType result = new();
+            foreach (var token in tokens)
+            {
+                switch (token)
+                {
+                    case 0:
+                        result.Dummy = reader.GetInt32(columnOffset);
+                        break;
+                    case 1:
+                        result.Dummy = GetValue<int>(reader, columnOffset);
+                        break;
+
+                }
+                columnOffset++;
+
+            }
+            return result;
+
+        }
 
     }
 
