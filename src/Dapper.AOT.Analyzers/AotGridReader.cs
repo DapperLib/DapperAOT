@@ -32,12 +32,12 @@ namespace Dapper
         public T ReadFirst<T>(RowFactory<T> rowFactory) => ReadSingleRow(rowFactory, OneRowFlags.ThrowIfNone)!;
         public T? ReadFirstOrDefault<T>(RowFactory<T> rowFactory) => ReadSingleRow(rowFactory, OneRowFlags.None)!;
 
-        public global::System.Threading.Tasks.ValueTask<T> ReadSingleAsync<T>(RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default) => ReadSingleRowAsync(rowFactory, OneRowFlags.ThrowIfMultiple | OneRowFlags.ThrowIfNone, cancellationToken)!;
+        public global::System.Threading.Tasks.ValueTask<T> ReadSingleAsync<T>(RowFactory<T> rowFactory) => ReadSingleRowAsync(rowFactory, OneRowFlags.ThrowIfMultiple | OneRowFlags.ThrowIfNone)!;
 
-        public global::System.Threading.Tasks.ValueTask<T?> ReadSingleOrDefaultAsync<T>(RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default) => ReadSingleRowAsync(rowFactory, OneRowFlags.ThrowIfMultiple, cancellationToken);
+        public global::System.Threading.Tasks.ValueTask<T?> ReadSingleOrDefaultAsync<T>(RowFactory<T> rowFactory) => ReadSingleRowAsync(rowFactory, OneRowFlags.ThrowIfMultiple);
 
-        public global::System.Threading.Tasks.ValueTask<T> ReadFirstAsync<T>(RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default) => ReadSingleRowAsync(rowFactory, OneRowFlags.ThrowIfNone, cancellationToken)!;
-        public global::System.Threading.Tasks.ValueTask<T?> ReadFirstOrDefaultAsync<T>(RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default) => ReadSingleRowAsync(rowFactory, OneRowFlags.None, cancellationToken)!;
+        public global::System.Threading.Tasks.ValueTask<T> ReadFirstAsync<T>(RowFactory<T> rowFactory) => ReadSingleRowAsync(rowFactory, OneRowFlags.ThrowIfNone)!;
+        public global::System.Threading.Tasks.ValueTask<T?> ReadFirstOrDefaultAsync<T>(RowFactory<T> rowFactory) => ReadSingleRowAsync(rowFactory, OneRowFlags.None)!;
 
         public global::System.Collections.Generic.IEnumerable<T> Read<T>(bool buffered, RowFactory<T> rowFactory)
             => buffered ? ReadBuffered(rowFactory) : ReadUnbuffered(rowFactory);
@@ -87,10 +87,10 @@ namespace Dapper
             }
         }
 
-        public global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadAsync<T>(bool buffered, RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default)
-            => buffered ? ReadBufferedAsync(rowFactory, rowCountHint: 0, cancellationToken: cancellationToken) : ReadFalseUnbufferedAsync(rowFactory);
+        public global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadAsync<T>(bool buffered, RowFactory<T> rowFactory)
+            => buffered ? ReadBufferedAsync(rowFactory, rowCountHint: 0) : ReadFalseUnbufferedAsync(rowFactory);
 
-        private async global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadBufferedAsync<T>(RowFactory<T> rowFactory, int rowCountHint, global::System.Threading.CancellationToken cancellationToken)
+        private async global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadBufferedAsync<T>(RowFactory<T> rowFactory, int rowCountHint)
         {
             var index = OnBeforeGrid();
             int[]? lease = null;
@@ -98,14 +98,14 @@ namespace Dapper
             {
                 var results = GetRowBuffer<T>(rowCountHint);
                 var reader = Reader;
-                if (await reader.ReadAsync(cancellationToken) && index == ResultIndex)
+                if (await reader.ReadAsync(CancellationToken) && index == ResultIndex)
                 {
                     var tokenState = rowFactory.Tokenize(reader, Lease(reader.FieldCount, ref lease), 0);
                     do
                     {
                         results.Add(rowFactory.Read(reader, Tokens(lease, reader.FieldCount), 0, tokenState));
                     }
-                    while (await reader.ReadAsync(cancellationToken) && index == ResultIndex);
+                    while (await reader.ReadAsync(CancellationToken) && index == ResultIndex);
                 }
                 return results;
             }
@@ -123,6 +123,9 @@ namespace Dapper
         {   // this is not great, but is consistent with Dapper behavior
             return System.Threading.Tasks.Task.FromResult(ReadUnbuffered<T>(rowFactory));
         }
+
+        public global::System.Collections.Generic.IAsyncEnumerable<T> ReadUnbufferedAsync<T>(RowFactory<T> rowFactory)
+            => ReadTrueUnbufferedAsync<T>(rowFactory, CancellationToken);
 
         private async global::System.Collections.Generic.IAsyncEnumerable<T> ReadTrueUnbufferedAsync<T>(RowFactory<T> rowFactory,
             [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken)
@@ -242,24 +245,24 @@ namespace Dapper
         static void ThrowNone() => _ = global::System.Linq.Enumerable.First("");
         static void ThrowMultiple() => _ = global::System.Linq.Enumerable.Single("  ");
 
-        private async global::System.Threading.Tasks.ValueTask<T?> ReadSingleRowAsync<T>(RowFactory<T> rowFactory, OneRowFlags flags, global::System.Threading.CancellationToken cancellationToken)
+        private async global::System.Threading.Tasks.ValueTask<T?> ReadSingleRowAsync<T>(RowFactory<T> rowFactory, OneRowFlags flags)
         {
             var index = OnBeforeGrid();
             try
             {
                 T? result = default;
                 var reader = Reader;
-                if (await reader.ReadAsync(cancellationToken) && index == ResultIndex)
+                if (await reader.ReadAsync(CancellationToken) && index == ResultIndex)
                 {
                     result = rowFactory.Read(reader);
 
-                    if (await reader.ReadAsync(cancellationToken) && index == ResultIndex)
+                    if (await reader.ReadAsync(CancellationToken) && index == ResultIndex)
                     {
                         if ((flags & OneRowFlags.ThrowIfMultiple) != 0)
                         {
                             ThrowMultiple();
                         }
-                        while (await reader.ReadAsync(cancellationToken) && index == ResultIndex) { }
+                        while (await reader.ReadAsync(CancellationToken) && index == ResultIndex) { }
                     }
                 }
                 else if ((flags & OneRowFlags.ThrowIfNone) != 0)
