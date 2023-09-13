@@ -2,7 +2,7 @@
 file static class DapperGeneratedInterceptors
 {
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\GlobalFetchSize.input.cs", 16, 27)]
-    internal static global::System.Collections.Generic.IEnumerable<global::SomeApp.SomeQueryType> Query0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<global::SomeApp.SomeQueryType> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, HasParameters, Buffered, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>
@@ -40,12 +40,6 @@ file static class DapperGeneratedInterceptors
     {
         internal static readonly RowFactory0 Instance = new();
         private RowFactory0() {}
-        public override global::SomeApp.SomeQueryType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
-        {
-            global::SomeApp.SomeQueryType result = new();
-            return result;
-
-        }
 
     }
 

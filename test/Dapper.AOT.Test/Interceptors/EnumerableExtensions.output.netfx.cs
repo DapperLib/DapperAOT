@@ -7,7 +7,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\EnumerableExtensions.input.cs", 14, 16)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\EnumerableExtensions.input.cs", 15, 16)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\EnumerableExtensions.input.cs", 16, 16)]
-    internal static global::System.Collections.Generic.IEnumerable<int> Query0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<int> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, Buffered, StoredProcedure
         // returns data: int

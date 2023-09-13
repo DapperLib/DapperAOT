@@ -139,7 +139,16 @@ partial struct Command<TArgs>
         };
     }
 
-    internal void Recycle(ref CommandState state)
+    internal void Recycle(ref SyncCommandState state)
+    {
+        Debug.Assert(state.Command is not null);
+        if (commandFactory.TryRecycle(state.Command!))
+        {
+            state.Command = null;
+        }
+    }
+
+    internal void Recycle(AsyncCommandState state)
     {
         Debug.Assert(state.Command is not null);
         if (commandFactory.TryRecycle(state.Command!))
@@ -151,7 +160,7 @@ partial struct Command<TArgs>
     private int ExecuteMulti(ReadOnlySpan<TArgs> source)
     {
         Debug.Assert(source.Length > 1);
-        CommandState state = default;
+        SyncCommandState state = default;
         try
         {
             if (commandFactory.CanPrepare) state.PrepareBeforeExecute();
@@ -182,7 +191,7 @@ partial struct Command<TArgs>
 
     private int ExecuteMulti(IEnumerable<TArgs> source)
     {
-        CommandState state = default;
+        SyncCommandState state = default;
         var iterator = source.GetEnumerator();
         try
         {
@@ -283,7 +292,7 @@ partial struct Command<TArgs>
     private async Task<int> ExecuteMultiAsync(ReadOnlyMemory<TArgs> source, CancellationToken cancellationToken)
     {
         Debug.Assert(source.Length > 1);
-        CommandState state = default;
+        AsyncCommandState state = new();
         try
         {
             if (commandFactory.CanPrepare) state.PrepareBeforeExecute();
@@ -303,18 +312,18 @@ partial struct Command<TArgs>
                 total += local;
             }
 
-            Recycle(ref state);
+            Recycle(state);
             return total;
         }
         finally
         {
-            state.Dispose();
+            await state.DisposeAsync();
         }
     }
 
     private async Task<int> ExecuteMultiAsync(IAsyncEnumerable<TArgs> source, CancellationToken cancellationToken)
     {
-        CommandState state = default;
+        AsyncCommandState state = new();
         var iterator = source.GetAsyncEnumerator(cancellationToken);
         try
         {
@@ -338,7 +347,7 @@ partial struct Command<TArgs>
 
                     haveMore = await iterator.MoveNextAsync();
                 }
-                Recycle(ref state);
+                Recycle(state);
                 return total;
             }
             return total;
@@ -352,7 +361,7 @@ partial struct Command<TArgs>
 
     private async Task<int> ExecuteMultiAsync(IEnumerable<TArgs> source, CancellationToken cancellationToken)
     {
-        CommandState state = default;
+        AsyncCommandState state = new();
         var iterator = source.GetEnumerator();
         try
         {
@@ -376,7 +385,7 @@ partial struct Command<TArgs>
 
                     haveMore = iterator.MoveNext();
                 }
-                Recycle(ref state);
+                Recycle(state);
                 return total;
             }
             return total;
@@ -390,7 +399,7 @@ partial struct Command<TArgs>
 
     private async Task<int> ExecuteMultiAsync(TArgs[] source, int offset, int count, CancellationToken cancellationToken)
     {
-        CommandState state = default;
+        AsyncCommandState state = new();
         try
         {
             // count is now actually "end"
@@ -413,12 +422,12 @@ partial struct Command<TArgs>
                 total += local;
             }
 
-            Recycle(ref state);
+            Recycle(state);
             return total;
         }
         finally
         {
-            state.Dispose();
+            await state.DisposeAsync();
         }
     }
 }
