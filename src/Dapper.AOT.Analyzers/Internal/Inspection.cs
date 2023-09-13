@@ -1,11 +1,15 @@
-﻿using Dapper.Internal.Roslyn;
+﻿using Dapper.CodeAnalysis;
+using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 
 namespace Dapper.Internal;
@@ -51,22 +55,29 @@ internal static class Inspection
         }
         return hasNames = false;
     }
-
     public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, CancellationToken cancellationToken)
+        => GetClosestDapperAttribute(ctx, op, attributeName, out _, cancellationToken);
+    public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out Location? location, CancellationToken cancellationToken)
     {
-        var method = GetContainingMethodSyntax(op);
-        if (method is not null)
+        var symbol = GetSymbol(ctx, op, cancellationToken);
+        while (symbol is not null)
         {
-            var symbol = ctx.SemanticModel.GetDeclaredSymbol(method, cancellationToken);
-            while (symbol is not null)
+            var attrib = GetDapperAttribute(symbol, attributeName);
+            if (attrib is not null)
             {
-                var attrib = GetDapperAttribute(symbol, attributeName);
-                if (attrib is not null) return attrib;
-                symbol = symbol.ContainingSymbol;
+                location = symbol.Locations.FirstOrDefault();
+                return attrib;
             }
+            symbol = symbol is IAssemblySymbol ? null : symbol.ContainingSymbol;
         }
+        location = null;
         return null;
+    }
 
+    public static ISymbol? GetSymbol(in GeneratorSyntaxContext ctx, IOperation operation, CancellationToken cancellationToken)
+    {
+        var method = GetContainingMethodSyntax(operation);
+        return method is null ? null : ctx.SemanticModel.GetDeclaredSymbol(method, cancellationToken);
         static SyntaxNode? GetContainingMethodSyntax(IOperation op)
         {
             var syntax = op.Syntax;
@@ -97,21 +108,23 @@ internal static class Inspection
         return false;
     }
 
+    public static bool IsDapperAttribute(AttributeData attrib)
+        => attrib.AttributeClass is
+        {
+            ContainingNamespace:
+            {
+                Name: "Dapper",
+                ContainingNamespace.IsGlobalNamespace: true
+            }
+        };
+
     public static AttributeData? GetDapperAttribute(ISymbol? symbol, string attributeName)
     {
         if (symbol is not null)
         {
             foreach (var attrib in symbol.GetAttributes())
             {
-                if (attrib.AttributeClass is
-                    {
-                        ContainingNamespace:
-                        {
-                            Name: "Dapper",
-                            ContainingNamespace.IsGlobalNamespace: true
-                        }
-                    }
-                && attrib.AttributeClass.Name == attributeName)
+                if (IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == attributeName)
                 {
                     return attrib;
                 }
@@ -275,6 +288,38 @@ internal static class Inspection
         return false;
     }
 
+    [DebuggerDisplay("Order: {Order}; Name: {Name}")]
+    public readonly struct ConstructorParameter
+    {
+        /// <summary>
+        /// Order of parameter in constructor.
+        /// Will be 1 for member1 in constructor(member0, member1, ...)
+        /// </summary>
+        public int Order { get; }
+        /// <summary>
+        /// Type of constructor parameter
+        /// </summary>
+        public ITypeSymbol Type { get; }
+        /// <summary>
+        /// Name of constructor parameter
+        /// </summary>
+        public string Name { get; }
+
+        public ConstructorParameter(int order, ITypeSymbol type, string name)
+        {
+            Order = order;
+            Type = type;
+            Name = name;
+        }
+    }
+
+    [Flags]
+    public enum ElementMemberKind
+    {
+        None = 0,
+        RowCount = 1 << 0,
+        EstimatedRowCount = 1 << 1,
+    }
     public readonly struct ElementMember
     {
         private readonly AttributeData? _dbValue;
@@ -291,7 +336,10 @@ internal static class Inspection
         public ParameterDirection Direction => TryGetAttributeValue(_dbValue, nameof(Direction), out int direction)
             ? (ParameterDirection)direction : ParameterDirection.Input;
 
-        public bool IsRowCount { get; }
+        public ElementMemberKind Kind { get; }
+
+        public bool IsRowCount => (Kind & ElementMemberKind.RowCount) != 0;
+        public bool IsEstimatedRowCount => (Kind & ElementMemberKind.EstimatedRowCount) != 0;
         public bool HasDbValueAttribute => _dbValue is not null;
 
         public T? TryGetValue<T>(string memberName) where T : struct
@@ -311,11 +359,32 @@ internal static class Inspection
             return dbType;
         }
 
-        public ElementMember(ISymbol member, AttributeData? dbValue, bool isRowCount)
+        public bool IsGettable { get; }
+        public bool IsSettable { get; }
+        public bool IsInitOnly { get; }
+
+        /// <summary>
+        /// Order of member in constructor parameter list (starts from 0).
+        /// </summary>
+        public int? ConstructorParameterOrder { get; }
+
+        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind)
         {
             Member = member;
             _dbValue = dbValue;
-            IsRowCount = isRowCount;
+            Kind = kind;
+        }
+
+        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind, bool isGettable, bool isSettable, bool isInitOnly, int? constructorParameterOrder)
+        {
+            Member = member;
+            _dbValue = dbValue;
+            Kind = kind;
+
+            IsGettable = isGettable;
+            IsSettable = isSettable;
+            IsInitOnly = isInitOnly;
+            ConstructorParameterOrder = constructorParameterOrder;
         }
 
         public override int GetHashCode() => SymbolEqualityComparer.Default.GetHashCode(Member);
@@ -323,9 +392,127 @@ internal static class Inspection
         public override string ToString() => Member?.Name ?? "";
         public override bool Equals(object obj) => obj is ElementMember other
             && SymbolEqualityComparer.Default.Equals(Member, other.Member);
+
+        public Location? GetLocation() => Member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
     }
 
-    public static IEnumerable<ElementMember> GetMembers(ITypeSymbol? elementType)
+    /// <summary>
+    /// Chooses a single constructor of type which to use for type's instances creation.
+    /// </summary>
+    /// <param name="typeSymbol">symbol for type to analyze</param>
+    /// <param name="constructor">the method symbol for selected constructor</param>
+    /// <param name="errorDiagnostic">if constructor selection was invalid, contains a diagnostic with error to emit to generation context</param>
+    /// <returns></returns>
+    public static bool TryGetSingleCompatibleDapperAotConstructor(
+        ITypeSymbol? typeSymbol,
+        out IMethodSymbol? constructor,
+        out Diagnostic? errorDiagnostic)
+    {
+        var (standardCtors, dapperAotEnabledCtors) = ChooseDapperAotCompatibleConstructors(typeSymbol);
+        if (standardCtors.Count == 0 && dapperAotEnabledCtors.Count == 0)
+        {
+            errorDiagnostic = null;
+            constructor = null!;
+            return false;
+        }
+
+        // if multiple constructors remain, and multiple are marked [DapperAot]/[DapperAot(true)], a generator error is emitted and no constructor is selected
+        if (dapperAotEnabledCtors.Count > 1)
+        {
+            // attaching diagnostic to first location of first ctor
+            var loc = dapperAotEnabledCtors.First().Locations.First();
+
+            errorDiagnostic = Diagnostic.Create(Diagnostics.TooManyDapperAotEnabledConstructors, loc, typeSymbol!.ToDisplayString());
+            constructor = null!;
+            return false;
+        }
+
+        if (dapperAotEnabledCtors.Count == 1)
+        {
+            errorDiagnostic = null;
+            constructor = dapperAotEnabledCtors.First();
+            return true;
+        }
+
+        if (standardCtors.Count == 1)
+        {
+            errorDiagnostic = null;
+            constructor = standardCtors.First();
+            return true;
+        }
+
+        // we cant choose a constructor, so we simply dont choose any
+        errorDiagnostic = null;
+        constructor = null!;
+        return false;
+    }
+
+    /// <summary>
+    /// Builds a collection of type constructors, which are NOT:
+    /// a) parameterless
+    /// b) marked with [DapperAot(false)]
+    /// </summary>
+    private static (IReadOnlyCollection<IMethodSymbol> standardConstructors, IReadOnlyCollection<IMethodSymbol> dapperAotEnabledConstructors) ChooseDapperAotCompatibleConstructors(ITypeSymbol? typeSymbol)
+    {
+        if (!typeSymbol.TryGetConstructors(out var constructors))
+        {
+            return (standardConstructors: Array.Empty<IMethodSymbol>(), dapperAotEnabledConstructors: Array.Empty<IMethodSymbol>());
+        }
+        
+        // special case
+        if (typeSymbol!.IsRecord && constructors?.Length == 2)
+        {
+            // in case of record syntax with primary constructor like:
+            // `public record MyRecord(int Id, string Name);`
+            // we need to pick the first constructor, which is the primary one. The second one would contain single parameter of type itself.
+            // So checking second constructor suits this rule and picking the first one.
+
+            if (constructors.Value[1].Parameters.Length == 1 && constructors.Value[1].Parameters.First().Type.ToDisplayString() == typeSymbol.ToDisplayString())
+            {
+                return (standardConstructors: new[] { constructors.Value.First() }, dapperAotEnabledConstructors: Array.Empty<IMethodSymbol>());
+            }
+        }
+
+        var standardCtors = new List<IMethodSymbol>();
+        var dapperAotEnabledCtors = new List<IMethodSymbol>();
+
+        foreach (var constructorMethodSymbol in constructors!)
+        {
+            // not taking into an account parameterless constructors
+            if (constructorMethodSymbol.Parameters.Length == 0) continue;
+            
+            var dapperAotAttribute= GetDapperAttribute(constructorMethodSymbol, Types.DapperAotAttribute);
+            if (dapperAotAttribute is null)
+            {
+                // picking constructor which is not marked with [DapperAot] attribute at all
+                standardCtors.Add(constructorMethodSymbol);
+                continue;
+            }
+
+            if (dapperAotAttribute.ConstructorArguments.Length == 0)
+            {
+                // picking constructor which is marked with [DapperAot] attribute without arguments (its enabled by default)
+                dapperAotEnabledCtors.Add(constructorMethodSymbol);
+                continue;
+            }
+
+            var typedArg = dapperAotAttribute.ConstructorArguments.First();
+            if (typedArg.Value is bool isAot && isAot)
+            {
+                // picking constructor which is marked with explicit [DapperAot(true)]
+                dapperAotEnabledCtors.Add(constructorMethodSymbol);
+            }
+        }
+
+        return (standardCtors, dapperAotEnabledCtors);
+    }
+
+    /// <summary>
+    /// Yields the type's members.
+    /// If <param name="dapperAotConstructor"/> is passed, will be used to associate element member with the constructor parameter by name (case-insensitive).
+    /// </summary>
+    /// <param name="elementType">type, which elements to parse</param>
+    public static IEnumerable<ElementMember> GetMembers(ITypeSymbol? elementType, IMethodSymbol? dapperAotConstructor = null)
     {
         if (elementType is null)
         {
@@ -335,11 +522,12 @@ internal static class Inspection
         {
             foreach (var field in named.TupleElements)
             {
-                yield return new(field, null, false);
+                yield return new(field, null, ElementMemberKind.None);
             }
         }
         else
         {
+            var constructorParameters = (dapperAotConstructor is not null) ? ParseConstructorParameters(dapperAotConstructor) : null;
             foreach (var member in elementType.GetMembers())
             {
                 // instance only, must be able to access by name
@@ -347,8 +535,17 @@ internal static class Inspection
 
                 // public or annotated only; not explicitly ignored
                 var dbValue = GetDapperAttribute(member, Types.DbValueAttribute);
-                var isRowCount = GetDapperAttribute(member, Types.RowCountAttribute) is not null;
-                if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && !isRowCount) continue;
+                var kind = ElementMemberKind.None;
+                if (GetDapperAttribute(member, Types.RowCountAttribute) is not null)
+                {
+                    kind |= ElementMemberKind.RowCount;
+                }
+                if (GetDapperAttribute(member, Types.EstimatedRowCountAttribute) is not null)
+                {
+                    kind |= ElementMemberKind.EstimatedRowCount;
+                }
+
+                if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && kind == ElementMemberKind.None) continue;
                 if (TryGetAttributeValue(dbValue, "Ignore", out bool ignore) && ignore)
                 {
                     continue;
@@ -364,9 +561,28 @@ internal static class Inspection
                         continue;
                 }
 
+                int? constructorParameterOrder = constructorParameters?.TryGetValue(member.Name, out var constructorParameter) == true
+                    ? constructorParameter.Order
+                    : null;
+
+                var isGettable = CodeWriter.IsGettableInstanceMember(member, out _);
+                var isSettable = CodeWriter.IsSettableInstanceMember(member, out _);
+                var isInitOnly = CodeWriter.IsInitOnlyInstanceMember(member, out _);
+
                 // all good, then!
-                yield return new(member, dbValue, isRowCount);
+                yield return new(member, dbValue, kind, isGettable, isSettable, isInitOnly, constructorParameterOrder);
             }
+        }
+
+        IReadOnlyDictionary<string, ConstructorParameter> ParseConstructorParameters(IMethodSymbol constructorSymbol)
+        {
+            var parameters = new Dictionary<string, ConstructorParameter>(StringComparer.InvariantCultureIgnoreCase);
+            int order = 0;
+            foreach (var parameter in constructorSymbol.Parameters)
+            {
+                parameters.Add(parameter.Name, new ConstructorParameter(order: order++, type: parameter.Type, name: parameter.Name));
+            }
+            return parameters;
         }
     }
 

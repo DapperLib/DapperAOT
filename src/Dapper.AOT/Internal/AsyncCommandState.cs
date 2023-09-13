@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -7,8 +8,8 @@ using System.Threading.Tasks;
 
 namespace Dapper.Internal
 {
-
-    internal struct CommandState // note mutable; deliberately not : IDisposable, as that creates a *copy*
+    // split out because of async state machine semantics; see https://github.com/DapperLib/DapperAOT/issues/27
+    internal class AsyncCommandState : IAsyncDisposable
     {
         private DbConnection? connection;
         public DbCommand? Command;
@@ -18,14 +19,6 @@ namespace Dapper.Internal
             FLAG_CLOSE_CONNECTION = 1 << 0,
             FLAG_PREPARE_COMMMAND = 1 << 1;
         internal void PrepareBeforeExecute() => _flags |= FLAG_PREPARE_COMMMAND;
-
-
-        [MemberNotNull(nameof(Command))]
-        public object? ExecuteScalar(DbCommand command)
-        {
-            OnBeforeExecute(command);
-            return command.ExecuteScalar();
-        }
 
         [MemberNotNull(nameof(Command))]
         public Task<object?> ExecuteScalarAsync(DbCommand command, CancellationToken cancellationToken)
@@ -39,13 +32,6 @@ namespace Dapper.Internal
                 await pending;
                 return await command.ExecuteScalarAsync(cancellationToken);
             }
-        }
-
-        [MemberNotNull(nameof(Command))]
-        public DbDataReader ExecuteReader(DbCommand command, CommandBehavior flags)
-        {
-            OnBeforeExecute(command);
-            return command.ExecuteReader(flags);
         }
 
         [MemberNotNull(nameof(Command))]
@@ -63,31 +49,11 @@ namespace Dapper.Internal
         }
 
         [MemberNotNull(nameof(Command))]
-        private void OnBeforeExecute(DbCommand command)
+        private Task OnBeforeExecuteAsync(DbCommand command, CancellationToken cancellationToken)
         {
             Debug.Assert(command?.Connection is not null);
             Command = command!;
             connection = command!.Connection;
-            
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-                _flags |= FLAG_CLOSE_CONNECTION;
-            }
-            if ((_flags & FLAG_PREPARE_COMMMAND) != 0)
-            {
-                _flags &= ~FLAG_PREPARE_COMMMAND;
-                command.Prepare();
-            }
-        }
-
-        [MemberNotNull(nameof(Command))]
-        private Task OnBeforeExecuteAsync(DbCommand command, CancellationToken cancellationToken)
-        {
-#if NETCOREAPP3_1_OR_GREATER
-            Debug.Assert(command?.Connection is not null);
-            Command = command;
-            connection = command.Connection;
 
             if (connection.State == ConnectionState.Open)
             {
@@ -99,7 +65,12 @@ namespace Dapper.Internal
                 else
                 {
                     // just need to prepare
+#if NETCOREAPP3_1_OR_GREATER
                     return command.PrepareAsync(cancellationToken);
+#else
+                    command.Prepare();
+                    return Task.CompletedTask;
+#endif
                 }
             }
             else
@@ -117,22 +88,16 @@ namespace Dapper.Internal
                     static async Task OpenAndPrepareAsync(DbCommand command, CancellationToken cancellationToken)
                     {
                         await command.Connection!.OpenAsync(cancellationToken);
+#if NETCOREAPP3_1_OR_GREATER
                         await command.PrepareAsync(cancellationToken);
+#else
+                        command.Prepare();
+#endif
                     }
                 }
             }
-#else
-            OnBeforeExecute(command);
-            return Task.CompletedTask;
-#endif
         }
 
-        [MemberNotNull(nameof(Command))]
-        public int ExecuteNonQuery(DbCommand command)
-        {
-            OnBeforeExecute(command);
-            return command.ExecuteNonQuery();
-        }
 
         [MemberNotNull(nameof(Command))]
         public Task<int> ExecuteNonQueryAsync(DbCommand command, CancellationToken cancellationToken)
@@ -148,23 +113,7 @@ namespace Dapper.Internal
             }
         }
 
-        public void Dispose()
-        {
-            var cmd = Command;
-            Command = null;
-            cmd?.Dispose();
-
-            var conn = connection;
-            connection = null;
-            if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
-            {
-                _flags &= ~FLAG_CLOSE_CONNECTION;
-                conn.Close();
-            }
-        }
-
-#if NETCOREAPP3_1_OR_GREATER
-        public Task DisposeAsync()
+        public virtual ValueTask DisposeAsync()
         {
             var cmd = Command;
             Command = null;
@@ -180,38 +129,65 @@ namespace Dapper.Internal
                     _flags &= ~FLAG_CLOSE_CONNECTION;
                     return DisposeCommandAndCloseConnectionAsync(conn, cmd);
 
-                    static async Task DisposeCommandAndCloseConnectionAsync(DbConnection conn, DbCommand cmd)
+#if NETCOREAPP3_1_OR_GREATER
+                    static async ValueTask DisposeCommandAndCloseConnectionAsync(DbConnection conn, DbCommand cmd)
                     {
                         await cmd.DisposeAsync();
                         await conn.CloseAsync();
                     }
+#else
+                    static ValueTask DisposeCommandAndCloseConnectionAsync(DbConnection conn, DbCommand cmd)
+                    {
+                        cmd.Dispose();
+                        conn.Close();
+                        return default;
+                    }
+#endif
                 }
                 else
                 {
                     // just need to dispose the command
-                    return cmd.DisposeAsync().AsTask();
+#if NETCOREAPP3_1_OR_GREATER
+                    return cmd.DisposeAsync();
+#else
+                    cmd.Dispose();
+                    return default;
+#endif
                 }
             }
             else
             {
                 if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
                 {
-                    return conn.CloseAsync();
+#if NETCOREAPP3_1_OR_GREATER
+                    return new(conn.CloseAsync());
+#else
+                    conn.Close();
+                    return default;
+#endif
                 }
                 else
                 {
                     // nothing to do
-                    return Task.CompletedTask;
+                    return default;
                 }
             }
         }
-#else
-        public Task DisposeAsync()
+
+        public virtual void Dispose()
         {
-            Dispose();
-            return Task.CompletedTask;
+            var cmd = Command;
+            Command = null;
+            cmd?.Dispose();
+
+            var conn = connection;
+            connection = null;
+            if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
+            {
+                _flags &= ~FLAG_CLOSE_CONNECTION;
+                conn.Close();
+            }
         }
-#endif
     }
 
 }

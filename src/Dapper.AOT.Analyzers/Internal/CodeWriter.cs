@@ -48,6 +48,13 @@ internal sealed class CodeWriter
 
     public string Tab { get; set; } = "    "; // "\t"
 
+    public CodeWriter RemoveLast(int symbolsNumber)
+    {
+        if (Core.Length < symbolsNumber) throw new ArgumentOutOfRangeException(nameof(symbolsNumber));
+        Core.Length -= symbolsNumber;
+        return this;
+    }
+
     public CodeWriter Append(bool value) => Append(value ? "true" : "false");
     public CodeWriter Append(int? value) => value.HasValue ? Append(value.GetValueOrDefault()) : this;
 
@@ -62,10 +69,30 @@ internal sealed class CodeWriter
 
     public static string GetTypeName(ITypeSymbol? value)
     {
+        static bool IsNonNullableValueType(ITypeSymbol type)
+            // Nullable<T> has Arity 1; note this is not quite the same thing as annotated, because
+            // of unconstrained generic return types, which can be annotated and yet not Nullable<T>
+            => type.IsValueType && type is INamedTypeSymbol named && named.Arity == 0;
+
         if (value is null) return "(none)";
         if (value.IsAnonymousType) return value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
 
-        var s = value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        if (IsNonNullableValueType(value) && value.NullableAnnotation == NullableAnnotation.Annotated)
+        {
+            // annotated, but not Nullable<T> (because that would have Arity 1); that means it must be a return type
+            // from an annotated generic method, but: we should interpret it as just T
+            value = value.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+        }
+
+        string s = value.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        if (value is INamedTypeSymbol named && named.Arity == 1 && named.TypeArguments[0].NullableAnnotation == NullableAnnotation.Annotated
+            && !IsNonNullableValueType(named.TypeArguments[0])
+            && s.EndsWith(">") && !s.EndsWith("?>"))
+        {
+            // weird glitch in FQF - doesn't always add the annotation - example: Task<dynamic?>
+            s = s.Substring(0, s.Length - 1) + "?>";
+        }
+
         if (value.NullableAnnotation == NullableAnnotation.Annotated && !s.EndsWith("?"))
         {
             s += "?"; // weird glitch in FQF - doesn't always add the annotation - example: dynamic?
@@ -167,6 +194,21 @@ internal sealed class CodeWriter
                     return true;
                 case IFieldSymbol field when !field.IsReadOnly:
                     type = field.Type;
+                    return true;
+            }
+        }
+        type = default!;
+        return false;
+    }
+
+    public static bool IsInitOnlyInstanceMember(ISymbol symbol, out ITypeSymbol type)
+    {
+        if (symbol.DeclaredAccessibility == Accessibility.Public && !symbol.IsStatic)
+        {
+            switch (symbol)
+            {
+                case IPropertySymbol prop when !prop.IsIndexer && prop.SetMethod is { DeclaredAccessibility: Accessibility.Public, IsInitOnly: true }:
+                    type = prop.Type;
                     return true;
             }
         }

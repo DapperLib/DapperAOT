@@ -59,11 +59,11 @@ public interface ICommand<TArgs>
     /// <inheritdoc cref="Command{TArgs}.Query{TRow}(TArgs, bool, RowFactory{TRow}?)"/>
     IEnumerable<TRow> Query<TRow>(TArgs args, bool buffered, [DapperAot] RowFactory<TRow>? rowFactory = null);
 
-    /// <inheritdoc cref="Command{TArgs}.QueryBuffered{TRow}(TArgs, RowFactory{TRow}?)"/>
-    List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null);
+    /// <inheritdoc cref="Command{TArgs}.QueryBuffered{TRow}(TArgs, RowFactory{TRow}?, int)"/>
+    List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, int rowCountHint = 0);
 
-    /// <inheritdoc cref="Command{TArgs}.QueryBufferedAsync{TRow}(TArgs, RowFactory{TRow}?, CancellationToken)"/>
-    Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default);
+    /// <inheritdoc cref="Command{TArgs}.QueryBufferedAsync{TRow}(TArgs, RowFactory{TRow}?, int, CancellationToken)"/>
+    Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, int rowCountHint = 0, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="Command{TArgs}.QueryUnbufferedAsync{TRow}(TArgs, RowFactory{TRow}?, CancellationToken)"/>
     IAsyncEnumerable<TRow> QueryUnbufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null,
@@ -72,24 +72,24 @@ public interface ICommand<TArgs>
     /// <inheritdoc cref="Command{TArgs}.QueryUnbuffered{TRow}(TArgs, RowFactory{TRow}?)"/>
     IEnumerable<TRow> QueryUnbuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null);
 
-    /// <inheritdoc cref="Command{TArgs}.Execute(TArgs[])"/>
-    int Execute(TArgs[] values);
+    /// <inheritdoc cref="Command{TArgs}.Execute(TArgs[], int)"/>
+    int Execute(TArgs[] values, int batchSize = -1);
 
-    /// <inheritdoc cref="Command{TArgs}.Execute(IEnumerable{TArgs})"/>
-    int Execute(IEnumerable<TArgs> values);
+    /// <inheritdoc cref="Command{TArgs}.Execute(IEnumerable{TArgs}, int)"/>
+    int Execute(IEnumerable<TArgs> values, int batchSize = -1);
 
-    /// <inheritdoc cref="Command{TArgs}.Execute(ReadOnlySpan{TArgs})"/>
-    int Execute(ReadOnlySpan<TArgs> values);
+    /// <inheritdoc cref="Command{TArgs}.Execute(ReadOnlySpan{TArgs}, int)"/>
+    int Execute(ReadOnlySpan<TArgs> values, int batchSize = -1);
 
-    /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(TArgs[], CancellationToken)"/>
-    Task<int> ExecuteAsync(TArgs[] values, CancellationToken cancellationToken = default);
+    /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(TArgs[], int, CancellationToken)"/>
+    Task<int> ExecuteAsync(TArgs[] values, int batchSize = -1, CancellationToken cancellationToken = default);
 
-    /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(IEnumerable{TArgs}, CancellationToken)"/>
-    Task<int> ExecuteAsync(IEnumerable<TArgs> values, CancellationToken cancellationToken = default);
+    /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(IEnumerable{TArgs}, int, CancellationToken)"/>
+    Task<int> ExecuteAsync(IEnumerable<TArgs> values, int batchSize = -1, CancellationToken cancellationToken = default);
 
-    /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(IAsyncEnumerable{TArgs}, CancellationToken)"/>
-    Task<int> ExecuteAsync(IAsyncEnumerable<TArgs> values, CancellationToken cancellationToken = default);
+    /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(IAsyncEnumerable{TArgs}, int, CancellationToken)"/>
+    Task<int> ExecuteAsync(IAsyncEnumerable<TArgs> values, int batchSize = -1, CancellationToken cancellationToken = default);
 
-    /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(ReadOnlyMemory{TArgs}, CancellationToken)"/>
-    Task<int> ExecuteAsync(ReadOnlyMemory<TArgs> values, CancellationToken cancellationToken = default);
+    /// <inheritdoc cref="Command{TArgs}.ExecuteAsync(ReadOnlyMemory{TArgs}, int, CancellationToken)"/>
+    Task<int> ExecuteAsync(ReadOnlyMemory<TArgs> values, int batchSize = -1, CancellationToken cancellationToken = default);
 }

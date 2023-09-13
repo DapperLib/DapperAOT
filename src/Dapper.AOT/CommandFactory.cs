@@ -131,10 +131,33 @@ public abstract class CommandFactory
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Used for type inference")]
     protected static T Cast<T>(object? value, Func<T> shape) => (T)value!;
 
+    internal abstract void PostProcessObject(DbCommand command, object? args);
+
     /// <summary>
     /// Gets a shared command-factory with minimal command processing
     /// </summary>
     public static CommandFactory<object?> Simple => CommandFactory<object?>.Default;
+
+    /// <summary>
+    /// Indicates whether this command is suitable for <see cref="DbCommand.Prepare"/> usage
+    /// </summary>
+    public virtual bool CanPrepare => false;
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse command instances
+    /// </summary>
+    public virtual bool TryRecycle(DbCommand command) => false;
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse command instances
+    /// </summary>
+    protected static bool TryRecycle(ref DbCommand? storage, DbCommand command)
+    {
+        // detach and recycle
+        command.Connection = null;
+        command.Transaction = null;
+        return Interlocked.CompareExchange(ref storage, command, null) is null;
+    }
 }
 
 /// <summary>
@@ -170,6 +193,8 @@ public class CommandFactory<T> : CommandFactory
     /// </summary>
     public virtual void PostProcess(DbCommand command, T args) { }
 
+    internal override void PostProcessObject(DbCommand command, object? args) => PostProcess(command, (T)args!);
+
     /// <summary>
     /// Allows an implementation to process output parameters etc after an operation has completed
     /// </summary>
@@ -192,27 +217,6 @@ public class CommandFactory<T> : CommandFactory
             command.Parameters.Clear();
         }
         AddParameters(command, args);
-    }
-
-    /// <summary>
-    /// Indicates whether this command is suitable for <see cref="DbCommand.Prepare"/> usage
-    /// </summary>
-    public virtual bool CanPrepare => false;
-
-    /// <summary>
-    /// Provides an opportunity to recycle and reuse command instances
-    /// </summary>
-    public virtual bool TryRecycle(DbCommand command) => false;
-
-    /// <summary>
-    /// Provides an opportunity to recycle and reuse command instances
-    /// </summary>
-    protected bool TryRecycle(ref DbCommand? storage, DbCommand command)
-    {
-        // detach and recycle
-        command.Connection = null;
-        command.Transaction = null;
-        return Interlocked.CompareExchange(ref storage, command, null) is null;
     }
 
     /// <summary>
@@ -248,6 +252,26 @@ public class CommandFactory<T> : CommandFactory
     public virtual void AddParameters(DbBatchCommand command, DbBatch batch, T args) { }
 
     /// <summary>
+    /// Create a parameter for a given batch
+    /// </summary>
+    public DbParameter CreateParameter(DbBatchCommand command, DbBatch batch, ref IDisposable? state)
+    {
+#if NET8_0_OR_GREATER && NEW_BATCH_API // https://github.com/dotnet/runtime/issues/82326
+        if (command.CanCreateParameter) return command.CreateParameter();
+#endif
+        if (state is not DbCommand cmd)
+        {
+            if (state is not null)
+            {   // we shouldn't hit this, but
+                state.Dispose();
+                state = null; // not redundant; this is for timing in case CreateCommand fails
+            }
+            state = cmd = batch.Connection!.CreateCommand();
+        }
+        return cmd.CreateParameter();
+    }
+
+    /// <summary>
     /// Allows an implementation to process output parameters etc after an operation has completed.
     /// </summary>
     public virtual void PostProcess(DbBatchCommand command, T args, int rowCount) => PostProcess(command, args);
@@ -269,4 +293,4 @@ public class CommandFactory<T> : CommandFactory
         return cmd;
     }
 #endif
-}
+    }

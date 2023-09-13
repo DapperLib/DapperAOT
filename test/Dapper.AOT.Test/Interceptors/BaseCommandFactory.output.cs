@@ -2,7 +2,7 @@
 file static class DapperGeneratedInterceptors
 {
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\BaseCommandFactory.input.cs", 14, 24)]
-    internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>

@@ -34,6 +34,15 @@ DAP025 | Sql | Warning | Diagnostics
 DAP026 | Sql | Error | Diagnostics
 DAP027 | Performance | Warning | Diagnostics
 DAP028 | Performance | Warning | Diagnostics
+DAP029 | Library | Info | Diagnostics
+DAP030 | Library | Error | Diagnostics
+DAP031 | Library | Error | Diagnostics
+DAP032 | Library | Error | Diagnostics
+DAP033 | Library | Warning | Diagnostics
+DAP034 | Library | Warning | Diagnostics
+DAP035 | Library | Error | Diagnostics
+DAP036 | Library | Error | Diagnostics
+DAP037 | Library | Error | Diagnostics
 DAP100 | Library | Error | Diagnostics
 DAP101 | Library | Error | Diagnostics
 DAP102 | Library | Error | Diagnostics

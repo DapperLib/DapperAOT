@@ -6,11 +6,12 @@ using System.Linq;
 
 namespace Dapper.Internal;
 
-internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, string Map, int Index, int CacheCount, bool SupportBatch)>
+internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, string Map, int Index, int CacheCount, bool SupportBatch, AdditionalCommandState? AdditionalCommandState)>
 {
+
     public CommandFactoryState(Compilation compilation) => systemObject = compilation.GetSpecialType(SpecialType.System_Object);
     private readonly ITypeSymbol systemObject;
-    private readonly Dictionary<(ITypeSymbol Type, string Map, bool Cached), (int Index, int CacheCount, bool SupportBatch)> parameterTypes = new(ParameterTypeMapComparer.Instance);
+    private readonly Dictionary<(ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState), (int Index, int CacheCount, bool SupportBatch)> parameterTypes = new(ParameterTypeMapComparer.Instance);
 
     public int Count()
     {
@@ -23,22 +24,22 @@ internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, st
         return total;
     }
 
-    public IEnumerator<(ITypeSymbol Type, string Map, int Index, int CacheCount,bool SupportBatch)> GetEnumerator()
+    public IEnumerator<(ITypeSymbol Type, string Map, int Index, int CacheCount, bool SupportBatch, AdditionalCommandState? AdditionalCommandState)> GetEnumerator()
     {
         // retain discovery order
-        return parameterTypes.OrderBy(x => x.Value.Index).Select(x => (x.Key.Type, x.Key.Map, x.Value.Index, x.Value.CacheCount, x.Value.SupportBatch)).GetEnumerator();
+        return parameterTypes.OrderBy(x => x.Value.Index).Select(x => (x.Key.Type, x.Key.Map, x.Value.Index, x.Value.CacheCount, x.Value.SupportBatch, x.Key.AdditionalCommandState)).GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public int GetIndex(ITypeSymbol type, string map, bool cache, bool supportBatch, out int? subIndex)
+    public int GetIndex(ITypeSymbol type, string map, bool cache, bool supportBatch, AdditionalCommandState? additionalCommandState, out int? subIndex)
     {
         if (string.IsNullOrWhiteSpace(map) && type.IsReferenceType)
         {
             // just use object if there's nothing to map
             type = systemObject;
         }
-        var key = (type!, map, cache);
+        var key = (type!, map, cache, additionalCommandState);
         int index;
         if (parameterTypes.TryGetValue(key, out var value))
         {
@@ -66,19 +67,21 @@ internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, st
         return index;
     }
 
-    private sealed class ParameterTypeMapComparer : IEqualityComparer<(ITypeSymbol Type, string Map, bool Cached)>
+    private sealed class ParameterTypeMapComparer : IEqualityComparer<(ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState)>
     {
         public static readonly ParameterTypeMapComparer Instance = new();
         private ParameterTypeMapComparer() { }
 
-        public bool Equals((ITypeSymbol Type, string Map, bool Cached) x, (ITypeSymbol Type, string Map, bool Cached) y)
+        public bool Equals((ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState) x, (ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState) y)
             => StringComparer.InvariantCultureIgnoreCase.Equals(x.Map, y.Map)
             && SymbolEqualityComparer.Default.Equals(x.Type, y.Type)
+            && Equals(x.AdditionalCommandState, y.AdditionalCommandState)
             && x.Cached == y.Cached;
 
-        public int GetHashCode((ITypeSymbol Type, string Map, bool Cached) obj)
+        public int GetHashCode((ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState) obj)
             => (StringComparer.InvariantCultureIgnoreCase.GetHashCode(obj.Map)
             ^ SymbolEqualityComparer.Default.GetHashCode(obj.Type))
+            ^ (obj.AdditionalCommandState is null ? 0 : obj.AdditionalCommandState.GetHashCode())
             * (obj.Cached ? -1 : 1);
             
     }

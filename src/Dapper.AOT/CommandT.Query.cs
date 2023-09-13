@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,21 +20,23 @@ partial struct Command<TArgs>
     /// <summary>
     /// Reads buffered rows from a query
     /// </summary>
-    public List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null)
+    public List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, int rowCountHint = 0)
+
     {
-        QueryState state = default;
+        SyncQueryState state = default;
         try
         {
             state.ExecuteReader(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
 
-            var results = new List<TRow>();
+            List<TRow> results;
             if (state.Reader.Read())
             {
-                var readWriteTokens = state.Reader.FieldCount <= MAX_STACK_TOKENS
-                    ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], state.Reader.FieldCount)
+                var readWriteTokens = state.Reader.FieldCount <= RowFactory.MAX_STACK_TOKENS
+                    ? CommandUtils.UnsafeSlice(stackalloc int[RowFactory.MAX_STACK_TOKENS], state.Reader.FieldCount)
                     : state.Lease();
 
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
+                results = RowFactory.GetRowBuffer<TRow>(rowCountHint);
                 ReadOnlySpan<int> readOnlyTokens = readWriteTokens; // avoid multiple conversions
                 do
                 {
@@ -42,6 +45,11 @@ partial struct Command<TArgs>
                 while (state.Reader.Read());
                 state.Return();
             }
+            else
+            {
+                results = new();
+            }
+
             // consume entire results (avoid unobserved TDS error messages)
             while (state.Reader.NextResult()) { }
             PostProcessAndRecycle(ref state, args);
@@ -56,17 +64,19 @@ partial struct Command<TArgs>
     /// <summary>
     /// Reads buffered rows from a query
     /// </summary>
-    public async Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, CancellationToken cancellationToken = default)
+    public async Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null,
+        int rowCountHint = 0, CancellationToken cancellationToken = default)
     {
-        QueryState state = default;
+        AsyncQueryState state = new();
         try
         {
             await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
 
-            var results = new List<TRow>();
+            List<TRow> results;
             if (await state.Reader.ReadAsync(cancellationToken))
             {
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
+                results = RowFactory.GetRowBuffer<TRow>(rowCountHint);
                 do
                 {
                     results.Add(rowFactory.Read(state.Reader, state.Tokens, 0, tokenState));
@@ -74,9 +84,14 @@ partial struct Command<TArgs>
                 while (await state.Reader.ReadAsync(cancellationToken));
                 state.Return();
             }
+            else
+            {
+                results = new();
+            }
+
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(state, args);
             return results;
         }
         finally
@@ -91,7 +106,7 @@ partial struct Command<TArgs>
     public async IAsyncEnumerable<TRow> QueryUnbufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        QueryState state = default;
+        AsyncQueryState state = new();
         try
         {
             await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
@@ -108,7 +123,7 @@ partial struct Command<TArgs>
             }
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(state, args);
         }
         finally
         {
@@ -121,7 +136,7 @@ partial struct Command<TArgs>
     /// </summary>
     public IEnumerable<TRow> QueryUnbuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null)
     {
-        QueryState state = default;
+        SyncQueryState state = default;
         try
         {
             state.ExecuteReader(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
@@ -146,8 +161,6 @@ partial struct Command<TArgs>
         }
     }
 
-    const int MAX_STACK_TOKENS = 64;
-
     // if we don't care if there's two rows, we can restrict to read one only
     static CommandBehavior SingleFlags(OneRowFlags flags)
         => (flags & OneRowFlags.ThrowIfMultiple) == 0
@@ -159,7 +172,7 @@ partial struct Command<TArgs>
         OneRowFlags flags,
         RowFactory<TRow>? rowFactory)
     {
-        QueryState state = default;
+        SyncQueryState state = default;
         try
         {
             state.ExecuteReader(GetCommand(args), SingleFlags(flags));
@@ -167,12 +180,7 @@ partial struct Command<TArgs>
             TRow? result = default;
             if (state.Reader.Read())
             {
-                var readWriteTokens = state.Reader.FieldCount <= MAX_STACK_TOKENS
-                    ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], state.Reader.FieldCount)
-                    : state.Lease();
-
-                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
-                result = rowFactory.Read(state.Reader, readWriteTokens, 0, tokenState);
+                result = (rowFactory ??= RowFactory<TRow>.Default).Read(state.Reader, ref state.Leased);
                 state.Return();
 
                 if (state.Reader.Read())
@@ -206,7 +214,7 @@ partial struct Command<TArgs>
         RowFactory<TRow>? rowFactory,
         CancellationToken cancellationToken)
     {
-        QueryState state = default;
+        AsyncQueryState state = new();
 
         try
         {
@@ -215,9 +223,7 @@ partial struct Command<TArgs>
             TRow? result = default;
             if (await state.Reader.ReadAsync(cancellationToken))
             {
-                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
-
-                result = rowFactory.Read(state.Reader, state.Tokens, 0, tokenState);
+                result = (rowFactory ??= RowFactory<TRow>.Default).Read(state.Reader, ref state.Leased);
                 state.Return();
 
                 if (await state.Reader.ReadAsync(cancellationToken))
@@ -236,7 +242,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(state, args);
             return result;
         }
         finally

@@ -11,7 +11,7 @@ partial struct Command<TArgs>
     /// </summary>
     public int Execute(TArgs args)
     {
-        CommandState state = default;
+        SyncCommandState state = default;
         try
         {
             var result = state.ExecuteNonQuery(GetCommand(args));
@@ -29,11 +29,11 @@ partial struct Command<TArgs>
     /// </summary>
     public async Task<int> ExecuteAsync(TArgs args, CancellationToken cancellationToken = default)
     {
-        CommandState state = default;
+        AsyncCommandState state = new();
         try
         {
             var result = await state.ExecuteNonQueryAsync(GetCommand(args), cancellationToken);
-            PostProcessAndRecycle(ref state, args, result);
+            PostProcessAndRecycle(state, args, result);
             return result;
         }
         finally

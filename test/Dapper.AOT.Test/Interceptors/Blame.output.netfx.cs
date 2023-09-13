@@ -24,7 +24,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 58, 16)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 64, 16)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Blame.input.cs", 66, 16)]
-    internal static global::System.Collections.Generic.IEnumerable<dynamic> Query0(this global::System.Data.IDbConnection cnn, string sql, object param, global::System.Data.IDbTransaction transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Collections.Generic.IEnumerable<dynamic> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Buffered, Text
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
