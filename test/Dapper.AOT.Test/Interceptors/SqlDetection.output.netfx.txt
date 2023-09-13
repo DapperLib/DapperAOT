@@ -17,4 +17,4 @@ Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerat
 Possible null reference argument for parameter 'args' in 'int Command<object>.Execute(object args)'.
 
 Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L68 C190
-Argument of type 'object?[]' cannot be used for parameter 'values' of type 'object[]' in 'int Command<object>.Execute(object[] values)' due to differences in the nullability of reference types.
+Argument of type 'object?[]' cannot be used for parameter 'values' of type 'object[]' in 'int Command<object>.Execute(object[] values, int batchSize = -1)' due to differences in the nullability of reference types.
