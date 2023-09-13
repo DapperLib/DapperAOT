@@ -83,7 +83,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 17, 24)]
-    internal static int? QueryFirstOrDefault6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static int QueryFirstOrDefault6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, TypedResult, SingleRow, StoredProcedure
         // returns data: int
@@ -268,7 +268,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 34, 30)]
-    internal static global::System.Threading.Tasks.Task<string> QueryFirstOrDefaultAsync20(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Threading.Tasks.Task<string?> QueryFirstOrDefaultAsync20(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Async, TypedResult, SingleRow, StoredProcedure
         // returns data: string

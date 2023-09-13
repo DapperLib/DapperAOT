@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFrameworks>net6.0;net7.0;net48</TargetFrameworks>
+        <TargetFrameworks>net6.0;net7.0;net8.0;net48</TargetFrameworks>
         <NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
         <RootNamespace>Dapper.AOT.Test</RootNamespace>
+        <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="Accessors/Data/**/*.*.cs" />
@@ -11,6 +12,7 @@
 
         <Compile Remove="Interceptors/**/*.*.cs" />
         <None Include="Interceptors/**/*.*" />
+        <Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
         <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
 
         <None Update="**/*.output.*">

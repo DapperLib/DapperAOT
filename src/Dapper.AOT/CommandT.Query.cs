@@ -21,6 +21,7 @@ partial struct Command<TArgs>
     /// Reads buffered rows from a query
     /// </summary>
     public List<TRow> QueryBuffered<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null, int rowCountHint = 0)
+
     {
         SyncQueryState state = default;
         try
@@ -30,12 +31,12 @@ partial struct Command<TArgs>
             List<TRow> results;
             if (state.Reader.Read())
             {
-                var readWriteTokens = state.Reader.FieldCount <= MAX_STACK_TOKENS
-                    ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], state.Reader.FieldCount)
+                var readWriteTokens = state.Reader.FieldCount <= RowFactory.MAX_STACK_TOKENS
+                    ? CommandUtils.UnsafeSlice(stackalloc int[RowFactory.MAX_STACK_TOKENS], state.Reader.FieldCount)
                     : state.Lease();
 
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
-                results = GetRowBuffer<TRow>(rowCountHint);
+                results = RowFactory.GetRowBuffer<TRow>(rowCountHint);
                 ReadOnlySpan<int> readOnlyTokens = readWriteTokens; // avoid multiple conversions
                 do
                 {
@@ -75,7 +76,7 @@ partial struct Command<TArgs>
             if (await state.Reader.ReadAsync(cancellationToken))
             {
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
-                results = GetRowBuffer<TRow>(rowCountHint);
+                results = RowFactory.GetRowBuffer<TRow>(rowCountHint);
                 do
                 {
                     results.Add(rowFactory.Read(state.Reader, state.Tokens, 0, tokenState));
@@ -160,8 +161,6 @@ partial struct Command<TArgs>
         }
     }
 
-    const int MAX_STACK_TOKENS = 64;
-
     // if we don't care if there's two rows, we can restrict to read one only
     static CommandBehavior SingleFlags(OneRowFlags flags)
         => (flags & OneRowFlags.ThrowIfMultiple) == 0
@@ -181,12 +180,7 @@ partial struct Command<TArgs>
             TRow? result = default;
             if (state.Reader.Read())
             {
-                var readWriteTokens = state.Reader.FieldCount <= MAX_STACK_TOKENS
-                    ? CommandUtils.UnsafeSlice(stackalloc int[MAX_STACK_TOKENS], state.Reader.FieldCount)
-                    : state.Lease();
-
-                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
-                result = rowFactory.Read(state.Reader, readWriteTokens, 0, tokenState);
+                result = (rowFactory ??= RowFactory<TRow>.Default).Read(state.Reader, ref state.Leased);
                 state.Return();
 
                 if (state.Reader.Read())
@@ -229,9 +223,7 @@ partial struct Command<TArgs>
             TRow? result = default;
             if (await state.Reader.ReadAsync(cancellationToken))
             {
-                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
-
-                result = rowFactory.Read(state.Reader, state.Tokens, 0, tokenState);
+                result = (rowFactory ??= RowFactory<TRow>.Default).Read(state.Reader, ref state.Leased);
                 state.Return();
 
                 if (await state.Reader.ReadAsync(cancellationToken))

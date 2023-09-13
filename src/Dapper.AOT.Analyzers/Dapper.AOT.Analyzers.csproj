@@ -13,19 +13,17 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Remove="AotGridReader.cs" />
         <Compile Remove="InterceptsLocationAttribute.cs" />
+        <EmbeddedResource Include="AotGridReader.cs" />
+        <EmbeddedResource Include="InterceptsLocationAttribute.cs" />
+        
         <Compile Update="CodeAnalysis\DapperInterceptorGenerator.*.cs">
             <DependentUpon>DapperInterceptorGenerator.cs</DependentUpon>
         </Compile>
-    </ItemGroup>
-
-    <ItemGroup>
+    
         <Compile Include="..\Dapper.AOT\Internal\StringHashing.cs" Link="Internal\StringHashing.cs" />
         <Compile Include="..\Dapper.AOT\SqlSyntax.cs" Link="SqlSyntax.cs" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <EmbeddedResource Include="InterceptsLocationAttribute.cs" />
     </ItemGroup>
 
     <ItemGroup>

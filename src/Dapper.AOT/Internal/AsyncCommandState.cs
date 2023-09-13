@@ -173,6 +173,21 @@ namespace Dapper.Internal
                 }
             }
         }
+
+        public virtual void Dispose()
+        {
+            var cmd = Command;
+            Command = null;
+            cmd?.Dispose();
+
+            var conn = connection;
+            connection = null;
+            if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
+            {
+                _flags &= ~FLAG_CLOSE_CONNECTION;
+                conn.Close();
+            }
+        }
     }
 
 }

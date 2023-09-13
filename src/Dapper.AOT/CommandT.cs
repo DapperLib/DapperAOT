@@ -5,6 +5,8 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Dapper;
 
@@ -16,7 +18,6 @@ namespace Dapper;
 #pragma warning restore IDE0079
 public readonly partial struct Command<TArgs> : ICommand<TArgs>
 {
-
     private readonly CommandType commandType;
     private readonly int timeout;
     private readonly string sql;
@@ -85,8 +86,6 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         return cmd;
     }
 
-    private static List<TRow> GetRowBuffer<TRow>(int rowCountHint) => rowCountHint <= 0 ? new() : new(rowCountHint);
-
     internal void PostProcessAndRecycle(ref SyncCommandState state, TArgs args)
     {
         Debug.Assert(state.Command is not null);
@@ -144,6 +143,61 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;
+        }
+    }
+
+    /// <summary>
+    /// Read the data as a <see cref="DbDataReader"/>
+    /// </summary>
+    public DbDataReader ExecuteReader(TArgs args, CommandBehavior behavior = CommandBehavior.Default)
+        => ExecuteReader<WrappedDbDataReader>(args, behavior);
+
+    /// <summary>
+    /// Read the data as a <see cref="DbDataReader"/>
+    /// </summary>
+    public DbDataReader ExecuteReader<TReader>(TArgs args, CommandBehavior behavior = CommandBehavior.Default)
+        where TReader : WrappedDbDataReader, new()
+    {
+        SyncQueryState state = default;
+        try
+        {
+            state.ExecuteReader(GetCommand(args), behavior);
+            var obj = new TReader();
+            obj.Initialize(commandFactory, args, ref state);
+            return obj;
+        }
+        finally
+        {
+            state.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Read the data as a <see cref="DbDataReader"/>
+    /// </summary>
+    public Task<DbDataReader> ExecuteReaderAsync(TArgs args, CommandBehavior behavior = CommandBehavior.Default, CancellationToken cancellationToken = default)
+        => ExecuteReaderAsync<WrappedDbDataReader>(args, behavior, cancellationToken);
+
+    /// <summary>
+    /// Read the data as a <see cref="DbDataReader"/>
+    /// </summary>
+    public async Task<DbDataReader> ExecuteReaderAsync<TReader>(TArgs args, CommandBehavior behavior = CommandBehavior.Default, CancellationToken cancellationToken = default)
+        where TReader : WrappedDbDataReader, new()
+    {
+        AsyncQueryState? state = new();
+        try
+        {
+            await state.ExecuteReaderAsync(GetCommand(args), behavior, cancellationToken);
+            var obj = new TReader();
+            obj.Initialize(commandFactory, args, ref state);
+            return obj;
+        }
+        finally
+        {
+            if (state is not null)
+            {
+                await state.DisposeAsync();
+            }
         }
     }
 

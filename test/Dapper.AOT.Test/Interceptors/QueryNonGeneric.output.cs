@@ -194,7 +194,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 32, 30)]
-    internal static global::System.Threading.Tasks.Task<dynamic> QueryFirstOrDefaultAsync14(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Threading.Tasks.Task<dynamic?> QueryFirstOrDefaultAsync14(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Async, HasParameters, SingleRow, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>
@@ -222,7 +222,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 34, 30)]
-    internal static global::System.Threading.Tasks.Task<dynamic> QuerySingleOrDefaultAsync16(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Threading.Tasks.Task<dynamic?> QuerySingleOrDefaultAsync16(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Async, SingleRow, StoredProcedure, AtMostOne
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));

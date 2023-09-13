@@ -34,7 +34,7 @@ file static class DapperGeneratedInterceptors
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 16, 12)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 22, 12)]
-    internal static int? ExecuteScalar2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static int ExecuteScalar2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, TypedResult, HasParameters, Text, Scalar
         // takes parameter: global::Foo.Customer
@@ -63,7 +63,7 @@ file static class DapperGeneratedInterceptors
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 18, 12)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 27, 12)]
-    internal static int? ExecuteScalar4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static int ExecuteScalar4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, TypedResult, Text, Scalar
         // returns data: int

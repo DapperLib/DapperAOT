@@ -10,11 +10,25 @@ using System.Threading.Tasks;
 
 namespace Dapper.Internal
 {
-
-    internal class AsyncQueryState : AsyncCommandState
+    internal interface IQueryState
     {
+        DbDataReader? Reader { get; }
+        DbCommand? Command{ get; set; }
+
+        void Dispose();
+        ValueTask DisposeAsync();
+    }
+    internal class AsyncQueryState : AsyncCommandState, IQueryState
+    {
+        DbDataReader? IQueryState.Reader => Reader;
+        DbCommand? IQueryState.Command
+        {
+            get => Command;
+            set => Command = value;
+        }
+
         public DbDataReader? Reader;
-        private int[]? leased;
+        public int[]? Leased;
         private int fieldCount;
 
 #pragma warning disable CS8774 // Member must have a non-null value when exiting. - validated
@@ -27,16 +41,16 @@ namespace Dapper.Internal
         {
             Debug.Assert(Reader is not null);
             fieldCount = Reader!.FieldCount;
-            if (leased is null || leased.Length < fieldCount)
+            if (Leased is null || Leased.Length < fieldCount)
             {
                 // no leased array, or existing lease is not big enough; rent a new array
-                if (leased is not null) ArrayPool<int>.Shared.Return(leased);
-                leased = ArrayPool<int>.Shared.Rent(fieldCount);
+                if (Leased is not null) ArrayPool<int>.Shared.Return(Leased);
+                Leased = ArrayPool<int>.Shared.Rent(fieldCount);
             }
 #if NET8_0_OR_GREATER
-            return MemoryMarshal.CreateSpan(ref MemoryMarshal.GetArrayDataReference(leased), fieldCount);
+            return MemoryMarshal.CreateSpan(ref MemoryMarshal.GetArrayDataReference(Leased), fieldCount);
 #else
-            return new Span<int>(leased, 0, fieldCount);
+            return new Span<int>(Leased, 0, fieldCount);
 #endif
         }
 
@@ -44,21 +58,21 @@ namespace Dapper.Internal
         {
             get
             {
-                Debug.Assert(Reader is not null && leased is not null && leased.Length >= Reader.FieldCount);
+                Debug.Assert(Reader is not null && Leased is not null && Leased.Length >= Reader.FieldCount);
 #if NET8_0_OR_GREATER
-                return MemoryMarshal.CreateSpan(ref MemoryMarshal.GetArrayDataReference(leased), fieldCount);
+                return MemoryMarshal.CreateSpan(ref MemoryMarshal.GetArrayDataReference(Leased), fieldCount);
 #else
-                return new Span<int>(leased, 0, fieldCount);
+                return new Span<int>(Leased, 0, fieldCount);
 #endif
             }
         }
 
         public void Return()
         {
-            if (leased is not null)
+            if (Leased is not null)
             {
-                ArrayPool<int>.Shared.Return(leased);
-                leased = null;
+                ArrayPool<int>.Shared.Return(Leased);
+                Leased = null;
                 fieldCount = 0;
             }
         }
@@ -88,6 +102,13 @@ namespace Dapper.Internal
         {
             await pending;
             await base.DisposeAsync();
+        }
+
+        public override void Dispose()
+        {
+            Return();
+            Reader?.Dispose();
+            base.Dispose();
         }
     }
 }

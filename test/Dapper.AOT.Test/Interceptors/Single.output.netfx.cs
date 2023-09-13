@@ -75,7 +75,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Single.input.cs", 19, 30)]
-    internal static global::System.Threading.Tasks.Task<global::Foo.Customer> QueryFirstOrDefaultAsync5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Threading.Tasks.Task<global::Foo.Customer?> QueryFirstOrDefaultAsync5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Async, TypedResult, HasParameters, SingleRow, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>
@@ -105,7 +105,7 @@ file static class DapperGeneratedInterceptors
     }
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Single.input.cs", 21, 30)]
-    internal static global::System.Threading.Tasks.Task<global::Foo.Customer> QuerySingleOrDefaultAsync7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static global::System.Threading.Tasks.Task<global::Foo.Customer?> QuerySingleOrDefaultAsync7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Query, Async, TypedResult, SingleRow, StoredProcedure, AtMostOne
         // returns data: global::Foo.Customer
