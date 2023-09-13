@@ -88,7 +88,7 @@ namespace Dapper
         }
 
         public global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadAsync<T>(bool buffered, RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default)
-            => buffered ? ReadBufferedAsync(rowFactory, rowCountHint: 0, cancellationToken: cancellationToken) : ReadFalseUnbufferedAsync(rowFactory, cancellationToken: cancellationToken);
+            => buffered ? ReadBufferedAsync(rowFactory, rowCountHint: 0, cancellationToken: cancellationToken) : ReadFalseUnbufferedAsync(rowFactory);
 
         private async global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadBufferedAsync<T>(RowFactory<T> rowFactory, int rowCountHint, global::System.Threading.CancellationToken cancellationToken)
         {
@@ -119,10 +119,9 @@ namespace Dapper
         private static global::System.ReadOnlySpan<int> Tokens(int[]? lease, int fieldCount)
                 => new global::System.ReadOnlySpan<int>(lease, 0, fieldCount);
 
-        private global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadFalseUnbufferedAsync<T>(RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken)
-        {
-            // placeholder for now
-            return ReadBufferedAsync<T>(rowFactory, 0, cancellationToken);
+        private global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadFalseUnbufferedAsync<T>(RowFactory<T> rowFactory)
+        {   // this is not great, but is consistent with Dapper behavior
+            return System.Threading.Tasks.Task.FromResult(ReadUnbuffered<T>(rowFactory));
         }
 
         private async global::System.Collections.Generic.IAsyncEnumerable<T> ReadTrueUnbufferedAsync<T>(RowFactory<T> rowFactory,
