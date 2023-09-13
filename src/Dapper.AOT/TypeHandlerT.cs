@@ -10,7 +10,7 @@ namespace Dapper;
 /// when processing values of type <typeparamref name="TValue"/>
 /// </summary>
 [ImmutableObject(true)]
-[AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
+[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Module | AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = true)]
 public sealed class TypeHandlerAttribute<TValue, TTypeHandler> : Attribute
     where TTypeHandler : TypeHandler<TValue>, new()
 {}

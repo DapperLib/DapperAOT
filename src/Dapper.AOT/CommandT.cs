@@ -1,5 +1,6 @@
 ﻿using Dapper.Internal;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
@@ -84,7 +85,9 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         return cmd;
     }
 
-    internal void PostProcessAndRecycle(ref CommandState state, TArgs args)
+    private static List<TRow> GetRowBuffer<TRow>(int rowCountHint) => rowCountHint <= 0 ? new() : new(rowCountHint);
+
+    internal void PostProcessAndRecycle(ref SyncCommandState state, TArgs args)
     {
         Debug.Assert(state.Command is not null);
         commandFactory.PostProcess(state.Command!, args);
@@ -94,7 +97,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         }
     }
 
-    internal void PostProcessAndRecycle(ref QueryState state, TArgs args)
+    internal void PostProcessAndRecycle(AsyncCommandState state, TArgs args)
     {
         Debug.Assert(state.Command is not null);
         commandFactory.PostProcess(state.Command!, args);
@@ -104,7 +107,37 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         }
     }
 
-    internal void PostProcessAndRecycle(ref CommandState state, TArgs args, int rowCount)
+    internal void PostProcessAndRecycle(ref SyncQueryState state, TArgs args)
+    {
+        Debug.Assert(state.Command is not null);
+        commandFactory.PostProcess(state.Command!, args);
+        if (commandFactory.TryRecycle(state.Command!))
+        {
+            state.Command = null;
+        }
+    }
+
+    internal void PostProcessAndRecycle(AsyncQueryState state, TArgs args)
+    {
+        Debug.Assert(state.Command is not null);
+        commandFactory.PostProcess(state.Command!, args);
+        if (commandFactory.TryRecycle(state.Command!))
+        {
+            state.Command = null;
+        }
+    }
+
+    internal void PostProcessAndRecycle(ref SyncCommandState state, TArgs args, int rowCount)
+    {
+        Debug.Assert(state.Command is not null);
+        commandFactory.PostProcess(state.Command!, args, rowCount);
+        if (commandFactory.TryRecycle(state.Command!))
+        {
+            state.Command = null;
+        }
+    }
+
+    internal void PostProcessAndRecycle(AsyncCommandState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
         commandFactory.PostProcess(state.Command!, args, rowCount);
@@ -126,7 +159,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     public DbDataReader ExecuteReader<TReader>(TArgs args, CommandBehavior behavior = CommandBehavior.Default)
         where TReader : WrappedDbDataReader, new()
     {
-        QueryState state = default;
+        SyncQueryState state = default;
         try
         {
             state.ExecuteReader(GetCommand(args), behavior);

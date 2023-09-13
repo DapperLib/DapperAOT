@@ -6,6 +6,18 @@ namespace Dapper.Internal.Roslyn;
 
 internal static class TypeSymbolExtensions
 {
+    public static bool TryGetConstructors(this ITypeSymbol? typeSymbol, out ImmutableArray<IMethodSymbol>? constructors)
+    {
+        constructors = null;
+        if (typeSymbol is not INamedTypeSymbol namedTypeSymbol)
+        {
+            return false;
+        }
+
+        constructors = namedTypeSymbol.Constructors;
+        return true;
+    }
+
     public static string? GetTypeDisplayName(this ITypeSymbol? typeSymbol)
     {
         if (typeSymbol is null) return null;
@@ -57,6 +69,24 @@ internal static class TypeSymbolExtensions
               => true,
             _ => false
         };
+    }
+
+    public static bool IsNullable(this ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated) return true;
+        return typeSymbol.TypeKind is 
+            TypeKind.Class or TypeKind.Array or
+            TypeKind.Delegate or TypeKind.Dynamic or
+            TypeKind.Interface;
+    }
+
+    /// <returns>
+    /// Returns true, if <paramref name="typeSymbol"/> represents an <see cref="object"/> type.
+    /// </returns>
+    public static bool IsSystemObject(this ITypeSymbol? typeSymbol)
+    {
+        if (typeSymbol is null) return false;
+        return typeSymbol.SpecialType == SpecialType.System_Object;
     }
 
     /// <returns>

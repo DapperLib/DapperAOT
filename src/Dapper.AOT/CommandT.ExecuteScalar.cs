@@ -11,7 +11,7 @@ partial struct Command<TArgs>
     /// </summary>
     public object? ExecuteScalar(TArgs args)
     {
-        CommandState state = default;
+        SyncCommandState state = default;
         try
         {
             var result = state.ExecuteScalar(GetCommand(args));
@@ -29,11 +29,11 @@ partial struct Command<TArgs>
     /// </summary>
     public async Task<object?> ExecuteScalarAsync(TArgs args, CancellationToken cancellationToken = default)
     {
-        CommandState state = default;
+        AsyncCommandState state = new();
         try
         {
             var result = await state.ExecuteScalarAsync(GetCommand(args), cancellationToken);
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(state, args);
             return result;
         }
         finally
@@ -47,7 +47,7 @@ partial struct Command<TArgs>
     /// </summary>
     public T ExecuteScalar<T>(TArgs args)
     {
-        CommandState state = default;
+        SyncCommandState state = default;
         try
         {
             var result = state.ExecuteScalar(GetCommand(args));
@@ -65,11 +65,11 @@ partial struct Command<TArgs>
     /// </summary>
     public async Task<T> ExecuteScalarAsync<T>(TArgs args, CancellationToken cancellationToken = default)
     {
-        CommandState state = default;
+        AsyncCommandState state = new();
         try
         {
             var result = await state.ExecuteScalarAsync(GetCommand(args), cancellationToken);
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(state, args);
             return CommandUtils.As<T>(result);
         }
         finally

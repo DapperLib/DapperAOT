@@ -16,14 +16,22 @@ namespace Dapper
     public class WrappedDbDataReader : DbDataReader
     {
         internal static readonly Task<bool> TaskTrue = Task.FromResult(true), TaskFalse = Task.FromResult(false);
-        private QueryState state;
+        private IQueryState? state;
         private CommandFactory commandFactory = null!;
         private object? args;
 
         /// <inheritdoc/>
         public WrappedDbDataReader() { }
 
-        internal void Initialize(CommandFactory commandFactory, object? args, ref QueryState state)
+        internal void Initialize(CommandFactory commandFactory, object? args, ref AsyncQueryState? state)
+        {
+            this.commandFactory = commandFactory;
+            this.args = args;
+            this.state = state;
+            state = default; // we've assumed ownership
+        }
+
+        internal void Initialize(CommandFactory commandFactory, object? args, ref SyncQueryState state)
         {
             this.commandFactory = commandFactory;
             this.args = args;
@@ -32,19 +40,23 @@ namespace Dapper
         }
 
         /// <inheritdoc/>
-        public sealed override bool IsClosed => state.Reader is null or { IsClosed: true };
+        public sealed override bool IsClosed => state?.Reader is null or { IsClosed: true };
 
         /// <inheritdoc/>
         public sealed override void Close()
         {
             if (IsClosed) return;
-            commandFactory.PostProcessObject(state.Command!, args);
-            if (commandFactory.TryRecycle(state.Command!))
+            var state = this.state; // snapshot
+            if (state is not null)
             {
-                state.Command = null;
+                commandFactory.PostProcessObject(state.Command!, args);
+                if (commandFactory.TryRecycle(state.Command!))
+                {
+                    state.Command = null;
+                }
+                state.Reader?.Close();
+                state.Dispose();
             }
-            state.Reader!.Close();
-            state.Dispose();
             base.Close();
         }
 
@@ -55,7 +67,7 @@ namespace Dapper
         {
             get
             {
-                return state.Reader ?? ThrowDisposed();
+                return state?.Reader ?? ThrowDisposed();
                 static DbDataReader ThrowDisposed() => throw new ObjectDisposedException(nameof(WrappedDbDataReader));
             }
         }
@@ -63,7 +75,7 @@ namespace Dapper
         /// <summary>
         /// Gets the underlying <see cref="DbCommand"/> behind this instance
         /// </summary>
-        protected DbCommand Command => state.Command!;
+        protected DbCommand Command => state?.Command!;
 
         /// <inheritdoc/>
         public sealed override bool NextResult()
@@ -214,14 +226,18 @@ namespace Dapper
         public sealed override Task CloseAsync() => IsClosed ? Task.CompletedTask : CloseAsyncImpl();
         private async Task CloseAsyncImpl()
         {
-            commandFactory.PostProcessObject(state.Command!, args);
-            if (commandFactory.TryRecycle(state.Command!))
+            var state = this.state; // snapshot
+            if (state is not null)
             {
-                state.Command = null;
+                commandFactory.PostProcessObject(state.Command!, args);
+                if (commandFactory.TryRecycle(state.Command!))
+                {
+                    state.Command = null;
+                }
+                var reader = state.Reader;
+                if (reader is not null) await reader.CloseAsync();
+                await state.DisposeAsync();
             }
-            var reader = state.Reader;
-            if (reader is not null) await reader.CloseAsync();
-            await state.DisposeAsync();
             await base.CloseAsync();
         }
 #endif

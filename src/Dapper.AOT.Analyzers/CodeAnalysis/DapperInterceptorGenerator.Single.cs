@@ -15,10 +15,11 @@ public sealed partial class DapperInterceptorGenerator
         OperationFlags commandTypeMode,
         ITypeSymbol? parameterType,
         string map, bool cache,
-        ImmutableArray<IParameterSymbol> methodParameters,
-        CommandFactoryState factories,
-        RowReaderState readers,
-        string? fixedSql)
+        in ImmutableArray<IParameterSymbol> methodParameters,
+        in CommandFactoryState factories,
+        in RowReaderState readers,
+        string? fixedSql,
+        AdditionalCommandState? additionalCommandState)
     {
         sb.Append("return ");
         if (HasAll(flags, OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
@@ -53,7 +54,7 @@ public sealed partial class DapperInterceptorGenerator
         sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "").Append(", ");
         if (HasAny(flags, OperationFlags.HasParameters))
         {
-            var index = factories.GetIndex(parameterType!, map, cache, out var subIndex);
+            var index = factories.GetIndex(parameterType!, map, cache, additionalCommandState, out var subIndex);
             sb.Append("CommandFactory").Append(index).Append(".Instance").Append(subIndex);
         }
         else
@@ -188,9 +189,20 @@ public sealed partial class DapperInterceptorGenerator
         {
             sb.NewLine().Append("#error not supported: ").Append(method.Name).NewLine();
         }
-        if (isAsync)
+        if (HasAny(flags, OperationFlags.Query) && additionalCommandState is { HasEstimatedRowCount: true })
         {
-            sb.Append(", ").Append(Forward(methodParameters, "cancellationToken"));
+            if (additionalCommandState.EstimatedRowCountMemberName is null)
+            {
+                sb.Append(", rowCountHint: ").Append(additionalCommandState.EstimatedRowCount);
+            }
+            else if (parameterType is not null && !parameterType.IsAnonymousType)
+            {
+                sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param!).").Append(additionalCommandState.EstimatedRowCountMemberName);
+            }
+        }
+        if (isAsync && HasParam(methodParameters, "cancellationToken"))
+        {
+            sb.Append(", cancellationToken: ").Append(Forward(methodParameters, "cancellationToken"));
         }
         if (HasAll(flags, OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
         {

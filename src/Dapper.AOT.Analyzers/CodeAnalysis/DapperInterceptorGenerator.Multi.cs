@@ -14,7 +14,8 @@ public sealed partial class DapperInterceptorGenerator
         string map, bool cache,
         ImmutableArray<IParameterSymbol> methodParameters,
         CommandFactoryState factories,
-        string? fixedSql)
+        string? fixedSql,
+        AdditionalCommandState? additionalCommandState)
     {
         if (!HasAny(flags, OperationFlags.Execute))
         {
@@ -42,7 +43,12 @@ public sealed partial class DapperInterceptorGenerator
             // return Command<type>(...).ExecuteAsync((cast)param, ...);
             bool isAsync = HasAny(flags, OperationFlags.Async);
             sb.Append("Execute").Append(isAsync ? "Async" : "").Append("(");
-            sb.Append("(").Append(castType).Append(")param!").Append(");");
+            sb.Append("(").Append(castType).Append(")param!");
+            if (isAsync && HasParam(methodParameters, "cancellationToken"))
+            {
+                sb.Append(", cancellationToken: ").Append(Forward(methodParameters, "cancellationToken"));
+            }
+            sb.Append(");");
             sb.NewLine().Outdent().NewLine().NewLine();
         }
 
@@ -85,7 +91,7 @@ public sealed partial class DapperInterceptorGenerator
             // commandFactory
             if (HasAny(flags, OperationFlags.HasParameters))
             {
-                var index = factories.GetIndex(elementType, map, cache, out var subIndex);
+                var index = factories.GetIndex(elementType, map, cache, additionalCommandState, out var subIndex);
                 sb.Append("CommandFactory").Append(index).Append(".Instance").Append(subIndex);
             }
             else

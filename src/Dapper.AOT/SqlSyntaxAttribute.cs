@@ -9,11 +9,11 @@ namespace Dapper;
 /// </summary>
 [Conditional("DEBUG")] // not needed post-build, so: evaporate
 [ImmutableObject(true)]
-[AttributeUsage(AttributeTargets.All, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Module | AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = false)]
 public sealed class SqlSyntaxAttribute : Attribute
 {
     /// <summary>
     /// Indicates whether commands should, when possible, be re-used between operations
     /// </summary>
-    public SqlSyntaxAttribute(SqlSyntax syntax) { }
+    public SqlSyntaxAttribute(SqlSyntax syntax) => _ = syntax;
 }

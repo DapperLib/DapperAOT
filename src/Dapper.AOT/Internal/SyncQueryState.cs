@@ -1,24 +1,38 @@
-﻿using Dapper.Internal;
-using System;
+﻿using System;
 using System.Buffers;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
-using System.Threading;
 using System.Threading.Tasks;
 
-namespace Dapper
+namespace Dapper.Internal
 {
-
-    internal struct QueryState // note mutable; deliberately not : IDisposable, as that creates a *copy*
+    internal struct SyncQueryState : IQueryState // note mutable; deliberately not : IDisposable, as that creates a *copy*
     {
-        private CommandState commandState;
+        DbDataReader? IQueryState.Reader => Reader;
+        DbCommand? IQueryState.Command
+        {
+            get => Command;
+            set => Command = value;
+        }
+        int[]? IQueryState.Leased
+        {
+            get => Leased;
+            set => Leased = value;
+        }
+
+        private SyncCommandState commandState;
         public DbDataReader? Reader;
         public int[]? Leased;
         private int fieldCount;
 
+        public ValueTask DisposeAsync()
+        {
+            Dispose();
+            return default;
+        }
         public void Dispose()
         {
             Return();
@@ -36,11 +50,6 @@ namespace Dapper
         [MemberNotNull(nameof(Reader), nameof(Command))]
         public void ExecuteReader(DbCommand command, CommandBehavior flags)
             => Reader = commandState.ExecuteReader(command, flags);
-
-        [MemberNotNull(nameof(Reader), nameof(Command))]
-        public async Task ExecuteReaderAsync(DbCommand command, CommandBehavior flags, CancellationToken cancellationToken)
-            => Reader = await commandState.ExecuteReaderAsync(command, flags, cancellationToken);
-#pragma warning restore CS8774 // Member must have a non-null value when exiting.
 
         public Span<int> Lease()
         {
@@ -81,25 +90,6 @@ namespace Dapper
                 fieldCount = 0;
             }
         }
-
-#if NETCOREAPP3_1_OR_GREATER
-        public async Task DisposeAsync()
-        {
-            Return();
-            if (Reader is not null)
-            {
-                await Reader.DisposeAsync();
-            }
-            await commandState.DisposeAsync();
-        }
-#else
-        public Task DisposeAsync()
-        {
-            Dispose();
-            return Task.CompletedTask;
-        }
-#endif
-
     }
 }
 
