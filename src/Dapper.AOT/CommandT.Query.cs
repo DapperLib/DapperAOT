@@ -36,7 +36,7 @@ partial struct Command<TArgs>
                     : state.Lease();
 
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
-                results = GetRowBuffer<TRow>(rowCountHint);
+                results = RowFactory.GetRowBuffer<TRow>(rowCountHint);
                 ReadOnlySpan<int> readOnlyTokens = readWriteTokens; // avoid multiple conversions
                 do
                 {
@@ -76,7 +76,7 @@ partial struct Command<TArgs>
             if (await state.Reader.ReadAsync(cancellationToken))
             {
                 var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
-                results = GetRowBuffer<TRow>(rowCountHint);
+                results = RowFactory.GetRowBuffer<TRow>(rowCountHint);
                 do
                 {
                     results.Add(rowFactory.Read(state.Reader, state.Tokens, 0, tokenState));

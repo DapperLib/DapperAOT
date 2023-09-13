@@ -17,11 +17,6 @@ namespace Dapper.Internal
             get => Command;
             set => Command = value;
         }
-        int[]? IQueryState.Leased
-        {
-            get => Leased;
-            set => Leased = value;
-        }
 
         private SyncCommandState commandState;
         public DbDataReader? Reader;

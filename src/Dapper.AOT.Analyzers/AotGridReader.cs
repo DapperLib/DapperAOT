@@ -1,4 +1,6 @@
-﻿namespace Dapper
+﻿// DO NOT add using directives; this file is written directly into output, and we don't want *any* ambiguity
+
+namespace Dapper
 {
     // these are DapperAOT library extensions that we can't implement this in DapperAOT itself because we don't have
     // the library reference to Dapper (since we don't know whether the user is using "Dapper" vs "Dapper.StrongName")
@@ -30,17 +32,27 @@
         public T ReadFirst<T>(RowFactory<T> rowFactory) => ReadSingleRow(rowFactory, OneRowFlags.ThrowIfNone)!;
         public T? ReadFirstOrDefault<T>(RowFactory<T> rowFactory) => ReadSingleRow(rowFactory, OneRowFlags.None)!;
 
+        public global::System.Threading.Tasks.ValueTask<T> ReadSingleAsync<T>(RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default) => ReadSingleRowAsync(rowFactory, OneRowFlags.ThrowIfMultiple | OneRowFlags.ThrowIfNone, cancellationToken)!;
+
+        public global::System.Threading.Tasks.ValueTask<T?> ReadSingleOrDefaultAsync<T>(RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default) => ReadSingleRowAsync(rowFactory, OneRowFlags.ThrowIfMultiple, cancellationToken);
+
+        public global::System.Threading.Tasks.ValueTask<T> ReadFirstAsync<T>(RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default) => ReadSingleRowAsync(rowFactory, OneRowFlags.ThrowIfNone, cancellationToken)!;
+        public global::System.Threading.Tasks.ValueTask<T?> ReadFirstOrDefaultAsync<T>(RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default) => ReadSingleRowAsync(rowFactory, OneRowFlags.None, cancellationToken)!;
+
         public global::System.Collections.Generic.IEnumerable<T> Read<T>(bool buffered, RowFactory<T> rowFactory)
             => buffered ? ReadBuffered(rowFactory) : ReadUnbuffered(rowFactory);
 
         private const int MAX_STACK_TOKENS = 64;
-        public global::System.Collections.Generic.List<T> ReadBuffered<T>(RowFactory<T> rowFactory, int sizeHint = 0)
+
+        private static global::System.Collections.Generic.List<TRow> GetRowBuffer<TRow>(int rowCountHint) => rowCountHint <= 0 ? new() : new(rowCountHint); // can't use RowFactory because of location
+
+        public global::System.Collections.Generic.List<T> ReadBuffered<T>(RowFactory<T> rowFactory, int rowCountHint = 0)
         {
             var index = OnBeforeGrid();
             int[]? lease = null;
             try
             {
-                var results = new global::System.Collections.Generic.List<T>(sizeHint);
+                var results = GetRowBuffer<T>(rowCountHint);
                 var reader = Reader;
                 if (reader.Read() && index == ResultIndex)
                 {
@@ -72,6 +84,69 @@
 #else
                 return value.Slice(0, length);
 #endif
+            }
+        }
+
+        public global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadAsync<T>(bool buffered, RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken = default)
+            => buffered ? ReadBufferedAsync(rowFactory, rowCountHint: 0, cancellationToken: cancellationToken) : ReadFalseUnbufferedAsync(rowFactory, cancellationToken: cancellationToken);
+
+        private async global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadBufferedAsync<T>(RowFactory<T> rowFactory, int rowCountHint, global::System.Threading.CancellationToken cancellationToken)
+        {
+            var index = OnBeforeGrid();
+            int[]? lease = null;
+            try
+            {
+                var results = GetRowBuffer<T>(rowCountHint);
+                var reader = Reader;
+                if (await reader.ReadAsync(cancellationToken) && index == ResultIndex)
+                {
+                    var tokenState = rowFactory.Tokenize(reader, Lease(reader.FieldCount, ref lease), 0);
+                    do
+                    {
+                        results.Add(rowFactory.Read(reader, Tokens(lease, reader.FieldCount), 0, tokenState));
+                    }
+                    while (await reader.ReadAsync(cancellationToken) && index == ResultIndex);
+                }
+                return results;
+            }
+            finally
+            {
+                if (lease is not null) global::System.Buffers.ArrayPool<int>.Shared.Return(lease);
+                OnAfterGrid(index);
+            }
+        }
+
+        private static global::System.ReadOnlySpan<int> Tokens(int[]? lease, int fieldCount)
+                => new global::System.ReadOnlySpan<int>(lease, 0, fieldCount);
+
+        private global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<T>> ReadFalseUnbufferedAsync<T>(RowFactory<T> rowFactory, global::System.Threading.CancellationToken cancellationToken)
+        {
+            // placeholder for now
+            return ReadBufferedAsync<T>(rowFactory, 0, cancellationToken);
+        }
+
+        private async global::System.Collections.Generic.IAsyncEnumerable<T> ReadTrueUnbufferedAsync<T>(RowFactory<T> rowFactory,
+            [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken)
+        {
+            var index = OnBeforeGrid();
+            int[]? lease = null;
+            try
+            {
+                var reader = Reader;
+                if (await reader.ReadAsync(cancellationToken) && index == ResultIndex)
+                {
+                    var tokenState = rowFactory.Tokenize(reader, Lease(reader.FieldCount, ref lease), 0);
+                    do
+                    {
+                        yield return rowFactory.Read(reader, Tokens(lease, reader.FieldCount), 0, tokenState);
+                    }
+                    while (await reader.ReadAsync(cancellationToken) && index == ResultIndex);
+                }
+            }
+            finally
+            {
+                if (lease is not null) global::System.Buffers.ArrayPool<int>.Shared.Return(lease);
+                OnAfterGrid(index);
             }
         }
 
@@ -164,9 +239,40 @@
             {
                 OnAfterGrid(index);
             }
+        }
+        static void ThrowNone() => _ = global::System.Linq.Enumerable.First("");
+        static void ThrowMultiple() => _ = global::System.Linq.Enumerable.Single("  ");
 
-            static void ThrowNone() => _ = global::System.Linq.Enumerable.First("");
-            static void ThrowMultiple() => _ = global::System.Linq.Enumerable.Single("  ");
+        private async global::System.Threading.Tasks.ValueTask<T?> ReadSingleRowAsync<T>(RowFactory<T> rowFactory, OneRowFlags flags, global::System.Threading.CancellationToken cancellationToken)
+        {
+            var index = OnBeforeGrid();
+            try
+            {
+                T? result = default;
+                var reader = Reader;
+                if (await reader.ReadAsync(cancellationToken) && index == ResultIndex)
+                {
+                    result = rowFactory.Read(reader);
+
+                    if (await reader.ReadAsync(cancellationToken) && index == ResultIndex)
+                    {
+                        if ((flags & OneRowFlags.ThrowIfMultiple) != 0)
+                        {
+                            ThrowMultiple();
+                        }
+                        while (await reader.ReadAsync(cancellationToken) && index == ResultIndex) { }
+                    }
+                }
+                else if ((flags & OneRowFlags.ThrowIfNone) != 0)
+                {
+                    ThrowNone();
+                }
+                return result;
+            }
+            finally
+            {
+                OnAfterGrid(index);
+            }
         }
     }
 }

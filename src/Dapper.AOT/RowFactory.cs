@@ -16,6 +16,8 @@ namespace Dapper;
 /// </summary>
 public abstract class RowFactory
 {
+    internal static List<TRow> GetRowBuffer<TRow>(int rowCountHint) => rowCountHint <= 0 ? new() : new(rowCountHint);
+
     /// <summary>
     /// Provides an assortment of pre-built row factory implementations
     /// </summary>

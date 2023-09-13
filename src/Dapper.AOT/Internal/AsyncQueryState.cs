@@ -14,7 +14,6 @@ namespace Dapper.Internal
     {
         DbDataReader? Reader { get; }
         DbCommand? Command{ get; set; }
-        int[]? Leased { get; set; }
 
         void Dispose();
         ValueTask DisposeAsync();
@@ -26,11 +25,6 @@ namespace Dapper.Internal
         {
             get => Command;
             set => Command = value;
-        }
-        int[]? IQueryState.Leased
-        {
-            get => Leased;
-            set => Leased = value;
         }
 
         public DbDataReader? Reader;
