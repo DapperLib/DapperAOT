@@ -37,7 +37,7 @@ namespace Dapper.AOT.Test
             [CallerMemberName] string? name = null,
             string? fileName = null,
             Action<T>? initializer = null
-            ) where T : class, new()
+            ) where T : class, ISourceGenerator, new() // strictly we only need IIncrementalGenerator, but: see Roslyn #69906
         {
             void OutputDiagnostic(Diagnostic d)
             {
@@ -67,23 +67,12 @@ namespace Dapper.AOT.Test
             ShowDiagnostics("Input code", inputCompilation, diagnosticsTo, "CS8795", "CS1701", "CS1702");
 
             // Create the driver that will control the generation, passing in our generator
-            GeneratorDriver driver = generator switch
-            {
-                IIncrementalGenerator incremental => CSharpGeneratorDriver.Create(incremental),
-                ISourceGenerator basic => CSharpGeneratorDriver.Create(basic),
-                _ => throw new ArgumentException("Generator must implement IIncrementalGenerator or ISourceGenerator"),
-            };
+            GeneratorDriver driver = CSharpGeneratorDriver.Create(new[] { generator }, parseOptions: RoslynTestHelpers.ParseOptionsLatestLangVer);
 
             // Run the generation pass
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)
-            driver = driver.RunGenerators(inputCompilation); // AndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
-
-            // update syntax trees to have same "options" (work around "Inconsistent syntax tree features" glitch
-            // in RunGeneratorsAndUpdateCompilation via Compilation.SyntaxTreeCommonFeatures)
+            driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
             var runResult = driver.GetRunResult();
-            var outputCompilation = inputCompilation.AddSyntaxTrees(runResult.GeneratedTrees.Select(x => x.WithRootAndOptions(
-                x.GetRoot(), RoslynTestHelpers.ParseOptionsLatestLangVer)));
-            var diagnostics = runResult.Diagnostics;
 
             foreach (var result in runResult.Results)
             {
