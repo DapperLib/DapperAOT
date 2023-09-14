@@ -24,7 +24,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 29, 24)]
     internal static dynamic QuerySingle1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, SingleRow, Text, AtLeastOne, AtMostOne
+        // Query, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is null);
@@ -36,7 +36,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 32, 24)]
     internal static dynamic QuerySingle2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne
+        // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName
         // takes parameter: <anonymous type: int[] ids>
         // parameter map: ids
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -50,7 +50,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 35, 24)]
     internal static dynamic QuerySingle3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne
+        // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName
         // takes parameter: <anonymous type: int a, string b>
         // parameter map: a
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -69,13 +69,39 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 55, 24)]
     internal static global::System.Collections.Generic.IEnumerable<dynamic> Query4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, Buffered, Text
+        // Query, Buffered, Text, BindResultsByName
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(buffered is true);
         global::System.Diagnostics.Debug.Assert(param is null);
 
         return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, global::Dapper.RowFactory.Inbuilt.Dynamic);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 62, 24)]
+    internal static global::Foo.Customer QueryFirst5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, TypedResult, SingleRow, Text, AtLeastOne, BindResultsByName
+        // returns data: global::Foo.Customer
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(param is null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryFirst(param, RowFactory0.Instance);
+
+    }
+
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 64, 24)]
+    internal static int QueryFirst6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Query, TypedResult, SingleRow, Text, AtLeastOne
+        // returns data: int
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(param is null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryFirst(param, global::Dapper.RowFactory.Inbuilt.Value<int>());
 
     }
 
@@ -97,6 +123,54 @@ file static class DapperGeneratedInterceptors
     }
 
     private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();
+
+    private sealed class RowFactory0 : global::Dapper.RowFactory<global::Foo.Customer>
+    {
+        internal static readonly RowFactory0 Instance = new();
+        private RowFactory0() {}
+        public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
+        {
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                int token = -1;
+                var name = reader.GetName(columnOffset);
+                var type = reader.GetFieldType(columnOffset);
+                switch (NormalizedHash(name))
+                {
+                    case 2560266987U when NormalizedEquals(name, "balance"):
+                        token = type == typeof(int) ? 0 : 1; // two tokens for right-typed and type-flexible
+                        break;
+
+                }
+                tokens[i] = token;
+                columnOffset++;
+
+            }
+            return null;
+        }
+        public override global::Foo.Customer Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
+        {
+            global::Foo.Customer result = new();
+            foreach (var token in tokens)
+            {
+                switch (token)
+                {
+                    case 0:
+                        result.Balance = reader.GetInt32(columnOffset);
+                        break;
+                    case 1:
+                        result.Balance = GetValue<int>(reader, columnOffset);
+                        break;
+
+                }
+                columnOffset++;
+
+            }
+            return result;
+
+        }
+
+    }
 
     private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int a, string b>
     {

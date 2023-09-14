@@ -4,7 +4,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\GlobalFetchSize.input.cs", 16, 27)]
     internal static global::System.Collections.Generic.IEnumerable<global::SomeApp.SomeQueryType> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, HasParameters, Buffered, StoredProcedure
+        // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: (everything)
         // returns data: global::SomeApp.SomeQueryType

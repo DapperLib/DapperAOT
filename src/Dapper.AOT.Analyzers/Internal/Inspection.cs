@@ -601,7 +601,7 @@ internal static class Inspection
             return builder.ToImmutable();
         }
 
-        IReadOnlyDictionary<string, ConstructorParameter> ParseConstructorParameters(IMethodSymbol constructorSymbol)
+        static IReadOnlyDictionary<string, ConstructorParameter> ParseConstructorParameters(IMethodSymbol constructorSymbol)
         {
             var parameters = new Dictionary<string, ConstructorParameter>(StringComparer.InvariantCultureIgnoreCase);
             int order = 0;
@@ -689,8 +689,13 @@ internal static class Inspection
             ? type : type.WithNullableAnnotation(NullableAnnotation.None);
     }
 
-    public static DbType? IdentifyDbType(ITypeSymbol type, out string? readerMethod)
+    public static DbType? IdentifyDbType(ITypeSymbol? type, out string? readerMethod)
     {
+        if (type is null)
+        {
+            readerMethod = null;
+            return null;
+        }
         type = MakeNonNullable(type);
         switch (type.SpecialType)
         {

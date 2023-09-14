@@ -57,5 +57,27 @@ public class Foo
             select @id = @id + Balance, Credit from Accounts
             select @id as [Id]
             """);
+
+        // typed: missing name
+        _ = connection.QueryFirst<Customer>("select (Credit - Debit) from Accounts");
+        // untyped: fine, bound by index
+        _ = connection.QueryFirst<int>("select (Credit - Debit) from Accounts");
+    }
+    [BindTupleByName(true)]
+    public void TupleByName(System.Data.SqlClient.SqlConnection connection)
+    {
+        // untyped, but bound by name; dodgy
+        _ = connection.QueryFirst<(int a, int b)>("select (Credit - Debit) from Accounts");
+    }
+    [BindTupleByName(false)]
+    public void TupleByIndex(System.Data.SqlClient.SqlConnection connection)
+    {
+        // untyped: fine, bound by index
+        _ = connection.QueryFirst<(int, int)>("select (Credit - Debit) from Accounts");
+    }
+
+    public class Customer
+    {
+        public int Balance;
     }
 }

@@ -219,9 +219,20 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
 
         // additional result-type checks
+        if (HasAny(flags, OperationFlags.Query) && Inspection.IdentifyDbType(resultType, out _) is null)
+        {
+            flags |= OperationFlags.BindResultsByName;
+        }
+
         if (HasAny(flags, OperationFlags.Query) || HasAll(flags, OperationFlags.Execute | OperationFlags.Scalar))
         {
-            bool resultTuple = Inspection.InvolvesTupleType(resultType, out _);
+            bool resultTuple = Inspection.InvolvesTupleType(resultType, out _), bindByNameDefined = false;
+            // tuples are positional by default
+            if (resultTuple && !Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out bindByNameDefined, cancellationToken))
+            {
+                flags &= ~OperationFlags.BindResultsByName;
+            }
+
             if (HasAny(flags, OperationFlags.DoNotGenerate))
             {
                 // extra checks specific to Dapper vanilla
@@ -240,11 +251,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 }
                 else if (resultTuple)
                 {
-                    if (Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out var defined, cancellationToken))
-                    {
-                        flags |= OperationFlags.BindTupleResultByName;
-                    }
-                    if (!defined)
+                    if (!bindByNameDefined)
                     {
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
                     }
@@ -459,7 +466,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 case SqlSyntax.SqlServer:
                     SqlAnalysis.TSqlProcessor.ModeFlags modeFlags = SqlAnalysis.TSqlProcessor.ModeFlags.None;
                     if (caseSensitive) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.CaseSensitive;
-                    if ((flags & OperationFlags.Query) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.ValidateSelectNames;
+                    if ((flags & OperationFlags.BindResultsByName) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.ValidateSelectNames;
 
                     var proc = new DiagnosticTSqlProcessor(parameterType, modeFlags, diagnostics, loc, sqlSyntax);
                     try
@@ -773,7 +780,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         Scalar = 1 << 13,
         DoNotGenerate = 1 << 14,
         AotNotEnabled = 1 << 15,
-        BindTupleResultByName = 1 << 16,
+        BindResultsByName = 1 << 16,
         BindTupleParameterByName = 1 << 17,
         CacheCommand = 1 << 18,
         IncludeLocation = 1 << 19, // include -- SomeFile.cs#40 when possible

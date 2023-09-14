@@ -27,7 +27,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 35, 24)]
     internal static global::SomeCode.InternalNesting.SomePublicType QueryFirst2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne
+        // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne, BindResultsByName
         // returns data: global::SomeCode.InternalNesting.SomePublicType
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
@@ -55,7 +55,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 39, 24)]
     internal static global::SomeCode.InternalNesting.SomeInternalType QueryFirst4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne
+        // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne, BindResultsByName
         // returns data: global::SomeCode.InternalNesting.SomeInternalType
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
@@ -82,7 +82,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 55, 24)]
     internal static global::SomeCode.InternalNesting.SomeProtectedInternalType QueryFirst6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne
+        // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne, BindResultsByName
         // returns data: global::SomeCode.InternalNesting.SomeProtectedInternalType
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);

@@ -1,7 +1,7 @@
-Generator produced 7 diagnostics:
+Generator produced 13 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 13 of 13 enabled call-sites using 5 interceptors, 3 commands and 0 readers
+Dapper.AOT handled 18 of 20 enabled call-sites using 7 interceptors, 3 commands and 1 readers
 
 Warning DAP216 Interceptors/TsqlTips.input.cs L12 C29
 INSERT should explicitly specify target columns (L1 C1)
@@ -20,3 +20,21 @@ SELECT columns should be specified explicitly (L1 C8)
 
 Warning DAP220 Interceptors/TsqlTips.input.cs L38 C38
 SELECT column name is missing: 0 (L1 C8)
+
+Warning DAP221 Interceptors/TsqlTips.input.cs L45 C47
+SELECT column name is duplicated: 'Balance' (L1 C17)
+
+Warning DAP222 Interceptors/TsqlTips.input.cs L57 C13
+SELECT statement assigns variable and performs reads (L2 C1)
+
+Warning DAP220 Interceptors/TsqlTips.input.cs L62 C53
+SELECT column name is missing: 0 (L1 C8)
+
+Info DAP013 Interceptors/TsqlTips.input.cs L70 C24
+Tuple-type results are not currently supported
+
+Warning DAP220 Interceptors/TsqlTips.input.cs L70 C59
+SELECT column name is missing: 0 (L1 C8)
+
+Info DAP013 Interceptors/TsqlTips.input.cs L76 C24
+Tuple-type results are not currently supported
