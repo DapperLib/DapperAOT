@@ -1,5 +1,7 @@
 ﻿# Dapper.Advisor
 
+For the most up-to-date contents of this file, see [GitHub](https://github.com/DapperLib/DapperAOT/blob/main/src/Dapper.Advisor/readme.md).
+
 This tool contains analyzers that offer guidance on Dapper usage; it is
 included as part of Dapper.AOT, but can also offer guidance in isolation.
 
