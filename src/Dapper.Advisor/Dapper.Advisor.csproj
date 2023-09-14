@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net48;netstandard2.0</TargetFrameworks>
+        <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">true</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <WarningsAsErrors>true</WarningsAsErrors>
+        <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+        <PackageReadmeFile>readme.md</PackageReadmeFile>
+        <Deterministic>true</Deterministic>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj"
+        PrivateAssets="all" ReferenceOutputAssembly="false"
+        OutputItemType="Analyzer" SetTargetFramework="TargetFramework=netstandard2.0"/>
+
+    </ItemGroup>
+
+</Project>
