@@ -76,6 +76,40 @@ public class Foo
         _ = connection.QueryFirst<(int, int)>("select (Credit - Debit) from Accounts");
     }
 
+    public void ExecuteRules(System.Data.SqlClient.SqlConnection connection)
+    {
+        // execute with result
+        connection.Execute("""
+            declare @id int = 0;
+            select @id = @id + Balance from Accounts
+
+            select @id = @id + 1;
+
+            select @id as Sum
+            """);
+
+        // execute *without* a result, despite the select
+        connection.Execute("""
+            declare @id int = 0;
+            select @id = @id + Balance
+            from Accounts
+
+            select @id = @id + 1;
+
+            update SomeTable
+            set Whatever = @id
+            where [Key]=1
+            """);
+
+        // delete/update with filter: fine
+        connection.Execute("delete from Customers where Id=12");
+        connection.Execute("update Customers set Name='New name' where Id=12");
+
+        // delete/update without filter: warn
+        connection.Execute("delete from Customers");
+        connection.Execute("update Customers set Name='New name'");
+    }
+
     public class Customer
     {
         public int Balance;

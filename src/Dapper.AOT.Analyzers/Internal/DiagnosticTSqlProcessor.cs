@@ -110,6 +110,11 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
     protected override void OnSelectAssignAndRead(Location location)
         => AddDiagnostic(Diagnostics.SelectAssignAndRead, location, location.Line, location.Column);
 
+    protected override void OnUpdateWithoutWhere(Location location)
+        => AddDiagnostic(Diagnostics.UpdateWithoutWhere, location, location.Line, location.Column);
+    protected override void OnDeleteWithoutWhere(Location location)
+        => AddDiagnostic(Diagnostics.DeleteWithoutWhere, location, location.Line, location.Column);
+
     protected override bool TryGetParameter(string name, out ParameterDirection direction)
     {
         // we have knowledge of the type system; use it

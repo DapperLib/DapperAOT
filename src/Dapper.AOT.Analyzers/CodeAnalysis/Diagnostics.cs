@@ -141,7 +141,11 @@ internal static class Diagnostics
         SelectDuplicateColumnName = new("DAP221", "SELECT with duplicate column name",
             "SELECT column name is duplicated: '{0}' (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true),
         SelectAssignAndRead = new("DAP222", "SELECT with assignment and reads",
-            "SELECT statement assigns variable and performs reads (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
+            "SELECT statement assigns variable and performs reads (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+        DeleteWithoutWhere = new("DAP223", "DELETE without WHERE",
+            "DELETE statement lacks WHERE clause (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+        UpdateWithoutWhere = new ("DAP224", "UPDATE without WHERE",
+            "UPDATE statement lacks WHERE clause (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
 
 
     // be careful moving this because of static field initialization order

@@ -1,7 +1,7 @@
-Generator produced 13 diagnostics:
+Generator produced 16 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 18 of 20 enabled call-sites using 7 interceptors, 3 commands and 1 readers
+Dapper.AOT handled 24 of 26 enabled call-sites using 8 interceptors, 3 commands and 1 readers
 
 Warning DAP216 Interceptors/TsqlTips.input.cs L12 C29
 INSERT should explicitly specify target columns (L1 C1)
@@ -38,3 +38,12 @@ SELECT column name is missing: 0 (L1 C8)
 
 Info DAP013 Interceptors/TsqlTips.input.cs L76 C24
 Tuple-type results are not currently supported
+
+Warning DAP025 Interceptors/TsqlTips.input.cs L82 C20
+The command has a query that will be ignored
+
+Warning DAP223 Interceptors/TsqlTips.input.cs L109 C29
+DELETE statement lacks WHERE clause (L1 C1)
+
+Warning DAP224 Interceptors/TsqlTips.input.cs L110 C29
+UPDATE statement lacks WHERE clause (L1 C1)

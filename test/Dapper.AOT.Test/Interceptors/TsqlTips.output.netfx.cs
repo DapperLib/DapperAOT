@@ -105,6 +105,23 @@ file static class DapperGeneratedInterceptors
 
     }
 
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 82, 20)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 92, 20)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 105, 20)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 106, 20)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 109, 20)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 110, 20)]
+    internal static int Execute7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    {
+        // Execute, Text
+        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+        global::System.Diagnostics.Debug.Assert(param is null);
+
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).Execute(param);
+
+    }
+
     private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
     {
         public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)

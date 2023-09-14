@@ -179,6 +179,12 @@ internal class TSqlProcessor
     protected virtual void OnSelectAssignAndRead(Location location)
         => OnError($"SELECT statement has both assignment and results", location);
 
+    protected virtual void OnDeleteWithoutWhere(Location location)
+        => OnError($"DELETE statement without WHERE clause", location);
+    protected virtual void OnUpdateWithoutWhere(Location location)
+        => OnError($"UPDATE statement without WHERE clause", location);
+
+
     internal readonly struct Location
     {
         public Location(TSqlFragment source) : this()
@@ -564,12 +570,16 @@ internal class TSqlProcessor
                     }
                     index++;
                 }
-                if (sets != 0 && reads != 0)
+                if (reads != 0)
                 {
-                    parser.OnSelectAssignAndRead(new(spec));
+                    AddQuery();
+                    if (sets != 0)
+                    {
+                        parser.OnSelectAssignAndRead(new(spec));
+                    }
                 }
+
             }
-            AddQuery();
 
             base.Visit(node);
         }
@@ -577,6 +587,24 @@ internal class TSqlProcessor
         public override void Visit(OutputClause node)
         {
             AddQuery(); // works like a query
+            base.Visit(node);
+        }
+
+        public override void Visit(DeleteSpecification node)
+        {
+            if (node.WhereClause is null)
+            {
+                parser.OnDeleteWithoutWhere(new(node));
+            }
+            base.Visit(node);
+        }
+
+        public override void Visit(UpdateSpecification node)
+        {
+            if (node.WhereClause is null)
+            {
+                parser.OnUpdateWithoutWhere(new(node));
+            }
             base.Visit(node);
         }
 
