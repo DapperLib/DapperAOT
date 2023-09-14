@@ -6,6 +6,7 @@ public class Foo
     public void Things(System.Data.SqlClient.SqlConnection connection)
     {
         var args = new { a = 123, b = "abc" };
+        int[] ids = { 1, 2, 3 };
 
         // should warn: specify INSERT columns
         connection.Execute("insert SomeTable values (@a, @b)", args);
@@ -26,5 +27,11 @@ public class Foo
 
         // great!
         _ = connection.QuerySingle("select A, B from SomeTable");
+
+        // custom dapper "in" syntax
+        _ = connection.QuerySingle("select A from SomeTable where id in @ids", new { ids });
+
+        // custom dapper "literal" syntax
+        _ = connection.QuerySingle("select A from SomeTable where id={=a}", args);
     }
 }

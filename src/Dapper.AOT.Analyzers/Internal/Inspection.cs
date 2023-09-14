@@ -229,6 +229,12 @@ internal static class Inspection
         out string castType, bool getCastType)
     {
         castType = "";
+        if (parameterType is null || parameterType.SpecialType == SpecialType.System_String)
+        {
+            elementType = null;
+            return false;
+        }
+
         if (parameterType.IsArray())
         {
             elementType = parameterType.GetContainingTypeSymbol();
@@ -359,9 +365,12 @@ internal static class Inspection
             return dbType;
         }
 
-        public bool IsGettable { get; }
-        public bool IsSettable { get; }
-        public bool IsInitOnly { get; }
+        private readonly ElementMemberFlags _flags;
+        public ElementMemberFlags Flags => _flags;
+        public bool IsGettable => (_flags & ElementMemberFlags.IsGettable) != 0;
+        public bool IsSettable => (_flags & ElementMemberFlags.IsSettable) != 0;
+        public bool IsInitOnly => (_flags & ElementMemberFlags.IsInitOnly) != 0;
+        public bool IsExpandable => (_flags & ElementMemberFlags.IsExpandable) != 0;
 
         /// <summary>
         /// Order of member in constructor parameter list (starts from 0).
@@ -374,16 +383,23 @@ internal static class Inspection
             _dbValue = dbValue;
             Kind = kind;
         }
+        [Flags]
+        public enum ElementMemberFlags
+        {
+            None = 0,
+            IsGettable = 1 << 0,
+            IsSettable = 1 << 1,
+            IsInitOnly = 1 << 2,
+            IsExpandable = 1 << 3,
+        }
 
-        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind, bool isGettable, bool isSettable, bool isInitOnly, int? constructorParameterOrder)
+        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind, ElementMemberFlags flags, int? constructorParameterOrder)
         {
             Member = member;
             _dbValue = dbValue;
             Kind = kind;
 
-            IsGettable = isGettable;
-            IsSettable = isSettable;
-            IsInitOnly = isInitOnly;
+            _flags = flags;
             ConstructorParameterOrder = constructorParameterOrder;
         }
 
@@ -458,7 +474,7 @@ internal static class Inspection
         {
             return (standardConstructors: Array.Empty<IMethodSymbol>(), dapperAotEnabledConstructors: Array.Empty<IMethodSymbol>());
         }
-        
+
         // special case
         if (typeSymbol!.IsRecord && constructors?.Length == 2)
         {
@@ -480,8 +496,8 @@ internal static class Inspection
         {
             // not taking into an account parameterless constructors
             if (constructorMethodSymbol.Parameters.Length == 0) continue;
-            
-            var dapperAotAttribute= GetDapperAttribute(constructorMethodSymbol, Types.DapperAotAttribute);
+
+            var dapperAotAttribute = GetDapperAttribute(constructorMethodSymbol, Types.DapperAotAttribute);
             if (dapperAotAttribute is null)
             {
                 // picking constructor which is not marked with [DapperAot] attribute at all
@@ -512,23 +528,22 @@ internal static class Inspection
     /// If <param name="dapperAotConstructor"/> is passed, will be used to associate element member with the constructor parameter by name (case-insensitive).
     /// </summary>
     /// <param name="elementType">type, which elements to parse</param>
-    public static IEnumerable<ElementMember> GetMembers(ITypeSymbol? elementType, IMethodSymbol? dapperAotConstructor = null)
+    public static ImmutableArray<ElementMember> GetMembers(ITypeSymbol? elementType, IMethodSymbol? dapperAotConstructor = null)
     {
         if (elementType is null)
         {
-            yield break;
+            return ImmutableArray<ElementMember>.Empty;
         }
         if (elementType is INamedTypeSymbol named && named.IsTupleType)
         {
-            foreach (var field in named.TupleElements)
-            {
-                yield return new(field, null, ElementMemberKind.None);
-            }
+            return ImmutableArray.CreateRange(named.TupleElements, field => new ElementMember(field, null, ElementMemberKind.None));
         }
         else
         {
+            var elMembers = elementType.GetMembers();
+            var builder = ImmutableArray.CreateBuilder<ElementMember>(elMembers.Length);
             var constructorParameters = (dapperAotConstructor is not null) ? ParseConstructorParameters(dapperAotConstructor) : null;
-            foreach (var member in elementType.GetMembers())
+            foreach (var member in elMembers)
             {
                 // instance only, must be able to access by name
                 if (member.IsStatic || !member.CanBeReferencedByName) continue;
@@ -552,10 +567,14 @@ internal static class Inspection
                 }
 
                 // field or property (not indexer)
+                ITypeSymbol memberType;
                 switch (member)
                 {
-                    case IPropertySymbol { IsIndexer: false }:
-                    case IFieldSymbol:
+                    case IPropertySymbol { IsIndexer: false } prop:
+                        memberType = prop.Type;
+                        break;
+                    case IFieldSymbol field:
+                        memberType = field.Type;
                         break;
                     default:
                         continue;
@@ -565,13 +584,21 @@ internal static class Inspection
                     ? constructorParameter.Order
                     : null;
 
-                var isGettable = CodeWriter.IsGettableInstanceMember(member, out _);
-                var isSettable = CodeWriter.IsSettableInstanceMember(member, out _);
-                var isInitOnly = CodeWriter.IsInitOnlyInstanceMember(member, out _);
+                ElementMember.ElementMemberFlags flags = ElementMember.ElementMemberFlags.None;
+                if (CodeWriter.IsGettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsGettable;
+                if (CodeWriter.IsSettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsSettable;
+                if (CodeWriter.IsInitOnlyInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsInitOnly;
+
+                // see Dapper's TryStringSplit logic
+                if (memberType is not null && IsCollectionType(memberType, out var innerType) && innerType is not null)
+                {
+                    flags |= ElementMember.ElementMemberFlags.IsExpandable;
+                }
 
                 // all good, then!
-                yield return new(member, dbValue, kind, isGettable, isSettable, isInitOnly, constructorParameterOrder);
+                builder.Add(new(member, dbValue, kind, flags, constructorParameterOrder));
             }
+            return builder.ToImmutable();
         }
 
         IReadOnlyDictionary<string, ConstructorParameter> ParseConstructorParameters(IMethodSymbol constructorSymbol)

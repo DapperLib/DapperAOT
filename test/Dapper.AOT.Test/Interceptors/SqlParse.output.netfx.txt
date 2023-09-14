@@ -1,4 +1,4 @@
-Generator produced 50 diagnostics:
+Generator produced 59 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 10 of 12 enabled call-sites using 4 interceptors, 3 commands and 0 readers
@@ -63,6 +63,15 @@ Error DAP203 Interceptors/SqlParse.input.cs L24 C26
 Error DAP203 Interceptors/SqlParse.input.cs L24 C26
 @@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L7 C26)
 
+Warning DAP219 Interceptors/SqlParse.input.cs L25 C8
+SELECT columns should be specified explicitly (L8 C8)
+
+Warning DAP219 Interceptors/SqlParse.input.cs L25 C8
+SELECT columns should be specified explicitly (L8 C8)
+
+Warning DAP219 Interceptors/SqlParse.input.cs L25 C8
+SELECT columns should be specified explicitly (L8 C8)
+
 Warning DAP205 Interceptors/SqlParse.input.cs L25 C38
 Literal null used in comparison; 'is null' or 'is not null' should be preferred (L8 C38)
 
@@ -81,14 +90,32 @@ Literal null used in comparison; 'is null' or 'is not null' should be preferred 
 Warning DAP205 Interceptors/SqlParse.input.cs L25 C47
 Literal null used in comparison; 'is null' or 'is not null' should be preferred (L8 C47)
 
-Error DAP209 Interceptors/SqlParse.input.cs L29 C15
-Table-variable @t is accessed before it populated (L12 C15)
+Warning DAP219 Interceptors/SqlParse.input.cs L29 C8
+SELECT columns should be specified explicitly (L12 C8)
+
+Warning DAP219 Interceptors/SqlParse.input.cs L29 C8
+SELECT columns should be specified explicitly (L12 C8)
+
+Warning DAP219 Interceptors/SqlParse.input.cs L29 C8
+SELECT columns should be specified explicitly (L12 C8)
 
 Error DAP209 Interceptors/SqlParse.input.cs L29 C15
 Table-variable @t is accessed before it populated (L12 C15)
 
 Error DAP209 Interceptors/SqlParse.input.cs L29 C15
 Table-variable @t is accessed before it populated (L12 C15)
+
+Error DAP209 Interceptors/SqlParse.input.cs L29 C15
+Table-variable @t is accessed before it populated (L12 C15)
+
+Warning DAP219 Interceptors/SqlParse.input.cs L31 C8
+SELECT columns should be specified explicitly (L14 C8)
+
+Warning DAP219 Interceptors/SqlParse.input.cs L31 C8
+SELECT columns should be specified explicitly (L14 C8)
+
+Warning DAP219 Interceptors/SqlParse.input.cs L31 C8
+SELECT columns should be specified explicitly (L14 C8)
 
 Error DAP210 Interceptors/SqlParse.input.cs L36 C8
 Variable @s is accessed before it is assigned a value (L19 C8)

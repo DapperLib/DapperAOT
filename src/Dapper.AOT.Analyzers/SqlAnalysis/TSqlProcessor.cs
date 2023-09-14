@@ -1,10 +1,14 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Dapper.Internal;
+using Microsoft.CodeAnalysis;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using static Dapper.Internal.Inspection;
 
 namespace Dapper.SqlAnalysis;
 
@@ -26,9 +30,51 @@ internal class TSqlProcessor
     {
         _visitor = log is null ? new VariableTrackingVisitor(caseSensitive, this) : new LoggingVariableTrackingVisitor(caseSensitive, this, log);
     }
-    public virtual bool Execute(string sql)
+
+    static string HackAroundDapperSyntax(string sql, ImmutableArray<ElementMember> members)
     {
+        if (SqlTools.LiteralTokens.IsMatch(sql))
+        {
+            // some padding here to get the same size, for location data; "{=foo}" to " @foo "
+            sql = SqlTools.LiteralTokens.Replace(sql, static match => " @" + match.Groups[1].Value + " ");
+        }
+
+        if (!members.IsDefaultOrEmpty)
+        {
+            foreach (var member in members)
+            {
+                if (member.IsExpandable)
+                {
+                    var regexIncludingUnknown = ("([?@:$]" + Regex.Escape(member.CodeName) + @")(?!\w)(\s+(?i)unknown(?-i))?");
+                    sql = Regex.Replace(sql, regexIncludingUnknown, match =>
+                    {
+                        var variableName = match.Groups[1].Value;
+                        if (match.Groups[2].Success)
+                        {
+                            // looks like an optimize hint; leave it alone it
+                            return match.Value;
+                        }
+                        else
+                        {
+                            // expand it (as one for now)
+                            return "(@" + member.CodeName + ")";
+                        }
+                    }, RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant);
+                }
+            }
+        }
+
+        return sql;
+    }
+
+    public virtual bool Execute(string sql, ImmutableArray<ElementMember> members = default)
+    {
+        if (members.IsEmpty)
+        {
+            members = ImmutableArray<ElementMember>.Empty;
+        }
         Reset();
+        sql = HackAroundDapperSyntax(sql, members);
         var parser = new TSql160Parser(true, SqlEngineType.All);
         TSqlFragment tree;
         using (var reader = new StringReader(sql))
@@ -678,7 +724,7 @@ internal class TSqlProcessor
                 }
                 else
                 {
-                    parser.OnVariableNotDeclared(new (node, flags));
+                    parser.OnVariableNotDeclared(new(node, flags));
                 }
             }
         }

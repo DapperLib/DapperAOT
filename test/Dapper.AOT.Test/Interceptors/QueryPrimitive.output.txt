@@ -4,7 +4,7 @@ Hidden DAP000  L1 C1
 Dapper.AOT handled 21 of 21 enabled call-sites using 21 interceptors, 0 commands and 0 readers
 
 Warning DAP038 Interceptors/QueryPrimitive.input.cs L17 C24
-Type 'Int32 is a value-type; it will not be trivial to identify missing rows from QueryFirstOrDefault
+Type 'Int32' is a value-type; it will not be trivial to identify missing rows from QueryFirstOrDefault
 
 Warning DAP038 Interceptors/QueryPrimitive.input.cs L32 C30
-Type 'Int32 is a value-type; it will not be trivial to identify missing rows from QueryFirstOrDefaultAsync
+Type 'Int32' is a value-type; it will not be trivial to identify missing rows from QueryFirstOrDefaultAsync

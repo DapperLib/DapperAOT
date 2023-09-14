@@ -1,19 +1,19 @@
 Generator produced 6 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 8 of 8 enabled call-sites using 2 interceptors, 1 commands and 0 readers
+Dapper.AOT handled 10 of 10 enabled call-sites using 4 interceptors, 3 commands and 0 readers
 
-Warning DAP216 Interceptors/TsqlTips.input.cs L11 C29
+Warning DAP216 Interceptors/TsqlTips.input.cs L12 C29
 INSERT should explicitly specify target columns (L1 C1)
 
-Error DAP217 Interceptors/TsqlTips.input.cs L15 C56
+Error DAP217 Interceptors/TsqlTips.input.cs L16 C56
 The INSERT values do not match the target columns (L1 C28)
 
-Error DAP218 Interceptors/TsqlTips.input.cs L17 C53
+Error DAP218 Interceptors/TsqlTips.input.cs L18 C53
 The INSERT rows have different widths (L1 C25)
 
-Warning DAP219 Interceptors/TsqlTips.input.cs L22 C44
+Warning DAP219 Interceptors/TsqlTips.input.cs L23 C44
 SELECT columns should be specified explicitly (L1 C8)
 
-Warning DAP219 Interceptors/TsqlTips.input.cs L25 C44
+Warning DAP219 Interceptors/TsqlTips.input.cs L26 C44
 SELECT columns should be specified explicitly (L1 C8)

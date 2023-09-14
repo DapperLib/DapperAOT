@@ -11,7 +11,10 @@ internal static class SqlTools
     //      [\p{L}_]         underscore or letter character
     //      [\p{L}\p{N}_]*   any number of underscore, letter or number characters
     // )
-    private static readonly Regex ParameterRegex = new(@"[?@:]([\p{L}_][\p{L}\p{N}_]*)", RegexOptions.Compiled | RegexOptions.Multiline);
+    private const RegexOptions SharedRegexOptions = RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.CultureInvariant;
+    private static readonly Regex ParameterRegex = new(@"[?@:$]([\p{L}_][\p{L}\p{N}_]*)", SharedRegexOptions);
+
+    internal static readonly Regex LiteralTokens = new(@"(?<![\p{L}\p{N}_])\{=([\p{L}\p{N}_]+)\}", SharedRegexOptions);
 
     public static ImmutableHashSet<string> GetUniqueParameters(string? sql, out ParseFlags flags)
         => ImmutableHashSet.Create(StringComparer.InvariantCultureIgnoreCase, GetParameters(sql, out flags));

@@ -444,10 +444,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
 
             // check the arg type
-            if (!Inspection.IsCollectionType(parameterType, out var elementType))
+            if (Inspection.IsCollectionType(parameterType, out var innerType))
             {
-                elementType = parameterType;
+                parameterType = innerType;
             }
+
+            var paramMembers = Inspection.GetMembers(parameterType);
 
             // so: we know statically that we have known command-text
             // first, try try to find any parameters
@@ -455,10 +457,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             switch (IdentifySqlSyntax(ctx, op, out bool caseSensitive, cancellationToken))
             {
                 case SqlSyntax.SqlServer:
-                    var proc = new DiagnosticTSqlProcessor(elementType, caseSensitive, diagnostics, loc, sqlSyntax);
+                    var proc = new DiagnosticTSqlProcessor(parameterType, caseSensitive, diagnostics, loc, sqlSyntax);
                     try
                     {
-                        proc.Execute(sql!);
+                        proc.Execute(sql!, paramMembers);
                         parseFlags = proc.Flags;
                         paramNames = (from var in proc.Variables
                                       where var.IsParameter
@@ -495,7 +497,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 }
                 return "";
             }
-            if (HasAny(flags, OperationFlags.HasParameters) && Inspection.IsMissingOrObjectOrDynamic(elementType))
+            if (HasAny(flags, OperationFlags.HasParameters) && Inspection.IsMissingOrObjectOrDynamic(parameterType))
             {
                 // unknown parameter type; defer decision
                 return "?";
@@ -505,7 +507,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             var memberDbToCodeNames = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
 
             string? returnCodeMember = null, rowCountMember = null;
-            foreach (var member in Inspection.GetMembers(elementType))
+            foreach (var member in paramMembers)
             {
                 if (member.IsRowCount)
                 {
@@ -560,7 +562,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     // we can only consider this an error if we're confident in how well we parsed the input
                     if ((parseFlags & ParseFlags.Reliable) != 0)
                     {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(elementType)));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(parameterType)));
                     }
                 }
             }
