@@ -10,6 +10,7 @@
         <Deterministic>true</Deterministic>
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <Description>Usage guidance for Dapper</Description>
     </PropertyGroup>
 
     <ItemGroup>
