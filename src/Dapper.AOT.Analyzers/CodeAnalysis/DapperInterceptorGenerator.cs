@@ -854,7 +854,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                 }
             }
-            if (disabledCount == state.Nodes.Length)
+            if (disabledCount == state.Nodes.Length && IsDapperAotAvailable(state.Compilation))
             {
                 ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.DapperAotNotEnabled, null));
                 errorCount++;
@@ -870,6 +870,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
         return false; // nothing to validate - so: nothing to do, quick exit
     }
+
+    private bool IsDapperAotAvailable(Compilation compilation)
+        => compilation.GetTypeByMetadataName("Dapper." + Types.DapperAotAttribute) is not null;
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
     {

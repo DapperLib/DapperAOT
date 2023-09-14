@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net48;netstandard2.0</TargetFrameworks>
+        <TargetFramework>netstandard2.0</TargetFramework>
         <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">true</GeneratePackageOnBuild>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
         <WarningsAsErrors>true</WarningsAsErrors>
@@ -13,8 +13,13 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- this is to force build order -->
+        <ProjectReference Include="../Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="None" />
+
+        <!-- nuget package items -->
         <None Include="readme.md" Pack="true" PackagePath="/" />
-        <ProjectReference Include="..\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" SetTargetFramework="TargetFramework=netstandard2.0" />
+        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
+        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Microsoft.SqlServer.TransactSql.ScriptDom.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
     </ItemGroup>
 
 
