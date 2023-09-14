@@ -13,4 +13,3 @@ All feedback / questions / etc - see [DapperAOT](https://github.com/DapperLib/Da
 Notes:
 
 - the advanced SQL analysis tools are limited to SQL Server (TSQL) currently, identified via `SqlConnection` as the connection type
-- Dapper's query-tweaking syntax (`in @ids` and `{=val}`) are not currently supported and may appear as a false-positive syntax error
