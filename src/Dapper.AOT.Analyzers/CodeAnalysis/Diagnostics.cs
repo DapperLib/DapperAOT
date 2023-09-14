@@ -127,7 +127,15 @@ internal static class Diagnostics
         VariableNotDeclared = new("DAP214", "Variable not declared",
             "Variable {0} is not declared and no corresponding parameter exists (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
         TableVariableOutputParameter = new("DAP215", "Variable used before declared",
-            "Table variable {0} cannot be used as an output parameter (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true);
+            "Table variable {0} cannot be used as an output parameter (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true),
+        InsertColumnsNotSpecified = new("DAP216", "INSERT without target columns",
+            "INSERT should explicitly specify target columns (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+        InsertColumnsMismatch = new("DAP217", "INSERT with mismatched columns",
+            "The INSERT values do not match the target columns (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
+        InsertColumnsUnbalanced = new("DAP218", "INSERT with unbalanced rows",
+            "The INSERT rows have different widths (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
+        SelectStar = new ("DAP219", "SELECT with wildcard columns",
+            "SELECT columns should be specified explicitly (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
 
 
     // be careful moving this because of static field initialization order

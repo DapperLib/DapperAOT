@@ -1189,6 +1189,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             .Append(declaredType).Append(" args)").Outdent(false);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0066:Convert switch statement to expression", Justification = "Readability")]
     private static void WriteCommandProperties(SourceProductionContext ctx, CodeWriter sb, string source, ImmutableArray<CommandProperty> properties, int index = 0)
     {
         foreach (var grp in properties.GroupBy(x => x.CommandType, SymbolEqualityComparer.Default))
@@ -1266,12 +1267,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             foreach (var member in type.GetMembers())
             {
                 if (member.IsStatic || member.Name != name || member.DeclaredAccessibility != Accessibility.Public) continue;
-                switch (member.Kind)
+                return member.Kind switch
                 {
-                    case SymbolKind.Field when member is IFieldSymbol field: return field.IsReadOnly;
-                    case SymbolKind.Property when member is IPropertySymbol prop: return prop.SetMethod is not null;
-                    default: return false;
-                }
+                    SymbolKind.Field when member is IFieldSymbol field => field.IsReadOnly,
+                    SymbolKind.Property when member is IPropertySymbol prop => prop.SetMethod is not null,
+                    _ => false,
+                };
             }
             return false;
         }

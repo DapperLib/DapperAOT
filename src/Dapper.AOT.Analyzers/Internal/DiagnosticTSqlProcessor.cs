@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Data;
+using static Dapper.SqlAnalysis.TSqlProcessor;
 
 namespace Dapper.Internal;
 
@@ -93,6 +94,15 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
 
     protected override void OnTableVariableOutputParameter(Variable variable)
         => AddDiagnostic(Diagnostics.TableVariableOutputParameter, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+
+    protected override void OnInsertColumnMismatch(Location location)
+        => AddDiagnostic(Diagnostics.InsertColumnsMismatch, location, location.Line, location.Column);
+    protected override void OnInsertColumnsNotSpecified(Location location)
+        => AddDiagnostic(Diagnostics.InsertColumnsNotSpecified, location, location.Line, location.Column);
+    protected override void OnInsertColumnsUnbalanced(Location location)
+        => AddDiagnostic(Diagnostics.InsertColumnsUnbalanced, location, location.Line, location.Column);
+    protected override void OnSelectStar(Location location)
+        => AddDiagnostic(Diagnostics.SelectStar, location, location.Line, location.Column);
 
     protected override bool TryGetParameter(string name, out ParameterDirection direction)
     {

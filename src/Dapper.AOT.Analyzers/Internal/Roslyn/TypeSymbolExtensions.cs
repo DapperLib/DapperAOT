@@ -50,7 +50,7 @@ internal static class TypeSymbolExtensions
     {
         if (typeSymbol is not INamedTypeSymbol { TypeKind: TypeKind.Enum } namedTypeSymbol) return null;
         var enumUnderlyingType = namedTypeSymbol.EnumUnderlyingType;
-        return enumUnderlyingType is null ? null : enumUnderlyingType.ToDisplayString();
+        return enumUnderlyingType?.ToDisplayString();
     }
 
     /// <returns>

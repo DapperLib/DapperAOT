@@ -101,11 +101,22 @@ internal class TSqlProcessor
     protected virtual void OnSelectScopeIdentity(Location location)
         => OnError($"Consider OUTPUT INSERTED.yourid on the INSERT instead of SELECT SCOPE_IDENTITY()", location);
 
+    protected virtual void OnSelectStar(Location location)
+        => OnError($"SELECT columns should be explicitly specified", location);
+
     protected virtual void OnExecVariable(Location location)
         => OnError($"EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters", location);
 
     protected virtual void OnTableVariableOutputParameter(Variable variable)
         => OnError($"Table variable {variable.Name} cannot be used as an output parameter", variable.Location);
+
+    protected virtual void OnInsertColumnsNotSpecified(Location location)
+        => OnError($"Target columns for INSERT should be explicitly specified", location);
+
+    protected virtual void OnInsertColumnMismatch(Location location)
+        => OnError($"The columns specified in the INSERT do not match the source columns provided", location);
+    protected virtual void OnInsertColumnsUnbalanced(Location location)
+        => OnError($"The rows specified in the INSERT have differing widths", location);
 
     internal readonly struct Location
     {
@@ -438,12 +449,23 @@ internal class TSqlProcessor
         }
         public override void Visit(SelectStatement node)
         {
-            if (node.QueryExpression is QuerySpecification spec
-                && spec.SelectElements is { Count: 1 }
-                && spec.SelectElements[0] is SelectScalarExpression { Expression: FunctionCall func }
-                && string.Equals(func.FunctionName?.Value, "SCOPE_IDENTITY", StringComparison.OrdinalIgnoreCase))
+            if (node.QueryExpression is QuerySpecification spec)
             {
-                parser.OnSelectScopeIdentity(new Location(func));
+
+                if (spec.SelectElements is { Count: 1 }
+                    && spec.SelectElements[0] is SelectScalarExpression { Expression: FunctionCall func }
+                    && string.Equals(func.FunctionName?.Value, "SCOPE_IDENTITY", StringComparison.OrdinalIgnoreCase))
+                {
+                    parser.OnSelectScopeIdentity(new Location(func));
+                }
+                foreach (var el in spec.SelectElements)
+                {
+                    if (el is SelectStarExpression)
+                    {
+                        parser.OnSelectStar(new Location(el));
+                        break;
+                    }
+                }
             }
             AddQuery();
 
@@ -532,6 +554,50 @@ internal class TSqlProcessor
                 parser.OnGlobalIdentity(new Location(node));
             }
             base.Visit(node);
+        }
+
+        public override void Visit(InsertSpecification node)
+        {
+            var knownInsertedCount = TryCount(node.InsertSource, out var count, out bool unbalanced);
+            if (unbalanced)
+            {
+                parser.OnInsertColumnsUnbalanced(new Location(node.InsertSource));
+            }
+            if (node.Columns.Count == 0)
+            {
+                parser.OnInsertColumnsNotSpecified(new Location(node));
+            }
+            else if (knownInsertedCount && count != node.Columns.Count)
+            {
+                parser.OnInsertColumnMismatch(new Location(node.InsertSource));
+            }
+
+            base.Visit(node);
+
+            static bool TryCount(InsertSource insertSource, out int count, out bool unbalanced)
+            {
+                unbalanced = false;
+                switch (insertSource)
+                {
+                    case ValuesInsertSource values when values.RowValues.Count > 0:
+                        count = values.RowValues[0].ColumnValues.Count;
+                        // check they're all the same width!
+                        foreach (var row in values.RowValues)
+                        {
+                            if (row.ColumnValues.Count != count)
+                            {
+                                unbalanced = true;
+                                return false;
+                            }
+                        }
+                        return true;
+                    case SelectInsertSource select when select.Select is QuerySpecification expr:
+                        count = expr.SelectElements.Count;
+                        return true;
+                }
+                count = 0;
+                return false;
+            }
         }
 
         private void MarkAssigned(VariableReference node, bool isTable)
