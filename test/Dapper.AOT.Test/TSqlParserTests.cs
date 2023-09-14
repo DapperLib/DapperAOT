@@ -404,7 +404,7 @@ public class TSqlParserTests
 
     class TestTSqlProcessor : TSqlProcessor
     {
-        public TestTSqlProcessor(bool caseSensitive = false, Action<string>? log = null) : base(caseSensitive, log) { }
+        public TestTSqlProcessor(ModeFlags flags = ModeFlags.None, Action<string>? log = null) : base(flags, log) { }
         public string[] GetParameters(out string[] errors)
         {
             var parameters = (from p in this.Variables

@@ -33,5 +33,29 @@ public class Foo
 
         // custom dapper "literal" syntax
         _ = connection.QuerySingle("select A from SomeTable where id={=a}", args);
+
+        // missing column name
+        _ = connection.Query("select Credit - Debit from Accounts");
+
+        // fine
+        _ = connection.Query("select Balance = Credit - Debit from Accounts");
+        _ = connection.Query("select (Credit - Debit) as Balance from Accounts");
+
+        // duplicate column name
+        _ = connection.Query("select Balance, (Credit - Debit) as Balance from Accounts");
+
+        // this is valid, but inefficient
+        _ = connection.Query("""
+            declare @id int = 0;
+            select @id = @id + Balance from Accounts
+            select @id as Sum
+            """);
+
+        // this is invalid SQL (assign plus read)
+        _ = connection.Query("""
+            declare @id int = 0;
+            select @id = @id + Balance, Credit from Accounts
+            select @id as [Id]
+            """);
     }
 }

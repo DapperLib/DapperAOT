@@ -15,6 +15,13 @@ namespace Dapper.SqlAnalysis;
 internal class TSqlProcessor
 {
     [Flags]
+    internal enum ModeFlags
+    {
+        None = 0,
+        CaseSensitive = 1 << 0,
+        ValidateSelectNames = 1 << 1,
+    }
+    [Flags]
     internal enum VariableFlags
     {
         None = 0,
@@ -25,10 +32,12 @@ internal class TSqlProcessor
         OutputParameter = 1 << 4,
     }
     private readonly VariableTrackingVisitor _visitor;
+
     protected bool CaseSensitive => _visitor.CaseSensitive;
-    public TSqlProcessor(bool caseSensitive = false, Action<string>? log = null)
+    protected bool ValidateSelectNames => _visitor.ValidateSelectNames;
+    public TSqlProcessor(ModeFlags flags = ModeFlags.None, Action<string>? log = null)
     {
-        _visitor = log is null ? new VariableTrackingVisitor(caseSensitive, this) : new LoggingVariableTrackingVisitor(caseSensitive, this, log);
+        _visitor = log is null ? new VariableTrackingVisitor(flags, this) : new LoggingVariableTrackingVisitor(flags, this, log);
     }
 
     static string HackAroundDapperSyntax(string sql, ImmutableArray<ElementMember> members)
@@ -147,9 +156,6 @@ internal class TSqlProcessor
     protected virtual void OnSelectScopeIdentity(Location location)
         => OnError($"Consider OUTPUT INSERTED.yourid on the INSERT instead of SELECT SCOPE_IDENTITY()", location);
 
-    protected virtual void OnSelectStar(Location location)
-        => OnError($"SELECT columns should be explicitly specified", location);
-
     protected virtual void OnExecVariable(Location location)
         => OnError($"EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters", location);
 
@@ -163,6 +169,15 @@ internal class TSqlProcessor
         => OnError($"The columns specified in the INSERT do not match the source columns provided", location);
     protected virtual void OnInsertColumnsUnbalanced(Location location)
         => OnError($"The rows specified in the INSERT have differing widths", location);
+
+    protected virtual void OnSelectStar(Location location)
+        => OnError($"SELECT columns should be explicitly specified", location);
+    protected virtual void OnSelectEmptyColumnName(Location location, int column)
+        => OnError($"SELECT statement with missing column name: {column}", location);
+    protected virtual void OnSelectDuplicateColumnName(Location location, string name)
+        => OnError($"SELECT statement with duplicate column name: {name}", location);
+    protected virtual void OnSelectAssignAndRead(Location location)
+        => OnError($"SELECT statement has both assignment and results", location);
 
     internal readonly struct Location
     {
@@ -234,7 +249,7 @@ internal class TSqlProcessor
     class LoggingVariableTrackingVisitor : VariableTrackingVisitor
     {
         private readonly Action<string> log;
-        public LoggingVariableTrackingVisitor(bool caseSensitive, TSqlProcessor parser, Action<string> log) : base(caseSensitive, parser)
+        public LoggingVariableTrackingVisitor(ModeFlags flags, TSqlProcessor parser, Action<string> log) : base(flags, parser)
         {
             this.log = log;
         }
@@ -296,13 +311,16 @@ internal class TSqlProcessor
         //   call base.ExplicitVisit; VariableTableReference is an example, omitting node.Variable?.Accept(this)
         //   to avoid a problem; also, be sure to think "nulls", so: ?.Accept(this), if you're not sure
 
-        public VariableTrackingVisitor(bool caseSensitive, TSqlProcessor parser)
+        private readonly ModeFlags _flags;
+        public VariableTrackingVisitor(ModeFlags flags, TSqlProcessor parser)
         {
-            variables = caseSensitive ? new(StringComparer.Ordinal) : new(StringComparer.OrdinalIgnoreCase);
+            _flags = flags;
+            variables = CaseSensitive ? new(StringComparer.Ordinal) : new(StringComparer.OrdinalIgnoreCase);
             this.parser = parser;
         }
 
-        public bool CaseSensitive => ReferenceEquals(variables.Comparer, StringComparer.Ordinal);
+        public bool CaseSensitive => (_flags & ModeFlags.CaseSensitive) != 0;
+        public bool ValidateSelectNames => (_flags & ModeFlags.ValidateSelectNames) != 0;
 
         private readonly Dictionary<string, Variable> variables;
         private int batchCount;
@@ -504,13 +522,51 @@ internal class TSqlProcessor
                 {
                     parser.OnSelectScopeIdentity(new Location(func));
                 }
+                int sets = 0, reads = 0;
+                var checkNames = ValidateSelectNames;
+                HashSet<string> names = checkNames ? new HashSet<string>(StringComparer.InvariantCultureIgnoreCase) : null!;
+
+                int index = 0;
                 foreach (var el in spec.SelectElements)
                 {
-                    if (el is SelectStarExpression)
+                    switch (el)
                     {
-                        parser.OnSelectStar(new Location(el));
-                        break;
+                        case SelectStarExpression:
+                            parser.OnSelectStar(new Location(el));
+                            reads++;
+                            break;
+                        case SelectScalarExpression scalar:
+                            if (checkNames)
+                            {
+                                var name = scalar.ColumnName?.Value;
+                                if (name is null && scalar.Expression is ColumnReferenceExpression col)
+                                {
+                                    var ids = col.MultiPartIdentifier.Identifiers;
+                                    if(ids.Count != 0)
+                                    {
+                                        name = ids[ids.Count - 1].Value;
+                                    }
+                                }
+                                if (string.IsNullOrWhiteSpace(name))
+                                {
+                                    parser.OnSelectEmptyColumnName(new(scalar), index);
+                                }
+                                else if (!names.Add(name!))
+                                {
+                                    parser.OnSelectDuplicateColumnName(new(scalar), name!);
+                                }
+                            }
+                            reads++;
+                            break;
+                        case SelectSetVariable:
+                            sets++;
+                            break;
                     }
+                    index++;
+                }
+                if (sets != 0 && reads != 0)
+                {
+                    parser.OnSelectAssignAndRead(new(spec));
                 }
             }
             AddQuery();

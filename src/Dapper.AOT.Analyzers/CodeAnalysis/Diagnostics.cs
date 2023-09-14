@@ -134,8 +134,14 @@ internal static class Diagnostics
             "The INSERT values do not match the target columns (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
         InsertColumnsUnbalanced = new("DAP218", "INSERT with unbalanced rows",
             "The INSERT rows have different widths (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
-        SelectStar = new ("DAP219", "SELECT with wildcard columns",
-            "SELECT columns should be specified explicitly (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
+        SelectStar = new("DAP219", "SELECT with wildcard columns",
+            "SELECT columns should be specified explicitly (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+        SelectEmptyColumnName = new("DAP220", "SELECT with missing column name",
+            "SELECT column name is missing: {0} (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true),
+        SelectDuplicateColumnName = new("DAP221", "SELECT with duplicate column name",
+            "SELECT column name is duplicated: '{0}' (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true),
+        SelectAssignAndRead = new("DAP222", "SELECT with assignment and reads",
+            "SELECT statement assigns variable and performs reads (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
 
 
     // be careful moving this because of static field initialization order

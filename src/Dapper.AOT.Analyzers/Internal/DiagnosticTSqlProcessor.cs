@@ -17,8 +17,8 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
     private readonly LiteralExpressionSyntax? _literal;
     public object? DiagnosticsObject => _diagnostics;
     private readonly ITypeSymbol? _parameterType;
-    public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, bool caseSensitive, object? diagnostics,
-        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(caseSensitive)
+    public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, ModeFlags flags, object? diagnostics,
+        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(flags)
     {
         _diagnostics = diagnostics;
         _location = sqlSyntax?.GetLocation() ?? location;
@@ -103,6 +103,12 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
         => AddDiagnostic(Diagnostics.InsertColumnsUnbalanced, location, location.Line, location.Column);
     protected override void OnSelectStar(Location location)
         => AddDiagnostic(Diagnostics.SelectStar, location, location.Line, location.Column);
+    protected override void OnSelectEmptyColumnName(Location location, int column)
+        => AddDiagnostic(Diagnostics.SelectEmptyColumnName, location, column, location.Line, location.Column);
+    protected override void OnSelectDuplicateColumnName(Location location, string name)
+        => AddDiagnostic(Diagnostics.SelectDuplicateColumnName, location, name, location.Line, location.Column);
+    protected override void OnSelectAssignAndRead(Location location)
+        => AddDiagnostic(Diagnostics.SelectAssignAndRead, location, location.Line, location.Column);
 
     protected override bool TryGetParameter(string name, out ParameterDirection direction)
     {

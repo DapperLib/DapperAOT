@@ -1,7 +1,7 @@
-Generator produced 6 diagnostics:
+Generator produced 7 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 10 of 10 enabled call-sites using 4 interceptors, 3 commands and 0 readers
+Dapper.AOT handled 13 of 13 enabled call-sites using 5 interceptors, 3 commands and 0 readers
 
 Warning DAP216 Interceptors/TsqlTips.input.cs L12 C29
 INSERT should explicitly specify target columns (L1 C1)
@@ -17,3 +17,6 @@ SELECT columns should be specified explicitly (L1 C8)
 
 Warning DAP219 Interceptors/TsqlTips.input.cs L26 C44
 SELECT columns should be specified explicitly (L1 C8)
+
+Warning DAP220 Interceptors/TsqlTips.input.cs L38 C38
+SELECT column name is missing: 0 (L1 C8)

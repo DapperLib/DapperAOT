@@ -457,7 +457,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             switch (IdentifySqlSyntax(ctx, op, out bool caseSensitive, cancellationToken))
             {
                 case SqlSyntax.SqlServer:
-                    var proc = new DiagnosticTSqlProcessor(parameterType, caseSensitive, diagnostics, loc, sqlSyntax);
+                    SqlAnalysis.TSqlProcessor.ModeFlags modeFlags = SqlAnalysis.TSqlProcessor.ModeFlags.None;
+                    if (caseSensitive) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.CaseSensitive;
+                    if ((flags & OperationFlags.Query) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.ValidateSelectNames;
+
+                    var proc = new DiagnosticTSqlProcessor(parameterType, modeFlags, diagnostics, loc, sqlSyntax);
                     try
                     {
                         proc.Execute(sql!, paramMembers);
