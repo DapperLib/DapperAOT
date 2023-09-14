@@ -119,6 +119,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (typeArgs.Length == 1)
             {
                 resultType = typeArgs[0];
+
+                // check for value-type single
+                if (HasAny(flags, OperationFlags.SingleRow) && !HasAny(flags, OperationFlags.AtLeastOne)
+                    && resultType.IsValueType && !CouldBeNullable(resultType))
+                {
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, loc, resultType.Name, op.TargetMethod.Name));
+                }
             }
         }
 
@@ -1325,7 +1332,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         var hasGetOnlyMembers = members.Any(member => member.IsGettable && !member.IsSettable && !member.IsInitOnly);
         var useDeferredConstruction = hasExplicitConstructor || hasInitOnlyMembers || hasGetOnlyMembers;
 
-        WriteRowFactoryHeader();        
+        WriteRowFactoryHeader();
 
         WriteTokenizeMethod();
         WriteReadMethod();
@@ -1439,20 +1446,20 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
                 }
 
-                
+
                 sb.NewLine().Append("break;").NewLine().Outdent(false)
                     .Append("case ").Append(token + membersCount).Append(":").NewLine().Indent(false);
 
                 // write `result.X = ` or `member0 = `
                 if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
                 else sb.Append("result.").Append(member.CodeName);
-                
+
                 sb.Append(" = ")
                     .Append(nullCheck)
                     .Append("GetValue<")
                     .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
                     .Append("break;").NewLine().Outdent(false);
-                
+
                 token++;
             }
 
@@ -1504,11 +1511,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb.Append("return result;").NewLine().Outdent().NewLine();
             }
         }
+    }
 
-        static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
+    static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
             ? symbol.NullableAnnotation == NullableAnnotation.Annotated
             : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
-    }
 
     [Flags]
     enum WriteArgsFlags

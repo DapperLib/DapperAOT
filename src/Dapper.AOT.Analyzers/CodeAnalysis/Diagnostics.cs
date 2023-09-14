@@ -84,6 +84,8 @@ internal static class Diagnostics
             "Type has more than 1 constructor, please, either mark one constructor with [DapperAot] or reduce amount of constructors", Category.Library, DiagnosticSeverity.Error, true),
         UserTypeNoSettableMembersFound = new("DAP037", "No settable members exist for user type",
             "Type '{0}' has no settable members (fields or properties)", Category.Library, DiagnosticSeverity.Error, true),
+        ValueTypeSingleFirstOrDefaultUsage = new("DAP038", "Value-type single row 'OrDefault' usage",
+            "Type '{0}' is a value-type; it will not be trivial to identify missing rows from {1}", Category.Library, DiagnosticSeverity.Warning, true),
 
     // TypeAccessor
         TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",
