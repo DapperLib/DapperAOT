@@ -24,7 +24,7 @@ public class TSqlParserTests
         var parser = GetProcessor();
         parser.Execute("""
             declare @s int = null;
-            select *
+            select Id
             from Customers
             where Id = null and Name != null;
 
@@ -63,7 +63,7 @@ public class TSqlParserTests
         var parser = GetProcessor();
         parser.Execute("""
             declare @s int = null;
-            select *
+            select Id
             from Customers
             where Id is null and Name is not null
             select @s
@@ -117,7 +117,7 @@ public class TSqlParserTests
         var parser = GetProcessor();
         parser.Execute("""
             declare @s int = 42;
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -135,7 +135,7 @@ public class TSqlParserTests
             declare @s int
             set @s = 42
 
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -153,7 +153,7 @@ public class TSqlParserTests
             declare @s int
             exec someproc @s output
 
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -171,7 +171,7 @@ public class TSqlParserTests
             declare @s int
             exec @s = someproc
 
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -192,7 +192,7 @@ public class TSqlParserTests
             output INSERTED.id into @s (id)
             values('Name')
 
-            select *
+            select Id
             from Customers
             where Id in (select id from @s)
             """);
@@ -211,7 +211,7 @@ public class TSqlParserTests
             exec someproc @s
 
             set @s = 42;
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -228,7 +228,7 @@ public class TSqlParserTests
         parser.Execute("""
             declare @s table (id int not null)
             
-            select *
+            select Id
             from Customers
             where Foo in (select id from @s) and Id=@id
             """);
@@ -245,7 +245,7 @@ public class TSqlParserTests
         parser.Execute("""
             declare @s table (id int not null)
             insert @s (id) values (42);
-            select *
+            select Id
             from Customers
             where Foo in (select id from @s) and Id=@id
             """);
@@ -263,7 +263,7 @@ public class TSqlParserTests
             declare @s int
             select @s = 42
 
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -278,7 +278,7 @@ public class TSqlParserTests
     {
         var parser = GetProcessor();
         parser.Execute("""
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
 
@@ -298,7 +298,7 @@ public class TSqlParserTests
         parser.Execute("""
             declare @s int = 42;
 
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s garbage;
             """);
