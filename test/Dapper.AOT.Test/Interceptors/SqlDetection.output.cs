@@ -112,8 +112,9 @@ file static class DapperGeneratedInterceptors
 
         }
         public override bool SupportBatch => true;
-        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbBatch batch, object? args)
+        public override void AddParameters(in BatchState batch, object? args)
         {
+            var cmd = batch.Command;
             var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
             var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;

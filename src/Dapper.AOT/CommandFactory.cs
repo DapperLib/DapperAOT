@@ -13,6 +13,7 @@ namespace Dapper;
 /// </summary>
 public abstract class CommandFactory
 {
+
     /// <summary>
     /// Provides a basic determination of whether a parameter is used in a query and should be included
     /// </summary>
@@ -158,6 +159,77 @@ public abstract class CommandFactory
         command.Transaction = null;
         return Interlocked.CompareExchange(ref storage, command, null) is null;
     }
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Represents the state associated with a <see cref="DbBatchCommand"/> as part of a <see cref="DbBatch"/>.
+    /// </summary>
+    /// <remarks>Only the current command is available to the caller.</remarks>
+    public readonly struct CommandState
+    {
+        /// <summary>
+        /// The <see cref="DbBatchCommand"/> associated with the current operation.
+        /// </summary>
+        public DbBatchCommand? BatchCommand => batchCommand;
+
+        /// <summary>
+        /// The <see cref="DbCommand"/> associated with the current operation.
+        /// </summary>
+        public DbCommand? Command => batchCommand is null ? dbCommand : null;
+
+        internal DbBatchCommandCollection? BatchCommands => batch?.BatchCommands;
+
+        /// <summary>
+        /// Create a <see cref="DbParameter"/> for the current command
+        /// </summary>
+        public DbParameter CreateParameter()
+        {
+#if NET8_0_OR_GREATER // https://github.com/dotnet/runtime/issues/82326
+            if (batchCommand is { CanCreateParameter: true })
+            {
+                return batchCommand.CreateParameter();
+            }
+#endif
+            return (dbCommand ?? UnsafeWithCommandForParameters()).CreateParameter();
+        }
+        internal CommandState(DbCommand command)
+        {
+            dbCommand = command;
+            batchCommand = null;
+            batch = null;
+        }
+
+        internal CommandState(DbBatch batch)
+        {
+            this.batch = batch;
+            batchCommand = null;
+            dbCommand = null;
+        }
+
+        private readonly DbBatch? batch;
+        private readonly DbBatchCommand? batchCommand;
+        private readonly DbCommand? dbCommand;
+
+        private DbCommand UnsafeWithCommandForParameters()
+        {
+            Unsafe.AsRef(ref batchCommand)
+            return Unsafe.AsRef(in dbCommand) = batch?.Connection?.CreateCommand() ?? Throw();
+            static DbCommand Throw() => throw new InvalidOperationException("It was not possible to create command parameters for this batch; the connection may be null");
+        }
+
+        internal void UnsafeCreateNewCommand() => Unsafe.AsRef(in batchCommand) = batch.CreateBatchCommand();
+
+        internal int ExecuteNonQuery() => batch.ExecuteNonQuery();
+
+        internal void UnsafeSetCommand(DbBatchCommand value) => Unsafe.AsRef(in batchCommand) = value;
+
+        internal void Cleanup()
+        {
+            dbCommand?.Dispose();
+            batch?.Dispose();
+        }
+    }
+#endif
 }
 
 /// <summary>
@@ -240,6 +312,7 @@ public class CommandFactory<T> : CommandFactory
     /// </summary>
     public virtual bool RequirePostProcess => false;
 
+
 #if NET6_0_OR_GREATER
     /// <summary>
     /// Indicates whether this instance supports the <see cref="DbBatch"/> API.
@@ -249,48 +322,41 @@ public class CommandFactory<T> : CommandFactory
     /// <summary>
     /// Add parameters with values.
     /// </summary>
-    public virtual void AddParameters(DbBatchCommand command, DbBatch batch, T args) { }
+    public virtual void AddParameters(in CommandState batch, T args) { }
 
     /// <summary>
-    /// Create a parameter for a given batch
+    /// Update parameter values
     /// </summary>
-    public DbParameter CreateParameter(DbBatchCommand command, DbBatch batch, ref IDisposable? state)
+    public virtual void UpdateParameters(in CommandState batch, T args)
     {
-#if NET8_0_OR_GREATER && NEW_BATCH_API // https://github.com/dotnet/runtime/issues/82326
-        if (command.CanCreateParameter) return command.CreateParameter();
-#endif
-        if (state is not DbCommand cmd)
+        var command = batch.Command;
+        if (command.Parameters.Count != 0) // try to avoid rogue "dirty" checks
         {
-            if (state is not null)
-            {   // we shouldn't hit this, but
-                state.Dispose();
-                state = null; // not redundant; this is for timing in case CreateCommand fails
-            }
-            state = cmd = batch.Connection!.CreateCommand();
+            command.Parameters.Clear();
         }
-        return cmd.CreateParameter();
+        AddParameters(in batch, args);
     }
 
     /// <summary>
     /// Allows an implementation to process output parameters etc after an operation has completed.
     /// </summary>
-    public virtual void PostProcess(DbBatchCommand command, T args, int rowCount) => PostProcess(command, args);
+    public virtual void PostProcess(in CommandState batch, T args, int rowCount) => PostProcess(in batch, args);
 
     /// <summary>
     /// Allows an implementation to process output parameters etc after an operation has completed.
     /// </summary>
-    public virtual void PostProcess(DbBatchCommand command, T args) { }
+    public virtual void PostProcess(in CommandState batch, T args) { }
 
     /// <summary>
     /// Provide and configure an ADO.NET command that can perform the requested operation.
     /// </summary>
-    public virtual DbBatchCommand GetCommand(DbBatch batch, string sql, CommandType commandType, T args)
+    public virtual DbBatchCommand GetCommand(ref CommandState batch, string sql, CommandType commandType, T args)
     {
-        var cmd = batch.CreateBatchCommand();
+        var cmd = batch.Command;
         cmd.CommandText = sql;
         cmd.CommandType = commandType != 0 ? commandType : sql.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure; // assume text if at least one space
-        AddParameters(cmd, batch, args);
+        AddParameters(in batch, args);
         return cmd;
     }
 #endif
-    }
+}

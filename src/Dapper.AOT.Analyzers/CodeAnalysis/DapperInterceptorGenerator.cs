@@ -1126,22 +1126,24 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 
                 sb.Append("public override bool SupportBatch => true;").NewLine();
 
-                sb.Append("public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbBatch batch, ").Append(declaredType).Append(" args)").Indent().NewLine();
+                sb.Append("public override void AddParameters(in BatchState batch, ").Append(declaredType).Append(" args)").Indent().NewLine()
+                    .Append("var cmd = batch.Command;").NewLine();
                 WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags, true);
                 sb.Outdent().NewLine();
 
                 if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
                 {
-                    sb.Append("public override void PostProcess(global::System.Data.Common.DbBatchCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+                    sb.Append("public override void PostProcess(in BatchState batch, ").Append(declaredType).Append(" args)").Indent().NewLine()
+                        .Append("var cmd = batch.Command;").NewLine();
                     WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags, true);
                     sb.Outdent().NewLine();
                 }
 
                 if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
                 {
-                    sb.Append("public override void PostProcess(global::System.Data.Common.DbBatchCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
+                    sb.Append("public override void PostProcess(in BatchState batch, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
                     WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags, true);
-                    sb.Append("PostProcess(cmd, args);");
+                    sb.Append("PostProcess(in batch, args);");
                     sb.Outdent().NewLine();
                 }
             }

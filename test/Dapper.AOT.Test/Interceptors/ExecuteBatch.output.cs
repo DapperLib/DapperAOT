@@ -185,8 +185,9 @@ file static class DapperGeneratedInterceptors
 
         }
         public override bool SupportBatch => true;
-        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbBatch batch, global::Foo.Customer args)
+        public override void AddParameters(in BatchState batch, global::Foo.Customer args)
         {
+            var cmd = batch.Command;
             var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             global::System.Data.Common.DbCommand? paramFactory = null;
@@ -250,8 +251,9 @@ file static class DapperGeneratedInterceptors
 
         }
         public override bool SupportBatch => true;
-        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbBatch batch, object? args)
+        public override void AddParameters(in BatchState batch, object? args)
         {
+            var cmd = batch.Command;
             var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
             var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
@@ -298,8 +300,9 @@ file static class DapperGeneratedInterceptors
 
         }
         public override bool SupportBatch => true;
-        public override void AddParameters(global::System.Data.Common.DbBatchCommand cmd, global::System.Data.Common.DbBatch batch, global::Foo.Customer args)
+        public override void AddParameters(in BatchState batch, global::Foo.Customer args)
         {
+            var cmd = batch.Command;
             var ps = cmd.Parameters;
             global::System.Data.Common.DbParameter p;
             global::System.Data.Common.DbCommand? paramFactory = null;

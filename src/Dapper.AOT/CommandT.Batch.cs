@@ -201,28 +201,26 @@ partial struct Command<TArgs>
 
 #if NET6_0_OR_GREATER
     private bool UseBatch => connection is { CanCreateBatch: true } && commandFactory is { SupportBatch: true };
-    private DbBatchCommand AddCommand(ref DbBatch? batch, TArgs args)
+    private DbBatchCommand AddCommand(ref CommandFactory.CommandState batch, TArgs args)
     {
-        if (batch is null)
-        {
-            batch = connection.CreateBatch();
-            batch.Connection = connection;
-        }
-        var cmd = commandFactory.GetCommand(batch, sql, commandType, args);
+        batch.UnsafeCreateNewCommand();
+        var cmd = commandFactory.GetCommand(ref batch, sql, commandType, args);
         batch.BatchCommands.Add(cmd);
         return cmd;
     }
+
     private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize)
     {
         Debug.Assert(source.Length > 1);
-        DbBatch? batch = null;
+        CommandFactory.CommandState batch = default;
         try
         {
             foreach (var arg in source)
             {
+                if (batch.HasBatch) batch = new(connection);
                 AddCommand(ref batch, arg);
             }
-            if (batch is null) return 0;
+            if (batch.IsEmpty) return 0;
 
             var result = batch.ExecuteNonQuery();
 
@@ -232,14 +230,15 @@ partial struct Command<TArgs>
                 foreach (var arg in source)
                 {
                     var cmd = batch.BatchCommands[i++];
-                    commandFactory.PostProcess(cmd, arg, cmd.RecordsAffected);
+                    batch.UnsafeSetCommand(cmd);
+                    commandFactory.PostProcess(in batch, arg, cmd.RecordsAffected);
                 }
             }
             return result;
         }
         finally
         {
-            batch?.Dispose();
+            batch.Cleanup();
         }
     }
     private int ExecuteMultiBatch(IEnumerable<TArgs> source, int batchSize)
@@ -249,15 +248,16 @@ partial struct Command<TArgs>
             // try to ensure it is repeatable
             source = (source as IReadOnlyCollection<TArgs>) ?? source.ToList();
         }
-        
-        DbBatch? batch = null;
+
+        CommandFactory.CommandState batch = default;
         try
         {
             foreach (var arg in source)
             {
+                if (batch.HasBatch) batch = new(connection);
                 AddCommand(ref batch, arg);
             }
-            if (batch is null) return 0;
+            if (batch.IsEmpty) return 0;
 
             var result = batch.ExecuteNonQuery();
             if (commandFactory.RequirePostProcess)
@@ -266,14 +266,15 @@ partial struct Command<TArgs>
                 foreach (var arg in source)
                 {
                     var cmd = batch.BatchCommands[i++];
-                    commandFactory.PostProcess(cmd, arg, cmd.RecordsAffected);
+                    batch.UnsafeSetCommand(cmd);
+                    commandFactory.PostProcess(in batch, arg, cmd.RecordsAffected);
                 }
             }
             return result;
         }
         finally
         {
-            batch?.Dispose();
+            batch.Cleanup();
         }
     }
 #endif
