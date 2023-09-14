@@ -69,7 +69,7 @@ internal class TSqlProcessor
 
     public virtual bool Execute(string sql, ImmutableArray<ElementMember> members = default)
     {
-        if (members.IsEmpty)
+        if (members.IsDefault)
         {
             members = ImmutableArray<ElementMember>.Empty;
         }
