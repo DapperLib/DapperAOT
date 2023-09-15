@@ -35,4 +35,8 @@
         <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
         <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All"/>
     </ItemGroup>
+
+    <ItemGroup>
+        <CompilerVisibleProperty Include="Dapper_SqlSyntax" />
+    </ItemGroup>
 </Project>

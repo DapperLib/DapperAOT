@@ -163,6 +163,19 @@ public class Foo
         connection.QuerySingle<Customer>("select Id from Customers");
     }
 
+    public void TopChecks(System.Data.SqlClient.SqlConnection typed, System.Data.Common.DbConnection untyped)
+    {   // for issue #44 https://github.com/DapperLib/DapperAOT/issues/44
+        typed.Execute("""
+            DECLARE @ActiveWidgets TABLE  (Id int)
+            INSERT @ActiveWidgets (Id) SELECT Id FROM Widgets WHERE Active = 1
+            """);
+
+        untyped.Execute("""
+            DECLARE @ActiveWidgets TABLE  (Id int)
+            INSERT @ActiveWidgets (Id) SELECT Id FROM Widgets WHERE Active = 1
+            """);
+    }
+
     public class Customer
     {
         public int Balance;

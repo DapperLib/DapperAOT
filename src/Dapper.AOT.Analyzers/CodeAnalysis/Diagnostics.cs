@@ -47,7 +47,7 @@ internal static class Diagnostics
         SqlParametersNotDetected = new("DAP018", "SQL parameters not detected",
             "Parameters are being supplied, but no parameters were detected in the command", Category.Sql, DiagnosticSeverity.Warning, true),
         NoParametersSupplied = new("DAP019", "No parameters supplied",
-            "SQL parameters were detected, but no parameters are being supplied", Category.Sql, DiagnosticSeverity.Error, true),
+            "SQL parameters were detected, but no parameters are being supplied (this can be mistaken if the SQL variant is unknown; see )", Category.Sql, DiagnosticSeverity.Error, true),
         SqlParameterNotBound = new("DAP020", "SQL parameter not bound",
             "No member could be found for the SQL parameter '{0}' from type '{1}'", Category.Sql, DiagnosticSeverity.Error, true),
         DuplicateParameter = new("DAP021", "Duplicate parameter",

@@ -15,7 +15,6 @@
         <IncludeBuildOutput>false</IncludeBuildOutput>
         <NoWarn>$(NoWarn);NU5128</NoWarn>
     </PropertyGroup>
-
     <ItemGroup>
         <!-- this is to force build order -->
         <ProjectReference Include="../Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="None" />

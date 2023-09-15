@@ -145,6 +145,8 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 152, 20)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 153, 20)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 155, 20)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 168, 15)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 173, 17)]
     internal static int Execute8(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, Text
