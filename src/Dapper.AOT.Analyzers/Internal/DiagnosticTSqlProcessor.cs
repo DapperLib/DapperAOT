@@ -119,6 +119,8 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
 
     protected override void OnFromMultiTableMissingAlias(Location location)
         => AddDiagnostic(Diagnostics.FromMultiTableMissingAlias, location, location.Line, location.Column);
+    protected override void OnFromMultiTableUnqualifiedColumn(Location location, string name)
+        => AddDiagnostic(Diagnostics.FromMultiTableUnqualifiedColumn, location, name, location.Line, location.Column);
     protected override void OnNonIntegerTop(Location location)
         => AddDiagnostic(Diagnostics.NonIntegerTop, location, location.Line, location.Column);
     protected override void OnNonPositiveTop(Location location)

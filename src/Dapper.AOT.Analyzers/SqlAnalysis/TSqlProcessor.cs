@@ -199,6 +199,8 @@ internal class TSqlProcessor
         => OnError($"TOP literals should be integers", location);
     protected virtual void OnFromMultiTableMissingAlias(Location location)
         => OnError($"FROM expressions with multiple elements should use aliases", location);
+    protected virtual void OnFromMultiTableUnqualifiedColumn(Location location, string name)
+        => OnError($"FROM expressions with multiple elements should qualify all columns; it is unclear where '{name}' is located", location);
 
 
     internal readonly struct Location
@@ -677,26 +679,76 @@ internal class TSqlProcessor
             return tables.Count > 1 || tables[0] is JoinTableReference;
         }
 
-        private bool _fromDemandAlias;
-        public override void ExplicitVisit(FromClause node)
+        public override void ExplicitVisit(SelectStatement node)
         {
-            bool oldDemandAlias = _fromDemandAlias;
+            bool oldDemandAlias = _demandAliases;
             try
             {
                 // set ambient state so we can complain more as we walk the nodes
-                _fromDemandAlias = IsMultiTable(node);
+                _demandAliases = IsMultiTable((node.QueryExpression as QuerySpecification)?.FromClause);
                 base.ExplicitVisit(node);
             }
             finally
             {
-                _fromDemandAlias = oldDemandAlias;
+                _demandAliases = oldDemandAlias;
+            }
+        }
+        public override void ExplicitVisit(UpdateStatement node)
+        {
+            bool oldDemandAlias = _demandAliases;
+            try
+            {
+                // set ambient state so we can complain more as we walk the nodes
+                _demandAliases = IsMultiTable(node.UpdateSpecification.FromClause);
+                base.ExplicitVisit(node);
+            }
+            finally
+            {
+                _demandAliases = oldDemandAlias;
+            }
+        }
+        public override void ExplicitVisit(DeleteStatement node)
+        {
+            bool oldDemandAlias = _demandAliases;
+            try
+            {
+                // set ambient state so we can complain more as we walk the nodes
+                _demandAliases = IsMultiTable(node.DeleteSpecification.FromClause);
+                base.ExplicitVisit(node);
+            }
+            finally
+            {
+                _demandAliases = oldDemandAlias;
+            }
+        }
+        private bool _demandAliases;
+        public override void ExplicitVisit(FromClause node)
+        {
+            bool oldDemandAlias = _demandAliases;
+            try
+            {
+                // set ambient state so we can complain more as we walk the nodes
+                _demandAliases = IsMultiTable(node);
+                base.ExplicitVisit(node);
+            }
+            finally
+            {
+                _demandAliases = oldDemandAlias;
             }
         }
         public override void Visit(TableReferenceWithAlias node)
         {
-            if (_fromDemandAlias && string.IsNullOrWhiteSpace(node.Alias?.Value))
+            if (_demandAliases && string.IsNullOrWhiteSpace(node.Alias?.Value))
             {
                 parser.OnFromMultiTableMissingAlias(new(node));
+            }
+            base.Visit(node);
+        }
+        public override void Visit(ColumnReferenceExpression node)
+        {
+            if (_demandAliases && node.MultiPartIdentifier.Count == 1)
+            {
+                parser.OnFromMultiTableUnqualifiedColumn(new(node), node.MultiPartIdentifier[0].Value);
             }
             base.Visit(node);
         }

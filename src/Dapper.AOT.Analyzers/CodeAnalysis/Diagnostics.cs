@@ -147,17 +147,19 @@ internal static class Diagnostics
         UpdateWithoutWhere = new("DAP224", "UPDATE without WHERE",
             "UPDATE statement lacks WHERE clause (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
 
-        FromMultiTableMissingAlias = new("DAP225", "UPDATE without WHERE",
+        FromMultiTableMissingAlias = new("DAP225", "Multi-element FROM missing alias",
             "FROM expressions with multiple elements should use aliases (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
-        NonIntegerTop = new("DAP226", "UPDATE without WHERE",
+        FromMultiTableUnqualifiedColumn = new("DAP226", "Multi-element FROM with unqualified column",
+            "FROM expressions with multiple elements should qualify all columns; it is unclear where '{0}' is located (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true),
+        NonIntegerTop = new("DAP227", "Non-integer TOP",
             "TOP literals should be integers (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
-        NonPositiveTop = new("DAP227", "UPDATE without WHERE",
+        NonPositiveTop = new("DAP228", "Non-positive TOP",
             "TOP literals should be positive (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
-        SelectFirstTopError = new("DAP228", "UPDATE without WHERE",
+        SelectFirstTopError = new("DAP229", "SELECT for First* with invalid TOP",
             "SELECT for First* should use TOP 1 (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
-        SelectSingleTopError = new("DAP229", "UPDATE without WHERE",
+        SelectSingleTopError = new("DAP230", "SELECT for Single* with invalid TOP",
             "SELECT for Single* should use TOP 2; if you do not need to test over-read, use First* (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
-        SelectSingleRowWithoutWhere = new("DAP230", "UPDATE without WHERE",
+        SelectSingleRowWithoutWhere = new("DAP231", "SELECT for single row without WHERE",
             "SELECT for single row without WHERE or (TOP and ORDER BY) (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
 
 

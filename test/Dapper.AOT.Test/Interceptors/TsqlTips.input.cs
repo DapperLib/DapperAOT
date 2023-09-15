@@ -37,7 +37,7 @@ public class Foo
         connection.QuerySingle("select top 2 A, B from SomeTable");
 
         // first/single with join; we'll allow join to function as a filter
-        connection.QueryFirst("select A, B from SomeTable x inner join Foo y on x.Id = y.Id");
+        connection.QueryFirst("select x.A, B from SomeTable x inner join Foo y on x.Id = y.Id");
 
         // check for aliases
         connection.QueryFirst("select A, B from SomeTable x inner join Foo on x.Id = FromSomewhere");
