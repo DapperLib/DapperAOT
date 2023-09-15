@@ -1,6 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
@@ -144,8 +144,21 @@ internal static class Diagnostics
             "SELECT statement assigns variable and performs reads (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
         DeleteWithoutWhere = new("DAP223", "DELETE without WHERE",
             "DELETE statement lacks WHERE clause (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
-        UpdateWithoutWhere = new ("DAP224", "UPDATE without WHERE",
-            "UPDATE statement lacks WHERE clause (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
+        UpdateWithoutWhere = new("DAP224", "UPDATE without WHERE",
+            "UPDATE statement lacks WHERE clause (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+
+        FromMultiTableMissingAlias = new("DAP225", "UPDATE without WHERE",
+            "FROM expressions with multiple elements should use aliases (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+        NonIntegerTop = new("DAP226", "UPDATE without WHERE",
+            "TOP literals should be integers (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
+        NonPositiveTop = new("DAP227", "UPDATE without WHERE",
+            "TOP literals should be positive (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
+        SelectFirstTopError = new("DAP228", "UPDATE without WHERE",
+            "SELECT for First* should use TOP 1 (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+        SelectSingleTopError = new("DAP229", "UPDATE without WHERE",
+            "SELECT for Single* should use TOP 2; if you do not need to test over-read, use First* (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
+        SelectSingleRowWithoutWhere = new("DAP230", "UPDATE without WHERE",
+            "SELECT for single row without WHERE or (TOP and ORDER BY) (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true);
 
 
     // be careful moving this because of static field initialization order

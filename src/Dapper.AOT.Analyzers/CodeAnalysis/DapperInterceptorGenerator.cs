@@ -467,6 +467,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     SqlAnalysis.TSqlProcessor.ModeFlags modeFlags = SqlAnalysis.TSqlProcessor.ModeFlags.None;
                     if (caseSensitive) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.CaseSensitive;
                     if ((flags & OperationFlags.BindResultsByName) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.ValidateSelectNames;
+                    if ((flags & OperationFlags.SingleRow) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.SingleRow;
+                    if ((flags & OperationFlags.AtMostOne) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.AtMostOne;
 
                     var proc = new DiagnosticTSqlProcessor(parameterType, modeFlags, diagnostics, loc, sqlSyntax);
                     try

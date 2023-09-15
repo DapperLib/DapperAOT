@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -20,6 +21,8 @@ internal class TSqlProcessor
         None = 0,
         CaseSensitive = 1 << 0,
         ValidateSelectNames = 1 << 1,
+        SingleRow = 1 << 2,
+        AtMostOne = 1 << 3,
     }
     [Flags]
     internal enum VariableFlags
@@ -184,6 +187,19 @@ internal class TSqlProcessor
     protected virtual void OnUpdateWithoutWhere(Location location)
         => OnError($"UPDATE statement without WHERE clause", location);
 
+    protected virtual void OnSelectSingleTopError(Location location)
+        => OnError($"SELECT for Single* should use TOP 2; if you do not need to test over-read, use First*", location);
+    protected virtual void OnSelectFirstTopError(Location location)
+        => OnError($"SELECT for First* should use TOP 1", location);
+    protected virtual void OnSelectSingleRowWithoutWhere(Location location)
+        => OnError($"SELECT for single row without WHERE or (TOP and ORDER BY)", location);
+    protected virtual void OnNonPositiveTop(Location location)
+        => OnError($"TOP literals should be positive", location);
+    protected virtual void OnNonIntegerTop(Location location)
+        => OnError($"TOP literals should be integers", location);
+    protected virtual void OnFromMultiTableMissingAlias(Location location)
+        => OnError($"FROM expressions with multiple elements should use aliases", location);
+
 
     internal readonly struct Location
     {
@@ -327,6 +343,8 @@ internal class TSqlProcessor
 
         public bool CaseSensitive => (_flags & ModeFlags.CaseSensitive) != 0;
         public bool ValidateSelectNames => (_flags & ModeFlags.ValidateSelectNames) != 0;
+        public bool SingleRow => (_flags & ModeFlags.SingleRow) != 0;
+        public bool AtMostOne => (_flags & ModeFlags.AtMostOne) != 0;
 
         private readonly Dictionary<string, Variable> variables;
         private int batchCount;
@@ -505,17 +523,18 @@ internal class TSqlProcessor
             base.Visit(node);
         }
 
-        private void AddQuery()
+        private bool AddQuery() // returns true if the first
         {
             switch (parser.Flags & (ParseFlags.Query | ParseFlags.Queries))
             {
                 case ParseFlags.None:
                     parser.Flags |= ParseFlags.Query;
-                    break;
+                    return true;
                 case ParseFlags.Query:
                     parser.Flags |= ParseFlags.Queries;
                     break;
             }
+            return false;
         }
         public override void Visit(SelectStatement node)
         {
@@ -548,7 +567,7 @@ internal class TSqlProcessor
                                 if (name is null && scalar.Expression is ColumnReferenceExpression col)
                                 {
                                     var ids = col.MultiPartIdentifier.Identifiers;
-                                    if(ids.Count != 0)
+                                    if (ids.Count != 0)
                                     {
                                         name = ids[ids.Count - 1].Value;
                                     }
@@ -572,15 +591,70 @@ internal class TSqlProcessor
                 }
                 if (reads != 0)
                 {
-                    AddQuery();
                     if (sets != 0)
                     {
                         parser.OnSelectAssignAndRead(new(spec));
                     }
+                    bool firstQuery = AddQuery();
+                    if (firstQuery && SingleRow)
+                    {
+                        bool haveTop = false;
+                        if (spec.TopRowFilter is { Percent: false, Expression: IntegerLiteral top }
+                            && ParseInt32(top, out int i))
+                        {
+                            haveTop = true;
+                            if (AtMostOne) // Single[OrDefault][Async]
+                            {
+                                if (i != 2)
+                                {
+                                    parser.OnSelectSingleTopError(new(node));
+                                }
+                            }
+                            else // First[OrDefault][Async]
+                            {
+                                if (i != 1)
+                                {
+                                    parser.OnSelectFirstTopError(new(node));
+                                }
+                            }
+                        }
+
+                        // we want *either* a WHERE (which we will allow with/without a TOP),
+                        // or a TOP + ORDER BY
+                        if (!IsUnfiltered(spec.FromClause, spec.WhereClause)) { } // fine
+                        else if (haveTop && spec.OrderByClause is not null) { } // fine
+                        else
+                        {
+                            parser.OnSelectSingleRowWithoutWhere(new(node));
+                        }
+                    }
+
                 }
 
             }
 
+            base.Visit(node);
+        }
+
+        static bool ParseInt32(IntegerLiteral node, out int value) => int.TryParse(node.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+        static bool ParseNumeric(NumericLiteral node, out decimal value) => decimal.TryParse(node.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+        public override void Visit(TopRowFilter node)
+        {
+            if (node.Expression is IntegerLiteral iLit && ParseInt32(iLit, out var i) && i <= 0)
+            {
+                parser.OnNonPositiveTop(new(node));
+            }
+            else if (node.Expression is NumericLiteral nLit)
+            {
+                if (!node.Percent)
+                {
+                    parser.OnNonIntegerTop(new(node));
+                }
+                if (ParseNumeric(nLit, out var n) && n <= 0)
+                {   // don't expect to see this; parser rejects them
+                    parser.OnNonPositiveTop(new(node));
+                }
+            }
             base.Visit(node);
         }
 
@@ -590,9 +664,46 @@ internal class TSqlProcessor
             base.Visit(node);
         }
 
+        private bool IsUnfiltered(FromClause from, WhereClause where)
+        {
+            if (where is not null) return false;
+            return !IsMultiTable(from); // treat multi-table as filtered
+        }
+        private bool IsMultiTable(FromClause? from)
+        {
+            var tables = from?.TableReferences;
+            // treat multiple tables as filtered (let's not discuss outer joins etc)
+            if (tables is null || tables.Count == 0) return false;
+            return tables.Count > 1 || tables[0] is JoinTableReference;
+        }
+
+        private bool _fromDemandAlias;
+        public override void ExplicitVisit(FromClause node)
+        {
+            bool oldDemandAlias = _fromDemandAlias;
+            try
+            {
+                // set ambient state so we can complain more as we walk the nodes
+                _fromDemandAlias = IsMultiTable(node);
+                base.ExplicitVisit(node);
+            }
+            finally
+            {
+                _fromDemandAlias = oldDemandAlias;
+            }
+        }
+        public override void Visit(TableReferenceWithAlias node)
+        {
+            if (_fromDemandAlias && string.IsNullOrWhiteSpace(node.Alias?.Value))
+            {
+                parser.OnFromMultiTableMissingAlias(new(node));
+            }
+            base.Visit(node);
+        }
+
         public override void Visit(DeleteSpecification node)
         {
-            if (node.WhereClause is null)
+            if (IsUnfiltered(node.FromClause, node.WhereClause))
             {
                 parser.OnDeleteWithoutWhere(new(node));
             }
@@ -601,7 +712,7 @@ internal class TSqlProcessor
 
         public override void Visit(UpdateSpecification node)
         {
-            if (node.WhereClause is null)
+            if (IsUnfiltered(node.FromClause, node.WhereClause))
             {
                 parser.OnUpdateWithoutWhere(new(node));
             }

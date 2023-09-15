@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Data;
+using System.Diagnostics;
 using static Dapper.SqlAnalysis.TSqlProcessor;
 
 namespace Dapper.Internal;
@@ -46,14 +47,15 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
         return _location;
     }
 
-    
-
     private void AddDiagnostic(DiagnosticDescriptor diagnostic, in Location location, params object?[]? args)
     {
         Diagnostics.Add(ref _diagnostics, Diagnostic.Create(diagnostic, GetLocation(location), args));
     }
     protected override void OnError(string error, in Location location)
-        => AddDiagnostic(Diagnostics.SqlError, location, error, location.Line, location.Column);
+    {
+        Debug.Fail("unhandled error: " + error);
+        AddDiagnostic(Diagnostics.SqlError, location, error, location.Line, location.Column);
+    }
 
     protected override void OnAdditionalBatch(Location location)
         => AddDiagnostic(Diagnostics.MultipleBatches, location, location.Line, location.Column);
@@ -114,6 +116,19 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
         => AddDiagnostic(Diagnostics.UpdateWithoutWhere, location, location.Line, location.Column);
     protected override void OnDeleteWithoutWhere(Location location)
         => AddDiagnostic(Diagnostics.DeleteWithoutWhere, location, location.Line, location.Column);
+
+    protected override void OnFromMultiTableMissingAlias(Location location)
+        => AddDiagnostic(Diagnostics.FromMultiTableMissingAlias, location, location.Line, location.Column);
+    protected override void OnNonIntegerTop(Location location)
+        => AddDiagnostic(Diagnostics.NonIntegerTop, location, location.Line, location.Column);
+    protected override void OnNonPositiveTop(Location location)
+        => AddDiagnostic(Diagnostics.NonPositiveTop, location, location.Line, location.Column);
+    protected override void OnSelectFirstTopError(Location location)
+        => AddDiagnostic(Diagnostics.SelectFirstTopError, location, location.Line, location.Column);
+    protected override void OnSelectSingleRowWithoutWhere(Location location)
+        => AddDiagnostic(Diagnostics.SelectSingleRowWithoutWhere, location, location.Line, location.Column);
+    protected override void OnSelectSingleTopError(Location location)
+        => AddDiagnostic(Diagnostics.SelectSingleTopError, location, location.Line, location.Column);
 
     protected override bool TryGetParameter(string name, out ParameterDirection direction)
     {

@@ -3,6 +3,47 @@
 [module: DapperAot]
 public class Foo
 {
+    public void TopChecks(System.Data.SqlClient.SqlConnection connection)
+    {
+        // fine
+        connection.Query("select A, B from SomeTable");
+        connection.Query("select TOP 10 A, B from SomeTable");
+        // non-positive top
+        connection.Query("select TOP 0 A, B from SomeTable");
+        // non integer top
+        connection.Query("select TOP 5.0 A, B from SomeTable");
+        // non integer percent top (fine)
+        connection.Query("select TOP 5.0 PERCENT A, B from SomeTable");
+        connection.Query("select TOP 5.1 PERCENT A, B from SomeTable");
+        // non integer negative percent top (not fine)
+        connection.Query("select TOP -5.1 PERCENT A, B from SomeTable");
+
+        // first/single with where: fine
+        connection.QueryFirst("select A, B from SomeTable where Id=42");
+        connection.QuerySingle("select A, B from SomeTable where Id=42");
+        // first/single with top and order-by: fine
+        connection.QueryFirst("select top 1 A, B from SomeTable order by B");
+        connection.QuerySingle("select top 2 A, B from SomeTable order by B");
+        // first/single with wrong top
+        connection.QueryFirst("select top 2 A, B from SomeTable order by B");
+        connection.QuerySingle("select top 1 A, B from SomeTable order by B");
+        // first/single with nothing
+        connection.QueryFirst("select A, B from SomeTable");
+        connection.QuerySingle("select A, B from SomeTable");
+        // first/single with order-by but no top, or top but no order-by
+        connection.QueryFirst("select A, B from SomeTable order by B");
+        connection.QuerySingle("select A, B from SomeTable order by B");
+        connection.QueryFirst("select top 1 A, B from SomeTable");
+        connection.QuerySingle("select top 2 A, B from SomeTable");
+
+        // first/single with join; we'll allow join to function as a filter
+        connection.QueryFirst("select A, B from SomeTable x inner join Foo y on x.Id = y.Id");
+
+        // check for aliases
+        connection.QueryFirst("select A, B from SomeTable x inner join Foo on x.Id = FromSomewhere");
+
+    }
+
     public void Things(System.Data.SqlClient.SqlConnection connection)
     {
         var args = new { a = 123, b = "abc" };
@@ -104,10 +145,22 @@ public class Foo
         // delete/update with filter: fine
         connection.Execute("delete from Customers where Id=12");
         connection.Execute("update Customers set Name='New name' where Id=12");
+        // allow join to function like filter
+        connection.Execute("delete c from Customers c inner join Foo y on y.Id = c.Id");
 
         // delete/update without filter: warn
         connection.Execute("delete from Customers");
         connection.Execute("update Customers set Name='New name'");
+        // allow join to function like filter
+        connection.Execute("update c set c.Name='New name' from Customers c inner join Foo y on y.Id = c.Id");
+
+        connection.QuerySingle<Customer>("select Id from Customers where Id=42");
+        connection.QuerySingle<Customer>("select top 1 Id from Customers");
+        connection.QuerySingle<Customer>("select top 2 Id from Customers");
+        // > 2 is bad for Single etc (2 makes sense to check for dups)
+        connection.QuerySingle<Customer>("select top 3 Id from Customers");
+        // no where
+        connection.QuerySingle<Customer>("select Id from Customers");
     }
 
     public class Customer
