@@ -165,9 +165,24 @@ internal static class Diagnostics
 
 
     // be careful moving this because of static field initialization order
-    internal static readonly ImmutableArray<DiagnosticDescriptor> All = typeof(Diagnostics)
-        .GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
-        .Select(x => x.GetValue(null)).OfType<DiagnosticDescriptor>().ToImmutableArray();
+    static Diagnostics()
+    {
+        var fields = typeof(Diagnostics).GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+        var all = ImmutableArray.CreateBuilder<DiagnosticDescriptor>(fields.Length);
+        var idsToFields = ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
+        foreach (var field in fields)
+        {
+            if (field.FieldType == typeof(DiagnosticDescriptor) && field.GetValue(null) is DiagnosticDescriptor descriptor)
+            {
+                all.Add(descriptor);
+                idsToFields.Add(descriptor.Id, field.Name);
+            }
+        }
+        All = all.ToImmutable();
+        IdsToFields = idsToFields.ToImmutable();
+    }
+    internal static readonly ImmutableArray<DiagnosticDescriptor> All;
+    internal static readonly ImmutableDictionary<string, string> IdsToFields;
 
     internal static class Category
     {
@@ -197,4 +212,6 @@ internal static class Diagnostics
                 throw new ArgumentException(nameof(diagnostics));
         }
     }
+
+    internal static bool GetFieldName(string id, out string fieldName) => IdsToFields.TryGetValue(id, out fieldName!);
 }

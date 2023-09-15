@@ -64,7 +64,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         {
             return null;
         }
-        var methodKind = IsSupportedDapperMethod(op, out var flags);
+        var methodKind = op.IsSupportedDapperMethod(out var flags);
         switch (methodKind)
         {
             case DapperMethodKind.DapperUnsupported:
@@ -114,7 +114,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
 
         ITypeSymbol? resultType = null, paramType = null;
-        if (HasAny(flags, OperationFlags.TypedResult))
+        if (flags.HasAny(OperationFlags.TypedResult))
         {
             var typeArgs = op.TargetMethod.TypeArguments;
             if (typeArgs.Length == 1)
@@ -122,7 +122,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 resultType = typeArgs[0];
 
                 // check for value-type single
-                if (HasAny(flags, OperationFlags.SingleRow) && !HasAny(flags, OperationFlags.AtLeastOne)
+                if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
                     && resultType.IsValueType && !CouldBeNullable(resultType))
                 {
                     Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, loc, resultType.Name, op.TargetMethod.Name));
@@ -199,7 +199,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                     break;
                 default:
-                    if (dapperEnabled && !HasAny(flags, OperationFlags.DoNotGenerate))
+                    if (dapperEnabled && !flags.HasAny(OperationFlags.DoNotGenerate))
                     {
                         flags |= OperationFlags.DoNotGenerate;
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedArgument, arg.Syntax.GetLocation(), arg.Parameter?.Name));
@@ -208,24 +208,24 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(sql) && HasAny(flags, OperationFlags.Text)
+        if (!string.IsNullOrWhiteSpace(sql) && flags.HasAny(OperationFlags.Text)
             && Inspection.IsEnabled(ctx, op, Types.IncludeLocationAttribute, out _, cancellationToken))
         {
             flags |= OperationFlags.IncludeLocation;
         }
 
-        if (HasAny(flags, OperationFlags.Query) && buffered.HasValue)
+        if (flags.HasAny(OperationFlags.Query) && buffered.HasValue)
         {
             flags |= buffered.GetValueOrDefault() ? OperationFlags.Buffered : OperationFlags.Unbuffered;
         }
 
         // additional result-type checks
-        if (HasAny(flags, OperationFlags.Query) && Inspection.IdentifyDbType(resultType, out _) is null)
+        if (flags.HasAny(OperationFlags.Query) && Inspection.IdentifyDbType(resultType, out _) is null)
         {
             flags |= OperationFlags.BindResultsByName;
         }
 
-        if (HasAny(flags, OperationFlags.Query) || HasAll(flags, OperationFlags.Execute | OperationFlags.Scalar))
+        if (flags.HasAny(OperationFlags.Query) || flags.HasAll(OperationFlags.Execute | OperationFlags.Scalar))
         {
             bool resultTuple = Inspection.InvolvesTupleType(resultType, out _), bindByNameDefined = false;
             // tuples are positional by default
@@ -234,7 +234,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 flags &= ~OperationFlags.BindResultsByName;
             }
 
-            if (HasAny(flags, OperationFlags.DoNotGenerate))
+            if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
                 // extra checks specific to Dapper vanilla
                 if (resultTuple && Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out _, cancellationToken))
@@ -270,10 +270,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
 
         // additional parameter checks
-        if (HasAny(flags, OperationFlags.HasParameters))
+        if (flags.HasAny(OperationFlags.HasParameters))
         {
             bool paramTuple = Inspection.InvolvesTupleType(paramType, out _);
-            if (HasAny(flags, OperationFlags.DoNotGenerate))
+            if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
                 // extra checks specific to Dapper vanilla
                 if (paramTuple)
@@ -343,11 +343,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
         }
 
-        if (HasAny(flags, OperationFlags.CacheCommand))
+        if (flags.HasAny(OperationFlags.CacheCommand))
         {
             bool canBeCached = true;
             // need fixed text, command-type and parameters to be reusable
-            if (string.IsNullOrWhiteSpace(sql) || parameterMap == "?" || !HasAny(flags, OperationFlags.StoredProcedure | OperationFlags.TableDirect | OperationFlags.Text))
+            if (string.IsNullOrWhiteSpace(sql) || parameterMap == "?" || !flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect | OperationFlags.Text))
             {
                 canBeCached = false;
             }
@@ -439,16 +439,16 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         static string BuildParameterMap(in GeneratorSyntaxContext ctx, IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags, CancellationToken cancellationToken)
         {
             // if command-type is known statically to be stored procedure etc: pass everything
-            if (HasAny(flags, OperationFlags.StoredProcedure | OperationFlags.TableDirect))
+            if (flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect))
             {
-                parseFlags = HasAny(flags, OperationFlags.StoredProcedure) ? ParseFlags.MaybeQuery : ParseFlags.Query;
-                return HasAny(flags, OperationFlags.HasParameters) ? "*" : "";
+                parseFlags = flags.HasAny(OperationFlags.StoredProcedure) ? ParseFlags.MaybeQuery : ParseFlags.Query;
+                return flags.HasAny(OperationFlags.HasParameters) ? "*" : "";
             }
             // if command-type or command is not known statically: defer decision
-            if (!HasAny(flags, OperationFlags.Text) || string.IsNullOrWhiteSpace(sql))
+            if (!flags.HasAny(OperationFlags.Text) || string.IsNullOrWhiteSpace(sql))
             {
                 parseFlags = ParseFlags.MaybeQuery;
-                return HasAny(flags, OperationFlags.HasParameters) ? "?" : "";
+                return flags.HasAny(OperationFlags.HasParameters) ? "?" : "";
             }
 
             // check the arg type
@@ -495,7 +495,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             if (paramNames.IsEmpty && (parseFlags & ParseFlags.Return) == 0) // return is a parameter, sort of
             {
-                if (HasAny(flags, OperationFlags.HasParameters))
+                if (flags.HasAny(OperationFlags.HasParameters))
                 {
                     Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParametersNotDetected, loc));
                 }
@@ -503,7 +503,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
 
             // so, we definitely detect parameters (note: don't warn just for return)
-            if (!HasAny(flags, OperationFlags.HasParameters))
+            if (!flags.HasAny(OperationFlags.HasParameters))
             {
                 if (!paramNames.IsEmpty)
                 {
@@ -511,7 +511,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 }
                 return "";
             }
-            if (HasAny(flags, OperationFlags.HasParameters) && Inspection.IsMissingOrObjectOrDynamic(parameterType))
+            if (flags.HasAny(OperationFlags.HasParameters) && Inspection.IsMissingOrObjectOrDynamic(parameterType))
             {
                 // unknown parameter type; defer decision
                 return "?";
@@ -593,7 +593,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     private void CheckCallValidity(IInvocationOperation op, OperationFlags flags, ref object? diagnostics)
     {
-        if (HasAny(flags, OperationFlags.Query) && !HasAny(flags, OperationFlags.SingleRow)
+        if (flags.HasAny(OperationFlags.Query) && !flags.HasAny(OperationFlags.SingleRow)
             && op.Parent is IArgumentOperation arg
             && arg.Parent is IInvocationOperation parent && parent.TargetMethod is
             {
@@ -695,102 +695,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         ("Microsoft", "Data", "Sqlite", "SqliteConnection", SqlSyntax.SQLite),
     }.ToImmutableArray();
 
-    enum DapperMethodKind
-    {
-        NotDapper,
-        DapperUnsupported,
-        DapperSupported,
-    }
-
-    static DapperMethodKind IsSupportedDapperMethod(IInvocationOperation operation, out OperationFlags flags)
-    {
-        flags = OperationFlags.None;
-        var method = operation?.TargetMethod;
-        if (method is null || !method.IsExtensionMethod)
-        {
-            return DapperMethodKind.NotDapper;
-        }
-        var type = method.ContainingType;
-        if (type is not { Name: "SqlMapper", ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } })
-        {
-            return DapperMethodKind.NotDapper;
-        }
-        if (method.Name.EndsWith("Async"))
-        {
-            flags |= OperationFlags.Async;
-        }
-        if (method.IsGenericMethod)
-        {
-            flags |= OperationFlags.TypedResult;
-        }
-        switch (method.Name)
-        {
-            case "Query":
-                flags |= OperationFlags.Query;
-                return method.Arity <= 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
-            case "QueryAsync":
-            case "QueryUnbufferedAsync":
-                flags |= method.Name.Contains("Unbuffered") ? OperationFlags.Unbuffered : OperationFlags.Buffered;
-                goto case "Query";
-            case "QueryFirst":
-            case "QueryFirstAsync":
-                flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne;
-                goto case "Query";
-            case "QueryFirstOrDefault":
-            case "QueryFirstOrDefaultAsync":
-                flags |= OperationFlags.SingleRow;
-                goto case "Query";
-            case "QuerySingle":
-            case "QuerySingleAsync":
-                flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne | OperationFlags.AtMostOne;
-                goto case "Query";
-            case "QuerySingleOrDefault":
-            case "QuerySingleOrDefaultAsync":
-                flags |= OperationFlags.SingleRow | OperationFlags.AtMostOne;
-                goto case "Query";
-            case "Execute":
-            case "ExecuteAsync":
-                flags |= OperationFlags.Execute;
-                return method.Arity == 0 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
-            case "ExecuteScalar":
-            case "ExecuteScalarAsync":
-                flags |= OperationFlags.Execute | OperationFlags.Scalar;
-                return method.Arity <= 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
-            default:
-                return DapperMethodKind.DapperUnsupported;
-        }
-    }
-
-    static bool HasAny(OperationFlags value, OperationFlags testFor) => (value & testFor) != 0;
-    static bool HasAll(OperationFlags value, OperationFlags testFor) => (value & testFor) == testFor;
-
-    [Flags]
-    enum OperationFlags
-    {
-        None = 0,
-        Query = 1 << 0,
-        Execute = 1 << 1,
-        Async = 1 << 2,
-        TypedResult = 1 << 3,
-        HasParameters = 1 << 4,
-        Buffered = 1 << 5,
-        Unbuffered = 1 << 6,
-        SingleRow = 1 << 7,
-        Text = 1 << 8,
-        StoredProcedure = 1 << 9,
-        TableDirect = 1 << 10,
-        AtLeastOne = 1 << 11,
-        AtMostOne = 1 << 12,
-        Scalar = 1 << 13,
-        DoNotGenerate = 1 << 14,
-        AotNotEnabled = 1 << 15,
-        AotDisabled = 1 << 16, // actively disabled
-        BindResultsByName = 1 << 17,
-        BindTupleParameterByName = 1 << 18,
-        CacheCommand = 1 << 19,
-        IncludeLocation = 1 << 20, // include -- SomeFile.cs#40 when possible
-    }
-
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
     {
         foreach (var attribute in compilation.SourceModule.GetAttributes())
@@ -851,7 +755,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     ctx.ReportDiagnostic(node.GetDiagnostic(i));
                 }
 
-                if (HasAny(node.Flags, OperationFlags.DoNotGenerate)) doNotGenerateCount++;
+                if (node.Flags.HasAny(OperationFlags.DoNotGenerate)) doNotGenerateCount++;
 
                 if ((node.Flags & OperationFlags.AotNotEnabled) != 0) // passive or active disabled
                 {
@@ -920,7 +824,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         var factories = new CommandFactoryState(state.Compilation);
         var readers = new RowReaderState();
 
-        foreach (var grp in state.Nodes.Where(x => !HasAny(x.Flags, OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
+        foreach (var grp in state.Nodes.Where(x => !x.Flags.HasAny(OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
             // first, try to resolve the helper method that we're going to use for this
             var (flags, method, parameterType, parameterMap, _, additionalCommandState) = grp.Key;
@@ -955,7 +859,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             sb.Append(")").Indent().NewLine();
             sb.Append("// ").Append(flags.ToString()).NewLine();
-            if (HasAny(flags, OperationFlags.HasParameters))
+            if (flags.HasAny(OperationFlags.HasParameters))
             {
                 sb.Append("// takes parameter: ").Append(parameterType).NewLine();
             }
@@ -969,7 +873,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 }).NewLine();
             }
             ITypeSymbol? resultType = null;
-            if (HasAny(flags, OperationFlags.TypedResult))
+            if (flags.HasAny(OperationFlags.TypedResult))
             {
                 resultType = grp.First().ResultType!;
                 sb.Append("// returns data: ").Append(resultType).NewLine();
@@ -979,7 +883,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             var commandTypeMode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
             var methodParameters = grp.Key.Method.Parameters;
             string? fixedSql = null;
-            if (HasAny(flags, OperationFlags.IncludeLocation))
+            if (flags.HasAny(OperationFlags.IncludeLocation))
             {
                 var origin = grp.Single();
                 fixedSql = origin.Sql; // expect exactly one SQL
@@ -1001,12 +905,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 }
             }
 
-            if (HasAny(flags, OperationFlags.Buffered | OperationFlags.Unbuffered) && HasParam(methodParameters, "buffered"))
+            if (flags.HasAny(OperationFlags.Buffered | OperationFlags.Unbuffered) && HasParam(methodParameters, "buffered"))
             {
                 sb.Append("global::System.Diagnostics.Debug.Assert(buffered is ").Append((flags & OperationFlags.Buffered) != 0).Append(");").NewLine();
             }
 
-            sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(HasAny(flags, OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
+            sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(flags.HasAny(OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
 
             if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
             {

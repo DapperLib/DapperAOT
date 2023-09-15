@@ -181,9 +181,9 @@ namespace Dapper.Internal.Roslyn
         {
             var conv = argumentOperation.Value as IConversionOperation;
             Assert.NotNull(conv);
-            var typeSymbol = conv.Operand.Type;
+            var typeSymbol = conv!.Operand.Type;
             Assert.NotNull(typeSymbol);
-            return typeSymbol;
+            return typeSymbol!;
         }
 
         static IArgumentOperation GetInvocationArgumentOperation(string text, int invocationIndex = 0, int argumentIndex = 2)
@@ -197,7 +197,7 @@ namespace Dapper.Internal.Roslyn
             var invocationOperation = semanticModel.GetOperation(invocationNode) as IInvocationOperation;
             Assert.NotNull(invocationOperation);
 
-            var arg = invocationOperation.Arguments[argumentIndex];
+            var arg = invocationOperation!.Arguments[argumentIndex];
             Assert.NotNull(arg);
             return arg;
         }

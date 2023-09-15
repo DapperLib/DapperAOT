@@ -40,7 +40,8 @@ public sealed class SqlClientFixture : IDisposable
 
     private static SqlConnection SkipTest()
     {
-        Skip.Inconclusive("Database unavailable");
-        return null!;
+        throw new InvalidOperationException("Database not available");
+        //Skip.Inconclusive("Database unavailable");
+        //return null!;
     }
 }
