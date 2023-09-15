@@ -56,11 +56,11 @@ internal static class Inspection
         }
         return hasNames = false;
     }
-    public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, CancellationToken cancellationToken)
-        => GetClosestDapperAttribute(ctx, op, attributeName, out _, cancellationToken);
-    public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out Location? location, CancellationToken cancellationToken)
+    public static AttributeData? GetClosestDapperAttribute(in ParseState ctx, IOperation op, string attributeName)
+        => GetClosestDapperAttribute(ctx, op, attributeName, out _);
+    public static AttributeData? GetClosestDapperAttribute(in ParseState ctx, IOperation op, string attributeName, out Location? location)
     {
-        var symbol = GetSymbol(ctx, op, cancellationToken);
+        var symbol = GetSymbol(ctx, op);
         while (symbol is not null)
         {
             var attrib = GetDapperAttribute(symbol, attributeName);
@@ -92,10 +92,10 @@ internal static class Inspection
         },
     } named && named.TypeKind == kind && named.Name == name;
 
-    public static ISymbol? GetSymbol(in GeneratorSyntaxContext ctx, IOperation operation, CancellationToken cancellationToken)
+    public static ISymbol? GetSymbol(in ParseState ctx, IOperation operation)
     {
         var method = GetContainingMethodSyntax(operation);
-        return method is null ? null : ctx.SemanticModel.GetDeclaredSymbol(method, cancellationToken);
+        return method is null ? null : ctx.SemanticModel.GetDeclaredSymbol(method, ctx.CancellationToken);
         static SyntaxNode? GetContainingMethodSyntax(IOperation op)
         {
             var syntax = op.Syntax;
@@ -113,9 +113,9 @@ internal static class Inspection
 
     // support the fact that [DapperAot(bool)] can enable/disable generation at any level
     // including method, type, module and assembly; first attribute found (walking up the tree): wins
-    public static bool IsEnabled(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out bool exists, CancellationToken cancellationToken)
+    public static bool IsEnabled(in ParseState ctx, IOperation op, string attributeName, out bool exists)
     {
-        var attrib = GetClosestDapperAttribute(ctx, op, attributeName, cancellationToken);
+        var attrib = GetClosestDapperAttribute(ctx, op, attributeName);
         if (attrib is not null && attrib.ConstructorArguments.Length == 1
             && attrib.ConstructorArguments[0].Value is bool b)
         {
@@ -153,7 +153,7 @@ internal static class Inspection
 
     public static bool IsMissingOrObjectOrDynamic(ITypeSymbol? type) => type is null || type.SpecialType == SpecialType.System_Object || type.TypeKind == TypeKind.Dynamic;
 
-    public static bool IsPublicOrAssemblyLocal(ISymbol? symbol, in GeneratorSyntaxContext ctx, out ISymbol? failingSymbol)
+    public static bool IsPublicOrAssemblyLocal(ISymbol? symbol, in ParseState ctx, out ISymbol? failingSymbol)
         => IsPublicOrAssemblyLocal(symbol, ctx.SemanticModel.Compilation.Assembly, out failingSymbol);
 
     public static bool IsPublicOrAssemblyLocal(ISymbol? symbol, IAssemblySymbol? assembly, out ISymbol? failingSymbol)
@@ -456,7 +456,7 @@ internal static class Inspection
             // attaching diagnostic to first location of first ctor
             var loc = dapperAotEnabledCtors.First().Locations.First();
 
-            errorDiagnostic = Diagnostic.Create(Diagnostics.TooManyDapperAotEnabledConstructors, loc, typeSymbol!.ToDisplayString());
+            errorDiagnostic = Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.TooManyDapperAotEnabledConstructors, loc, typeSymbol!.ToDisplayString());
             constructor = null!;
             return false;
         }

@@ -68,88 +68,90 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
 
     private void AddDiagnostic(DiagnosticDescriptor diagnostic, in Location location, params object?[]? args)
     {
-        Diagnostics.Add(ref _diagnostics, Diagnostic.Create(diagnostic, GetLocation(location), args));
+        DiagnosticsBase.Add(ref _diagnostics, Diagnostic.Create(diagnostic, GetLocation(location), args));
     }
     protected override void OnError(string error, in Location location)
     {
         Debug.Fail("unhandled error: " + error);
-        AddDiagnostic(Diagnostics.SqlError, location, error, location.Line, location.Column);
+        AddDiagnostic(DapperInterceptorGenerator.Diagnostics.SqlError, location, error, location.Line, location.Column);
     }
 
     protected override void OnAdditionalBatch(Location location)
-        => AddDiagnostic(Diagnostics.MultipleBatches, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.MultipleBatches, location, location.Line, location.Column);
 
     protected override void OnDuplicateVariableDeclaration(Variable variable)
-        => AddDiagnostic(Diagnostics.DuplicateVariableDeclaration, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.DuplicateVariableDeclaration, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
     protected override void OnExecVariable(Location location)
-        => AddDiagnostic(Diagnostics.ExecVariable, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.ExecVariable, location, location.Line, location.Column);
     protected override void OnSelectScopeIdentity(Location location)
-        => AddDiagnostic(Diagnostics.SelectScopeIdentity, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.SelectScopeIdentity, location, location.Line, location.Column);
     protected override void OnGlobalIdentity(Location location)
-        => AddDiagnostic(Diagnostics.GlobalIdentity, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.GlobalIdentity, location, location.Line, location.Column);
 
     protected override void OnNullLiteralComparison(Location location)
-        => AddDiagnostic(Diagnostics.NullLiteralComparison, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.NullLiteralComparison, location, location.Line, location.Column);
 
     protected override void OnParseError(ParseError error, Location location)
-        => AddDiagnostic(Diagnostics.ParseError, location, error.Message, error.Number, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.ParseError, location, error.Message, error.Number, location.Line, location.Column);
 
     protected override void OnScalarVariableUsedAsTable(Variable variable)
-        => AddDiagnostic(Diagnostics.ScalarVariableUsedAsTable, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.ScalarVariableUsedAsTable, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
     protected override void OnTableVariableUsedAsScalar(Variable variable)
-        => AddDiagnostic(Diagnostics.TableVariableUsedAsScalar, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.TableVariableUsedAsScalar, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
     protected override void OnVariableAccessedBeforeAssignment(Variable variable)
-        => AddDiagnostic(variable.IsTable ? Diagnostics.TableVariableAccessedBeforePopulate : Diagnostics.VariableAccessedBeforeAssignment, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => AddDiagnostic(variable.IsTable
+            ? DapperInterceptorGenerator.Diagnostics.TableVariableAccessedBeforePopulate
+            : DapperInterceptorGenerator.Diagnostics.VariableAccessedBeforeAssignment, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
     protected override void OnVariableNotDeclared(Variable variable)
-        => AddDiagnostic(Diagnostics.VariableNotDeclared, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.VariableNotDeclared, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
     protected override void OnVariableAccessedBeforeDeclaration(Variable variable)
-        => AddDiagnostic(Diagnostics.VariableAccessedBeforeDeclaration, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.VariableAccessedBeforeDeclaration, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
     protected override void OnVariableValueNotConsumed(Variable variable)
-        => AddDiagnostic(Diagnostics.VariableValueNotConsumed, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.VariableValueNotConsumed, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
     protected override void OnTableVariableOutputParameter(Variable variable)
-        => AddDiagnostic(Diagnostics.TableVariableOutputParameter, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.TableVariableOutputParameter, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
 
     protected override void OnInsertColumnMismatch(Location location)
-        => AddDiagnostic(Diagnostics.InsertColumnsMismatch, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.InsertColumnsMismatch, location, location.Line, location.Column);
     protected override void OnInsertColumnsNotSpecified(Location location)
-        => AddDiagnostic(Diagnostics.InsertColumnsNotSpecified, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.InsertColumnsNotSpecified, location, location.Line, location.Column);
     protected override void OnInsertColumnsUnbalanced(Location location)
-        => AddDiagnostic(Diagnostics.InsertColumnsUnbalanced, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.InsertColumnsUnbalanced, location, location.Line, location.Column);
     protected override void OnSelectStar(Location location)
-        => AddDiagnostic(Diagnostics.SelectStar, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.SelectStar, location, location.Line, location.Column);
     protected override void OnSelectEmptyColumnName(Location location, int column)
-        => AddDiagnostic(Diagnostics.SelectEmptyColumnName, location, column, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.SelectEmptyColumnName, location, column, location.Line, location.Column);
     protected override void OnSelectDuplicateColumnName(Location location, string name)
-        => AddDiagnostic(Diagnostics.SelectDuplicateColumnName, location, name, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.SelectDuplicateColumnName, location, name, location.Line, location.Column);
     protected override void OnSelectAssignAndRead(Location location)
-        => AddDiagnostic(Diagnostics.SelectAssignAndRead, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.SelectAssignAndRead, location, location.Line, location.Column);
 
     protected override void OnUpdateWithoutWhere(Location location)
-        => AddDiagnostic(Diagnostics.UpdateWithoutWhere, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.UpdateWithoutWhere, location, location.Line, location.Column);
     protected override void OnDeleteWithoutWhere(Location location)
-        => AddDiagnostic(Diagnostics.DeleteWithoutWhere, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.DeleteWithoutWhere, location, location.Line, location.Column);
 
     protected override void OnFromMultiTableMissingAlias(Location location)
-        => AddDiagnostic(Diagnostics.FromMultiTableMissingAlias, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.FromMultiTableMissingAlias, location, location.Line, location.Column);
     protected override void OnFromMultiTableUnqualifiedColumn(Location location, string name)
-        => AddDiagnostic(Diagnostics.FromMultiTableUnqualifiedColumn, location, name, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.FromMultiTableUnqualifiedColumn, location, name, location.Line, location.Column);
     protected override void OnNonIntegerTop(Location location)
-        => AddDiagnostic(Diagnostics.NonIntegerTop, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.NonIntegerTop, location, location.Line, location.Column);
     protected override void OnNonPositiveTop(Location location)
-        => AddDiagnostic(Diagnostics.NonPositiveTop, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.NonPositiveTop, location, location.Line, location.Column);
     protected override void OnSelectFirstTopError(Location location)
-        => AddDiagnostic(Diagnostics.SelectFirstTopError, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.SelectFirstTopError, location, location.Line, location.Column);
     protected override void OnSelectSingleRowWithoutWhere(Location location)
-        => AddDiagnostic(Diagnostics.SelectSingleRowWithoutWhere, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.SelectSingleRowWithoutWhere, location, location.Line, location.Column);
     protected override void OnSelectSingleTopError(Location location)
-        => AddDiagnostic(Diagnostics.SelectSingleTopError, location, location.Line, location.Column);
+        => AddDiagnostic(DapperInterceptorGenerator.Diagnostics.SelectSingleTopError, location, location.Line, location.Column);
 
     protected override bool TryGetParameter(string name, out ParameterDirection direction)
     {

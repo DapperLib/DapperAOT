@@ -15,7 +15,7 @@ public sealed class DapperCodeFixes : CodeFixProvider
 {
     public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.CreateRange(new[]
     {
-        Diagnostics.DapperAotNotEnabled.Id,
+        DapperInterceptorGenerator.Diagnostics.DapperAotNotEnabled.Id,
     });
 
     public override FixAllProvider? GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
@@ -28,14 +28,14 @@ public sealed class DapperCodeFixes : CodeFixProvider
         foreach (var diagnostic in context.Diagnostics)
         {
             if (diagnostic is null) continue; // GIGO
-            if (!Diagnostics.GetFieldName(diagnostic.Id, out var fieldName)) continue; // unknown
+            if (!DiagnosticsBase.TryGetFieldName(diagnostic.Id, out var fieldName)) continue; // unknown
 
             bool firstThisDiagnostic = true;
             SyntaxToken token = default;
 
             switch (fieldName)
             {
-                case nameof(Diagnostics.DapperAotNotEnabled):
+                case nameof(DapperInterceptorGenerator.Diagnostics.DapperAotNotEnabled):
                     Register("Enable AOT", GlobalEnableAOT, nameof(GlobalEnableAOT));
                     break;
             }

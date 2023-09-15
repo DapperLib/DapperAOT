@@ -2,15 +2,14 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
-using System;
 using System.Collections.Immutable;
 
 namespace Dapper.CodeAnalysis;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class OpinionatedAnalyzer : DiagnosticAnalyzer
+public sealed partial class OpinionatedAnalyzer : DiagnosticAnalyzer
 {
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Diagnostics.All;
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => DiagnosticsBase.All<Diagnostics>();
 
     public override void Initialize(AnalysisContext context)
     {
@@ -38,8 +37,6 @@ public sealed class OpinionatedAnalyzer : DiagnosticAnalyzer
             default: // includes NotDapper
                 return;
         }
-
-        context.ReportDiagnostic(Diagnostic.Create(Diagnostics.DapperAotNotEnabled, null));
 
     }
 }

@@ -1,19 +1,11 @@
-﻿using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis;
-using System.Collections.Immutable;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Dapper.CodeAnalysis.Abstractions
 {
-    /// <summary>
-    /// Dapper interceptors' base functionality
-    /// </summary>
     public abstract class InterceptorGeneratorBase : DiagnosticAnalyzer, IIncrementalGenerator,
         ISourceGenerator // for CSharpGeneratorDriver - see Roslyn #69906
     {
-        /// <inheritdoc/>
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Diagnostics.All;
-
-        /// <inheritdoc/>
         public override void Initialize(AnalysisContext context)
         {
             context.EnableConcurrentExecution();
