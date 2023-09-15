@@ -7,7 +7,6 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Data;
 using System.Diagnostics;
-using static Dapper.SqlAnalysis.TSqlProcessor;
 
 namespace Dapper.Internal;
 
@@ -18,13 +17,15 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
     private readonly LiteralExpressionSyntax? _literal;
     public object? DiagnosticsObject => _diagnostics;
     private readonly ITypeSymbol? _parameterType;
+    private readonly bool _assumeParameterExists;
     public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, ModeFlags flags, object? diagnostics,
         Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(flags)
     {
         _diagnostics = diagnostics;
         _location = sqlSyntax?.GetLocation() ?? location;
         _parameterType = parameterType;
-
+        _assumeParameterExists = Inspection.IsMissingOrObjectOrDynamic(_parameterType) || IsDyanmicParameters(parameterType);
+        if (_assumeParameterExists) AddFlags(ParseFlags.DynamicParameters);
         switch (sqlSyntax)
         {
             case LiteralExpressionSyntax direct:
@@ -35,6 +36,24 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
                 break;
            // other interesting possibilities include InterpolatedStringExpression, AddExpression
         }
+    }
+
+    public override void Reset()
+    {
+        base.Reset();
+        if (_assumeParameterExists) AddFlags(ParseFlags.DynamicParameters);
+    }
+
+    static bool IsDyanmicParameters(ITypeSymbol? type)
+    {
+        if (type is null || type.SpecialType != SpecialType.None) return false;
+        if (Inspection.IsBasicDapperType(type, Types.DynamicParameters)
+            || Inspection.IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
+        foreach (var i in type.AllInterfaces)
+        {
+            if (Inspection.IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
+        }
+        return false;
     }
 
     private Microsoft.CodeAnalysis.Location? GetLocation(in Location location)
@@ -143,7 +162,7 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
             return false;
         }
 
-        if (Inspection.IsMissingOrObjectOrDynamic(_parameterType))
+        if (_assumeParameterExists) // dynamic, etc
         {
             // dynamic
             direction = ParameterDirection.Input;

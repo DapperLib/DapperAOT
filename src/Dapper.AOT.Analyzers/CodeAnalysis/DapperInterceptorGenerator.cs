@@ -91,7 +91,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         // check whether we can use this method
         object? diagnostics = null;
-        bool dapperEnabled = Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out _, cancellationToken);
+        bool dapperEnabled = Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out var aotAttribExists, cancellationToken);
         if (dapperEnabled)
         {
             if (methodKind == DapperMethodKind.DapperUnsupported)
@@ -104,6 +104,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         {
             // no diagnostic per-item; the generator will emit a single diagnostic if everything is disabled
             flags |= OperationFlags.AotNotEnabled | OperationFlags.DoNotGenerate;
+            if (aotAttribExists) flags |= OperationFlags.AotDisabled; // active opt-out
             // but we still process the other bits, as there might be relevant additional things
         }
 
@@ -573,7 +574,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 else
                 {
                     // we can only consider this an error if we're confident in how well we parsed the input
-                    if ((parseFlags & ParseFlags.Reliable) != 0)
+                    // (unless we detected dynamic args, in which case: we don't know what we don't know)
+                    if ((parseFlags & (ParseFlags.Reliable | ParseFlags.DynamicParameters)) == ParseFlags.Reliable)
                     {
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(parameterType)));
                     }
@@ -782,10 +784,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         Scalar = 1 << 13,
         DoNotGenerate = 1 << 14,
         AotNotEnabled = 1 << 15,
-        BindResultsByName = 1 << 16,
-        BindTupleParameterByName = 1 << 17,
-        CacheCommand = 1 << 18,
-        IncludeLocation = 1 << 19, // include -- SomeFile.cs#40 when possible
+        AotDisabled = 1 << 16, // actively disabled
+        BindResultsByName = 1 << 17,
+        BindTupleParameterByName = 1 << 18,
+        CacheCommand = 1 << 19,
+        IncludeLocation = 1 << 20, // include -- SomeFile.cs#40 when possible
     }
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
@@ -838,7 +841,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         enabledCount = 0;
         if (!state.Nodes.IsDefaultOrEmpty)
         {
-            int errorCount = 0, disabledCount = 0, doNotGenerateCount = 0;
+            int errorCount = 0, passiveDisabledCount = 0, doNotGenerateCount = 0;
             bool checkParseOptions = true;
             foreach (var node in state.Nodes)
             {
@@ -850,9 +853,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
                 if (HasAny(node.Flags, OperationFlags.DoNotGenerate)) doNotGenerateCount++;
 
-                if ((node.Flags & OperationFlags.AotNotEnabled) != 0)
+                if ((node.Flags & OperationFlags.AotNotEnabled) != 0) // passive or active disabled
                 {
-                    disabledCount++;
+                    if ((node.Flags & OperationFlags.AotDisabled) == 0)
+                    {
+                        passiveDisabledCount++;
+                    }
                 }
                 else
                 {
@@ -876,7 +882,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                 }
             }
-            if (disabledCount == state.Nodes.Length && IsDapperAotAvailable(state.Compilation))
+            if (passiveDisabledCount == state.Nodes.Length && IsDapperAotAvailable(state.Compilation))
             {
                 ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.DapperAotNotEnabled, null));
                 errorCount++;

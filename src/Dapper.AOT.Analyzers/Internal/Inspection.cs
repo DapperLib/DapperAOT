@@ -74,6 +74,22 @@ internal static class Inspection
         return null;
     }
 
+    public static bool IsBasicDapperType(ITypeSymbol? type, string name, TypeKind kind = TypeKind.Class)
+        => type is INamedTypeSymbol
+        {
+            Arity: 0, ContainingType: null,
+            ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true }
+        } named && named.TypeKind == kind && named.Name == name;
+
+    public static bool IsNestedSqlMapperType(ITypeSymbol? type, string name, TypeKind kind = TypeKind.Class)
+    => type is INamedTypeSymbol
+    {
+        Arity: 0, ContainingType: {
+            Name: Types.SqlMapper, TypeKind: TypeKind.Class, IsStatic: true, Arity: 0,
+            ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true },
+        },
+    } named && named.TypeKind == kind && named.Name == name;
+
     public static ISymbol? GetSymbol(in GeneratorSyntaxContext ctx, IOperation operation, CancellationToken cancellationToken)
     {
         var method = GetContainingMethodSyntax(operation);

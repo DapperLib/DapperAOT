@@ -11,5 +11,8 @@ internal static class Types
         IncludeLocationAttribute = nameof(IncludeLocationAttribute),
         SqlSyntaxAttribute = nameof(SqlSyntaxAttribute),
         EstimatedRowCountAttribute = nameof(EstimatedRowCountAttribute),
-        CommandPropertyAttribute = nameof(CommandPropertyAttribute);
+        CommandPropertyAttribute = nameof(CommandPropertyAttribute),
+        DynamicParameters = nameof(DynamicParameters),
+        IDynamicParameters = nameof(IDynamicParameters),
+        SqlMapper = nameof(SqlMapper);
 }

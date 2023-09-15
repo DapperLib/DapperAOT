@@ -12,4 +12,5 @@ internal enum ParseFlags
     Query = 1 << 3,
     Queries = 1 << 4,
     MaybeQuery = 1 << 5, // think "exec": we don't know!
+    DynamicParameters = 1 << 6,
 }

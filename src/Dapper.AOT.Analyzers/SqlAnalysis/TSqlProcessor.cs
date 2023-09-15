@@ -115,6 +115,7 @@ internal class TSqlProcessor
     public IEnumerable<Variable> Variables => _visitor.Variables;
 
     public ParseFlags Flags { get; private set; }
+    protected void AddFlags(ParseFlags flags) => Flags |= flags;
     public virtual void Reset()
     {
         Flags = ParseFlags.Reliable;
