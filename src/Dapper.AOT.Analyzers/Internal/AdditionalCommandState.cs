@@ -69,7 +69,7 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
                 {
                     if (estimatedRowCountMember is not null)
                     {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.MemberRowCountHintDuplicated, member.GetLocation()));
+                        DiagnosticsBase.Add(ref diagnostics, Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MemberRowCountHintDuplicated, member.GetLocation()));
                     }
                     estimatedRowCountMember = member.Member.Name;
                 }
@@ -92,12 +92,12 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
                             }
                             else
                             {
-                                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.MethodRowCountHintRedundant, location, estimatedRowCountMember));
+                                DiagnosticsBase.Add(ref diagnostics, Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MethodRowCountHintRedundant, location, estimatedRowCountMember));
                             }
                         }
                         else
                         {
-                            Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.MethodRowCountHintInvalid, location));
+                            DiagnosticsBase.Add(ref diagnostics, Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MethodRowCountHintInvalid, location));
                         }
                         break;
                     case Types.CommandPropertyAttribute:

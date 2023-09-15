@@ -33,7 +33,7 @@ public class QueryTests : IClassFixture<SqlClientFixture>
         else
         {
             Assert.NotNull(row);
-            Assert.Equal(1, row.Id);
+            Assert.Equal(1, row!.Id);
             Assert.Equal("abc", row.Name);
         }
     }
@@ -46,7 +46,7 @@ public class QueryTests : IClassFixture<SqlClientFixture>
         else
         {
             Assert.NotNull((object?)row);
-            Assert.Equal(1, (int)row.Id);
+            Assert.Equal(1, (int)row!.Id);
             Assert.Equal("abc", (string)row.Name);
         }
     }

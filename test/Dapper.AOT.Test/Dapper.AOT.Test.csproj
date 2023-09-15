@@ -42,5 +42,8 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
         <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
+
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.XUnit" />
     </ItemGroup>
 </Project>

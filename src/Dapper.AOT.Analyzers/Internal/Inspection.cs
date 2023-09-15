@@ -2,6 +2,7 @@
 using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Operations;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
@@ -55,11 +56,11 @@ internal static class Inspection
         }
         return hasNames = false;
     }
-    public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, CancellationToken cancellationToken)
-        => GetClosestDapperAttribute(ctx, op, attributeName, out _, cancellationToken);
-    public static AttributeData? GetClosestDapperAttribute(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out Location? location, CancellationToken cancellationToken)
+    public static AttributeData? GetClosestDapperAttribute(in ParseState ctx, IOperation op, string attributeName)
+        => GetClosestDapperAttribute(ctx, op, attributeName, out _);
+    public static AttributeData? GetClosestDapperAttribute(in ParseState ctx, IOperation op, string attributeName, out Location? location)
     {
-        var symbol = GetSymbol(ctx, op, cancellationToken);
+        var symbol = GetSymbol(ctx, op);
         while (symbol is not null)
         {
             var attrib = GetDapperAttribute(symbol, attributeName);
@@ -84,16 +85,17 @@ internal static class Inspection
     public static bool IsNestedSqlMapperType(ITypeSymbol? type, string name, TypeKind kind = TypeKind.Class)
     => type is INamedTypeSymbol
     {
-        Arity: 0, ContainingType: {
+        Arity: 0, ContainingType:
+        {
             Name: Types.SqlMapper, TypeKind: TypeKind.Class, IsStatic: true, Arity: 0,
             ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true },
         },
     } named && named.TypeKind == kind && named.Name == name;
 
-    public static ISymbol? GetSymbol(in GeneratorSyntaxContext ctx, IOperation operation, CancellationToken cancellationToken)
+    public static ISymbol? GetSymbol(in ParseState ctx, IOperation operation)
     {
         var method = GetContainingMethodSyntax(operation);
-        return method is null ? null : ctx.SemanticModel.GetDeclaredSymbol(method, cancellationToken);
+        return method is null ? null : ctx.SemanticModel.GetDeclaredSymbol(method, ctx.CancellationToken);
         static SyntaxNode? GetContainingMethodSyntax(IOperation op)
         {
             var syntax = op.Syntax;
@@ -111,9 +113,9 @@ internal static class Inspection
 
     // support the fact that [DapperAot(bool)] can enable/disable generation at any level
     // including method, type, module and assembly; first attribute found (walking up the tree): wins
-    public static bool IsEnabled(in GeneratorSyntaxContext ctx, IOperation op, string attributeName, out bool exists, CancellationToken cancellationToken)
+    public static bool IsEnabled(in ParseState ctx, IOperation op, string attributeName, out bool exists)
     {
-        var attrib = GetClosestDapperAttribute(ctx, op, attributeName, cancellationToken);
+        var attrib = GetClosestDapperAttribute(ctx, op, attributeName);
         if (attrib is not null && attrib.ConstructorArguments.Length == 1
             && attrib.ConstructorArguments[0].Value is bool b)
         {
@@ -151,7 +153,7 @@ internal static class Inspection
 
     public static bool IsMissingOrObjectOrDynamic(ITypeSymbol? type) => type is null || type.SpecialType == SpecialType.System_Object || type.TypeKind == TypeKind.Dynamic;
 
-    public static bool IsPublicOrAssemblyLocal(ISymbol? symbol, in GeneratorSyntaxContext ctx, out ISymbol? failingSymbol)
+    public static bool IsPublicOrAssemblyLocal(ISymbol? symbol, in ParseState ctx, out ISymbol? failingSymbol)
         => IsPublicOrAssemblyLocal(symbol, ctx.SemanticModel.Compilation.Assembly, out failingSymbol);
 
     public static bool IsPublicOrAssemblyLocal(ISymbol? symbol, IAssemblySymbol? assembly, out ISymbol? failingSymbol)
@@ -454,7 +456,7 @@ internal static class Inspection
             // attaching diagnostic to first location of first ctor
             var loc = dapperAotEnabledCtors.First().Locations.First();
 
-            errorDiagnostic = Diagnostic.Create(Diagnostics.TooManyDapperAotEnabledConstructors, loc, typeSymbol!.ToDisplayString());
+            errorDiagnostic = Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.TooManyDapperAotEnabledConstructors, loc, typeSymbol!.ToDisplayString());
             constructor = null!;
             return false;
         }
@@ -772,4 +774,100 @@ internal static class Inspection
         readerMethod = null;
         return null;
     }
+
+    public static DapperMethodKind IsSupportedDapperMethod(this IInvocationOperation operation, out OperationFlags flags)
+    {
+        flags = OperationFlags.None;
+        var method = operation?.TargetMethod;
+        if (method is null || !method.IsExtensionMethod)
+        {
+            return DapperMethodKind.NotDapper;
+        }
+        var type = method.ContainingType;
+        if (type is not { Name: Types.SqlMapper, ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } })
+        {
+            return DapperMethodKind.NotDapper;
+        }
+        if (method.Name.EndsWith("Async"))
+        {
+            flags |= OperationFlags.Async;
+        }
+        if (method.IsGenericMethod)
+        {
+            flags |= OperationFlags.TypedResult;
+        }
+        switch (method.Name)
+        {
+            case "Query":
+                flags |= OperationFlags.Query;
+                return method.Arity <= 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+            case "QueryAsync":
+            case "QueryUnbufferedAsync":
+                flags |= method.Name.Contains("Unbuffered") ? OperationFlags.Unbuffered : OperationFlags.Buffered;
+                goto case "Query";
+            case "QueryFirst":
+            case "QueryFirstAsync":
+                flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne;
+                goto case "Query";
+            case "QueryFirstOrDefault":
+            case "QueryFirstOrDefaultAsync":
+                flags |= OperationFlags.SingleRow;
+                goto case "Query";
+            case "QuerySingle":
+            case "QuerySingleAsync":
+                flags |= OperationFlags.SingleRow | OperationFlags.AtLeastOne | OperationFlags.AtMostOne;
+                goto case "Query";
+            case "QuerySingleOrDefault":
+            case "QuerySingleOrDefaultAsync":
+                flags |= OperationFlags.SingleRow | OperationFlags.AtMostOne;
+                goto case "Query";
+            case "Execute":
+            case "ExecuteAsync":
+                flags |= OperationFlags.Execute;
+                return method.Arity == 0 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+            case "ExecuteScalar":
+            case "ExecuteScalarAsync":
+                flags |= OperationFlags.Execute | OperationFlags.Scalar;
+                return method.Arity <= 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+            default:
+                return DapperMethodKind.DapperUnsupported;
+        }
+    }
+    public static bool HasAny(this OperationFlags value, OperationFlags testFor) => (value & testFor) != 0;
+    public static bool HasAll(this OperationFlags value, OperationFlags testFor) => (value & testFor) == testFor;
+
+}
+
+enum DapperMethodKind
+{
+    NotDapper,
+    DapperUnsupported,
+    DapperSupported,
+}
+
+[Flags]
+enum OperationFlags
+{
+    None = 0,
+    Query = 1 << 0,
+    Execute = 1 << 1,
+    Async = 1 << 2,
+    TypedResult = 1 << 3,
+    HasParameters = 1 << 4,
+    Buffered = 1 << 5,
+    Unbuffered = 1 << 6,
+    SingleRow = 1 << 7,
+    Text = 1 << 8,
+    StoredProcedure = 1 << 9,
+    TableDirect = 1 << 10,
+    AtLeastOne = 1 << 11,
+    AtMostOne = 1 << 12,
+    Scalar = 1 << 13,
+    DoNotGenerate = 1 << 14,
+    AotNotEnabled = 1 << 15,
+    AotDisabled = 1 << 16, // actively disabled
+    BindResultsByName = 1 << 17,
+    BindTupleParameterByName = 1 << 18,
+    CacheCommand = 1 << 19,
+    IncludeLocation = 1 << 20, // include -- SomeFile.cs#40 when possible
 }

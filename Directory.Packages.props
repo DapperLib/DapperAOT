@@ -23,8 +23,12 @@
         <PackageVersion Include="System.Collections.Immutable" Version="7.0.0" />
         <PackageVersion Include="System.Data.Common" Version="4.3.0" />
         <PackageVersion Include="System.Data.SqlClient" Version="4.8.5" />
-        <PackageVersion Include="xunit" Version="2.5.0" />
-        <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.0" />
+        <!-- these are bound by Microsoft.CodeAnalysis.CSharp.*.Testing.XUnit -->
+        <PackageVersion Include="xunit" Version="[2.3.0]" />
+        <PackageVersion Include="xunit.runner.visualstudio" Version="[2.3.0]" />
         <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="161.8905.0" />
+
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" Version="1.1.1" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.XUnit" Version="1.1.1" />
     </ItemGroup>
 </Project>
