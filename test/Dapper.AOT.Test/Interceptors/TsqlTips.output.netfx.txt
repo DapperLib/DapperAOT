@@ -1,4 +1,4 @@
-Generator produced 49 diagnostics:
+Generator produced 48 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 54 of 56 enabled call-sites using 10 interceptors, 3 commands and 1 readers
@@ -140,9 +140,6 @@ SELECT for single row without WHERE or (TOP and ORDER BY) (L1 C1)
 
 Warning DAP231 Interceptors/TsqlTips.input.cs L163 C43
 SELECT for single row without WHERE or (TOP and ORDER BY) (L1 C1)
-
-Warning DAP216 Interceptors/TsqlTips.input.cs L170 C13
-INSERT should explicitly specify target columns (L2 C1)
 
 Error DAP019 Interceptors/TsqlTips.input.cs L173 C17
 SQL parameters were detected, but no parameters are being supplied

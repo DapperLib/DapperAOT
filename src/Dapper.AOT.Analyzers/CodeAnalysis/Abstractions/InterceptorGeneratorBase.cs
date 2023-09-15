@@ -29,8 +29,9 @@ namespace Dapper.CodeAnalysis.Abstractions
         /// <inheritdoc/>
         public abstract void Initialize(IncrementalGeneratorInitializationContext context);
 
+        // for CSharpGeneratorDriver - see Roslyn #69906
         void ISourceGenerator.Initialize(GeneratorInitializationContext context) { }
-
+        // for CSharpGeneratorDriver - see Roslyn #69906
         void ISourceGenerator.Execute(GeneratorExecutionContext context) { }
     }
 }
