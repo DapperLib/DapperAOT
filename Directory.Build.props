@@ -11,7 +11,7 @@
         <PackageIcon>Dapper.png</PackageIcon>
         <Authors>Marc Gravell</Authors>
         <Copyright>Marc Gravell, 2021 onwards</Copyright>
-        <PackageProjectUrl>https://github.com/DapperLib/DapperAOT/</PackageProjectUrl>
+        <PackageProjectUrl>https://aot.dapperlib.dev/</PackageProjectUrl>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>https://github.com/DapperLib/DapperAOT/</RepositoryUrl>
         <LangVersion>11</LangVersion>

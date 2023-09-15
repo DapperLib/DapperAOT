@@ -9,7 +9,7 @@ namespace Dapper.CodeAnalysis;
 
 internal static class Diagnostics
 {
-    const string DocsRoot = "https://dapperlib.github.io/DapperAOT/", RulesRoot = DocsRoot + "rules/";
+    const string DocsRoot = "https://aot.dapperlib.dev/", RulesRoot = DocsRoot + "rules/";
     internal static readonly DiagnosticDescriptor
         InterceptorsGenerated = new("DAP000", "Interceptors generated",
             "Dapper.AOT handled {0} of {1} enabled call-sites using {2} interceptors, {3} commands and {4} readers", Category.Library, DiagnosticSeverity.Hidden, true),
