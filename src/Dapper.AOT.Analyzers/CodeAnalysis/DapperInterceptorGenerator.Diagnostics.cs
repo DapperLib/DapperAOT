@@ -13,10 +13,10 @@ partial class DapperInterceptorGenerator
         //UntypedResults = new("DAP002", "Untyped result types",
         //    "Dapper.AOT does not currently support untyped/dynamic results", Category.Library, DiagnosticSeverity.Info, true),
         InterceptorsNotEnabled = LibraryWarning("DAP003", "Interceptors not enabled",
-            "Interceptors are an experimental feature, and requires that '<Features>InterceptorsPreview</Features>' be added to the project file"),
-        LanguageVersionTooLow = LibraryWarning("DAP004", "Language version too low", "Interceptors require at least C# version 11"),
+            "Interceptors need to be enabled (see help-link)", true),
+        LanguageVersionTooLow = LibraryWarning("DAP004", "Language version too low", "Interceptors require at least C# version 11", true),
         DapperAotNotEnabled = LibraryInfo("DAP005", "Dapper.AOT not enabled",
-            "Candidate Dapper methods were detected, but none have Dapper.AOT enabled; [DapperAot] can be added at the method, type, module or assembly level (for example '[module:DapperAot]')"),
+            "Candidate Dapper methods were detected, but none have Dapper.AOT enabled; [DapperAot] can be added at the method, type, module or assembly level (for example '[module:DapperAot]')", true),
         DapperLegacyTupleParameter = LibraryWarning("DAP006", "Dapper tuple-type parameter", "Dapper (original) does not work well with tuple-type parameters as name information is inaccessible"),
         UnexpectedCommandType = LibraryInfo("DAP007", "Unexpected command type", "The command type specified is not understood"),
         // space

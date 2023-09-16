@@ -51,5 +51,5 @@ class SomeCode
 {
     public void Foo(DbConnection conn) => conn.Execute("some sql");
 }
-""", InterceptorsNotEnabled);
+""", InterceptorsGenerated(1, 1, 1, 0, 0));
 }

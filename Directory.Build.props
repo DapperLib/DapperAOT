@@ -26,6 +26,7 @@
         <DefaultLanguage>en-US</DefaultLanguage>
         <IncludeSymbols>false</IncludeSymbols>
         <AnalysisMode>latest-Recommended</AnalysisMode>
+        <Features>($Features);strict</Features>
     </PropertyGroup>
     <ItemGroup>
         <None Include="$(MSBuildThisFileDirectory)Dapper.png" Visible="false">
