@@ -1,4 +1,4 @@
 ﻿[*.cs]
 
-# DAP000: Interceptors generated
-dotnet_diagnostic.DAP000.severity = suggestion
+# RS2008: Enable analyzer release tracking
+dotnet_diagnostic.RS2008.severity = none

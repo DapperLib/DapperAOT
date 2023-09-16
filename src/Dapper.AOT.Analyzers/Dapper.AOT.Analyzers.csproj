@@ -10,6 +10,8 @@
         <Deterministic>true</Deterministic>
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <!-- disable analyzer --><!--
+        <NoWarn>$(NoWarn);RS2008</NoWarn>-->
     </PropertyGroup>
 
     <ItemGroup>

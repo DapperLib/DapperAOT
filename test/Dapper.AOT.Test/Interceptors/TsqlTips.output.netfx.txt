@@ -141,5 +141,5 @@ SELECT for single row without WHERE or (TOP and ORDER BY) (L1 C1)
 Warning DAP231 Interceptors/TsqlTips.input.cs L163 C43
 SELECT for single row without WHERE or (TOP and ORDER BY) (L1 C1)
 
-Error DAP019 Interceptors/TsqlTips.input.cs L173 C17
+Warning DAP019 Interceptors/TsqlTips.input.cs L173 C17
 SQL parameters were detected, but no parameters are being supplied

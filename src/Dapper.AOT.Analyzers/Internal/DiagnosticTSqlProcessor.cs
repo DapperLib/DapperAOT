@@ -73,7 +73,7 @@ internal class DiagnosticTSqlProcessor : TSqlProcessor
     protected override void OnError(string error, in Location location)
     {
         Debug.Fail("unhandled error: " + error);
-        AddDiagnostic(DapperInterceptorGenerator.Diagnostics.SqlError, location, error, location.Line, location.Column);
+        AddDiagnostic(DapperInterceptorGenerator.Diagnostics.GeneralSqlError, location, error, location.Line, location.Column);
     }
 
     protected override void OnAdditionalBatch(Location location)

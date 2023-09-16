@@ -481,7 +481,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                     catch (Exception ex)
                     {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlError, loc, ex.Message));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GeneralSqlError, loc, ex.Message));
                         goto default; // some internal failure
                     }
                     break;
