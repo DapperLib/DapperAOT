@@ -8,7 +8,7 @@ using static Dapper.CodeAnalysis.DapperInterceptorGenerator;
 namespace Dapper.AOT.Test.TestCommon;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-internal sealed class WrappedDapperInterceptorAnalyzer : DiagnosticAnalyzer
+public sealed class WrappedDapperInterceptorAnalyzer : DiagnosticAnalyzer
 {
     private readonly DapperInterceptorGenerator inner = new();
 
