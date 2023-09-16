@@ -1,12 +1,11 @@
-﻿using Dapper.CodeAnalysis;
+﻿using Dapper.AOT.Test.TestCommon;
+using Dapper.CodeAnalysis;
 using System.Threading.Tasks;
 using Xunit;
-// using Verifier = Dapper.AOT.Test.AnalyzerAndCodeFixVerifier<Dapper.AOT.Test.TestCommon.WrappedDapperInterceptorAnalyzer, Dapper.CodeAnalysis.DapperCodeFixes>;
-using Verifier = Dapper.AOT.Test.AnalyzerVerifier<Dapper.AOT.Test.TestCommon.WrappedDapperInterceptorAnalyzer>;
 
 namespace Dapper.AOT.Test.Verifiers;
 
-public class DAP005
+public class DAP005 : Verifier
 {
     [Fact]
     public async Task ShouldDetectNotEnabledWhenUsed()
@@ -21,7 +20,7 @@ class SomeCode
 }
 """;
 
-        var expectedError = Verifier.Diagnostic(DapperInterceptorGenerator.Diagnostics.DapperAotNotEnabled.Id);
-        await Verifier.VerifyAnalyzerAsync(input, expectedError);
+        var expected = Diagnostic(DapperInterceptorGenerator.Diagnostics.DapperAotNotEnabled);
+        await VerifyAsync<WrappedDapperInterceptorAnalyzer>(input, expected);
     }
 }

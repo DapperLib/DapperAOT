@@ -1,11 +1,8 @@
 ﻿using Dapper.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Linq;
 using static Dapper.CodeAnalysis.DapperInterceptorGenerator;
 
 namespace Dapper.AOT.Test.TestCommon;
