@@ -10,8 +10,8 @@ partial class DapperAnalyzer
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),
-        MultipleBatches = SqlError("DAP201", "Multiple batches", "Multiple batches are not permitted"),
-        DuplicateVariableDeclaration = SqlError("DAP202", "Duplicate variable declaration", "The variable {0} is declared multiple times"),
+        MultipleBatches = SqlError("DAP201", "Multiple batches", "Multiple batches are not permitted", true),
+        DuplicateVariableDeclaration = SqlError("DAP202", "Duplicate variable declaration", "The variable {0} is declared multiple times", true),
         GlobalIdentity = SqlError("DAP203", "Do not use @@identity", "@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid"),
         SelectScopeIdentity = SqlInfo("DAP204", "Prefer OUTPUT over SELECT", "Consider using OUTPUT INSERTED.yourid in the INSERT instead of SELECT SCOPE_IDENTITY()"),
         NullLiteralComparison = SqlWarning("DAP205", "Null comparison", "Literal null used in comparison; 'is null' or 'is not null' should be preferred"),

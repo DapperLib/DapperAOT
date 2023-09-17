@@ -130,6 +130,23 @@ public abstract class Verifier
 
 public class Verifier<TAnalyzer> : Verifier where TAnalyzer : DiagnosticAnalyzer, new()
 {
+    protected Task SqlVerifyAsync(string sql,
+    params DiagnosticResult[] expected)
+    {
+        var cs = $$"""
+            using Dapper;
+            using System.Data.Common;
+
+            [DapperAot(false)]
+            class SomeCode
+            {
+                public void Foo(DbConnection conn) => conn.Execute(@"{{sql.Replace("\"", "\"\"")}}");
+            }
+            """;
+        return CSVerifyAsync(cs, expected);
+    }
+        
+
     protected Task CSVerifyAsync(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         params DiagnosticResult[] expected)
