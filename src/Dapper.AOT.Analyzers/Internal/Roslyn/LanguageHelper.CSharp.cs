@@ -1,24 +1,40 @@
 ﻿using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Text;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 
 namespace Dapper.Internal.Roslyn;
-
-internal static class LiteralLocationHelper
+partial class LanguageHelper
 {
-    internal static Location ComputeLocation(SyntaxToken token, in TSqlProcessor.Location location)
+    public static readonly LanguageHelper CSharp = new CSharpLanguageHelper();
+    private sealed class CSharpLanguageHelper : LanguageHelper
     {
-        var origin = token.GetLocation();
-        if (origin.SourceTree is null) return origin; // we need a tree!
-        try
+        internal override bool TryGetLiteralToken(SyntaxNode syntax, out SyntaxToken token)
         {
-            var text = token.Text;
-            TextSpan originSpan = token.Span;
-            ReadOnlySpan<char> s;
-            int skip, take;
+            switch (syntax)
+            {
+                case LiteralExpressionSyntax direct:
+                    token = direct.Token;
+                    return true;
+                case VariableDeclaratorSyntax decl when decl.Initializer?.Value is LiteralExpressionSyntax indirect:
+                    token = indirect.Token;
+                    return true;
+                default:
+                    token = default;
+                    return false;
+            }
+        }
 
+        internal override bool IsMemberAccess(SyntaxNode syntax)
+            => syntax is MemberAccessExpressionSyntax;
+
+        internal override bool IsMethodDeclaration(SyntaxNode syntax)
+            => syntax.IsKind(SyntaxKind.MethodDeclaration);
+
+        internal override bool TryGetStringSpan(SyntaxToken token, string text, scoped in TSqlProcessor.Location location, out int skip, out int take)
+        {
+            ReadOnlySpan<char> s;
             switch (token.Kind())
             {
                 case SyntaxKind.StringLiteralToken when token.IsVerbatimStringLiteral():
@@ -26,7 +42,7 @@ internal static class LiteralLocationHelper
                     skip = 2 + SkipLines(ref s, location.Line - 1);
                     skip += SkipVerbatimStringCharacters(ref s, location.Column - 1);
                     take = SkipVerbatimStringCharacters(ref s, location.Length);
-                    break;
+                    return true;
                 case SyntaxKind.StringLiteralToken:
                     s = text.AsSpan().Slice(1); // take off the "
                     skip = 1;
@@ -34,35 +50,27 @@ internal static class LiteralLocationHelper
                     // a range of other things; use Offset
                     skip += SkipEscapedStringCharacters(ref s, (location.Line == 1 ? location.Column : location.Offset) - 1);
                     take = SkipEscapedStringCharacters(ref s, location.Length);
-                    break;
+                    return true;
                 case SyntaxKind.SingleLineRawStringLiteralToken when location.Line == 1:
                     // no escape sequences; just need to skip the preamble """ etc
                     skip = CountQuotes(text) + location.Column - 1;
                     take = location.Length;
-                    break;
+                    return true;
                 case SyntaxKind.MultiLineRawStringLiteralToken:
                     var quotes = CountQuotes(text);
                     s = text.AsSpan();
                     var lastLineStart = s.LastIndexOfAny('\r', '\n');
-                    if (lastLineStart < 0) return origin; // ????
+                    if (lastLineStart < 0) break; // ????
                     var indent = s.Length - quotes - lastLineStart - 1; // last line defines the indent
 
                     skip = SkipLines(ref s, location.Line) // note we're also skipping the first one here
                         + indent + location.Column - 1;
                     take = location.Length;
-                    break;
-                default:
-                    return origin;
+                    return true;
             }
-            var finalSpan = new TextSpan(originSpan.Start + skip, take);
-            if (originSpan.Contains(finalSpan)) // make sure we haven't messed up the math!
-            {
-                return Location.Create(origin.SourceTree, finalSpan);
-            }
+            skip = take = 0;
+            return false;
         }
-        catch
-        { } // best efforts only
-        return origin;
     }
 
     static int CountQuotes(string text)

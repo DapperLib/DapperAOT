@@ -11,7 +11,7 @@ internal abstract class DiagnosticsBase
 {
     protected const string DocsRoot = "https://aot.dapperlib.dev/", RulesRoot = DocsRoot + "rules/";
 
-    private static DiagnosticDescriptor Create(string id, string title, string messageFormat, string? category, DiagnosticSeverity severity, bool docs) =>
+    private static DiagnosticDescriptor Create(string id, string title, string messageFormat, string category, DiagnosticSeverity severity, bool docs) =>
         new(id, title,
             messageFormat, category, severity, true, helpLinkUri: docs ? (RulesRoot + id) : null);
 
@@ -41,7 +41,7 @@ internal abstract class DiagnosticsBase
         return (_idsToFieldNames ??= Build()).TryGetValue(id, out field!);
         static ImmutableDictionary<string, string> Build()
             => GetAllFor<DapperInterceptorGenerator.Diagnostics>()
-            .Concat(GetAllFor<OpinionatedAnalyzer.Diagnostics>())
+            .Concat(GetAllFor<DapperAnalyzer.Diagnostics>())
             .Concat(GetAllFor<TypeAccessorInterceptorGenerator.Diagnostics>())
             .ToImmutableDictionary(x => x.Value.Id, x => x.Key, StringComparer.Ordinal, StringComparer.Ordinal);
     }
@@ -74,6 +74,10 @@ internal abstract class DiagnosticsBase
         public const string Sql = nameof(Sql);
         public const string Performance = nameof(Performance);
     }
+#if DEBUG
+    internal static readonly DiagnosticDescriptor Debug = Create("DAP999", "Debug message", "{0}", "Debug",
+        DiagnosticSeverity.Info, false);
+#endif
 
     internal static void Add(ref object? diagnostics, Diagnostic diagnostic)
     {

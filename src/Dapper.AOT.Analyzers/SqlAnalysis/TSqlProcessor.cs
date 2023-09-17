@@ -23,6 +23,10 @@ internal class TSqlProcessor
         ValidateSelectNames = 1 << 1,
         SingleRow = 1 << 2,
         AtMostOne = 1 << 3,
+        ExpectQuery = 1 << 4, // active *DO* expect a query
+        ExpectNoQuery = 1 << 5, // actively do *NOT* expect a query
+        SingleQuery = 1 << 6, // actively expect *exactly* one query
+        SingleColumn = 1 << 7, // actively expect *exactly* one column in any query
     }
     [Flags]
     internal enum VariableFlags
@@ -43,7 +47,7 @@ internal class TSqlProcessor
         _visitor = log is null ? new VariableTrackingVisitor(flags, this) : new LoggingVariableTrackingVisitor(flags, this, log);
     }
 
-    static string HackAroundDapperSyntax(string sql, ImmutableArray<ElementMember> members)
+    static string ReplaceDapperSyntaxWithValidSql(string sql, ImmutableArray<ElementMember> members)
     {
         if (SqlTools.LiteralTokens.IsMatch(sql))
         {
@@ -86,10 +90,14 @@ internal class TSqlProcessor
             members = ImmutableArray<ElementMember>.Empty;
         }
         Reset();
-        sql = HackAroundDapperSyntax(sql, members);
+        var fixedSql = ReplaceDapperSyntaxWithValidSql(sql, members);
+        if (fixedSql != sql)
+        {
+            Flags |= ParseFlags.SqlAdjustedForDapperSyntax;
+        }
         var parser = new TSql160Parser(true, SqlEngineType.All);
         TSqlFragment tree;
-        using (var reader = new StringReader(sql))
+        using (var reader = new StringReader(fixedSql))
         {
             tree = parser.Parse(reader, out var errors);
             if (errors is not null && errors.Count != 0)

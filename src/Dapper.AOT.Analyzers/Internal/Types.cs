@@ -14,5 +14,6 @@ internal static class Types
         CommandPropertyAttribute = nameof(CommandPropertyAttribute),
         DynamicParameters = nameof(DynamicParameters),
         IDynamicParameters = nameof(IDynamicParameters),
-        SqlMapper = nameof(SqlMapper);
+        SqlMapper = nameof(SqlMapper),
+        SqlAttribute = nameof(SqlAttribute);
 }

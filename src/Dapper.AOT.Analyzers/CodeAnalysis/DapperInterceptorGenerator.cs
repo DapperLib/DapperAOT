@@ -7,7 +7,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -15,7 +14,6 @@ using System.Data;
 using System.Data.Common;
 using System.Globalization;
 using System.Linq;
-using System.Net.Mime;
 using System.Text;
 using System.Threading;
 
@@ -137,13 +135,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             switch (arg.Parameter?.Name)
             {
                 case "sql":
-                    if (TryGetConstantValueWithSyntax(arg, out string? s, out sqlSyntax))
+                    if (Inspection.TryGetConstantValueWithSyntax(arg, out string? s, out sqlSyntax))
                     {
                         sql = s;
                     }
                     break;
                 case "buffered":
-                    if (TryGetConstantValue(arg, out bool b))
+                    if (Inspection.TryGetConstantValue(arg, out bool b))
                     {
                         buffered = b;
                     }
@@ -166,7 +164,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     // nothing to do
                     break;
                 case "commandType":
-                    if (TryGetConstantValue(arg, out int? ct))
+                    if (Inspection.TryGetConstantValue(arg, out int? ct))
                     {
                         switch (ct)
                         {
@@ -374,65 +372,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         //    }
         //}
 
-        static bool TryGetConstantValue<T>(IArgumentOperation op, out T? value)
-            => TryGetConstantValueWithSyntax<T>(op, out value, out _);
-
-        static bool TryGetConstantValueWithSyntax<T>(IArgumentOperation op, out T? value, out SyntaxNode? syntax)
-        {
-            try
-            {
-                if (op.ConstantValue.HasValue)
-                {
-                    value = (T?)op.ConstantValue.Value;
-                    syntax = op.Syntax;
-                    return true;
-                }
-                var val = op.Value;
-                // work through any implicit/explicit conversion steps
-                while (val is IConversionOperation conv)
-                {
-                    val = conv.Operand;
-                }
-
-                // type-level constants
-                if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
-                {
-                    value = (T?)field.Field.ConstantValue;
-                    syntax = field.Field.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                    return true;
-                }
-
-                // local constants
-                if (val is ILocalReferenceOperation local && local.Local.HasConstantValue)
-                {
-                    value = (T?)local.Local.ConstantValue;
-                    syntax = local.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                    return true;
-                }
-
-                // other non-trivial default constant values
-                if (val.ConstantValue.HasValue)
-                {
-                    value = (T?)val.ConstantValue.Value;
-                    syntax = val.Syntax;
-                    return true;
-                }
-
-                // other trivial default constant values
-                if (val is ILiteralOperation or IDefaultValueOperation)
-                {
-                    // we already ruled out explicit constant above, so: must be default
-                    value = default;
-                    syntax = val.Syntax;
-                    return true;
-                }
-            }
-            catch { }
-            value = default!;
-            syntax = null;
-            return false;
-        }
-
         static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags)
         {
             // if command-type is known statically to be stored procedure etc: pass everything
@@ -461,30 +400,30 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             ImmutableHashSet<string> paramNames;
             switch (IdentifySqlSyntax(ctx, op, out bool caseSensitive))
             {
-                case SqlSyntax.SqlServer:
-                    SqlAnalysis.TSqlProcessor.ModeFlags modeFlags = SqlAnalysis.TSqlProcessor.ModeFlags.None;
-                    if (caseSensitive) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.CaseSensitive;
-                    if ((flags & OperationFlags.BindResultsByName) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.ValidateSelectNames;
-                    if ((flags & OperationFlags.SingleRow) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.SingleRow;
-                    if ((flags & OperationFlags.AtMostOne) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.AtMostOne;
+                //case SqlSyntax.SqlServer:
+                //    SqlAnalysis.TSqlProcessor.ModeFlags modeFlags = SqlAnalysis.TSqlProcessor.ModeFlags.None;
+                //    if (caseSensitive) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.CaseSensitive;
+                //    if ((flags & OperationFlags.BindResultsByName) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.ValidateSelectNames;
+                //    if ((flags & OperationFlags.SingleRow) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.SingleRow;
+                //    if ((flags & OperationFlags.AtMostOne) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.AtMostOne;
 
-                    var proc = new DiagnosticTSqlProcessor(parameterType, modeFlags, diagnostics, loc, sqlSyntax);
-                    try
-                    {
-                        proc.Execute(sql!, paramMembers);
-                        parseFlags = proc.Flags;
-                        paramNames = (from var in proc.Variables
-                                      where var.IsParameter
-                                      select var.Name.StartsWith("@") ? var.Name.Substring(1) : var.Name
-                                      ).ToImmutableHashSet();
-                        diagnostics = proc.DiagnosticsObject;
-                    }
-                    catch (Exception ex)
-                    {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GeneralSqlError, loc, ex.Message));
-                        goto default; // some internal failure
-                    }
-                    break;
+                //    var proc = new DiagnosticTSqlProcessor(parameterType, modeFlags, diagnostics, loc, sqlSyntax);
+                //    try
+                //    {
+                //        proc.Execute(sql!, paramMembers);
+                //        parseFlags = proc.Flags;
+                //        paramNames = (from var in proc.Variables
+                //                      where var.IsParameter
+                //                      select var.Name.StartsWith("@") ? var.Name.Substring(1) : var.Name
+                //                      ).ToImmutableHashSet();
+                //        diagnostics = proc.DiagnosticsObject;
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GeneralSqlError, loc, ex.Message));
+                //        goto default; // some internal failure
+                //    }
+                //    break;
                 default:
                     paramNames = SqlTools.GetUniqueParameters(sql, out parseFlags);
                     break;
@@ -625,7 +564,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             else if (parent.TargetMethod.Name == nameof(Enumerable.ToList))
             {
-                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UseQueryAsList, parent.Syntax.GetLocation()));
+                Diagnostics.Add(ref diagnostics, Diagnostic.Create(DapperAnalyzer.Diagnostics.UseQueryAsList, parent.Syntax.GetLocation()));
             }
         }
     }

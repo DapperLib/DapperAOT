@@ -1,9 +1,7 @@
 ﻿using Dapper.CodeAnalysis;
 using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -11,7 +9,6 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 
 namespace Dapper.Internal;
 
@@ -101,7 +98,7 @@ internal static class Inspection
             var syntax = op.Syntax;
             while (syntax is not null)
             {
-                if (syntax.IsKind(SyntaxKind.MethodDeclaration))
+                if (syntax.IsMethodDeclaration())
                 {
                     return syntax;
                 }
@@ -821,6 +818,10 @@ internal static class Inspection
             case "QuerySingleOrDefaultAsync":
                 flags |= OperationFlags.SingleRow | OperationFlags.AtMostOne;
                 goto case "Query";
+            case "QueryMultiple":
+            case "QueryMultipleAsync":
+                flags |= OperationFlags.Query | OperationFlags.QueryMultiple;
+                return DapperMethodKind.DapperUnsupported; // not implemented yet
             case "Execute":
             case "ExecuteAsync":
                 flags |= OperationFlags.Execute;
@@ -836,6 +837,122 @@ internal static class Inspection
     public static bool HasAny(this OperationFlags value, OperationFlags testFor) => (value & testFor) != 0;
     public static bool HasAll(this OperationFlags value, OperationFlags testFor) => (value & testFor) == testFor;
 
+    public static bool TryGetConstantValue<T>(IOperation op, out T? value)
+            => TryGetConstantValueWithSyntax(op, out value, out _);
+
+    public static bool TryGetConstantValueWithSyntax<T>(IOperation val, out T? value, out SyntaxNode? syntax)
+    {
+        try
+        {
+            if (val.ConstantValue.HasValue)
+            {
+                value = (T?)val.ConstantValue.Value;
+                syntax = val.Syntax;
+                return true;
+            }
+            if (val is IArgumentOperation arg)
+            {
+                val = arg.Value;
+            }
+            // work through any implicit/explicit conversion steps
+            while (val is IConversionOperation conv)
+            {
+                val = conv.Operand;
+            }
+
+            // type-level constants
+            if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
+            {
+                value = (T?)field.Field.ConstantValue;
+                syntax = field.Field.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                return true;
+            }
+
+            // local constants
+            if (val is ILocalReferenceOperation local && local.Local.HasConstantValue)
+            {
+                value = (T?)local.Local.ConstantValue;
+                syntax = local.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                return true;
+            }
+
+            // other non-trivial default constant values
+            if (val.ConstantValue.HasValue)
+            {
+                value = (T?)val.ConstantValue.Value;
+                syntax = val.Syntax;
+                return true;
+            }
+
+            // other trivial default constant values
+            if (val is ILiteralOperation or IDefaultValueOperation)
+            {
+                // we already ruled out explicit constant above, so: must be default
+                value = default;
+                syntax = val.Syntax;
+                return true;
+            }
+        }
+        catch { }
+        value = default!;
+        syntax = null;
+        return false;
+    }
+
+    internal static bool IsCommand(INamedTypeSymbol type)
+    {
+        switch (type.TypeKind)
+        {
+            case TypeKind.Interface:
+                return type is
+                {
+                    Name: nameof(IDbCommand),
+                    ContainingType: null,
+                    Arity: 0,
+                    IsGenericType: false,
+                    ContainingNamespace:
+                    {
+                        Name: "Data",
+                        ContainingNamespace:
+                        {
+                            Name: "System",
+                            ContainingNamespace.IsGlobalNamespace: true,
+                        }
+                    }
+                };
+            case TypeKind.Class when !type.IsStatic:
+                while (type.SpecialType != SpecialType.System_Object)
+                {
+                    if (type is
+                    {
+                        Name: nameof(DbCommand),
+                        ContainingType: null,
+                        Arity: 0,
+                        IsGenericType: false,
+                        ContainingNamespace:
+                        {
+                            Name: "Common",
+                            ContainingNamespace:
+                            {
+                                Name: "Data",
+                                ContainingNamespace:
+                                {
+                                    Name: "System",
+                                    ContainingNamespace.IsGlobalNamespace: true,
+                                }
+                            }
+                        }
+                    })
+                    {
+                        return true;
+                    }
+                    if (type.BaseType is null) break;
+                    type = type.BaseType;
+                }
+                break;
+        }
+        return false;
+    }
 }
 
 enum DapperMethodKind
@@ -870,4 +987,6 @@ enum OperationFlags
     BindTupleParameterByName = 1 << 18,
     CacheCommand = 1 << 19,
     IncludeLocation = 1 << 20, // include -- SomeFile.cs#40 when possible
+    UnknownParameters = 1 << 21,
+    QueryMultiple = 1 << 22,
 }

@@ -13,4 +13,5 @@ internal enum ParseFlags
     Queries = 1 << 4,
     MaybeQuery = 1 << 5, // think "exec": we don't know!
     DynamicParameters = 1 << 6,
+    SqlAdjustedForDapperSyntax = 1 << 7, // for example '{=x}' => ' @x '
 }

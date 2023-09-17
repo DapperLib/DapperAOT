@@ -3,71 +3,71 @@ Generator produced 24 diagnostics:
 Hidden DAP000  L1 C1
 Dapper.AOT handled 23 of 23 enabled call-sites using 1 interceptors, 0 commands and 0 readers
 
-Error DAP203 Interceptors/Blame.input.cs L12 C48
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L12 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L13 C51
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+Warning DAP019 Interceptors/Blame.input.cs L13 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L14 C22
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L14 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L15 C50
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L15 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L16 C49
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L16 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L17 C22
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L17 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L18 C51
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L18 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L20 C8
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+Warning DAP019 Interceptors/Blame.input.cs L19 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L22 C50
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L22 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L25 C20
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+Warning DAP019 Interceptors/Blame.input.cs L23 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L28 C22
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+Warning DAP019 Interceptors/Blame.input.cs L28 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L33 C22
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C27)
+Warning DAP019 Interceptors/Blame.input.cs L33 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L35 C53
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L36 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L37 C22
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L38 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L39 C55
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L40 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L41 C54
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L42 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L43 C22
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L44 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L45 C56
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L46 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L48 C8
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+Warning DAP019 Interceptors/Blame.input.cs L50 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L51 C55
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C26)
+Warning DAP019 Interceptors/Blame.input.cs L52 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L55 C20
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+Warning DAP019 Interceptors/Blame.input.cs L58 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L59 C22
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L2 C8)
+Warning DAP019 Interceptors/Blame.input.cs L64 C16
+SQL parameters were detected, but no parameters are being supplied
 
-Error DAP203 Interceptors/Blame.input.cs L65 C22
-@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L1 C27)
+Warning DAP019 Interceptors/Blame.input.cs L66 C16
+SQL parameters were detected, but no parameters are being supplied

@@ -5,6 +5,8 @@ using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Testing.Verifiers;
+using Microsoft.CodeAnalysis.VisualBasic;
+using Microsoft.CodeAnalysis.VisualBasic.Testing;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -25,7 +27,7 @@ public abstract class Verifier
         => new DiagnosticResult(CodeAnalysis.DapperInterceptorGenerator.Diagnostics.InterceptorsGenerated)
         .WithArguments(handled, total, interceptors, commands, readers);
 
-    public Task VerifyAsync<TAnalyzer>(string source,
+    public Task CSVerifyAsync<TAnalyzer>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         params DiagnosticResult[] expected)
         where TAnalyzer : DiagnosticAnalyzer, new()
@@ -33,13 +35,31 @@ public abstract class Verifier
         var test = new CSharpAnalyzerTest<TAnalyzer, XUnitVerifier>();
         return ExecuteAsync(test, source, transforms, expected);
     }
-    public Task VerifyAsync<TAnalyzer, TCodeFixProvider>(string source,
+    public Task CSVerifyAsync<TAnalyzer, TCodeFix>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         params DiagnosticResult[] expected)
         where TAnalyzer : DiagnosticAnalyzer, new()
-        where TCodeFixProvider : CodeFixProvider, new()
+        where TCodeFix : CodeFixProvider, new()
     {
-        var test = new CSharpAnalyzerTest<TAnalyzer, XUnitVerifier>();
+        var test = new CSharpCodeFixTest<TAnalyzer, TCodeFix, XUnitVerifier>();
+        return ExecuteAsync(test, source, transforms, expected);
+    }
+
+    public Task VBVerifyAsync<TAnalyzer>(string source,
+    Func<Solution, ProjectId, Solution>[] transforms,
+    params DiagnosticResult[] expected)
+    where TAnalyzer : DiagnosticAnalyzer, new()
+    {
+        var test = new VisualBasicAnalyzerTest<TAnalyzer, XUnitVerifier>();
+        return ExecuteAsync(test, source, transforms, expected);
+    }
+    public Task VBVerifyAsync<TAnalyzer, TCodeFix>(string source,
+        Func<Solution, ProjectId, Solution>[] transforms,
+        params DiagnosticResult[] expected)
+        where TAnalyzer : DiagnosticAnalyzer, new()
+        where TCodeFix : CodeFixProvider, new()
+    {
+        var test = new VisualBasicCodeFixTest<TAnalyzer, TCodeFix, XUnitVerifier>();
         return ExecuteAsync(test, source, transforms, expected);
     }
 
@@ -71,15 +91,21 @@ public abstract class Verifier
         new("InterceptorsPreview", "true"), // rc 1
         new("InterceptorsPreviewNamespaces", "Dapper.AOT") // rc2 ?
     );
-    protected static Func<Solution, ProjectId, Solution> CSharpPreview = WithLanguageVersion(LanguageVersion.Preview);
+    protected static Func<Solution, ProjectId, Solution> CSharpPreview = WithCSharpLanguageVersion(Microsoft.CodeAnalysis.CSharp.LanguageVersion.Preview);
 
-    protected static Func<Solution, ProjectId, Solution>[] DefaultConfig = new[] { InterceptorsEnabled, CSharpPreview };
+    protected static Func<Solution, ProjectId, Solution> VisualBasic14 = WithVisualBasicLanguageVersion(Microsoft.CodeAnalysis.VisualBasic.LanguageVersion.VisualBasic14);
 
-    protected static Func<Solution, ProjectId, Solution> WithLanguageVersion(LanguageVersion version)
-        => WithParseOptions(options => options.WithLanguageVersion(version));
+    protected static Func<Solution, ProjectId, Solution>[] DefaultConfig = new[] {
+        InterceptorsEnabled, CSharpPreview, VisualBasic14 };
+
+    protected static Func<Solution, ProjectId, Solution> WithCSharpLanguageVersion(Microsoft.CodeAnalysis.CSharp.LanguageVersion version)
+        => WithCSharpParseOptions(options => options.WithLanguageVersion(version));
+
+    protected static Func<Solution, ProjectId, Solution> WithVisualBasicLanguageVersion(Microsoft.CodeAnalysis.VisualBasic.LanguageVersion version)
+        => WithVisualBasicParseOptions(options => options.WithLanguageVersion(version));
     protected static Func<Solution, ProjectId, Solution> WithFeatures(params KeyValuePair<string, string>[] features)
-        => WithParseOptions(options => options.WithFeatures(features));
-    protected static Func<Solution, ProjectId, Solution> WithParseOptions(Func<CSharpParseOptions, CSharpParseOptions> func)
+        => WithCSharpParseOptions(options => options.WithFeatures(features));
+    protected static Func<Solution, ProjectId, Solution> WithCSharpParseOptions(Func<CSharpParseOptions, CSharpParseOptions> func)
     {
         if (func is null) return static (solution, _) => solution;
         return (solution, projectId) =>
@@ -89,35 +115,68 @@ public abstract class Verifier
             return solution.WithProjectParseOptions(projectId, func(options));
         };
     }
+    protected static Func<Solution, ProjectId, Solution> WithVisualBasicParseOptions(Func<VisualBasicParseOptions, VisualBasicParseOptions> func)
+    {
+        if (func is null) return static (solution, _) => solution;
+        return (solution, projectId) =>
+        {
+            var options = solution.GetProject(projectId)?.ParseOptions as VisualBasicParseOptions;
+            if (options is null) return solution;
+            return solution.WithProjectParseOptions(projectId, func(options));
+        };
+    }
 
 }
 
 public class Verifier<TAnalyzer> : Verifier where TAnalyzer : DiagnosticAnalyzer, new()
 {
-    protected Task VerifyAsync(string source,
+    protected Task CSVerifyAsync(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         params DiagnosticResult[] expected)
-        => base.VerifyAsync<TAnalyzer>(source, transforms, expected);
-    protected Task VerifyAsync(string source, params DiagnosticResult[] expected)
-        => base.VerifyAsync<TAnalyzer>(source, DefaultConfig, expected);
+        => base.CSVerifyAsync<TAnalyzer>(source, transforms, expected);
+    protected Task CSVerifyAsync(string source, params DiagnosticResult[] expected)
+        => base.CSVerifyAsync<TAnalyzer>(source, DefaultConfig, expected);
 
-    new protected Task VerifyAsync<TCodeFixProvider>(string source,
+    new protected Task CSVerifyAsync<TCodeFix>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         params DiagnosticResult[] expected)
-        where TCodeFixProvider : CodeFixProvider, new()
-        => VerifyAsync<TAnalyzer, TCodeFixProvider>(source, transforms, expected);
+        where TCodeFix : CodeFixProvider, new()
+        => CSVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected);
 
-    protected Task VerifyAsync<TCodeFixProvider>(string source, params DiagnosticResult[] expected)
-        where TCodeFixProvider : CodeFixProvider, new()
-        => VerifyAsync<TAnalyzer, TCodeFixProvider>(source, DefaultConfig, expected);
+    protected Task VBVerifyAsync<TCodeFix>(string source, params DiagnosticResult[] expected)
+        where TCodeFix : CodeFixProvider, new()
+        => VBVerifyAsync<TAnalyzer, TCodeFix>(source, DefaultConfig, expected);
+
+    protected Task VBVerifyAsync(string source,
+    Func<Solution, ProjectId, Solution>[] transforms,
+    params DiagnosticResult[] expected)
+    => base.VBVerifyAsync<TAnalyzer>(source, transforms, expected);
+    protected Task VBVerifyAsync(string source, params DiagnosticResult[] expected)
+        => base.VBVerifyAsync<TAnalyzer>(source, DefaultConfig, expected);
+
+    new protected Task VBVerifyAsync<TCodeFix>(string source,
+        Func<Solution, ProjectId, Solution>[] transforms,
+        params DiagnosticResult[] expected)
+        where TCodeFix : CodeFixProvider, new()
+        => VBVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected);
+
+    protected Task CSVerifyAsync<TCodeFix>(string source, params DiagnosticResult[] expected)
+        where TCodeFix : CodeFixProvider, new()
+        => CSVerifyAsync<TAnalyzer, TCodeFix>(source, DefaultConfig, expected);
 }
-public class Verifier<TAnalyzer, TCodeFixProvider> : Verifier
+public class Verifier<TAnalyzer, TCodeFix> : Verifier
     where TAnalyzer : DiagnosticAnalyzer, new()
-    where TCodeFixProvider : CodeFixProvider, new()
+    where TCodeFix : CodeFixProvider, new()
 {
-    protected Task VerifyAsync(string source, params DiagnosticResult[] expected)
-        => VerifyAsync<TAnalyzer, TCodeFixProvider>(source, DefaultConfig, expected);
-    protected Task VerifyAsync(string source, Func<Solution, ProjectId, Solution>[] transforms, 
+    protected Task CSVerifyAsync(string source, params DiagnosticResult[] expected)
+        => CSVerifyAsync<TAnalyzer, TCodeFix>(source, DefaultConfig, expected);
+    protected Task CSVerifyAsync(string source, Func<Solution, ProjectId, Solution>[] transforms, 
         params DiagnosticResult[] expected)
-        => VerifyAsync<TAnalyzer, TCodeFixProvider>(source, transforms, expected);
+        => CSVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected);
+
+    protected Task VBVerifyAsync(string source, params DiagnosticResult[] expected)
+    => VBVerifyAsync<TAnalyzer, TCodeFix>(source, DefaultConfig, expected);
+    protected Task VBVerifyAsync(string source, Func<Solution, ProjectId, Solution>[] transforms,
+        params DiagnosticResult[] expected)
+        => VBVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected);
 }

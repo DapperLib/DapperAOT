@@ -8,7 +8,7 @@ namespace Dapper.AOT.Test.Verifiers;
 public class DAP005 : Verifier<WrappedDapperInterceptorAnalyzer>
 {
     [Fact]
-    public Task ShouldFlagWhenUsedAndNotAttrib() => VerifyAsync("""
+    public Task ShouldFlagWhenUsedAndNotAttrib() => CSVerifyAsync("""
 using Dapper;
 using System.Data.Common;
 
@@ -19,7 +19,7 @@ class SomeCode
 """, Diagnostic(DapperInterceptorGenerator.Diagnostics.DapperAotNotEnabled));
 
     [Fact]
-    public Task ShouldNotFlagWhenNotUsedAndNoAttrib() => VerifyAsync("""
+    public Task ShouldNotFlagWhenNotUsedAndNoAttrib() => CSVerifyAsync("""
 using Dapper;
 using System.Data.Common;
 
@@ -30,7 +30,7 @@ class SomeCode
 """);
 
     [Fact]
-    public Task ShouldNotFlagWhenUsedAndOptedOut() => VerifyAsync("""
+    public Task ShouldNotFlagWhenUsedAndOptedOut() => CSVerifyAsync("""
 using Dapper;
 using System.Data.Common;
 
@@ -42,7 +42,7 @@ class SomeCode
 """);
 
     [Fact]
-    public Task ShouldNotFlagWhenUsedAndOptedIn() => VerifyAsync("""
+    public Task ShouldNotFlagWhenUsedAndOptedIn() => CSVerifyAsync("""
 using Dapper;
 using System.Data.Common;
 
