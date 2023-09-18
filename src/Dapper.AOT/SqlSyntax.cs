@@ -1,5 +1,7 @@
 ﻿namespace Dapper;
 
+// THIS FILE MUST BE KEPT IN SYNC BETWEEN THE LIB AND ANALYZERS
+
 /// <summary>
 /// Indicates the family of SQL variant used
 /// </summary>

@@ -32,7 +32,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
             .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
             Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
-        ], assumeSqlServer: true);
+        ], SqlSyntax.SqlServer);
 
     [Fact]
     public Task GlobalDisabled_NoAttributes() => CSVerifyAsync("""
@@ -58,7 +58,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
         .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
         .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
-    ], assumeSqlServer: false);
+    ], SqlSyntax.General);
 
     [Fact]
     public Task GlobalDisabled_MethodAttributes() => CSVerifyAsync("""
@@ -89,7 +89,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
             .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
             Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
-        ], assumeSqlServer: false);
+        ], SqlSyntax.General);
 
     [Fact]
     public Task GlobalDisabled_TypeAttribute() => CSVerifyAsync("""
@@ -118,7 +118,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
         .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
         .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
-    ], assumeSqlServer: false);
+    ], SqlSyntax.General);
 
     [Fact]
     public Task GlobalDisabled_ContainingTypeAttribute() => CSVerifyAsync("""
@@ -150,7 +150,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
         .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
         .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
-    ], assumeSqlServer: false);
+    ], SqlSyntax.General);
 
     [Fact]
     public Task GlobalDisabled_ModuleAttribute() => CSVerifyAsync("""
@@ -180,7 +180,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
     .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
     Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
     .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
-], assumeSqlServer: false);
+], SqlSyntax.General);
 
     [Fact]
     public Task GlobalDisabled_AssemblyAttribute() => CSVerifyAsync("""
@@ -210,7 +210,7 @@ Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
 .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
 Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
 .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
-], assumeSqlServer: false);
+], SqlSyntax.General);
 
 
 }

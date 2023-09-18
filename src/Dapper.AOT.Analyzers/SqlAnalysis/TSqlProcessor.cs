@@ -27,6 +27,7 @@ internal class TSqlProcessor
         ExpectNoQuery = 1 << 5, // actively do *NOT* expect a query
         SingleQuery = 1 << 6, // actively expect *exactly* one query
         SingleColumn = 1 << 7, // actively expect *exactly* one column in any query
+        KnownParameters = 1 << 8, // we understand the parameters
     }
     [Flags]
     internal enum VariableFlags
@@ -112,10 +113,17 @@ internal class TSqlProcessor
         tree.Accept(_visitor);
         foreach (var variable in _visitor.Variables)
         {
-            if (variable.IsParameter && !TryGetParameter(variable.Name, out _))
+            if (_visitor.KnownParameters)
             {
-                // no such parameter? then: it wasn't a parameter, and wasn't declared
-                OnVariableNotDeclared(variable);
+                if (variable.IsParameter && TryGetParameter(variable.Name, out var direction) && direction != ParameterDirection.ReturnValue)
+                {
+                    // fine, handled
+                }
+                else
+                {
+                    // no such parameter? then: it wasn't a parameter, and wasn't declared
+                    OnVariableNotDeclared(variable);
+                }
             }
             if (variable.IsUnconsumed && !variable.IsTable && !variable.IsOutputParameter)
             {
@@ -128,10 +136,12 @@ internal class TSqlProcessor
     public IEnumerable<Variable> Variables => _visitor.Variables;
 
     public ParseFlags Flags { get; private set; }
-    protected void AddFlags(ParseFlags flags) => Flags |= flags;
     public virtual void Reset()
     {
-        Flags = ParseFlags.Reliable;
+        var flags = ParseFlags.Reliable;
+        if (_visitor.KnownParameters) flags |= ParseFlags.KnownParameters;
+        Flags = flags;
+
         _visitor.Reset();
     }
 
@@ -361,6 +371,7 @@ internal class TSqlProcessor
         public bool ValidateSelectNames => (_flags & ModeFlags.ValidateSelectNames) != 0;
         public bool SingleRow => (_flags & ModeFlags.SingleRow) != 0;
         public bool AtMostOne => (_flags & ModeFlags.AtMostOne) != 0;
+        public bool KnownParameters => (_flags & ModeFlags.KnownParameters) != 0;
 
         private readonly Dictionary<string, Variable> variables;
         private int batchCount;
@@ -623,14 +634,14 @@ internal class TSqlProcessor
                             {
                                 if (i != 2)
                                 {
-                                    parser.OnSelectSingleTopError(new(node));
+                                    parser.OnSelectSingleTopError(new(spec.TopRowFilter));
                                 }
                             }
                             else // First[OrDefault][Async]
                             {
                                 if (i != 1)
                                 {
-                                    parser.OnSelectFirstTopError(new(node));
+                                    parser.OnSelectFirstTopError(new(spec.TopRowFilter));
                                 }
                             }
                         }
@@ -951,7 +962,8 @@ internal class TSqlProcessor
             {
                 var flags = VariableFlags.Parameter | (isTable ? VariableFlags.Table : VariableFlags.None);
 
-                if (parser.TryGetParameter(node.Name, out var direction) && direction != ParameterDirection.ReturnValue)
+                ParameterDirection direction;
+                if (KnownParameters && parser.TryGetParameter(node.Name, out direction) && direction != ParameterDirection.ReturnValue)
                 {
                     // if it is known, we can infer the directionality and thus assignment state
                     switch (direction)
@@ -961,6 +973,10 @@ internal class TSqlProcessor
                             flags |= VariableFlags.OutputParameter;
                             break;
                     }
+                }
+                else
+                {
+                    direction = ParameterDirection.Input;
                 }
 
 

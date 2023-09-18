@@ -2,6 +2,7 @@
 using Dapper.CodeAnalysis.Writers;
 using Dapper.Internal;
 using Dapper.Internal.Roslyn;
+using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -511,7 +512,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 {
                     // we can only consider this an error if we're confident in how well we parsed the input
                     // (unless we detected dynamic args, in which case: we don't know what we don't know)
-                    if ((parseFlags & (ParseFlags.Reliable | ParseFlags.DynamicParameters)) == ParseFlags.Reliable)
+                    if ((parseFlags & (ParseFlags.Reliable | ParseFlags.KnownParameters)) == (ParseFlags.Reliable | ParseFlags.KnownParameters))
                     {
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(parameterType)));
                     }

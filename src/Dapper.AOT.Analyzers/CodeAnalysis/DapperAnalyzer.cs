@@ -1,5 +1,6 @@
 ﻿using Dapper.Internal;
 using Dapper.Internal.Roslyn;
+using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -153,6 +154,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (string.IsNullOrWhiteSpace(sql) || !HasWhitespace.IsMatch(sql)) return; // need non-trivial content to validate
 
         location ??= ctx.Operation.Syntax.GetLocation();
+
+        if (parseState.Options.TryGetDebugModeFlags(out var debugModeFlags))
+        {
+            flags |= debugModeFlags;
+        }
 
         try
         {

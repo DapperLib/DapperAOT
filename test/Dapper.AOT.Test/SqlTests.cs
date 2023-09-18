@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using Dapper.SqlAnalysis;
 using System;
 using Xunit;
 

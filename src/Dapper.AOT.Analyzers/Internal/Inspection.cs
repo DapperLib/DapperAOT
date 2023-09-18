@@ -1,5 +1,6 @@
 ﻿using Dapper.CodeAnalysis;
 using Dapper.Internal.Roslyn;
+using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 using System;

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
+using Dapper.SqlAnalysis;
 
 namespace Dapper.Internal;
 

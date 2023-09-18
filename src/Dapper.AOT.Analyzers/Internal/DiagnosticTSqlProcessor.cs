@@ -27,16 +27,38 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     private readonly SyntaxToken? _sourceToken;
     
     private readonly ITypeSymbol? _parameterType;
-    private readonly bool _assumeParameterExists;
 
+    private static ModeFlags CheckForKnownParameterType(ModeFlags flags, ITypeSymbol? parameterType)
+    {
+        if (parameterType is not null)
+        {
+            if (Inspection.IsMissingOrObjectOrDynamic(parameterType) || IsDynamicParameters(parameterType))
+            { }
+            else
+            {
+                // we think we understand what is going on, yay!
+                flags |= ModeFlags.KnownParameters;
+            }
+        }
+        return flags;
+
+        static bool IsDynamicParameters(ITypeSymbol? type)
+        {
+            if (type is null || type.SpecialType != SpecialType.None) return false;
+            if (Inspection.IsBasicDapperType(type, Types.DynamicParameters)
+                || Inspection.IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
+            foreach (var i in type.AllInterfaces)
+            {
+                if (Inspection.IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
+            }
+            return false;
+        }
+    }
     public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, ModeFlags flags,
-        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(flags)
+        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(CheckForKnownParameterType(flags, parameterType))
     {
         _location = sqlSyntax?.GetLocation() ?? location;
         _parameterType = parameterType;
-        _assumeParameterExists = Inspection.IsMissingOrObjectOrDynamic(_parameterType) || IsDyanmicParameters(parameterType);
-        if (_assumeParameterExists) AddFlags(ParseFlags.DynamicParameters);
-
         if (sqlSyntax.TryGetLiteralToken(out var token))
         {
             _sourceToken = token;
@@ -50,19 +72,6 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     public override void Reset()
     {
         base.Reset();
-        if (_assumeParameterExists) AddFlags(ParseFlags.DynamicParameters);
-    }
-
-    static bool IsDyanmicParameters(ITypeSymbol? type)
-    {
-        if (type is null || type.SpecialType != SpecialType.None) return false;
-        if (Inspection.IsBasicDapperType(type, Types.DynamicParameters)
-            || Inspection.IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
-        foreach (var i in type.AllInterfaces)
-        {
-            if (Inspection.IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
-        }
-        return false;
     }
 
     private Microsoft.CodeAnalysis.Location? GetLocation(in Location location)
@@ -161,14 +170,6 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     protected override bool TryGetParameter(string name, out ParameterDirection direction)
     {
         // we have knowledge of the type system; use it
-
-        if (_assumeParameterExists) // dynamic, etc
-        {
-            // dynamic
-            direction = ParameterDirection.Input;
-            return true;
-        }
-
         if (_parameterType is null)
         {
             // no parameter

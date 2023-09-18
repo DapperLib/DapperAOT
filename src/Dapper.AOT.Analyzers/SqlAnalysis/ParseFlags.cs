@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Dapper;
+namespace Dapper.SqlAnalysis;
 
 [Flags]
 internal enum ParseFlags
@@ -12,6 +12,6 @@ internal enum ParseFlags
     Query = 1 << 3,
     Queries = 1 << 4,
     MaybeQuery = 1 << 5, // think "exec": we don't know!
-    DynamicParameters = 1 << 6,
-    SqlAdjustedForDapperSyntax = 1 << 7, // for example '{=x}' => ' @x '
+    SqlAdjustedForDapperSyntax = 1 << 6, // for example '{=x}' => ' @x '
+    KnownParameters = 1 << 7,
 }
