@@ -110,6 +110,7 @@ internal class TSqlProcessor
                 }
             }
         }
+
         tree.Accept(_visitor);
         foreach (var variable in _visitor.Variables)
         {
