@@ -18,9 +18,8 @@ public class DAP009 : Verifier<WrappedDapperInterceptorAnalyzer>
         {
             public void Foo(DbConnection conn) => conn.Execute("some sql");
         }
-        """, new[]
-    {
-        InterceptorsEnabled, WithCSharpLanguageVersion(LanguageVersion.CSharp10)
-    }, Diagnostic(DapperInterceptorGenerator.Diagnostics.LanguageVersionTooLow));
+        """,
+        [InterceptorsEnabled, WithCSharpLanguageVersion(LanguageVersion.CSharp10)],
+        [Diagnostic(DapperInterceptorGenerator.Diagnostics.LanguageVersionTooLow)]);
 
 }

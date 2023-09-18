@@ -397,9 +397,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             // so: we know statically that we have known command-text
             // first, try try to find any parameters
-            ImmutableHashSet<string> paramNames;
-            switch (IdentifySqlSyntax(ctx, op, out bool caseSensitive))
-            {
+            ImmutableHashSet<string> paramNames = SqlTools.GetUniqueParameters(sql, out parseFlags);
+            //switch (IdentifySqlSyntax(ctx, op, out bool caseSensitive))
+            //{
                 //case SqlSyntax.SqlServer:
                 //    SqlAnalysis.TSqlProcessor.ModeFlags modeFlags = SqlAnalysis.TSqlProcessor.ModeFlags.None;
                 //    if (caseSensitive) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.CaseSensitive;
@@ -424,10 +424,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 //        goto default; // some internal failure
                 //    }
                 //    break;
-                default:
-                    paramNames = SqlTools.GetUniqueParameters(sql, out parseFlags);
-                    break;
-            }
+                //default:
+                    //paramNames = SqlTools.GetUniqueParameters(sql, out parseFlags);
+                    //break;
+            //}
 
             if (paramNames.IsEmpty && (parseFlags & ParseFlags.Return) == 0) // return is a parameter, sort of
             {
@@ -569,66 +569,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0042:Deconstruct variable declaration", Justification = "Fine as is; let's not pay the unwrap cost")]
-    private static SqlSyntax IdentifySqlSyntax(in ParseState ctx, IInvocationOperation op, out bool caseSensitive)
-    {
-        caseSensitive = false;
-        if (op.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
-        {
-            var ns = type.ContainingNamespace;
-            foreach (var candidate in KnownConnectionTypes)
-            {
-                var current = ns;
-                if (type.Name == candidate.Connection
-                    && AssertAndAscend(ref current, candidate.Namespace0)
-                    && AssertAndAscend(ref current, candidate.Namespace1)
-                    && AssertAndAscend(ref current, candidate.Namespace2))
-                {
-                    return candidate.Syntax;
-                }
-            }
-        }
-
-        // get fom [SqlSyntax(...)] hint
-        var attrib = Inspection.GetClosestDapperAttribute(ctx, op, Types.SqlSyntaxAttribute);
-        if (attrib is not null && attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i)
-        {
-            return (SqlSyntax)i;
-        }
-
-        return SqlSyntax.General;
-
-        static bool AssertAndAscend(ref INamespaceSymbol ns, string? expected)
-        {
-            if (expected is null)
-            {
-                return ns.IsGlobalNamespace;
-            }
-            else
-            {
-                if (ns.Name == expected)
-                {
-                    ns = ns.ContainingNamespace;
-                    return true;
-                }
-                return false;
-            }
-        }
-    }
-
-    private static readonly ImmutableArray<(string? Namespace2, string? Namespace1, string Namespace0, string Connection, SqlSyntax Syntax)> KnownConnectionTypes = new[]
-    {
-        ("System", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
-        ("Microsoft", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
-
-        (null, null, "Npgsql", "NpgsqlConnection", SqlSyntax.PostgreSql),
-
-        ("MySql", "Data", "MySqlClient", "MySqlConnection", SqlSyntax.MySql),
-
-        ("Oracle", "DataAccess", "Client", "OracleConnection", SqlSyntax.Oracle),
-
-        ("Microsoft", "Data", "Sqlite", "SqliteConnection", SqlSyntax.SQLite),
-    }.ToImmutableArray();
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
     {

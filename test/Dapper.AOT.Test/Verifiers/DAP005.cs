@@ -16,7 +16,7 @@ public class DAP005 : Verifier<WrappedDapperInterceptorAnalyzer>
         {
             public void Foo(DbConnection conn) => conn.Execute("some sql");
         }
-        """, Diagnostic(DapperInterceptorGenerator.Diagnostics.DapperAotNotEnabled));
+        """, DefaultConfig, [Diagnostic(DapperInterceptorGenerator.Diagnostics.DapperAotNotEnabled)]);
 
     [Fact]
     public Task ShouldNotFlagWhenNotUsedAndNoAttrib() => CSVerifyAsync("""
@@ -27,7 +27,7 @@ public class DAP005 : Verifier<WrappedDapperInterceptorAnalyzer>
         {
             public void Foo(DbConnection conn) {}
         }
-        """);
+        """, DefaultConfig, []);
 
     [Fact]
     public Task ShouldNotFlagWhenUsedAndOptedOut() => CSVerifyAsync("""
@@ -39,7 +39,7 @@ public class DAP005 : Verifier<WrappedDapperInterceptorAnalyzer>
         {
             public void Foo(DbConnection conn) => conn.Execute("some sql");
         }
-        """);
+        """, DefaultConfig, []);
 
     [Fact]
     public Task ShouldNotFlagWhenUsedAndOptedIn() => CSVerifyAsync("""
@@ -51,5 +51,5 @@ public class DAP005 : Verifier<WrappedDapperInterceptorAnalyzer>
         {
             public void Foo(DbConnection conn) => conn.Execute("some sql");
         }
-        """, InterceptorsGenerated(1, 1, 1, 0, 0));
+        """, DefaultConfig, [InterceptorsGenerated(1, 1, 1, 0, 0)]);
 }

@@ -18,10 +18,9 @@ public class DAP004 : Verifier<WrappedDapperInterceptorAnalyzer>
         {
             public void Foo(DbConnection conn) => conn.Execute("some sql");
         }
-        """, new[]
-    {
-        InterceptorsEnabled, WithCSharpLanguageVersion(LanguageVersion.CSharp10)
-    }, Diagnostic(DapperInterceptorGenerator.Diagnostics.LanguageVersionTooLow));
+        """,
+        [InterceptorsEnabled, WithCSharpLanguageVersion(LanguageVersion.CSharp10)],
+        [Diagnostic(DapperInterceptorGenerator.Diagnostics.LanguageVersionTooLow)]);
 
     [Fact]
     public Task CSFineIfInactive() => CSVerifyAsync("""
@@ -33,10 +32,7 @@ public class DAP004 : Verifier<WrappedDapperInterceptorAnalyzer>
         {
             public void Foo(DbConnection conn) => conn.Execute("some sql");
         }
-        """, new[]
-    {
-        InterceptorsEnabled, WithCSharpLanguageVersion(LanguageVersion.CSharp10)
-    });
+        """, [InterceptorsEnabled, WithCSharpLanguageVersion(LanguageVersion.CSharp10)], []);
 
     [Fact]
     public Task VBFineIfInactive() => VBVerifyAsync("""
@@ -49,10 +45,7 @@ public class DAP004 : Verifier<WrappedDapperInterceptorAnalyzer>
                 conn.Execute("some sql")
             End Sub
         End Module
-        """, new[]
-{
-        InterceptorsEnabled, WithCSharpLanguageVersion(LanguageVersion.CSharp10)
-    });
+        """, [InterceptorsEnabled, WithCSharpLanguageVersion(LanguageVersion.CSharp10)], []);
 
     // we don't need to test higher-level language versions: *every other test does that!*
 }

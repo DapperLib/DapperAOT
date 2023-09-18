@@ -58,12 +58,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 break;
             case OperationKind.SimpleAssignment when ctx.Operation is ISimpleAssignmentOperation assignment
                 && assignment.Target is IPropertyReferenceOperation propRef:
-                if (propRef.Member is IPropertySymbol {
-                    Type.SpecialType: SpecialType.System_String,
-                    IsStatic: false,
-                    IsIndexer: false,
-                    // check for DbConnection?
-                } prop)
+                if (propRef.Member is IPropertySymbol
+                    {
+                        Type.SpecialType: SpecialType.System_String,
+                        IsStatic: false,
+                        IsIndexer: false,
+                        // check for DbConnection?
+                    } prop)
                 {
                     if (prop.Name == "CommandText" && Inspection.IsCommand(prop.ContainingType))
                     {
@@ -104,7 +105,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             modeFlags |= ModeFlags.ExpectQuery;
             if ((flags & OperationFlags.QueryMultiple) == 0) modeFlags |= ModeFlags.SingleQuery;
         }
-        else  if ((flags & (OperationFlags.Execute)) != 0) modeFlags |= ModeFlags.ExpectNoQuery;
+        else if ((flags & (OperationFlags.Execute)) != 0) modeFlags |= ModeFlags.ExpectNoQuery;
 
         ValidateSql(ctx, sqlSource, modeFlags, location);
     }
@@ -131,19 +132,45 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
     private static void ValidateSql(in OperationAnalysisContext ctx, IOperation sqlSource, ModeFlags flags, Location? location = null)
     {
+        var parseState = new ParseState(ctx);
+
+        // should we consider this as a syntax we can handle?
+        var syntax = Inspection.IdentifySqlSyntax(parseState, ctx.Operation, out var caseSensitive);
+        switch (syntax)
+        {
+            case SqlSyntax.SqlServer:
+                // other known types here
+                break;
+            default:
+                return;
+        }
+        if (syntax != SqlSyntax.SqlServer) return;
+
+        if (caseSensitive) flags |= ModeFlags.CaseSensitive;
+
+        // can we get the SQL itself?
         if (!Inspection.TryGetConstantValueWithSyntax(sqlSource, out string? sql, out var sqlSyntax)) return;
         if (string.IsNullOrWhiteSpace(sql) || !HasWhitespace.IsMatch(sql)) return; // need non-trivial content to validate
+
         location ??= ctx.Operation.Syntax.GetLocation();
-        var proc = new OperationAnalysisContextTSqlProcessor(ctx, null, flags, location, sqlSyntax);
+
         try
         {
-            proc.Execute(sql!, members: default); // paramMembers);
-            //parseFlags = proc.Flags;
-            //paramNames = (from var in proc.Variables
-            //              where var.IsParameter
-            //              select var.Name.StartsWith("@") ? var.Name.Substring(1) : var.Name
-            //              ).ToImmutableHashSet();
-            //diagnostics = proc.DiagnosticsObject;
+            switch (syntax)
+            {
+                case SqlSyntax.SqlServer:
+
+                    var proc = new OperationAnalysisContextTSqlProcessor(ctx, null, flags, location, sqlSyntax);
+                    proc.Execute(sql!, members: default);
+                    // paramMembers);
+                    //parseFlags = proc.Flags;
+                    //paramNames = (from var in proc.Variables
+                    //              where var.IsParameter
+                    //              select var.Name.StartsWith("@") ? var.Name.Substring(1) : var.Name
+                    //              ).ToImmutableHashSet();
+                    //diagnostics = proc.DiagnosticsObject;
+                    break;
+            }
         }
         catch (Exception ex)
         {

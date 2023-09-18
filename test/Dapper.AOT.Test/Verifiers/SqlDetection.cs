@@ -20,8 +20,8 @@ public class SqlDetection : Verifier<DapperAnalyzer>
                 conn.Execute("{|#0:|}111 invalid");
             }
         }
-        """, Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-    .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."));
+        """, DefaultConfig, [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
+    .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111.")]);
 
     [Fact]
     public Task CSViaProperty() => CSVerifyAsync("""
@@ -45,10 +45,10 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             [Sql]
             public string Blap {get;set;}
         }
-        """, Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
+        """, DefaultConfig, [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
     .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-    .WithLocation(1).WithArguments(46010, "Incorrect syntax near 444."));
+    .WithLocation(1).WithArguments(46010, "Incorrect syntax near 444.")]);
 
     [Fact]
     public Task CSViaParam() => CSVerifyAsync("""
@@ -68,13 +68,13 @@ public class SqlDetection : Verifier<DapperAnalyzer>
                 Blap("{|#1:|}333 invalid");
             }
         }
-        """,
-        Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
+        """, DefaultConfig,
+        [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(0)
             .WithArguments(46010, "Incorrect syntax near 111."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(1)
-            .WithArguments(46010, "Incorrect syntax near 333."));
+            .WithArguments(46010, "Incorrect syntax near 333.")]);
 
     [Fact]
     public Task VBViaDapper() => VBVerifyAsync("""
@@ -88,8 +88,8 @@ public class SqlDetection : Verifier<DapperAnalyzer>
                 conn.Execute("{|#0:|}111 invalid")
             End Sub
         End Class
-        """, Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-    .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."));
+        """, DefaultConfig, [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
+    .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111.")]);
 
     [Fact]
     public Task VBViaProperty() => VBVerifyAsync("""
@@ -111,10 +111,10 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             <Sql>
             Public Property Blap As String
         End Class
-        """, Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
+        """, DefaultConfig, [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
 .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."),
     Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-.WithLocation(1).WithArguments(46010, "Incorrect syntax near 444."));
+.WithLocation(1).WithArguments(46010, "Incorrect syntax near 444.")]);
 
     [Fact]
     public Task VBViaParam() => VBVerifyAsync("""
@@ -135,11 +135,11 @@ public class SqlDetection : Verifier<DapperAnalyzer>
                 Blap("{|#1:|}333 invalid")
             End Sub
         End Class
-        """,
-        Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
+        """, DefaultConfig,
+        [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(0)
             .WithArguments(46010, "Incorrect syntax near 111."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(1)
-            .WithArguments(46010, "Incorrect syntax near 333."));
+            .WithArguments(46010, "Incorrect syntax near 333.")]);
 }
