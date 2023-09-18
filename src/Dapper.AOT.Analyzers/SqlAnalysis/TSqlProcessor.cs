@@ -112,6 +112,11 @@ internal class TSqlProcessor
         tree.Accept(_visitor);
         foreach (var variable in _visitor.Variables)
         {
+            if (variable.IsParameter && !TryGetParameter(variable.Name, out _))
+            {
+                // no such parameter? then: it wasn't a parameter, and wasn't declared
+                OnVariableNotDeclared(variable);
+            }
             if (variable.IsUnconsumed && !variable.IsTable && !variable.IsOutputParameter)
             {
                 if (_visitor.AssignmentTracking) OnVariableValueNotConsumed(variable);
@@ -168,7 +173,7 @@ internal class TSqlProcessor
     protected virtual void OnSelectScopeIdentity(Location location)
         => OnError($"Consider OUTPUT INSERTED.yourid on the INSERT instead of SELECT SCOPE_IDENTITY()", location);
 
-    protected virtual void OnExecVariable(Location location)
+    protected virtual void OnExecComposedSql(Location location)
         => OnError($"EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters", location);
 
     protected virtual void OnTableVariableOutputParameter(Variable variable)
@@ -788,10 +793,9 @@ internal class TSqlProcessor
             if (node.ExecutableEntity is not null)
             {
                 node.ExecutableEntity.Accept(this);
-                if (node.ExecutableEntity is ExecutableStringList list && list.Strings.Count == 1
-                    && list.Strings[0] is VariableReference)
+                if (node.ExecutableEntity is ExecutableStringList) // list && list.Strings.Count == 1 && list.Strings[0] is VariableReference)
                 {
-                    parser.OnExecVariable(new Location(node));
+                    parser.OnExecComposedSql(new Location(node));
                 }
             }
             if (node.Variable is not null)
@@ -949,6 +953,7 @@ internal class TSqlProcessor
 
                 if (parser.TryGetParameter(node.Name, out var direction) && direction != ParameterDirection.ReturnValue)
                 {
+                    // if it is known, we can infer the directionality and thus assignment state
                     switch (direction)
                     {
                         case ParameterDirection.Output:
@@ -956,31 +961,28 @@ internal class TSqlProcessor
                             flags |= VariableFlags.OutputParameter;
                             break;
                     }
-
-                    if (mark && !isTable) flags |= VariableFlags.Unconsumed;
-
-                    var variable = new Variable(node, flags);
-                    OnDeclare(variable);
-
-                    if (!mark && direction == ParameterDirection.Output)
-                    {
-                        // pure output param, and first time we're seeing it is a read: that's not right
-                        parser.OnVariableAccessedBeforeAssignment(variable);
-                    }
-                    else if (mark && direction is ParameterDirection.Input or ParameterDirection.InputOutput)
-                    {
-                        // we haven't consumed the original value - but watch out for "if" etc
-                        if (AssignmentTracking) parser.OnVariableValueNotConsumed(variable);
-                    }
-
-                    if (variable.IsTable && variable.IsOutputParameter)
-                    {
-                        parser.OnTableVariableOutputParameter(variable);
-                    }
                 }
-                else
+
+
+                if (mark && !isTable) flags |= VariableFlags.Unconsumed;
+
+                var variable = new Variable(node, flags);
+                OnDeclare(variable);
+
+                if (!mark && direction == ParameterDirection.Output)
                 {
-                    parser.OnVariableNotDeclared(new(node, flags));
+                    // pure output param, and first time we're seeing it is a read: that's not right
+                    parser.OnVariableAccessedBeforeAssignment(variable);
+                }
+                else if (mark && direction is ParameterDirection.Input or ParameterDirection.InputOutput)
+                {
+                    // we haven't consumed the original value - but watch out for "if" etc
+                    if (AssignmentTracking) parser.OnVariableValueNotConsumed(variable);
+                }
+
+                if (variable.IsTable && variable.IsOutputParameter)
+                {
+                    parser.OnTableVariableOutputParameter(variable);
                 }
             }
         }

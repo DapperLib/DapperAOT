@@ -1,16 +1,17 @@
 ﻿using Dapper.CodeAnalysis;
 using System.Threading.Tasks;
 using Xunit;
+using Diagnostics = Dapper.CodeAnalysis.DapperAnalyzer.Diagnostics;
 
 namespace Dapper.AOT.Test.Verifiers;
 
 public class DAP203 : Verifier<DapperAnalyzer>
 {
     [Fact]
-    public Task InsertWithGlobalIdentity() => SqlVerifyAsync("""
+    public Task GlobalIdentity() => SqlVerifyAsync("""
         insert SomeTable (A) values (1)
         select {|#0:@@identity|}
         """,
-        Diagnostic(DapperAnalyzer.Diagnostics.GlobalIdentity)
+        Diagnostic(Diagnostics.GlobalIdentity)
             .WithLocation(0));
 }

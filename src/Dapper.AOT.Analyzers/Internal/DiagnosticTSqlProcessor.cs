@@ -28,7 +28,7 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     
     private readonly ITypeSymbol? _parameterType;
     private readonly bool _assumeParameterExists;
-    
+
     public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, ModeFlags flags,
         Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(flags)
     {
@@ -87,8 +87,8 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     protected override void OnDuplicateVariableDeclaration(Variable variable)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.DuplicateVariableDeclaration, variable.Location, variable.Name);
 
-    protected override void OnExecVariable(Location location)
-        => OnDiagnostic(DapperAnalyzer.Diagnostics.ExecVariable, location);
+    protected override void OnExecComposedSql(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.ExecComposedSql, location);
     protected override void OnSelectScopeIdentity(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectScopeIdentity, location);
     protected override void OnGlobalIdentity(Location location)
@@ -162,6 +162,13 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     {
         // we have knowledge of the type system; use it
 
+        if (_assumeParameterExists) // dynamic, etc
+        {
+            // dynamic
+            direction = ParameterDirection.Input;
+            return true;
+        }
+
         if (_parameterType is null)
         {
             // no parameter
@@ -169,12 +176,7 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
             return false;
         }
 
-        if (_assumeParameterExists) // dynamic, etc
-        {
-            // dynamic
-            direction = ParameterDirection.Input;
-            return true;
-        }
+
 
         if (!string.IsNullOrEmpty(name) && name[0] == '@')
         {

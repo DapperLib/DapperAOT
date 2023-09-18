@@ -1,6 +1,7 @@
 ﻿using Dapper.CodeAnalysis;
 using System.Threading.Tasks;
 using Xunit;
+using Diagnostics = Dapper.CodeAnalysis.DapperAnalyzer.Diagnostics;
 
 namespace Dapper.AOT.Test.Verifiers;
 
@@ -12,15 +13,15 @@ public class DAP201 : Verifier<DapperAnalyzer>
         go
         {|#0:print 'def'|}
         """,
-    Diagnostic(DapperAnalyzer.Diagnostics.MultipleBatches)
+    Diagnostic(Diagnostics.MultipleBatches)
         .WithLocation(0));
 
     [Fact]
-    public Task EndingWithGo() => SqlVerifyAsync("""
+    public Task MultipleBatches_EndingWithGo() => SqlVerifyAsync("""
         print 'abc'
         go{|#0:|}
         """,
-        Diagnostic(DapperAnalyzer.Diagnostics.MultipleBatches)
+        Diagnostic(Diagnostics.MultipleBatches)
             .WithLocation(0));
 
     [Fact]
