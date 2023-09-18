@@ -724,8 +724,7 @@ internal class TSqlProcessor
             try
             {
                 // set ambient state so we can complain more as we walk the nodes
-                _demandAliases = IsMultiTable(node.FromClause)
-                    ? new(true, node.Target) : default;
+                _demandAliases = IsMultiTable(node.FromClause) ? new(true, node.Target) : default;
                 base.ExplicitVisit(node);
                 if (_demandAliases.Active && !_demandAliases.AmnestyNodeIsAlias)
                     parser.OnFromMultiTableMissingAlias(new(node.Target));
@@ -742,8 +741,7 @@ internal class TSqlProcessor
             try
             {
                 // set ambient state so we can complain more as we walk the nodes
-                _demandAliases = IsMultiTable(node.FromClause)
-                    ? new(true, node.Target) : default;
+                _demandAliases = IsMultiTable(node.FromClause) ? new(true, node.Target) : default;
                 base.ExplicitVisit(node);
                 if (_demandAliases.Active && !_demandAliases.AmnestyNodeIsAlias)
                     parser.OnFromMultiTableMissingAlias(new(node.Target));
