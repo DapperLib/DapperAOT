@@ -24,7 +24,7 @@ public enum SqlSyntax
     GeneralWithColonParameters = 3,
 
     /// <summary>
-    /// SQL Server (<a href="https://learn.microsoft.com/en-us/sql/t-sql/language-reference">Transact-SQL</a>)using the <c>@value</c> parameter convention; has full syntax processing support
+    /// SQL Server (<a href="https://learn.microsoft.com/sql/t-sql/language-reference">Transact-SQL</a>)using the <c>@value</c> parameter convention; has full syntax processing support
     /// </summary>
     SqlServer = 100,
 

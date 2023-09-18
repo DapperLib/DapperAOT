@@ -167,7 +167,7 @@ internal static class TypeSymbolExtensions
     /// <param name="searchedTypeSymbol">if found, an interface type symbol</param>
     /// <remarks>
     /// Most likely <see cref="IEnumerable{T}"/> is one of the last defined interfaces in a chain of implementations
-    /// https://learn.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.itypesymbol.allinterfaces?view=roslyn-dotnet
+    /// https://learn.microsoft.com/dotnet/api/microsoft.codeanalysis.itypesymbol.allinterfaces?view=roslyn-dotnet
     /// </remarks>
     public static bool ImplementsIEnumerable(this ITypeSymbol? typeSymbol, out ITypeSymbol? searchedTypeSymbol)
         => typeSymbol.ImplementsInterface(SpecialType.System_Collections_Generic_IEnumerable_T, out searchedTypeSymbol, searchFromStart: false);

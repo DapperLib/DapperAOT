@@ -9,12 +9,12 @@ partial class DapperAnalyzer
         public static readonly DiagnosticDescriptor UseQueryAsList = PerformanceWarning("DAP028", "Use AsList instead of ToList", "Use Query(...).AsList() instead of Query(...).ToList()"),
 
         // SQL parse specific
-        GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),
+        GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}", docs: false),
         MultipleBatches = SqlError("DAP201", "Multiple batches", "Multiple batches are not permitted", true),
         DuplicateVariableDeclaration = SqlError("DAP202", "Duplicate variable declaration", "The variable {0} is declared multiple times", true),
-        GlobalIdentity = SqlError("DAP203", "Do not use @@identity", "@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid"),
-        SelectScopeIdentity = SqlInfo("DAP204", "Prefer OUTPUT over SELECT", "Consider using OUTPUT INSERTED.yourid in the INSERT instead of SELECT SCOPE_IDENTITY()"),
-        NullLiteralComparison = SqlWarning("DAP205", "Null comparison", "Literal null used in comparison; 'is null' or 'is not null' should be preferred"),
+        GlobalIdentity = SqlError("DAP203", "Do not use @@identity", "@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid", true),
+        SelectScopeIdentity = SqlInfo("DAP204", "Prefer OUTPUT over SELECT", "Consider using OUTPUT INSERTED.yourid in the INSERT instead of SELECT SCOPE_IDENTITY()", true),
+        NullLiteralComparison = SqlWarning("DAP205", "Null comparison", "Literal null used in comparison; 'is null' or 'is not null' should be preferred", true),
         ParseError = SqlError("DAP206", "SQL parse error", "Error {0}: {1}", true),
         ScalarVariableUsedAsTable = SqlError("DAP207", "Scalar used like table", "Scalar variable {0} is used like a table"),
         TableVariableUsedAsScalar = SqlError("DAP208", "Table used like scalar", "Table-variable {0} is used like a scalar"),
