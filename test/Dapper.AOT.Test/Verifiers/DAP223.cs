@@ -11,6 +11,10 @@ public class DAP223 : Verifier<DapperAnalyzer>
         {|#0:delete from Users|}
 
         delete from Users where Region='North'
+
+        delete u
+        from Users u
+        inner join Foo x on x.Id = u.Id
         """, Diagnostic(Diagnostics.DeleteWithoutWhere).WithLocation(0));
     
 }

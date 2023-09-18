@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -503,7 +504,18 @@ internal class TSqlProcessor
 
         public override void ExplicitVisit(QuerySpecification node)
         {
-            base.ExplicitVisit(node);
+            var oldDemandAlias = _demandAliases;
+            try
+            {
+                // set ambient state so we can complain more as we walk the nodes
+                _demandAliases = IsMultiTable(node.FromClause)
+                    ? new(true, null) : default;
+                base.ExplicitVisit(node);
+            }
+            finally
+            {
+                _demandAliases = oldDemandAlias;
+            }
             foreach (var el in node.SelectElements)
             {
                 if (el is SelectSetVariable setVar && setVar.Variable is not null)
@@ -705,74 +717,87 @@ internal class TSqlProcessor
             return tables.Count > 1 || tables[0] is JoinTableReference;
         }
 
-        public override void ExplicitVisit(SelectStatement node)
+        public override void ExplicitVisit(UpdateSpecification node)
         {
-            bool oldDemandAlias = _demandAliases;
+            Debug.Assert(!_demandAliases.Active);
+            var oldDemandAlias = _demandAliases;
             try
             {
                 // set ambient state so we can complain more as we walk the nodes
-                _demandAliases = IsMultiTable((node.QueryExpression as QuerySpecification)?.FromClause);
+                _demandAliases = IsMultiTable(node.FromClause)
+                    ? new(true, node.Target) : default;
                 base.ExplicitVisit(node);
+                if (_demandAliases.Active && !_demandAliases.AmnestyNodeIsAlias)
+                    parser.OnFromMultiTableMissingAlias(new(node.Target));
             }
             finally
             {
                 _demandAliases = oldDemandAlias;
             }
         }
-        public override void ExplicitVisit(UpdateStatement node)
+        public override void ExplicitVisit(DeleteSpecification node)
         {
-            bool oldDemandAlias = _demandAliases;
+            Debug.Assert(!_demandAliases.Active);
+            var oldDemandAlias = _demandAliases;
             try
             {
                 // set ambient state so we can complain more as we walk the nodes
-                _demandAliases = IsMultiTable(node.UpdateSpecification.FromClause);
+                _demandAliases = IsMultiTable(node.FromClause)
+                    ? new(true, node.Target) : default;
                 base.ExplicitVisit(node);
+                if (_demandAliases.Active && !_demandAliases.AmnestyNodeIsAlias)
+                    parser.OnFromMultiTableMissingAlias(new(node.Target));
             }
             finally
             {
                 _demandAliases = oldDemandAlias;
             }
         }
-        public override void ExplicitVisit(DeleteStatement node)
+
+        private struct DemandAliasesState
         {
-            bool oldDemandAlias = _demandAliases;
-            try
+            public DemandAliasesState(bool active, TableReference? amnesty)
             {
-                // set ambient state so we can complain more as we walk the nodes
-                _demandAliases = IsMultiTable(node.DeleteSpecification.FromClause);
-                base.ExplicitVisit(node);
+                Active = active;
+                Amnesty = amnesty;
+                AmnestyNodeIsAlias = false;
+                HuntingAlias = null;
+                if (amnesty is NamedTableReference { Alias: null } named && named.SchemaObject is { Count: 1 } schema)
+                {
+                    HuntingAlias = schema[0].Value;
+                }
             }
-            finally
-            {
-                _demandAliases = oldDemandAlias;
-            }
+            public readonly string? HuntingAlias;
+            public readonly bool Active;
+            public readonly TableReference? Amnesty; // we can't validate the target until too late
+            public bool AmnestyNodeIsAlias;
         }
-        private bool _demandAliases;
-        public override void ExplicitVisit(FromClause node)
-        {
-            bool oldDemandAlias = _demandAliases;
-            try
-            {
-                // set ambient state so we can complain more as we walk the nodes
-                _demandAliases = IsMultiTable(node);
-                base.ExplicitVisit(node);
-            }
-            finally
-            {
-                _demandAliases = oldDemandAlias;
-            }
-        }
+
+        private DemandAliasesState _demandAliases;
+
         public override void Visit(TableReferenceWithAlias node)
         {
-            if (_demandAliases && string.IsNullOrWhiteSpace(node.Alias?.Value))
+            if (_demandAliases.Active)
             {
-                parser.OnFromMultiTableMissingAlias(new(node));
+                if (ReferenceEquals(node, _demandAliases.Amnesty))
+                {
+                    // ignore for now
+                }
+                else if (string.IsNullOrWhiteSpace(node.Alias?.Value))
+                {
+                    parser.OnFromMultiTableMissingAlias(new(node));
+                }
+                else if (node.Alias!.Value == _demandAliases.HuntingAlias)
+                {
+                    // we've resolved the Target node as an alias
+                    _demandAliases.AmnestyNodeIsAlias = true;
+                }
             }
             base.Visit(node);
         }
         public override void Visit(ColumnReferenceExpression node)
         {
-            if (_demandAliases && node.MultiPartIdentifier.Count == 1)
+            if (_demandAliases.Active && node.MultiPartIdentifier.Count == 1)
             {
                 parser.OnFromMultiTableUnqualifiedColumn(new(node), node.MultiPartIdentifier[0].Value);
             }
