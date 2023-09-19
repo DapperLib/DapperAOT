@@ -15,6 +15,8 @@ public class DAP212 : Verifier<DapperAnalyzer>
         {|#1:exec ('select * from Customers where Name = ''' + @s + '''')|};
 
         exec sp_executesql N'select * from Customers where Name = @name', N'@name nvarchar(100)', @s
+
+        exec ('select * from Customers where Name = ''fred''') -- not composed
         """, Diagnostic(Diagnostics.ExecComposedSql).WithLocation(0),
             Diagnostic(Diagnostics.ExecComposedSql).WithLocation(1));
     

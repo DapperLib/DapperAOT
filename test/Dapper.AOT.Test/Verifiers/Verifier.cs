@@ -1,4 +1,5 @@
 ﻿using Dapper.CodeAnalysis;
+using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
@@ -33,20 +34,20 @@ public abstract class Verifier
 
     internal Task CSVerifyAsync<TAnalyzer>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
-        DiagnosticResult[] expected, SqlSyntax sqlSyntax, ModeFlags debugModeFlags = ModeFlags.None)
+        DiagnosticResult[] expected, SqlSyntax sqlSyntax, SqlParseInputFlags sqlParseInputFlags = SqlParseInputFlags.None)
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
         var test = new CSharpAnalyzerTest<TAnalyzer, XUnitVerifier>();
-        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, debugModeFlags);
+        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, sqlParseInputFlags);
     }
     internal Task CSVerifyAsync<TAnalyzer, TCodeFix>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
-        DiagnosticResult[] expected, SqlSyntax sqlSyntax, ModeFlags debugModeFlags = ModeFlags.None)
+        DiagnosticResult[] expected, SqlSyntax sqlSyntax, SqlParseInputFlags sqlParseInputFlags = SqlParseInputFlags.None)
         where TAnalyzer : DiagnosticAnalyzer, new()
         where TCodeFix : CodeFixProvider, new()
     {
         var test = new CSharpCodeFixTest<TAnalyzer, TCodeFix, XUnitVerifier>();
-        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, debugModeFlags);
+        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, sqlParseInputFlags);
     }
 
     internal Task VBVerifyAsync<TAnalyzer>(string source,
@@ -55,7 +56,7 @@ public abstract class Verifier
     where TAnalyzer : DiagnosticAnalyzer, new()
     {
         var test = new VisualBasicAnalyzerTest<TAnalyzer, XUnitVerifier>();
-        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, ModeFlags.None);
+        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, SqlParseInputFlags.None);
     }
     internal Task VBVerifyAsync<TAnalyzer, TCodeFix>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
@@ -64,12 +65,12 @@ public abstract class Verifier
         where TCodeFix : CodeFixProvider, new()
     {
         var test = new VisualBasicCodeFixTest<TAnalyzer, TCodeFix, XUnitVerifier>();
-        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, ModeFlags.None);
+        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, SqlParseInputFlags.None);
     }
 
     internal Task ExecuteAsync(AnalyzerTest<XUnitVerifier> test, string source,
         Func<Solution, ProjectId, Solution>[] transforms,
-        DiagnosticResult[] expected, SqlSyntax sqlSyntax, ModeFlags debugModeFlags)
+        DiagnosticResult[] expected, SqlSyntax sqlSyntax, SqlParseInputFlags sqlParseInputFlags)
     {
         test.TestCode = source;
         if (expected is not null)
@@ -89,13 +90,13 @@ public abstract class Verifier
 #else
         test.ReferenceAssemblies = ReferenceAssemblies.Net.Net60;
 #endif
-        if (sqlSyntax == SqlSyntax.SqlServer && debugModeFlags == ModeFlags.None)
+        if (sqlSyntax == SqlSyntax.SqlServer && sqlParseInputFlags == SqlParseInputFlags.None)
         {
             test.TestState.AnalyzerConfigFiles.Add(("/.globalconfig", AssumeSqlServer));
         }
-        else if (sqlSyntax != SqlSyntax.General || debugModeFlags != ModeFlags.None)
+        else if (sqlSyntax != SqlSyntax.General || sqlParseInputFlags != SqlParseInputFlags.None)
         {
-            test.TestState.AnalyzerConfigFiles.Add(("/.globalconfig", CreateEditorConfig(sqlSyntax, debugModeFlags)));
+            test.TestState.AnalyzerConfigFiles.Add(("/.globalconfig", CreateEditorConfig(sqlSyntax, sqlParseInputFlags)));
         }
         test.TestState.AdditionalReferences.Add(typeof(SqlMapper).Assembly);
         test.TestState.AdditionalReferences.Add(typeof(DapperAotAttribute).Assembly);
@@ -108,15 +109,15 @@ public abstract class Verifier
         return test.RunAsync(CancellationToken);
     }
 
-    static SourceText CreateEditorConfig(SqlSyntax syntax, ModeFlags debugModeFlags)
+    static SourceText CreateEditorConfig(SqlSyntax syntax, SqlParseInputFlags sqlParseInputFlags)
     {
         var sb = new StringBuilder().AppendLine("is_global = true");
         if (syntax != SqlSyntax.General) sb.Append(GlobalOptions.Keys.GlobalOptions_DapperSqlSyntax).Append(" = ").Append(syntax).AppendLine();
-        if (debugModeFlags != ModeFlags.None) sb.Append(GlobalOptions.Keys.GlobalOptions_DapperDebugModeFlags).Append(" = ").Append(debugModeFlags).AppendLine();
+        if (sqlParseInputFlags != SqlParseInputFlags.None) sb.Append(GlobalOptions.Keys.GlobalOptions_DapperDebugSqlParseInputFlags).Append(" = ").Append(sqlParseInputFlags).AppendLine();
         return SourceText.From(sb.ToString(), Encoding.UTF8);
     }
 
-    private static readonly SourceText AssumeSqlServer = CreateEditorConfig(SqlSyntax.SqlServer, ModeFlags.None);
+    private static readonly SourceText AssumeSqlServer = CreateEditorConfig(SqlSyntax.SqlServer, SqlParseInputFlags.None);
 
     protected static Func<Solution, ProjectId, Solution> InterceptorsEnabled = WithFeatures(
         new("InterceptorsPreview", "true"), // rc 1
@@ -173,9 +174,9 @@ public abstract class Verifier
 public class Verifier<TAnalyzer> : Verifier where TAnalyzer : DiagnosticAnalyzer, new()
 {
     internal Task SqlVerifyAsync(string sql,
-        params DiagnosticResult[] expected) => SqlVerifyAsync(sql, ModeFlags.None, expected);
+        params DiagnosticResult[] expected) => SqlVerifyAsync(sql, SqlParseInputFlags.None, expected);
     
-    internal Task SqlVerifyAsync(string sql, ModeFlags debugModeFlags, params DiagnosticResult[] expected)
+    internal Task SqlVerifyAsync(string sql, SqlParseInputFlags sqlParseInputFlags, params DiagnosticResult[] expected)
     {
         var cs = $$"""
             using Dapper;
@@ -187,19 +188,19 @@ public class Verifier<TAnalyzer> : Verifier where TAnalyzer : DiagnosticAnalyzer
                 public void Foo(DbConnection conn) => conn.Execute(@"{{sql.Replace("\"", "\"\"")}}");
             }
             """;
-        return CSVerifyAsync(cs, DefaultConfig, expected, SqlSyntax.SqlServer, debugModeFlags);
+        return CSVerifyAsync(cs, DefaultConfig, expected, SqlSyntax.SqlServer, sqlParseInputFlags | SqlParseInputFlags.DebugMode);
     }
 
     internal Task CSVerifyAsync(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
-        DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer, ModeFlags debugModeFlags = ModeFlags.None)
-        => base.CSVerifyAsync<TAnalyzer>(source, transforms, expected, sqlSyntax, debugModeFlags);
+        DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer, SqlParseInputFlags sqlParseInputFlags = SqlParseInputFlags.None)
+        => base.CSVerifyAsync<TAnalyzer>(source, transforms, expected, sqlSyntax, sqlParseInputFlags);
 
     new internal Task CSVerifyAsync<TCodeFix>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
-        DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer, ModeFlags debugModeFlags = ModeFlags.None)
+        DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer, SqlParseInputFlags sqlParseInputFlags = SqlParseInputFlags.None)
         where TCodeFix : CodeFixProvider, new()
-        => CSVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected, sqlSyntax, debugModeFlags);
+        => CSVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected, sqlSyntax, sqlParseInputFlags);
 
     internal Task VBVerifyAsync(string source,
     Func<Solution, ProjectId, Solution>[] transforms,

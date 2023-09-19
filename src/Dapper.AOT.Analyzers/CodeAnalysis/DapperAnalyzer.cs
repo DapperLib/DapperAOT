@@ -10,7 +10,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
-using ModeFlags = Dapper.SqlAnalysis.TSqlProcessor.ModeFlags;
 
 namespace Dapper.CodeAnalysis;
 
@@ -193,24 +192,24 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        static ModeFlags GetModeFlags(OperationFlags flags)
+        static SqlParseInputFlags GetModeFlags(OperationFlags flags)
         {
 
-            var modeFlags = ModeFlags.None;
+            var modeFlags = SqlParseInputFlags.None;
             // if (caseSensitive) modeFlags |= ModeFlags.CaseSensitive;
-            if ((flags & OperationFlags.BindResultsByName) != 0) modeFlags |= ModeFlags.ValidateSelectNames;
-            if ((flags & OperationFlags.SingleRow) != 0) modeFlags |= ModeFlags.SingleRow;
-            if ((flags & OperationFlags.AtMostOne) != 0) modeFlags |= ModeFlags.AtMostOne;
+            if ((flags & OperationFlags.BindResultsByName) != 0) modeFlags |= SqlParseInputFlags.ValidateSelectNames;
+            if ((flags & OperationFlags.SingleRow) != 0) modeFlags |= SqlParseInputFlags.SingleRow;
+            if ((flags & OperationFlags.AtMostOne) != 0) modeFlags |= SqlParseInputFlags.AtMostOne;
             if ((flags & OperationFlags.Scalar) != 0)
             {
-                modeFlags |= ModeFlags.ExpectQuery | ModeFlags.SingleRow | ModeFlags.SingleQuery | ModeFlags.SingleColumn;
+                modeFlags |= SqlParseInputFlags.ExpectQuery | SqlParseInputFlags.SingleRow | SqlParseInputFlags.SingleQuery | SqlParseInputFlags.SingleColumn;
             }
             else if ((flags & OperationFlags.Query) != 0)
             {
-                modeFlags |= ModeFlags.ExpectQuery;
-                if ((flags & OperationFlags.QueryMultiple) == 0) modeFlags |= ModeFlags.SingleQuery;
+                modeFlags |= SqlParseInputFlags.ExpectQuery;
+                if ((flags & OperationFlags.QueryMultiple) == 0) modeFlags |= SqlParseInputFlags.SingleQuery;
             }
-            else if ((flags & (OperationFlags.Execute)) != 0) modeFlags |= ModeFlags.ExpectNoQuery;
+            else if ((flags & (OperationFlags.Execute)) != 0) modeFlags |= SqlParseInputFlags.ExpectNoQuery;
 
             return modeFlags;
         }
@@ -262,13 +261,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         private static void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource)
         {
             // TODO: check other parameters for special markers like command type?
-            var flags = ModeFlags.None;
+            var flags = SqlParseInputFlags.None;
             ValidateSql(ctx, sqlSource, flags);
         }
 
         private static void ValidatePropertyUsage(in OperationAnalysisContext ctx, IOperation sqlSource, bool isCommand)
         {
-            var flags = ModeFlags.None;
+            var flags = SqlParseInputFlags.None;
             if (isCommand)
             {
                 // TODO: check other parameters for special markers like command type?
@@ -279,7 +278,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         private static readonly Regex HasWhitespace = new Regex(@"\s", RegexOptions.Compiled | RegexOptions.Multiline);
 
-        private static void ValidateSql(in OperationAnalysisContext ctx, IOperation sqlSource, ModeFlags flags, Location? location = null)
+        private static void ValidateSql(in OperationAnalysisContext ctx, IOperation sqlSource, SqlParseInputFlags flags, Location? location = null)
         {
             var parseState = new ParseState(ctx);
 
@@ -295,7 +294,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
             if (syntax != SqlSyntax.SqlServer) return;
 
-            if (caseSensitive) flags |= ModeFlags.CaseSensitive;
+            if (caseSensitive) flags |= SqlParseInputFlags.CaseSensitive;
 
             // can we get the SQL itself?
             if (!Inspection.TryGetConstantValueWithSyntax(sqlSource, out string? sql, out var sqlSyntax)) return;
@@ -305,17 +304,28 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
             if (parseState.Options.TryGetDebugModeFlags(out var debugModeFlags))
             {
-                flags |= debugModeFlags;
+                if ((debugModeFlags & SqlParseInputFlags.DebugMode) != 0)
+                {
+                    // debug mode flags **replace** all other flags
+                    flags = debugModeFlags;
+                }
+                else
+                {
+                    // otherwise we *extend* the flags
+                    flags |= debugModeFlags;
+                }
             }
 
             try
             {
+                SqlParseOutputFlags parseFlags;
                 switch (syntax)
                 {
                     case SqlSyntax.SqlServer:
 
                         var proc = new OperationAnalysisContextTSqlProcessor(ctx, null, flags, location, sqlSyntax);
                         proc.Execute(sql!, members: default);
+                        parseFlags = proc.Flags;
                         // paramMembers);
                         //parseFlags = proc.Flags;
                         //paramNames = (from var in proc.Variables
@@ -324,6 +334,26 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                         //              ).ToImmutableHashSet();
                         //diagnostics = proc.DiagnosticsObject;
                         break;
+                    default:
+                        parseFlags = SqlParseOutputFlags.None;
+                        break;
+                }
+
+                // if we're sure we understood the SQL (reliable and no syntax error), we can check our query expectations
+                // (note some other similar rules are enforced *inside* the parser - single-row, for example)
+                if ((parseFlags & (SqlParseOutputFlags.SyntaxError | SqlParseOutputFlags.Reliable)) == SqlParseOutputFlags.Reliable)
+                {
+                    switch (flags & (SqlParseInputFlags.ExpectQuery | SqlParseInputFlags.ExpectNoQuery))
+                    {
+                        case SqlParseInputFlags.ExpectQuery when ((parseFlags & (SqlParseOutputFlags.Query | SqlParseOutputFlags.MaybeQuery)) == 0):
+                            // definitely do not have a query
+                            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.QueryCommandMissingQuery, location));
+                            break;
+                        case SqlParseInputFlags.ExpectNoQuery when ((parseFlags & SqlParseOutputFlags.Query) != 0):
+                            // definitely have a query
+                            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ExecuteCommandWithQuery, location));
+                            break;
+                    }
                 }
             }
             catch (Exception ex)

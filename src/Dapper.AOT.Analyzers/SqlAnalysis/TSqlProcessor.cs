@@ -16,20 +16,7 @@ namespace Dapper.SqlAnalysis;
 
 internal class TSqlProcessor
 {
-    [Flags]
-    internal enum ModeFlags
-    {
-        None = 0,
-        CaseSensitive = 1 << 0,
-        ValidateSelectNames = 1 << 1,
-        SingleRow = 1 << 2,
-        AtMostOne = 1 << 3,
-        ExpectQuery = 1 << 4, // active *DO* expect a query
-        ExpectNoQuery = 1 << 5, // actively do *NOT* expect a query
-        SingleQuery = 1 << 6, // actively expect *exactly* one query
-        SingleColumn = 1 << 7, // actively expect *exactly* one column in any query
-        KnownParameters = 1 << 8, // we understand the parameters
-    }
+
     [Flags]
     internal enum VariableFlags
     {
@@ -44,7 +31,7 @@ internal class TSqlProcessor
 
     protected bool CaseSensitive => _visitor.CaseSensitive;
     protected bool ValidateSelectNames => _visitor.ValidateSelectNames;
-    public TSqlProcessor(ModeFlags flags = ModeFlags.None, Action<string>? log = null)
+    public TSqlProcessor(SqlParseInputFlags flags = SqlParseInputFlags.None, Action<string>? log = null)
     {
         _visitor = log is null ? new VariableTrackingVisitor(flags, this) : new LoggingVariableTrackingVisitor(flags, this, log);
     }
@@ -95,7 +82,7 @@ internal class TSqlProcessor
         var fixedSql = ReplaceDapperSyntaxWithValidSql(sql, members);
         if (fixedSql != sql)
         {
-            Flags |= ParseFlags.SqlAdjustedForDapperSyntax;
+            Flags |= SqlParseOutputFlags.SqlAdjustedForDapperSyntax;
         }
         var parser = new TSql160Parser(true, SqlEngineType.All);
         TSqlFragment tree;
@@ -104,11 +91,15 @@ internal class TSqlProcessor
             tree = parser.Parse(reader, out var errors);
             if (errors is not null && errors.Count != 0)
             {
-                Flags |= ParseFlags.SyntaxError;
+                Flags |= SqlParseOutputFlags.SyntaxError;
                 foreach (var error in errors)
                 {
                     OnParseError(error, new Location(error.Line, error.Column, error.Offset, 0));
                 }
+            }
+            else
+            {
+                Flags |= SqlParseOutputFlags.Reliable;
             }
         }
 
@@ -137,11 +128,11 @@ internal class TSqlProcessor
 
     public IEnumerable<Variable> Variables => _visitor.Variables;
 
-    public ParseFlags Flags { get; private set; }
+    public SqlParseOutputFlags Flags { get; private set; }
     public virtual void Reset()
     {
-        var flags = ParseFlags.Reliable;
-        if (_visitor.KnownParameters) flags |= ParseFlags.KnownParameters;
+        var flags = SqlParseOutputFlags.None;
+        if (_visitor.KnownParameters) flags |= SqlParseOutputFlags.KnownParameters;
         Flags = flags;
 
         _visitor.Reset();
@@ -299,7 +290,7 @@ internal class TSqlProcessor
     class LoggingVariableTrackingVisitor : VariableTrackingVisitor
     {
         private readonly Action<string> log;
-        public LoggingVariableTrackingVisitor(ModeFlags flags, TSqlProcessor parser, Action<string> log) : base(flags, parser)
+        public LoggingVariableTrackingVisitor(SqlParseInputFlags flags, TSqlProcessor parser, Action<string> log) : base(flags, parser)
         {
             this.log = log;
         }
@@ -361,19 +352,19 @@ internal class TSqlProcessor
         //   call base.ExplicitVisit; VariableTableReference is an example, omitting node.Variable?.Accept(this)
         //   to avoid a problem; also, be sure to think "nulls", so: ?.Accept(this), if you're not sure
 
-        private readonly ModeFlags _flags;
-        public VariableTrackingVisitor(ModeFlags flags, TSqlProcessor parser)
+        private readonly SqlParseInputFlags _flags;
+        public VariableTrackingVisitor(SqlParseInputFlags flags, TSqlProcessor parser)
         {
             _flags = flags;
             variables = CaseSensitive ? new(StringComparer.Ordinal) : new(StringComparer.OrdinalIgnoreCase);
             this.parser = parser;
         }
 
-        public bool CaseSensitive => (_flags & ModeFlags.CaseSensitive) != 0;
-        public bool ValidateSelectNames => (_flags & ModeFlags.ValidateSelectNames) != 0;
-        public bool SingleRow => (_flags & ModeFlags.SingleRow) != 0;
-        public bool AtMostOne => (_flags & ModeFlags.AtMostOne) != 0;
-        public bool KnownParameters => (_flags & ModeFlags.KnownParameters) != 0;
+        public bool CaseSensitive => (_flags & SqlParseInputFlags.CaseSensitive) != 0;
+        public bool ValidateSelectNames => (_flags & SqlParseInputFlags.ValidateSelectNames) != 0;
+        public bool SingleRow => (_flags & SqlParseInputFlags.SingleRow) != 0;
+        public bool AtMostOne => (_flags & SqlParseInputFlags.AtMostOne) != 0;
+        public bool KnownParameters => (_flags & SqlParseInputFlags.KnownParameters) != 0;
 
         private readonly Dictionary<string, Variable> variables;
         private int batchCount;
@@ -468,7 +459,7 @@ internal class TSqlProcessor
 
         public override void Visit(ReturnStatement node)
         {
-            parser.Flags |= ParseFlags.Return;
+            parser.Flags |= SqlParseOutputFlags.Return;
             base.Visit(node);
         }
 
@@ -559,19 +550,19 @@ internal class TSqlProcessor
 
         public override void Visit(ExecuteStatement node)
         {
-            parser.Flags |= ParseFlags.MaybeQuery;
+            parser.Flags |= SqlParseOutputFlags.MaybeQuery;
             base.Visit(node);
         }
 
         private bool AddQuery() // returns true if the first
         {
-            switch (parser.Flags & (ParseFlags.Query | ParseFlags.Queries))
+            switch (parser.Flags & (SqlParseOutputFlags.Query | SqlParseOutputFlags.Queries))
             {
-                case ParseFlags.None:
-                    parser.Flags |= ParseFlags.Query;
+                case SqlParseOutputFlags.None:
+                    parser.Flags |= SqlParseOutputFlags.Query;
                     return true;
-                case ParseFlags.Query:
-                    parser.Flags |= ParseFlags.Queries;
+                case SqlParseOutputFlags.Query:
+                    parser.Flags |= SqlParseOutputFlags.Queries;
                     break;
             }
             return false;
@@ -829,9 +820,16 @@ internal class TSqlProcessor
             if (node.ExecutableEntity is not null)
             {
                 node.ExecutableEntity.Accept(this);
-                if (node.ExecutableEntity is ExecutableStringList) // list && list.Strings.Count == 1 && list.Strings[0] is VariableReference)
+                if (node.ExecutableEntity is ExecutableStringList list)
                 {
-                    parser.OnExecComposedSql(new Location(node));
+                    if (list.Strings.Count == 0)
+                    { } // ??
+                    else if (list.Strings.Count == 1 && list.Strings[0] is StringLiteral)
+                    { } // we'll let them off
+                    else
+                    {
+                        parser.OnExecComposedSql(new Location(node));
+                    }
                 }
             }
             if (node.Variable is not null)

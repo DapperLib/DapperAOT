@@ -322,9 +322,10 @@ public class TSqlParserTests
 
         var args = parser.GetParameters(out var errors);
         Assert.Equal("@id", Assert.Single(args));
-        Assert.Equal(2, errors.Length);
-        Assert.Equal("EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters L2 C1", errors[0]);
-        Assert.Equal("Multiple batches are not permitted L4 C1", errors[1]);
+        Assert.Equal([
+            "EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters L2 C1",
+            "Multiple batches are not permitted L4 C1",
+            ], errors);
     }
 
     [Fact]
@@ -404,7 +405,7 @@ public class TSqlParserTests
 
     class TestTSqlProcessor : TSqlProcessor
     {
-        public TestTSqlProcessor(ModeFlags flags = ModeFlags.None, Action<string>? log = null) : base(flags, log) { }
+        public TestTSqlProcessor(SqlParseInputFlags flags = SqlParseInputFlags.None, Action<string>? log = null) : base(flags, log) { }
         public string[] GetParameters(out string[] errors)
         {
             var parameters = (from p in this.Variables

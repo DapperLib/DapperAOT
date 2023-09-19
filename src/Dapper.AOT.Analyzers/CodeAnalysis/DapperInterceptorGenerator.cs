@@ -262,29 +262,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         // perform SQL inspection
         var parameterMap = BuildParameterMap(ctx, op, sql, flags, paramType, location, ref diagnostics, sqlSyntax, out var parseFlags);
 
-        // if we have a good parser *and* the SQL isn't invalid: check for obvious query/exec mismatch
-        if ((parseFlags & (ParseFlags.Reliable | ParseFlags.SyntaxError)) == ParseFlags.Reliable)
-        {
-            switch (flags & (OperationFlags.Execute | OperationFlags.Query | OperationFlags.Scalar))
-            {
-                case OperationFlags.Execute:
-                    if ((parseFlags & ParseFlags.Query) != 0)
-                    {
-                        // definitely have a query
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ExecuteCommandWithQuery, location));
-                    }
-                    break;
-                case OperationFlags.Query:
-                case OperationFlags.Execute | OperationFlags.Scalar:
-                    if ((parseFlags & (ParseFlags.Query | ParseFlags.MaybeQuery)) == 0)
-                    {
-                        // definitely do not have a query
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.QueryCommandMissingQuery, location));
-                    }
-                    break;
-            }
-        }
-
         if (flags.HasAny(OperationFlags.CacheCommand))
         {
             bool canBeCached = true;
@@ -318,18 +295,18 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         //    }
         //}
 
-        static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags)
+        static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out SqlParseOutputFlags parseFlags)
         {
             // if command-type is known statically to be stored procedure etc: pass everything
             if (flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect))
             {
-                parseFlags = flags.HasAny(OperationFlags.StoredProcedure) ? ParseFlags.MaybeQuery : ParseFlags.Query;
+                parseFlags = flags.HasAny(OperationFlags.StoredProcedure) ? SqlParseOutputFlags.MaybeQuery : SqlParseOutputFlags.Query;
                 return flags.HasAny(OperationFlags.HasParameters) ? "*" : "";
             }
             // if command-type or command is not known statically: defer decision
             if (!flags.HasAny(OperationFlags.Text) || string.IsNullOrWhiteSpace(sql))
             {
-                parseFlags = ParseFlags.MaybeQuery;
+                parseFlags = SqlParseOutputFlags.MaybeQuery;
                 return flags.HasAny(OperationFlags.HasParameters) ? "?" : "";
             }
 
@@ -375,7 +352,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     //break;
             //}
 
-            if (paramNames.IsEmpty && (parseFlags & ParseFlags.Return) == 0) // return is a parameter, sort of
+            if (paramNames.IsEmpty && (parseFlags & SqlParseOutputFlags.Return) == 0) // return is a parameter, sort of
             {
                 if (flags.HasAny(OperationFlags.HasParameters))
                 {
@@ -457,13 +434,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 {
                     // we can only consider this an error if we're confident in how well we parsed the input
                     // (unless we detected dynamic args, in which case: we don't know what we don't know)
-                    if ((parseFlags & (ParseFlags.Reliable | ParseFlags.KnownParameters)) == (ParseFlags.Reliable | ParseFlags.KnownParameters))
+                    if ((parseFlags & (SqlParseOutputFlags.Reliable | SqlParseOutputFlags.KnownParameters)) == (SqlParseOutputFlags.Reliable | SqlParseOutputFlags.KnownParameters))
                     {
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(parameterType)));
                     }
                 }
             }
-            if ((parseFlags & ParseFlags.Return) != 0 && returnCodeMember is not null)
+            if ((parseFlags & SqlParseOutputFlags.Return) != 0 && returnCodeMember is not null)
             {
                 WithSpace(ref sb).Append(returnCodeMember);
             }

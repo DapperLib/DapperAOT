@@ -13,7 +13,7 @@ namespace Dapper.Internal;
 internal sealed class OperationAnalysisContextTSqlProcessor : DiagnosticTSqlProcessor
 {
     private readonly OperationAnalysisContext _ctx;
-    public OperationAnalysisContextTSqlProcessor(in OperationAnalysisContext ctx, ITypeSymbol? parameterType, ModeFlags flags,
+    public OperationAnalysisContextTSqlProcessor(in OperationAnalysisContext ctx, ITypeSymbol? parameterType, SqlParseInputFlags flags,
         Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax)
         :base(parameterType, flags, location, sqlSyntax)
     {
@@ -28,7 +28,7 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     
     private readonly ITypeSymbol? _parameterType;
 
-    private static ModeFlags CheckForKnownParameterType(ModeFlags flags, ITypeSymbol? parameterType)
+    private static SqlParseInputFlags CheckForKnownParameterType(SqlParseInputFlags flags, ITypeSymbol? parameterType)
     {
         if (parameterType is not null)
         {
@@ -37,7 +37,7 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
             else
             {
                 // we think we understand what is going on, yay!
-                flags |= ModeFlags.KnownParameters;
+                flags |= SqlParseInputFlags.KnownParameters;
             }
         }
         return flags;
@@ -54,7 +54,7 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
             return false;
         }
     }
-    public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, ModeFlags flags,
+    public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, SqlParseInputFlags flags,
         Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(CheckForKnownParameterType(flags, parameterType))
     {
         _location = sqlSyntax?.GetLocation() ?? location;

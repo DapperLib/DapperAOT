@@ -25,8 +25,8 @@ public class SqlTests
        """, "", "Return")]
     public void DetectParameters(string sql, string expected, string flags = "")
     {
-        var expectedFlags = string.IsNullOrWhiteSpace(flags) ? ParseFlags.None
-            : (ParseFlags)Enum.Parse(typeof(ParseFlags), flags);
+        var expectedFlags = string.IsNullOrWhiteSpace(flags) ? SqlParseOutputFlags.None
+            : (SqlParseOutputFlags)Enum.Parse(typeof(SqlParseOutputFlags), flags);
         Assert.Equal(expected, string.Join(" ", SqlTools.GetParameters(sql, out var actualFlags)));
         Assert.Equal(expectedFlags, actualFlags);
     }

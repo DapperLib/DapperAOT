@@ -74,10 +74,6 @@ internal abstract class DiagnosticsBase
         public const string Sql = nameof(Sql);
         public const string Performance = nameof(Performance);
     }
-#if DEBUG
-    internal static readonly DiagnosticDescriptor Debug = Create("DAP999", "Debug message", "{0}", "Debug",
-        DiagnosticSeverity.Info, false);
-#endif
 
     internal static void Add(ref object? diagnostics, Diagnostic diagnostic)
     {
