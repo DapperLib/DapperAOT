@@ -1,4 +1,4 @@
-Generator produced 18 diagnostics:
+Generator produced 17 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 9 of 23 enabled call-sites using 8 interceptors, 3 commands and 3 readers
@@ -50,6 +50,3 @@ Tuple-type results are not currently supported
 
 Info DAP014 Interceptors/MiscDiagnostics.input.cs L118 C20
 Tuple-type parameters are not currently supported
-
-Warning DAP011 Interceptors/MiscDiagnostics.input.cs L128 C20
-Dapper (original) does not support tuple results with bind-by-name semantics
