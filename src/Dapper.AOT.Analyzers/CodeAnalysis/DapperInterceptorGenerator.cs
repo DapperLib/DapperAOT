@@ -56,59 +56,23 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     internal SourceState? Parse(in ParseState ctx)
     {
         if (ctx.Node is not InvocationExpressionSyntax ie
-            || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op)
+            || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op
+            || !op.IsDapperMethod(out var flags)
+            || flags.HasAny(OperationFlags.NotAotSupported)
+            || !Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out var aotAttribExists))
         {
             return null;
-        }
-        var methodKind = op.IsSupportedDapperMethod(out var flags);
-        switch (methodKind)
-        {
-            case DapperMethodKind.DapperUnsupported:
-                flags |= OperationFlags.DoNotGenerate;
-                break;
-            case DapperMethodKind.DapperSupported:
-                break;
-            default: // includes NotDapper
-                return null;
         }
 
         // everything requires location
-        Location? loc = null;
-
-        if (op.Syntax.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
-        {
-            loc = ma.ChildNodes().Skip(1).FirstOrDefault()?.GetLocation();
-        }
-        loc ??= op.Syntax.GetLocation();
-        if (loc is null)
-        {
-            return null;
-        }
-
-        // check whether we can use this method
-        object? diagnostics = null;
-        bool dapperEnabled = Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out var aotAttribExists);
-        if (dapperEnabled)
-        {
-            if (methodKind == DapperMethodKind.DapperUnsupported)
-            {
-                flags |= OperationFlags.DoNotGenerate;
-                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnsupportedMethod, loc, GetSignature(op.TargetMethod)));
-            }
-        }
-        else
-        {
-            // no diagnostic per-item; the generator will emit a single diagnostic if everything is disabled
-            flags |= OperationFlags.AotNotEnabled | OperationFlags.DoNotGenerate;
-            if (aotAttribExists) flags |= OperationFlags.AotDisabled; // active opt-out
-            // but we still process the other bits, as there might be relevant additional things
-        }
+        var location = op.GetMemberLocation();
 
         if (Inspection.IsEnabled(ctx, op, Types.CacheCommandAttribute, out _))
         {
             flags |= OperationFlags.CacheCommand;
         }
-
+        
+        object? diagnostics = null;
         ITypeSymbol? resultType = null, paramType = null;
         if (flags.HasAny(OperationFlags.TypedResult))
         {
@@ -121,7 +85,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
                     && resultType.IsValueType && !CouldBeNullable(resultType))
                 {
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, loc, resultType.Name, op.TargetMethod.Name));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultType.Name, op.TargetMethod.Name));
                 }
             }
         }
@@ -186,16 +150,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                                 break;
                             default:
                                 flags |= OperationFlags.DoNotGenerate;
-                                if (dapperEnabled)
-                                {
-                                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedCommandType, arg.Syntax.GetLocation()));
-                                }
+                                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedCommandType, arg.Syntax.GetLocation()));
                                 break;
                         }
                     }
                     break;
                 default:
-                    if (dapperEnabled && !flags.HasAny(OperationFlags.DoNotGenerate))
+                    if (!flags.HasAny(OperationFlags.DoNotGenerate))
                     {
                         flags |= OperationFlags.DoNotGenerate;
                         Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedArgument, arg.Syntax.GetLocation(), arg.Parameter?.Name));
@@ -235,7 +196,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 // extra checks specific to Dapper vanilla
                 if (resultTuple && Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out _))
                 {   // Dapper vanilla supports bind-by-position for tuples; warn if bind-by-name is enabled
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyBindNameTupleResults, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyBindNameTupleResults, location));
                 }
             }
             else
@@ -244,23 +205,23 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 if (Inspection.InvolvesGenericTypeParameter(resultType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, resultType!.ToDisplayString()));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, location, resultType!.ToDisplayString()));
                 }
                 else if (resultTuple)
                 {
                     if (!bindByNameDefined)
                     {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, location));
                     }
 
                     // but not implemented currently!
                     flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleResults, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleResults, location));
                 }
                 else if (!Inspection.IsPublicOrAssemblyLocal(resultType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, location, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
                 }
             }
         }
@@ -274,7 +235,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 // extra checks specific to Dapper vanilla
                 if (paramTuple)
                 {
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyTupleParameter, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyTupleParameter, location));
                 }
             }
             else
@@ -288,33 +249,33 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                     if (!defined)
                     {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, location));
                     }
 
                     // but not implemented currently!
                     flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleParameter, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleParameter, location));
                 }
                 else if (Inspection.InvolvesGenericTypeParameter(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, paramType!.ToDisplayString()));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, location, paramType!.ToDisplayString()));
                 }
                 else if (Inspection.IsMissingOrObjectOrDynamic(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedParameter, loc));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedParameter, location));
                 }
                 else if (!Inspection.IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, location, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
                 }
             }
         }
 
         // perform SQL inspection
-        var parameterMap = BuildParameterMap(ctx, op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags);
+        var parameterMap = BuildParameterMap(ctx, op, sql, flags, paramType, location, ref diagnostics, sqlSyntax, out var parseFlags);
 
         // if we have a good parser *and* the SQL isn't invalid: check for obvious query/exec mismatch
         if ((parseFlags & (ParseFlags.Reliable | ParseFlags.SyntaxError)) == ParseFlags.Reliable)
@@ -325,7 +286,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     if ((parseFlags & ParseFlags.Query) != 0)
                     {
                         // definitely have a query
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ExecuteCommandWithQuery, loc));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ExecuteCommandWithQuery, location));
                     }
                     break;
                 case OperationFlags.Query:
@@ -333,7 +294,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     if ((parseFlags & (ParseFlags.Query | ParseFlags.MaybeQuery)) == 0)
                     {
                         // definitely do not have a query
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.QueryCommandMissingQuery, loc));
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.QueryCommandMissingQuery, location));
                     }
                     break;
             }
@@ -353,7 +314,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         var estimatedRowCount = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), paramType, ref diagnostics);
 
-        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, estimatedRowCount, diagnostics);
+        return new SourceState(location, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, estimatedRowCount, diagnostics);
 
         //static bool HasDiagnostic(object? diagnostics, DiagnosticDescriptor diagnostic)
         //{
@@ -619,11 +580,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                 }
             }
-            if (passiveDisabledCount == ctx.Nodes.Length && IsDapperAotAvailable(ctx.Compilation))
-            {
-                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.DapperAotNotEnabled, null));
-                errorCount++;
-            }
 
             if (doNotGenerateCount == ctx.Nodes.Length)
             {
@@ -635,9 +591,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
         return false; // nothing to validate - so: nothing to do, quick exit
     }
-
-    private bool IsDapperAotAvailable(Compilation compilation)
-        => compilation.GetTypeByMetadataName("Dapper." + Types.DapperAotAttribute) is not null;
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
         => Generate(new(ctx, state));

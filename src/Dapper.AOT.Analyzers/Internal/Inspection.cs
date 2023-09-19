@@ -773,18 +773,18 @@ internal static class Inspection
         return null;
     }
 
-    public static DapperMethodKind IsSupportedDapperMethod(this IInvocationOperation operation, out OperationFlags flags)
+    public static bool IsDapperMethod(this IInvocationOperation operation, out OperationFlags flags)
     {
         flags = OperationFlags.None;
         var method = operation?.TargetMethod;
         if (method is null || !method.IsExtensionMethod)
         {
-            return DapperMethodKind.NotDapper;
+            return false;
         }
         var type = method.ContainingType;
         if (type is not { Name: Types.SqlMapper, ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } })
         {
-            return DapperMethodKind.NotDapper;
+            return false;
         }
         if (method.Name.EndsWith("Async"))
         {
@@ -798,7 +798,8 @@ internal static class Inspection
         {
             case "Query":
                 flags |= OperationFlags.Query;
-                return method.Arity <= 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+                if (method.Arity > 1) flags |= OperationFlags.NotAotSupported;
+                return true;
             case "QueryAsync":
             case "QueryUnbufferedAsync":
                 flags |= method.Name.Contains("Unbuffered") ? OperationFlags.Unbuffered : OperationFlags.Buffered;
@@ -821,18 +822,21 @@ internal static class Inspection
                 goto case "Query";
             case "QueryMultiple":
             case "QueryMultipleAsync":
-                flags |= OperationFlags.Query | OperationFlags.QueryMultiple;
-                return DapperMethodKind.DapperUnsupported; // not implemented yet
+                flags |= OperationFlags.Query | OperationFlags.QueryMultiple | OperationFlags.NotAotSupported;
+                return true;
             case "Execute":
             case "ExecuteAsync":
                 flags |= OperationFlags.Execute;
-                return method.Arity == 0 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+                if (method.Arity != 0) flags |= OperationFlags.NotAotSupported;
+                return true;
             case "ExecuteScalar":
             case "ExecuteScalarAsync":
                 flags |= OperationFlags.Execute | OperationFlags.Scalar;
-                return method.Arity <= 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+                if (method.Arity >= 2) flags |= OperationFlags.NotAotSupported;
+                return true;
             default:
-                return DapperMethodKind.DapperUnsupported;
+                flags = OperationFlags.NotAotSupported;
+                return true;
         }
     }
     public static bool HasAny(this OperationFlags value, OperationFlags testFor) => (value & testFor) != 0;
@@ -1056,4 +1060,5 @@ enum OperationFlags
     IncludeLocation = 1 << 20, // include -- SomeFile.cs#40 when possible
     UnknownParameters = 1 << 21,
     QueryMultiple = 1 << 22,
+    NotAotSupported = 1 << 23,
 }

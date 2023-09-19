@@ -24,11 +24,14 @@ public class DAP027 : Verifier<DapperAnalyzer>
                 _ = conn.Query<SomeType>("storedproc").{|#2:FirstOrDefault|}();
                 _ = conn.Query<SomeType>("storedproc").{|#3:SingleOrDefault|}();
 
+                // fully generics
+                _ = conn.Query<SomeType>("storedproc").{|#4:First<SomeType>|}();
+
                 // explicit call (location test)
-                _ = Enumerable.{|#4:First|}(conn.Query<SomeType>("storedproc"));;
+                _ = Enumerable.{|#5:First|}(conn.Query<SomeType>("storedproc"));;
 
                 // fully qualified explicit call (location test)
-                _ = global::System.Linq.Enumerable.{|#5:Single|}(conn.Query<SomeType>("storedproc"));
+                _ = global::System.Linq.Enumerable.{|#6:Single|}(conn.Query<SomeType>("storedproc"));
                 
                 // valid usage
                 _ = conn.QueryFirst<SomeType>("storedproc");
@@ -38,13 +41,14 @@ public class DAP027 : Verifier<DapperAnalyzer>
             }
         }
         class SomeType {}
-        """, [], [
+        """, DefaultConfig, [
             Diagnostic(Diagnostics.UseSingleRowQuery).WithLocation(0).WithArguments("QueryFirst", "First"),
             Diagnostic(Diagnostics.UseSingleRowQuery).WithLocation(1).WithArguments("QuerySingle", "Single"),
             Diagnostic(Diagnostics.UseSingleRowQuery).WithLocation(2).WithArguments("QueryFirstOrDefault", "FirstOrDefault"),
             Diagnostic(Diagnostics.UseSingleRowQuery).WithLocation(3).WithArguments("QuerySingleOrDefault", "SingleOrDefault"),
             Diagnostic(Diagnostics.UseSingleRowQuery).WithLocation(4).WithArguments("QueryFirst", "First"),
-            Diagnostic(Diagnostics.UseSingleRowQuery).WithLocation(5).WithArguments("QuerySingle", "Single"),
+            Diagnostic(Diagnostics.UseSingleRowQuery).WithLocation(5).WithArguments("QueryFirst", "First"),
+            Diagnostic(Diagnostics.UseSingleRowQuery).WithLocation(6).WithArguments("QuerySingle", "Single"),
         ]);
 
 }

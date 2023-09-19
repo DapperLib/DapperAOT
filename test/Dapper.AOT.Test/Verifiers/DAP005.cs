@@ -1,11 +1,11 @@
-﻿using Dapper.AOT.Test.TestCommon;
-using Dapper.CodeAnalysis;
+﻿using Dapper.CodeAnalysis;
 using System.Threading.Tasks;
 using Xunit;
+using static Dapper.CodeAnalysis.DapperAnalyzer;
 
 namespace Dapper.AOT.Test.Verifiers;
 
-public class DAP005 : Verifier<WrappedDapperInterceptorAnalyzer>
+public class DAP005 : Verifier<DapperAnalyzer>
 {
     [Fact]
     public Task ShouldFlagWhenUsedAndNotAttrib() => CSVerifyAsync("""
@@ -14,9 +14,13 @@ public class DAP005 : Verifier<WrappedDapperInterceptorAnalyzer>
 
         class SomeCode
         {
-            public void Foo(DbConnection conn) => conn.Execute("some sql");
+            public void Foo(DbConnection conn)
+            {
+                conn.{|#0:Execute|}("somesql");
+                conn.{|#1:Execute|}("somesql"); // to avoid clutter: only one diagnostic emitted (multiple locations)
+            }
         }
-        """, DefaultConfig, [Diagnostic(DapperInterceptorGenerator.Diagnostics.DapperAotNotEnabled)]);
+        """, DefaultConfig, [Diagnostic(Diagnostics.DapperAotNotEnabled).WithLocation(0).WithLocation(1).WithArguments(2)]);
 
     [Fact]
     public Task ShouldNotFlagWhenNotUsedAndNoAttrib() => CSVerifyAsync("""
@@ -30,6 +34,20 @@ public class DAP005 : Verifier<WrappedDapperInterceptorAnalyzer>
         """, DefaultConfig, []);
 
     [Fact]
+    public Task ShouldNotFlagWhenUsedAnywhere() => CSVerifyAsync("""
+        using Dapper;
+        using System.Data.Common;
+
+        class SomeCode
+        {
+            [DapperAot]
+            public void Foo(DbConnection conn) => conn.Execute("somesql");
+
+            public void Bar(DbConnection conn) => conn.Execute("somesql");
+        }
+        """, DefaultConfig, []);
+
+    [Fact]
     public Task ShouldNotFlagWhenUsedAndOptedOut() => CSVerifyAsync("""
         using Dapper;
         using System.Data.Common;
@@ -37,7 +55,7 @@ public class DAP005 : Verifier<WrappedDapperInterceptorAnalyzer>
         [DapperAot(false)]
         class SomeCode
         {
-            public void Foo(DbConnection conn) => conn.Execute("some sql");
+            public void Foo(DbConnection conn) => conn.Execute("somesql");
         }
         """, DefaultConfig, []);
 
@@ -49,7 +67,7 @@ public class DAP005 : Verifier<WrappedDapperInterceptorAnalyzer>
         [DapperAot(true)]
         class SomeCode
         {
-            public void Foo(DbConnection conn) => conn.Execute("some sql");
+            public void Foo(DbConnection conn) => conn.Execute("somesql");
         }
-        """, DefaultConfig, [InterceptorsGenerated(1, 1, 1, 0, 0)]);
+        """, DefaultConfig, []);
 }

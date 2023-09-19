@@ -10,6 +10,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
     public Task GlobalEnabled_NoAttributes() => CSVerifyAsync("""
         using Dapper;
 
+        [DapperAot]
         class SomeCode
         {
             public void Foo(System.Data.Common.DbConnection conn)
@@ -38,6 +39,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
     public Task GlobalDisabled_NoAttributes() => CSVerifyAsync("""
         using Dapper;
 
+        [DapperAot]
         class SomeCode
         {
             public void Foo(System.Data.Common.DbConnection conn)
@@ -64,6 +66,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
     public Task GlobalDisabled_MethodAttributes() => CSVerifyAsync("""
         using Dapper;
 
+        [DapperAot]
         class SomeCode
         {
             [SqlSyntax(SqlSyntax.SqlServer)]
@@ -95,7 +98,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
     public Task GlobalDisabled_TypeAttribute() => CSVerifyAsync("""
         using Dapper;
 
-        [SqlSyntax(SqlSyntax.SqlServer)]
+        [SqlSyntax(SqlSyntax.SqlServer), DapperAot]
         class SomeCode
         {
             public void Foo(System.Data.Common.DbConnection conn)
@@ -124,7 +127,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
     public Task GlobalDisabled_ContainingTypeAttribute() => CSVerifyAsync("""
         using Dapper;
 
-        [SqlSyntax(SqlSyntax.SqlServer)]
+        [SqlSyntax(SqlSyntax.SqlServer), DapperAot]
         class SomeWrapper
         {
             class SomeCode
@@ -156,8 +159,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
     public Task GlobalDisabled_ModuleAttribute() => CSVerifyAsync("""
         using Dapper;
 
-        [module:SqlSyntax(SqlSyntax.SqlServer)]
-
+        [module:SqlSyntax(SqlSyntax.SqlServer), DapperAot]
         class SomeCode
         {
             public void Foo(System.Data.Common.DbConnection conn)
@@ -186,8 +188,7 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
     public Task GlobalDisabled_AssemblyAttribute() => CSVerifyAsync("""
         using Dapper;
 
-        [assembly:SqlSyntax(SqlSyntax.SqlServer)]
-
+        [assembly:SqlSyntax(SqlSyntax.SqlServer), DapperAot]
         class SomeCode
         {
             public void Foo(System.Data.Common.DbConnection conn)

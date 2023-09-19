@@ -71,7 +71,7 @@ internal static class SyntaxExtensions
                 foreach (var inner in outerNode.ChildNodesAndTokens())
                 {
                     var innerNode = inner.AsNode();
-                    if (innerNode  is not null && helper.IsIdentifier(innerNode))
+                    if (innerNode is not null && helper.IsName(innerNode))
                         identifier = innerNode;
                 }
                 // we'd prefer an identifier, but we'll allow the entire member-access
@@ -80,6 +80,13 @@ internal static class SyntaxExtensions
         }
         return syntax;
     }
+
+    public static string GetSignature(this IInvocationOperation call)
+    {
+        var helper = GetHelper(call.SemanticModel?.Compilation?.Language);
+        return helper.GetSignature(call.TargetMethod);
+    }
+
 }
 internal abstract partial class LanguageHelper
 {
@@ -87,5 +94,6 @@ internal abstract partial class LanguageHelper
     internal abstract bool IsMethodDeclaration(SyntaxNode syntax);
     internal abstract bool TryGetLiteralToken(SyntaxNode syntax, out SyntaxToken token);
     internal abstract bool TryGetStringSpan(SyntaxToken token, string text, scoped in TSqlProcessor.Location location, out int skip, out int take);
-    internal abstract bool IsIdentifier(SyntaxNode syntax);
+    internal abstract bool IsName(SyntaxNode syntax);
+    internal abstract string GetSignature(IMethodSymbol method);
 }

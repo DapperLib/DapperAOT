@@ -24,18 +24,22 @@ public class DAP028 : Verifier<DapperAnalyzer>
                 // explicit call (location test)
                 _ = Enumerable.{|#1:ToList|}(conn.Query<SomeType>("storedproc"));;
 
+                // full generics
+                _ = conn.Query<SomeType>("storedproc").{|#2:ToList<SomeType>|}();
+
                 // fully qualified explicit call (location test)
-                _ = global::System.Linq.Enumerable.{|#2:ToList|}(conn.Query<SomeType>("storedproc"));
+                _ = global::System.Linq.Enumerable.{|#3:ToList|}(conn.Query<SomeType>("storedproc"));
                 
                 // valid usage
                 _ = conn.Query<SomeType>("storedproc").AsList();
             }
         }
         class SomeType {}
-        """, [], [
+        """, DefaultConfig, [
             Diagnostic(Diagnostics.UseQueryAsList).WithLocation(0),
             Diagnostic(Diagnostics.UseQueryAsList).WithLocation(1),
             Diagnostic(Diagnostics.UseQueryAsList).WithLocation(2),
-        ]);
+            Diagnostic(Diagnostics.UseQueryAsList).WithLocation(3),
+    ]);
 
 }

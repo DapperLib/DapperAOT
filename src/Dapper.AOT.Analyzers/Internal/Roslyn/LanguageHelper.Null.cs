@@ -1,7 +1,5 @@
 ﻿using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
 
 namespace Dapper.Internal.Roslyn;
 partial class LanguageHelper
@@ -24,6 +22,9 @@ partial class LanguageHelper
         }
 
         internal override bool IsMethodDeclaration(SyntaxNode syntax) => false;
-        internal override bool IsIdentifier(SyntaxNode syntax) => false;
+        internal override bool IsName(SyntaxNode syntax) => false;
+
+        internal override string GetSignature(IMethodSymbol method)
+            => method.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
     }
 }
