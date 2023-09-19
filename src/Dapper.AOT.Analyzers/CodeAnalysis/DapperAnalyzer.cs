@@ -103,52 +103,59 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         public void OnOperation(OperationAnalysisContext ctx)
         {
-            // we'll look for:
-            // method calls with a parameter called "sql" or marked [Sql]
-            // property assignments to "CommandText"
-            switch (ctx.Operation.Kind)
+            try
             {
-                case OperationKind.Invocation when ctx.Operation is IInvocationOperation invoke:
-                    int index = 0;
-                    foreach (var p in invoke.TargetMethod.Parameters)
-                    {
-                        if (p.Type.SpecialType == SpecialType.System_String && (
-                            p.Name == "sql" || Inspection.GetDapperAttribute(p, Types.SqlAttribute) is not null))
+                // we'll look for:
+                // method calls with a parameter called "sql" or marked [Sql]
+                // property assignments to "CommandText"
+                switch (ctx.Operation.Kind)
+                {
+                    case OperationKind.Invocation when ctx.Operation is IInvocationOperation invoke:
+                        int index = 0;
+                        foreach (var p in invoke.TargetMethod.Parameters)
                         {
-                            if (Inspection.IsDapperMethod(invoke, out var dapperFlags))
+                            if (p.Type.SpecialType == SpecialType.System_String && (
+                                p.Name == "sql" || Inspection.GetDapperAttribute(p, Types.SqlAttribute) is not null))
                             {
-                                ValidateDapperMethod(ctx, invoke.Arguments[index], dapperFlags);
+                                if (Inspection.IsDapperMethod(invoke, out var dapperFlags))
+                                {
+                                    ValidateDapperMethod(ctx, invoke.Arguments[index], dapperFlags);
+                                }
+                                else
+                                {
+                                    ValidateParameterUsage(ctx, invoke.Arguments[index]);
+                                }
                             }
-                            else
+                            index++;
+                        }
+                        break;
+                    case OperationKind.SimpleAssignment when ctx.Operation is ISimpleAssignmentOperation assignment
+                        && assignment.Target is IPropertyReferenceOperation propRef:
+                        if (propRef.Member is IPropertySymbol
                             {
-                                ValidateParameterUsage(ctx, invoke.Arguments[index]);
+                                Type.SpecialType: SpecialType.System_String,
+                                IsStatic: false,
+                                IsIndexer: false,
+                                // check for DbConnection?
+                            } prop)
+                        {
+                            if (prop.Name == "CommandText" && Inspection.IsCommand(prop.ContainingType))
+                            {
+                                // write to CommandText
+                                ValidatePropertyUsage(ctx, assignment.Value, true);
+                            }
+                            else if (Inspection.GetDapperAttribute(prop, Types.SqlAttribute) is not null)
+                            {
+                                // write SQL to a string property
+                                ValidatePropertyUsage(ctx, assignment.Value, false);
                             }
                         }
-                        index++;
-                    }
-                    break;
-                case OperationKind.SimpleAssignment when ctx.Operation is ISimpleAssignmentOperation assignment
-                    && assignment.Target is IPropertyReferenceOperation propRef:
-                    if (propRef.Member is IPropertySymbol
-                        {
-                            Type.SpecialType: SpecialType.System_String,
-                            IsStatic: false,
-                            IsIndexer: false,
-                            // check for DbConnection?
-                        } prop)
-                    {
-                        if (prop.Name == "CommandText" && Inspection.IsCommand(prop.ContainingType))
-                        {
-                            // write to CommandText
-                            ValidatePropertyUsage(ctx, assignment.Value, true);
-                        }
-                        else if (Inspection.GetDapperAttribute(prop, Types.SqlAttribute) is not null)
-                        {
-                            // write SQL to a string property
-                            ValidatePropertyUsage(ctx, assignment.Value, false);
-                        }
-                    }
-                    break;
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnknownError, null, ex.Message, ex.StackTrace));
             }
         }
 
@@ -173,6 +180,22 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 OnDapperAotMiss(ctx, location);
             }
 
+            ValidateSql(ctx, sqlSource, GetModeFlags(flags), location);
+
+            ValidateSurroundingLinqUsage(ctx, flags);
+
+            var resultType = invoke.GetResultType(flags);
+            // check for single-row value-type usage
+            if (resultType is not null && flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
+                && resultType.IsValueType && !Inspection.CouldBeNullable(resultType))
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultType.Name, invoke.TargetMethod.Name));
+            }
+        }
+
+        static ModeFlags GetModeFlags(OperationFlags flags)
+        {
+
             var modeFlags = ModeFlags.None;
             // if (caseSensitive) modeFlags |= ModeFlags.CaseSensitive;
             if ((flags & OperationFlags.BindResultsByName) != 0) modeFlags |= ModeFlags.ValidateSelectNames;
@@ -189,17 +212,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
             else if ((flags & (OperationFlags.Execute)) != 0) modeFlags |= ModeFlags.ExpectNoQuery;
 
-            ValidateSql(ctx, sqlSource, modeFlags, location);
-
-            ValidateSurroundingLinqUsage(ctx, flags);
-
-            var resultType = invoke.GetResultType(flags);
-            // check for single-row value-type usage
-            if (resultType is not null && flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
-                && resultType.IsValueType && !Inspection.CouldBeNullable(resultType))
-            {
-                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultType.Name, invoke.TargetMethod.Name));
-            }
+            return modeFlags;
         }
 
         private void ValidateSurroundingLinqUsage(in OperationAnalysisContext ctx, OperationFlags flags)

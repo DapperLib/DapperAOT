@@ -8,6 +8,7 @@ partial class DapperAnalyzer
     {
         public static readonly DiagnosticDescriptor
         // general usage
+        UnknownError = LibraryWarning("DAP999", "Unknown analyzer error", "This isn't you; this is me; please log it! '{0}', '{1}'", true),
         UnsupportedMethod = LibraryInfo("DAP001", "Unsupported method", "The Dapper method '{0}' is not currently supported by Dapper.AOT", true),
         DapperAotNotEnabled = LibraryInfo("DAP005", "Dapper.AOT not enabled", "{0} candidate Dapper methods detected, but none have Dapper.AOT enabled", true),
         UseSingleRowQuery = PerformanceWarning("DAP027", "Use single-row query", "Use {0}() instead of Query(...).{1}()", true),
