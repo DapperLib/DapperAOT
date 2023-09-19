@@ -24,7 +24,7 @@ partial class LanguageHelper
         internal override bool IsMethodDeclaration(SyntaxNode syntax) => false;
         internal override bool IsName(SyntaxNode syntax) => false;
 
-        internal override string GetSignature(IMethodSymbol method)
-            => method.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+        internal override string GetDisplayString(ISymbol symbol)
+            => symbol?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)!;
     }
 }

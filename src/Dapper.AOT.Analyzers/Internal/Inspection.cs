@@ -428,55 +428,13 @@ internal static class Inspection
         public Location? GetLocation() => Member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
     }
 
-    /// <summary>
-    /// Chooses a single constructor of type which to use for type's instances creation.
-    /// </summary>
-    /// <param name="typeSymbol">symbol for type to analyze</param>
-    /// <param name="constructor">the method symbol for selected constructor</param>
-    /// <param name="errorDiagnostic">if constructor selection was invalid, contains a diagnostic with error to emit to generation context</param>
-    /// <returns></returns>
-    public static bool TryGetSingleCompatibleDapperAotConstructor(
-        ITypeSymbol? typeSymbol,
-        out IMethodSymbol? constructor,
-        out Diagnostic? errorDiagnostic)
+    public enum ConstructorResult
     {
-        var (standardCtors, dapperAotEnabledCtors) = ChooseDapperAotCompatibleConstructors(typeSymbol);
-        if (standardCtors.Count == 0 && dapperAotEnabledCtors.Count == 0)
-        {
-            errorDiagnostic = null;
-            constructor = null!;
-            return false;
-        }
-
-        // if multiple constructors remain, and multiple are marked [DapperAot]/[DapperAot(true)], a generator error is emitted and no constructor is selected
-        if (dapperAotEnabledCtors.Count > 1)
-        {
-            // attaching diagnostic to first location of first ctor
-            var loc = dapperAotEnabledCtors.First().Locations.First();
-
-            errorDiagnostic = Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.TooManyDapperAotEnabledConstructors, loc, typeSymbol!.ToDisplayString());
-            constructor = null!;
-            return false;
-        }
-
-        if (dapperAotEnabledCtors.Count == 1)
-        {
-            errorDiagnostic = null;
-            constructor = dapperAotEnabledCtors.First();
-            return true;
-        }
-
-        if (standardCtors.Count == 1)
-        {
-            errorDiagnostic = null;
-            constructor = standardCtors.First();
-            return true;
-        }
-
-        // we cant choose a constructor, so we simply dont choose any
-        errorDiagnostic = null;
-        constructor = null!;
-        return false;
+        NoneFound,
+        SuccessSingleExplicit,
+        SuccessSingleImplicit,
+        FailMultipleExplicit,
+        FailMultipleImplicit,
     }
 
     /// <summary>
@@ -484,59 +442,54 @@ internal static class Inspection
     /// a) parameterless
     /// b) marked with [DapperAot(false)]
     /// </summary>
-    private static (IReadOnlyCollection<IMethodSymbol> standardConstructors, IReadOnlyCollection<IMethodSymbol> dapperAotEnabledConstructors) ChooseDapperAotCompatibleConstructors(ITypeSymbol? typeSymbol)
+    internal static ConstructorResult ChooseConstructor(ITypeSymbol? typeSymbol, out IMethodSymbol? constructor)
     {
-        if (!typeSymbol.TryGetConstructors(out var constructors))
+        constructor = null;
+        if (typeSymbol is not INamedTypeSymbol named)
         {
-            return (standardConstructors: Array.Empty<IMethodSymbol>(), dapperAotEnabledConstructors: Array.Empty<IMethodSymbol>());
+            return ConstructorResult.NoneFound;
         }
 
-        // special case
-        if (typeSymbol!.IsRecord && constructors?.Length == 2)
+        var ctors = named.Constructors;
+        if (ctors.IsDefaultOrEmpty)
         {
-            // in case of record syntax with primary constructor like:
-            // `public record MyRecord(int Id, string Name);`
-            // we need to pick the first constructor, which is the primary one. The second one would contain single parameter of type itself.
-            // So checking second constructor suits this rule and picking the first one.
-
-            if (constructors.Value[1].Parameters.Length == 1 && constructors.Value[1].Parameters.First().Type.ToDisplayString() == typeSymbol.ToDisplayString())
-            {
-                return (standardConstructors: new[] { constructors.Value.First() }, dapperAotEnabledConstructors: Array.Empty<IMethodSymbol>());
-            }
+            return ConstructorResult.NoneFound;
         }
 
-        var standardCtors = new List<IMethodSymbol>();
-        var dapperAotEnabledCtors = new List<IMethodSymbol>();
-
-        foreach (var constructorMethodSymbol in constructors!)
+        // look for [ExplicitConstructor]
+        foreach (var ctor in ctors)
         {
-            // not taking into an account parameterless constructors
-            if (constructorMethodSymbol.Parameters.Length == 0) continue;
-
-            var dapperAotAttribute = GetDapperAttribute(constructorMethodSymbol, Types.DapperAotAttribute);
-            if (dapperAotAttribute is null)
+            if (GetDapperAttribute(ctor, Types.ExplicitConstructorAttribute) is not null)
             {
-                // picking constructor which is not marked with [DapperAot] attribute at all
-                standardCtors.Add(constructorMethodSymbol);
-                continue;
-            }
-
-            if (dapperAotAttribute.ConstructorArguments.Length == 0)
-            {
-                // picking constructor which is marked with [DapperAot] attribute without arguments (its enabled by default)
-                dapperAotEnabledCtors.Add(constructorMethodSymbol);
-                continue;
-            }
-
-            var typedArg = dapperAotAttribute.ConstructorArguments.First();
-            if (typedArg.Value is bool isAot && isAot)
-            {
-                // picking constructor which is marked with explicit [DapperAot(true)]
-                dapperAotEnabledCtors.Add(constructorMethodSymbol);
+                if (constructor is not null)
+                {
+                    return ConstructorResult.FailMultipleExplicit;
+                }
+                constructor = ctor;
             }
         }
+        if (constructor is not null)
+        {
+            // we found one [ExplicitConstructor]
+            return ConstructorResult.SuccessSingleExplicit;
+        }
 
-        return (standardCtors, dapperAotEnabledCtors);
+        // look for remaining constructors
+        foreach (var ctor in ctors)
+        {
+            var args = ctor.Parameters;
+            if (args.Length == 0) continue; // default constructor
+
+            // exclude copy constructors (in particular: records)
+            if (args.Length == 1 && SymbolEqualityComparer.Default.Equals(args[0].Type, named)) continue;
+
+            if (constructor is not null)
+            {
+                return ConstructorResult.FailMultipleImplicit;
+            }
+            constructor = ctor;
+        }
+        return constructor is null ? ConstructorResult.NoneFound : ConstructorResult.SuccessSingleImplicit;
     }
 
     /// <summary>

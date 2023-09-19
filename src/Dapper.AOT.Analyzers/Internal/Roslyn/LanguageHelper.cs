@@ -82,10 +82,10 @@ internal static class SyntaxExtensions
     }
 
     public static string GetSignature(this IInvocationOperation call)
-    {
-        var helper = GetHelper(call.SemanticModel?.Compilation?.Language);
-        return helper.GetSignature(call.TargetMethod);
-    }
+        => GetHelper(call?.Language).GetDisplayString(call?.TargetMethod!);
+
+    public static string GetDisplayString(this ISymbol symbol)
+        => GetHelper(symbol.Language).GetDisplayString(symbol);
 
 }
 internal abstract partial class LanguageHelper
@@ -95,5 +95,5 @@ internal abstract partial class LanguageHelper
     internal abstract bool TryGetLiteralToken(SyntaxNode syntax, out SyntaxToken token);
     internal abstract bool TryGetStringSpan(SyntaxToken token, string text, scoped in TSqlProcessor.Location location, out int skip, out int take);
     internal abstract bool IsName(SyntaxNode syntax);
-    internal abstract string GetSignature(IMethodSymbol method);
+    internal abstract string GetDisplayString(ISymbol method);
 }

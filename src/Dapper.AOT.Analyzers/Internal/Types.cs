@@ -15,5 +15,6 @@ internal static class Types
         DynamicParameters = nameof(DynamicParameters),
         IDynamicParameters = nameof(IDynamicParameters),
         SqlMapper = nameof(SqlMapper),
-        SqlAttribute = nameof(SqlAttribute);
+        SqlAttribute = nameof(SqlAttribute),
+        ExplicitConstructorAttribute = nameof(ExplicitConstructorAttribute);
 }

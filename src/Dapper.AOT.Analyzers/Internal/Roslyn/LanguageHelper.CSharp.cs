@@ -35,8 +35,8 @@ partial class LanguageHelper
         internal override bool IsName(SyntaxNode syntax)
             => syntax is SimpleNameSyntax; // NameSyntax?
 
-        internal override string GetSignature(IMethodSymbol method)
-            => method.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat);
+        internal override string GetDisplayString(ISymbol symbol)
+            => symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat);
 
         internal override bool TryGetStringSpan(SyntaxToken token, string text, scoped in TSqlProcessor.Location location, out int skip, out int take)
         {

@@ -978,17 +978,16 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index)
     {
-        var hasExplicitConstructor = Inspection.TryGetSingleCompatibleDapperAotConstructor(type, out var constructor, out var errorDiagnostic);
-        if (!hasExplicitConstructor && errorDiagnostic is not null)
+        var ctorType = Inspection.ChooseConstructor(type, out var constructor);
+        if (ctorType is Inspection.ConstructorResult.FailMultipleImplicit or Inspection.ConstructorResult.FailMultipleExplicit)
         {
-            context.ReportDiagnostic(errorDiagnostic);
-
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
             WriteRowFactoryHeader();
             WriteRowFactoryFooter();
 
             return;
         }
+        bool hasExplicitConstructor = ctorType == Inspection.ConstructorResult.SuccessSingleExplicit;
 
         var members = Inspection.GetMembers(type, dapperAotConstructor: constructor).ToImmutableArray();
         var membersCount = members.Length;

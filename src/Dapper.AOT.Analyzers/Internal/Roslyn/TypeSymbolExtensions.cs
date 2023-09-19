@@ -6,18 +6,6 @@ namespace Dapper.Internal.Roslyn;
 
 internal static class TypeSymbolExtensions
 {
-    public static bool TryGetConstructors(this ITypeSymbol? typeSymbol, out ImmutableArray<IMethodSymbol>? constructors)
-    {
-        constructors = null;
-        if (typeSymbol is not INamedTypeSymbol namedTypeSymbol)
-        {
-            return false;
-        }
-
-        constructors = namedTypeSymbol.Constructors;
-        return true;
-    }
-
     public static string? GetTypeDisplayName(this ITypeSymbol? typeSymbol)
     {
         if (typeSymbol is null) return null;

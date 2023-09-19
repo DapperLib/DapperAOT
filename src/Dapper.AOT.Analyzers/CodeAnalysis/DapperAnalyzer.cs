@@ -179,17 +179,36 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 OnDapperAotMiss(ctx, location);
             }
 
+            // check the types
+            var resultMap = MemberMap.Create(invoke.GetResultType(flags), false);
+            if (resultMap is not null)
+            {
+                // check for single-row value-type usage
+                if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
+                    && resultMap.ElementType.IsValueType && !Inspection.CouldBeNullable(resultMap.ElementType))
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultMap.ElementType.Name, invoke.TargetMethod.Name));
+                }
+
+                // check for constructors on the materialized type
+                DiagnosticDescriptor? ctorFault = Inspection.ChooseConstructor(resultMap.ElementType, out var ctor) switch
+                {
+                    Inspection.ConstructorResult.FailMultipleExplicit => Diagnostics.ConstructorMultipleExplicit,
+                    Inspection.ConstructorResult.FailMultipleImplicit => Diagnostics.ConstructorAmbiguous,
+                    _ => null,
+                };
+                if (ctorFault is not null)
+                {
+                    var loc = ctor?.Locations.FirstOrDefault() ?? resultMap.ElementType.Locations.FirstOrDefault();
+                    ctx.ReportDiagnostic(Diagnostic.Create(ctorFault, loc, resultMap.ElementType.GetDisplayString()));
+                }
+            }
+
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), location);
 
             ValidateSurroundingLinqUsage(ctx, flags);
 
-            var resultType = invoke.GetResultType(flags);
-            // check for single-row value-type usage
-            if (resultType is not null && flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
-                && resultType.IsValueType && !Inspection.CouldBeNullable(resultType))
-            {
-                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultType.Name, invoke.TargetMethod.Name));
-            }
+            
         }
 
         static SqlParseInputFlags GetModeFlags(OperationFlags flags)
