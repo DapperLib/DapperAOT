@@ -636,7 +636,8 @@ internal class TSqlProcessor
                         parser.OnSelectAssignAndRead(new(spec));
                     }
                     bool firstQuery = AddQuery();
-                    if (firstQuery && SingleRow)
+                    if (firstQuery && SingleRow // optionally enforce single-row validation
+                        && spec.FromClause is not null) // no "from" is things like 'select @id, @name' - always one row
                     {
                         bool haveTop = false;
                         if (spec.TopRowFilter is { Percent: false, Expression: IntegerLiteral top }

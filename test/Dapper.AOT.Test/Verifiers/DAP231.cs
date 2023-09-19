@@ -32,4 +32,9 @@ public class DAP231 : Verifier<DapperAnalyzer>
         {|#0:select Id, Name from Users order by Name|}
         """, ModeFlags.SingleRow, Diagnostic(Diagnostics.SelectSingleRowWithoutWhere).WithLocation(0));
 
+    [Fact]
+    public Task SelectSingleRowWithoutFrom() => SqlVerifyAsync("""
+        select HasRecords = case when exists (select top 1 1 from MyTable) then 1 else 0 end
+        """, ModeFlags.SingleRow);
+
 }
