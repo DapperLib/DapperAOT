@@ -481,7 +481,10 @@ internal static class Inspection
             if (args.Length == 0) continue; // default constructor
 
             // exclude copy constructors (in particular: records)
-            if (args.Length == 1 && SymbolEqualityComparer.Default.Equals(args[0].Type, named)) continue;
+            if (args.Length == 1 && SymbolEqualityComparer.Default.Equals(args[0].Type, named))
+            {
+                continue;
+            }
 
             if (constructor is not null)
             {

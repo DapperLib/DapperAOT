@@ -987,7 +987,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             return;
         }
-        bool hasExplicitConstructor = ctorType == Inspection.ConstructorResult.SuccessSingleExplicit;
+        bool hasExplicitConstructor = ctorType == Inspection.ConstructorResult.SuccessSingleExplicit
+            && constructor is not null;
 
         var members = Inspection.GetMembers(type, dapperAotConstructor: constructor).ToImmutableArray();
         var membersCount = members.Length;
