@@ -109,6 +109,53 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         else if ((flags & (OperationFlags.Execute)) != 0) modeFlags |= ModeFlags.ExpectNoQuery;
 
         ValidateSql(ctx, sqlSource, modeFlags, location);
+
+        ValidateSurroundingLinqUsage(ctx, flags);
+    }
+
+
+    private void ValidateSurroundingLinqUsage(OperationAnalysisContext ctx, OperationFlags flags)
+    {
+        if (flags.HasAny(OperationFlags.Query) && !flags.HasAny(OperationFlags.SingleRow)
+            && ctx.Operation.Parent is IArgumentOperation arg
+            && arg.Parent is IInvocationOperation parent && parent.TargetMethod is
+            {
+                IsExtensionMethod: true,
+                Parameters.Length: 1, Arity: 1, ContainingType:
+                {
+                    Name: nameof(Enumerable),
+                    ContainingType: null,
+                    ContainingNamespace:
+                    {
+                        Name: "Linq",
+                        ContainingNamespace:
+                        {
+                            Name: "System",
+                            ContainingNamespace.IsGlobalNamespace: true
+                        }
+                    }
+                }
+            } target)
+        {
+            bool useSingleRowQuery = parent.TargetMethod.Name switch
+            {
+                nameof(Enumerable.First) => true,
+                nameof(Enumerable.Single) => true,
+                nameof(Enumerable.FirstOrDefault) => true,
+                nameof(Enumerable.SingleOrDefault) => true,
+                _ => false,
+            };
+            if (useSingleRowQuery)
+            {
+                var name = parent.TargetMethod.Name;
+                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UseSingleRowQuery, parent.GetMemberLocation(),
+                    "Query" + name, name));
+            }
+            else if (parent.TargetMethod.Name == nameof(Enumerable.ToList))
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UseQueryAsList, parent.GetMemberLocation()));
+            }
+        }
     }
 
     private static void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource)

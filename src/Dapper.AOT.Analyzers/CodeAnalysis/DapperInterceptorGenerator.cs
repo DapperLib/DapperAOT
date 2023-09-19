@@ -352,7 +352,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
 
         var estimatedRowCount = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), paramType, ref diagnostics);
-        CheckCallValidity(op, flags, ref diagnostics);
 
         return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, estimatedRowCount, diagnostics);
 
@@ -525,48 +524,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return sb is null ? "" : sb.ToString();
 
             static StringBuilder WithSpace(ref StringBuilder? sb) => sb is null ? (sb = new()) : (sb.Length == 0 ? sb : sb.Append(' '));
-        }
-    }
-
-    private void CheckCallValidity(IInvocationOperation op, OperationFlags flags, ref object? diagnostics)
-    {
-        if (flags.HasAny(OperationFlags.Query) && !flags.HasAny(OperationFlags.SingleRow)
-            && op.Parent is IArgumentOperation arg
-            && arg.Parent is IInvocationOperation parent && parent.TargetMethod is
-            {
-                IsExtensionMethod: true,
-                Parameters.Length: 1, Arity: 1, ContainingType:
-                {
-                    Name: nameof(Enumerable),
-                    ContainingType: null,
-                    ContainingNamespace:
-                    {
-                        Name: "Linq",
-                        ContainingNamespace:
-                        {
-                            Name: "System",
-                            ContainingNamespace.IsGlobalNamespace: true
-                        }
-                    }
-                }
-            } target)
-        {
-            string? preferred = parent.TargetMethod.Name switch
-            {
-                nameof(Enumerable.First) => "Query" + nameof(Enumerable.First),
-                nameof(Enumerable.Single) => "Query" + nameof(Enumerable.Single),
-                nameof(Enumerable.FirstOrDefault) => "Query" + nameof(Enumerable.FirstOrDefault),
-                nameof(Enumerable.SingleOrDefault) => "Query" + nameof(Enumerable.SingleOrDefault),
-                _ => null,
-            };
-            if (preferred is not null)
-            {
-                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UseSingleRowQuery, parent.Syntax.GetLocation(), preferred, parent.TargetMethod.Name));
-            }
-            else if (parent.TargetMethod.Name == nameof(Enumerable.ToList))
-            {
-                Diagnostics.Add(ref diagnostics, Diagnostic.Create(DapperAnalyzer.Diagnostics.UseQueryAsList, parent.Syntax.GetLocation()));
-            }
         }
     }
 

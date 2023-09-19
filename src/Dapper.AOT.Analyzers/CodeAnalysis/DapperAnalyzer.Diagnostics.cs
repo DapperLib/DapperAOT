@@ -6,7 +6,10 @@ partial class DapperAnalyzer
 {
     internal sealed class Diagnostics : DiagnosticsBase
     {
-        public static readonly DiagnosticDescriptor UseQueryAsList = PerformanceWarning("DAP028", "Use AsList instead of ToList", "Use Query(...).AsList() instead of Query(...).ToList()"),
+        public static readonly DiagnosticDescriptor
+        // general usage
+        UseSingleRowQuery = PerformanceWarning("DAP027", "Use single-row query", "Use {0}() instead of Query(...).{1}()", true),
+        UseQueryAsList = PerformanceWarning("DAP028", "Use AsList instead of ToList", "Use Query(...).AsList() instead of Query(...).ToList()", true),
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),
@@ -30,7 +33,7 @@ partial class DapperAnalyzer
         InsertColumnsUnbalanced = SqlError("DAP218", "INSERT with unbalanced rows", "The INSERT rows have different widths"),
         SelectStar = SqlWarning("DAP219", "SELECT with wildcard columns", "SELECT columns should be specified explicitly"),
         SelectEmptyColumnName = SqlWarning("DAP220", "SELECT with missing column name", "SELECT column name is missing: {0}"),
-        SelectDuplicateColumnName = SqlWarning("DAP221", "SELECT with duplicate column name", "SELECT column name is duplicated: '{0}'" ),
+        SelectDuplicateColumnName = SqlWarning("DAP221", "SELECT with duplicate column name", "SELECT column name is duplicated: '{0}'"),
         SelectAssignAndRead = SqlWarning("DAP222", "SELECT with assignment and reads", "SELECT statement assigns variable and performs reads"),
         DeleteWithoutWhere = SqlWarning("DAP223", "DELETE without WHERE", "DELETE statement lacks WHERE clause"),
         UpdateWithoutWhere = SqlWarning("DAP224", "UPDATE without WHERE", "UPDATE statement lacks WHERE clause"),

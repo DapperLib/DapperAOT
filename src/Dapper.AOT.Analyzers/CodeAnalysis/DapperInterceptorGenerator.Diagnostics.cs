@@ -40,7 +40,6 @@ partial class DapperInterceptorGenerator
             "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored"),
         ExecuteCommandWithQuery = SqlWarning("DAP025", "Execute command with query", "The command has a query that will be ignored"),
         QueryCommandMissingQuery = SqlError("DAP026", "Query/scalar command lacks query", "The command lacks a query"),
-        UseSingleRowQuery = PerformanceWarning("DAP027", "Use single-row query", "Use {0}() instead of Query(...).{1}()"),
         MethodRowCountHintRedundant = LibraryInfo("DAP029", "Method-level row-count hint redundant", "The [EstimatedRowCount] will be ignored due to parameter member '{0}'"),
         MethodRowCountHintInvalid = LibraryError("DAP030", "Method-level row-count hint invalid",
             "The [EstimatedRowCount] parameters are invalid; a positive integer must be supplied"),

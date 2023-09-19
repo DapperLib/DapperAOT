@@ -32,6 +32,9 @@ partial class LanguageHelper
         internal override bool IsMethodDeclaration(SyntaxNode syntax)
             => syntax.IsKind(SyntaxKind.MethodDeclaration);
 
+        internal override bool IsIdentifier(SyntaxNode syntax)
+            => syntax is IdentifierNameSyntax;
+
         internal override bool TryGetStringSpan(SyntaxToken token, string text, scoped in TSqlProcessor.Location location, out int skip, out int take)
         {
             ReadOnlySpan<char> s;

@@ -24,5 +24,6 @@ partial class LanguageHelper
         }
 
         internal override bool IsMethodDeclaration(SyntaxNode syntax) => false;
+        internal override bool IsIdentifier(SyntaxNode syntax) => false;
     }
 }
