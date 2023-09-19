@@ -159,7 +159,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             var location = invoke.GetMemberLocation();
             var parseState = new ParseState(ctx);
 
-            if (Inspection.IsEnabled(in parseState, ctx.Operation, Types.DapperAotAttribute, out var aotAttribExists))
+            if (Inspection.IsEnabled(in parseState, invoke, Types.DapperAotAttribute, out var aotAttribExists))
             {
                 OnDapperAotHit(); // all good for AOT
                 if (flags.HasAny(OperationFlags.NotAotSupported))
@@ -192,6 +192,14 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             ValidateSql(ctx, sqlSource, modeFlags, location);
 
             ValidateSurroundingLinqUsage(ctx, flags);
+
+            var resultType = invoke.GetResultType(flags);
+            // check for single-row value-type usage
+            if (resultType is not null && flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
+                && resultType.IsValueType && !Inspection.CouldBeNullable(resultType))
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultType.Name, invoke.TargetMethod.Name));
+            }
         }
 
         private void ValidateSurroundingLinqUsage(in OperationAnalysisContext ctx, OperationFlags flags)

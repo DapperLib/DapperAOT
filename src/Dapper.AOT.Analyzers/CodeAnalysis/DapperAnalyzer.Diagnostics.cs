@@ -12,6 +12,8 @@ partial class DapperAnalyzer
         DapperAotNotEnabled = LibraryInfo("DAP005", "Dapper.AOT not enabled", "{0} candidate Dapper methods detected, but none have Dapper.AOT enabled", true),
         UseSingleRowQuery = PerformanceWarning("DAP027", "Use single-row query", "Use {0}() instead of Query(...).{1}()", true),
         UseQueryAsList = PerformanceWarning("DAP028", "Use AsList instead of ToList", "Use Query(...).AsList() instead of Query(...).ToList()", true),
+        ValueTypeSingleFirstOrDefaultUsage = LibraryWarning("DAP038", "Value-type single row 'OrDefault' usage",
+            "Type '{0}' is a value-type; it will not be trivial to identify missing rows from {1}", true),
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),

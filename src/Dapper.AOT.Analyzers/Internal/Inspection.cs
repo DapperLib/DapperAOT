@@ -845,6 +845,23 @@ internal static class Inspection
     public static bool TryGetConstantValue<T>(IOperation op, out T? value)
             => TryGetConstantValueWithSyntax(op, out value, out _);
 
+    public static ITypeSymbol? GetResultType(this IInvocationOperation invocation, OperationFlags flags)
+    {
+        if (flags.HasAny(OperationFlags.TypedResult))
+        {
+            var typeArgs = invocation.TargetMethod.TypeArguments;
+            if (typeArgs.Length == 1)
+            {
+                return typeArgs[0];
+            }
+        }
+        return null;
+    }
+
+    internal static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
+        ? symbol.NullableAnnotation == NullableAnnotation.Annotated
+        : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
+
     public static bool TryGetConstantValueWithSyntax<T>(IOperation val, out T? value, out SyntaxNode? syntax)
     {
         try

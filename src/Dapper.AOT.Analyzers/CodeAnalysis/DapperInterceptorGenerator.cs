@@ -73,22 +73,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
         
         object? diagnostics = null;
-        ITypeSymbol? resultType = null, paramType = null;
-        if (flags.HasAny(OperationFlags.TypedResult))
-        {
-            var typeArgs = op.TargetMethod.TypeArguments;
-            if (typeArgs.Length == 1)
-            {
-                resultType = typeArgs[0];
-
-                // check for value-type single
-                if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
-                    && resultType.IsValueType && !CouldBeNullable(resultType))
-                {
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultType.Name, op.TargetMethod.Name));
-                }
-            }
-        }
+        ITypeSymbol? resultType = op.GetResultType(flags), paramType = null;
 
         string? sql = null;
         SyntaxNode? sqlSyntax = null;
@@ -1103,7 +1088,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             var constructorArgumentsOrdered = new SortedList<int, string>();
             if (useDeferredConstruction)
             {
-                // dont create an instance now, but define the variables to create an instance later like 
+                // don't create an instance now, but define the variables to create an instance later like 
                 // ```
                 // Type? member0 = default;
                 // Type? member1 = default;
@@ -1113,7 +1098,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 {
                     var variableName = DeferredConstructionVariableName + token;
 
-                    if (CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
+                    if (Inspection.CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
                     else sb.Append(CodeWriter.GetTypeName(member.CodeType));
                     sb.Append(' ').Append(variableName).Append(" = default;").NewLine();
 
@@ -1143,7 +1128,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 var memberType = member.CodeType;
 
                 member.GetDbType(out var readerMethod);
-                var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
+                var nullCheck = Inspection.CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
                 sb.Append("case ").Append(token).Append(":").NewLine().Indent(false);
 
                 // write `result.X = ` or `member0 = `
@@ -1227,10 +1212,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
         }
     }
-
-    static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
-            ? symbol.NullableAnnotation == NullableAnnotation.Annotated
-            : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
 
     [Flags]
     enum WriteArgsFlags
