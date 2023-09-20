@@ -43,7 +43,7 @@ file static class DapperGeneratedInterceptors
     {
         // Execute, HasParameters, StoredProcedure
         // takes parameter: global::SomeCode.InternalNesting.SomePublicType
-        // parameter map: (everything)
+        // parameter map: Id
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
@@ -70,7 +70,7 @@ file static class DapperGeneratedInterceptors
     {
         // Execute, HasParameters, StoredProcedure
         // takes parameter: global::SomeCode.InternalNesting.SomeInternalType
-        // parameter map: (everything)
+        // parameter map: Id
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);
@@ -97,7 +97,7 @@ file static class DapperGeneratedInterceptors
     {
         // Execute, HasParameters, StoredProcedure
         // takes parameter: global::SomeCode.InternalNesting.SomeProtectedInternalType
-        // parameter map: (everything)
+        // parameter map: Id
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);

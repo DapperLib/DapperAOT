@@ -1,5 +1,9 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Dapper.SqlAnalysis;
+using Microsoft.CodeAnalysis;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System;
 using System.Collections.Immutable;
+using System.Linq;
 using static Dapper.Internal.Inspection;
 
 namespace Dapper.Internal;

@@ -7,9 +7,11 @@ using Microsoft.CodeAnalysis.Operations;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using static Dapper.Internal.Inspection;
 
 namespace Dapper.CodeAnalysis;
 
@@ -20,7 +22,9 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
     public override void Initialize(AnalysisContext context)
     {
+#if !DEBUG
         context.EnableConcurrentExecution();
+#endif
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
 
         context.RegisterCompilationStartAction(OnCompilationStart);
@@ -29,7 +33,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
     private void OnCompilationStart(CompilationStartAnalysisContext context)
     {
         // per-run state (in particular, so we can have "first time only" diagnostics)
-        var state = new AnalyzerState(context.Compilation, context.Options);
+        var state = new AnalyzerState(context);
 
         // respond to method usages
         context.RegisterOperationAction(state.OnOperation, OperationKind.Invocation, OperationKind.SimpleAssignment);
@@ -155,12 +159,16 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         private void ValidateDapperMethod(in OperationAnalysisContext ctx, IOperation sqlSource, OperationFlags flags)
         {
+            Action<Diagnostic> onDiagnostic = ctx.ReportDiagnostic;
             if (ctx.Operation is not IInvocationOperation invoke) return;
 
-            var location = invoke.GetMemberLocation();
+            // check the args
             var parseState = new ParseState(ctx);
-
             bool aotEnabled = Inspection.IsEnabled(in parseState, invoke, Types.DapperAotAttribute, out var aotAttribExists);
+            if (!aotEnabled) flags |= OperationFlags.DoNotGenerate;
+            var location = SharedParseArgsAndFlags(parseState, invoke, ref flags, out var sql, out var paramType, onDiagnostic, out _);
+
+            // report our AOT readiness
             if (aotEnabled)
             {
                 OnDapperAotHit(); // all good for AOT
@@ -200,11 +208,44 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 }
             }
 
+            var map = MemberMap.Create(paramType, true);
+            var args = SharedGetParametersToInclude(map, flags, sql, onDiagnostic, out var parseFlags);
+
+
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), location);
+
+            /*
+             * 
+
+            if (paramNames.IsEmpty && (parseFlags & SqlParseOutputFlags.Return) == 0) // return is a parameter, sort of
+            {
+                if (flags.HasAny(OperationFlags.HasParameters))
+                {
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParametersNotDetected, loc));
+                }
+                return "";
+            }
+
+            // so, we definitely detect parameters (note: don't warn just for return)
+            if (!flags.HasAny(OperationFlags.HasParameters))
+            {
+                if (!paramNames.IsEmpty)
+                {
+                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
+                }
+                return "";
+            }
+
+                                // we can only consider this an error if we're confident in how well we parsed the input
+                    // (unless we detected dynamic args, in which case: we don't know what we don't know)
+                    if ((parseFlags & (SqlParseOutputFlags.Reliable | SqlParseOutputFlags.KnownParameters)) == (SqlParseOutputFlags.Reliable | SqlParseOutputFlags.KnownParameters))
+                    {
+                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(parameterType)));
+                    }
+            */
 
             ValidateSurroundingLinqUsage(ctx, flags);
 
-            
         }
 
         static SqlParseInputFlags GetModeFlags(OperationFlags flags)
@@ -305,14 +346,16 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             _isDapperAotAvailable = _compilation.Language == LanguageNames.CSharp &&  _compilation.GetTypeByMetadataName("Dapper." + Types.DapperAotAttribute) is not null;
             return _isDapperAotAvailable.Value;
         }
-        public AnalyzerState(Compilation compilation, AnalyzerOptions options)
+#pragma warning disable RS1012 // Start action has no registered actions
+        public AnalyzerState(CompilationStartAnalysisContext context)
+#pragma warning restore RS1012 // Start action has no registered actions
         {
-            _compilation = compilation;
-            if (options.TryGetSqlSyntax(out var syntax))
+            _compilation = context.Compilation;
+            if (context.Options.TryGetSqlSyntax(out var syntax))
             {
                 DefaultSqlSyntax = syntax;
             }
-            if (options.TryGetDebugModeFlags(out var flags))
+            if (context.Options.TryGetDebugModeFlags(out var flags))
             {
                 DebugSqlFlags = flags;
             }
@@ -402,5 +445,431 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.GeneralSqlError, location, ex.Message));
             }
         }
+    }
+
+    // we want a common understanding of the setup between the analyzer and generator
+    internal static Location SharedParseArgsAndFlags(in ParseState ctx, IInvocationOperation op, ref OperationFlags flags, out string? sql, out ITypeSymbol? paramType,
+        Action<Diagnostic>? reportDiagnostic, out ITypeSymbol? resultType)
+    {
+        var location = op.GetMemberLocation();
+        sql = null;
+        paramType = null;
+        bool? buffered = null;
+        // check the args
+        foreach (var arg in op.Arguments)
+        {
+
+            switch (arg.Parameter?.Name)
+            {
+                case "sql":
+                    if (Inspection.TryGetConstantValueWithSyntax(arg, out string? s, out _))
+                    {
+                        sql = s;
+                    }
+                    break;
+                case "buffered":
+                    if (Inspection.TryGetConstantValue(arg, out bool b))
+                    {
+                        buffered = b;
+                    }
+                    break;
+                case "param":
+                    if (arg.Value is not IDefaultValueOperation)
+                    {
+                        var expr = arg.Value;
+                        if (expr is IConversionOperation conv && expr.Type?.SpecialType == SpecialType.System_Object)
+                        {
+                            expr = conv.Operand;
+                        }
+                        if (expr.ConstantValue.HasValue && expr.ConstantValue.Value is null)
+                        {
+                            // another way of saying null, especially in VB
+                        }
+                        else
+                        {
+                            paramType = expr?.Type;
+                            flags |= OperationFlags.HasParameters;
+                        }
+                    }
+                    break;
+                case "cnn":
+                case "commandTimeout":
+                case "transaction":
+                    // nothing to do
+                    break;
+                case "commandType":
+                    if (Inspection.TryGetConstantValue(arg, out int? ct))
+                    {
+                        switch (ct)
+                        {
+                            case null when !string.IsNullOrWhiteSpace(sql):
+                                // if no spaces: interpret as stored proc, else: text
+                                flags |= sql!.Trim().IndexOf(' ') < 0 ? OperationFlags.StoredProcedure : OperationFlags.Text;
+                                break;
+                            case null:
+                                break; // flexible
+                            case 1:
+                                flags |= OperationFlags.Text;
+                                break;
+                            case 4:
+                                flags |= OperationFlags.StoredProcedure;
+                                break;
+                            case 512:
+                                flags |= OperationFlags.TableDirect;
+                                break;
+                            default: // treat as flexible
+                                reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UnexpectedCommandType, arg.Syntax.GetLocation()));
+                                break;
+                        }
+                    }
+                    break;
+                default:
+                    if (!flags.HasAny(OperationFlags.NotAotSupported | OperationFlags.DoNotGenerate))
+                    {
+                        flags |= OperationFlags.DoNotGenerate;
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UnexpectedArgument, arg.Syntax.GetLocation(), arg.Parameter?.Name));
+                    }
+                    break;
+            }
+        }
+        // additional flags
+        if (Inspection.IsEnabled(ctx, op, Types.CacheCommandAttribute, out _))
+        {
+            flags |= OperationFlags.CacheCommand;
+        }
+
+        if (!string.IsNullOrWhiteSpace(sql) && flags.HasAny(OperationFlags.Text)
+            && Inspection.IsEnabled(ctx, op, Types.IncludeLocationAttribute, out _))
+        {
+            flags |= OperationFlags.IncludeLocation;
+        }
+
+        if (flags.HasAny(OperationFlags.Query) && buffered.HasValue)
+        {
+            flags |= buffered.GetValueOrDefault() ? OperationFlags.Buffered : OperationFlags.Unbuffered;
+        }
+        resultType = op.GetResultType(flags);
+        if (flags.HasAny(OperationFlags.Query) && Inspection.IdentifyDbType(resultType, out _) is null)
+        {
+            flags |= OperationFlags.BindResultsByName;
+        }
+
+        if (flags.HasAny(OperationFlags.Query) || flags.HasAll(OperationFlags.Execute | OperationFlags.Scalar))
+        {
+            bool resultTuple = Inspection.InvolvesTupleType(resultType, out var withNames), bindByNameDefined = false;
+            // tuples are positional by default
+            if (resultTuple && !Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out bindByNameDefined))
+            {
+                flags &= ~OperationFlags.BindResultsByName;
+            }
+
+            if (flags.HasAny(OperationFlags.DoNotGenerate))
+            {
+                // extra checks specific to Dapper vanilla
+                if (resultTuple && withNames && Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out _))
+                {   // Dapper vanilla supports bind-by-position for tuples; warn if bind-by-name is enabled
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperLegacyBindNameTupleResults, location));
+                }
+            }
+            else
+            {
+                // extra checks specific to DapperAOT
+                if (Inspection.InvolvesGenericTypeParameter(resultType))
+                {
+                    flags |= OperationFlags.DoNotGenerate;
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, location, resultType!.ToDisplayString()));
+                }
+                else if (resultTuple)
+                {
+                    if (!bindByNameDefined)
+                    {
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, location));
+                    }
+
+                    // but not implemented currently!
+                    flags |= OperationFlags.DoNotGenerate;
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotTupleResults, location));
+                }
+                else if (!Inspection.IsPublicOrAssemblyLocal(resultType, ctx, out var failing))
+                {
+                    flags |= OperationFlags.DoNotGenerate;
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, location, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
+                }
+            }
+        }
+
+        // additional parameter checks
+        if (flags.HasAny(OperationFlags.HasParameters))
+        {
+            bool paramTuple = Inspection.InvolvesTupleType(paramType, out _);
+            if (flags.HasAny(OperationFlags.DoNotGenerate))
+            {
+                // extra checks specific to Dapper vanilla
+                if (paramTuple)
+                {
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperLegacyTupleParameter, location));
+                }
+            }
+            else
+            {
+                // extra checks specific to DapperAOT
+                if (paramTuple)
+                {
+                    if (Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out var defined))
+                    {
+                        flags |= OperationFlags.BindTupleParameterByName;
+                    }
+                    if (!defined)
+                    {
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, location));
+                    }
+
+                    // but not implemented currently!
+                    flags |= OperationFlags.DoNotGenerate;
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotTupleParameter, location));
+                }
+                else if (Inspection.InvolvesGenericTypeParameter(paramType))
+                {
+                    flags |= OperationFlags.DoNotGenerate;
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, location, paramType!.ToDisplayString()));
+                }
+                else if (Inspection.IsMissingOrObjectOrDynamic(paramType))
+                {
+                    flags |= OperationFlags.DoNotGenerate;
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UntypedParameter, location));
+                }
+                else if (!Inspection.IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
+                {
+                    flags |= OperationFlags.DoNotGenerate;
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, location, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
+                }
+            }
+        }
+        return location;
+    }
+
+    enum ParameterMode
+    {
+        None, All, Defer, Filter
+    }
+
+    internal static AdditionalCommandState? SharedGetAdditionalCommandState(ISymbol target, MemberMap? map, Action<Diagnostic>? reportDiagnostic)
+    {
+        var attribs = target.GetAttributes();
+        if (attribs.IsDefaultOrEmpty) return null;
+
+        int cmdPropsCount = 0;
+        int estimatedRowCount = 0;
+        string? estimatedRowCountMember = null;
+        if (map is not null)
+        {
+            foreach (var member in map.Members)
+            {
+                if (member.IsEstimatedRowCount)
+                {
+                    if (estimatedRowCountMember is not null)
+                    {
+                        reportDiagnostic?.Invoke(Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MemberRowCountHintDuplicated, member.GetLocation()));
+                    }
+                    estimatedRowCountMember = member.Member.Name;
+                }
+            }
+        }
+        var location = target.Locations.FirstOrDefault();
+        foreach (var attrib in attribs)
+        {
+            if (Inspection.IsDapperAttribute(attrib))
+            {
+                switch (attrib.AttributeClass!.Name)
+                {
+                    case Types.EstimatedRowCountAttribute:
+                        if (attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i
+                            && i > 0)
+                        {
+                            if (estimatedRowCountMember is null)
+                            {
+                                estimatedRowCount = i;
+                            }
+                            else
+                            {
+                                reportDiagnostic?.Invoke(Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MethodRowCountHintRedundant, location, estimatedRowCountMember));
+                            }
+                        }
+                        else
+                        {
+                            reportDiagnostic?.Invoke(Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MethodRowCountHintInvalid, location));
+                        }
+                        break;
+                    case Types.CommandPropertyAttribute:
+                        cmdPropsCount++;
+                        break;
+                }
+            }
+        }
+
+        ImmutableArray<CommandProperty> cmdProps;
+        if (cmdPropsCount != 0)
+        {
+            var builder = ImmutableArray.CreateBuilder<CommandProperty>(cmdPropsCount);
+            foreach (var attrib in attribs)
+            {
+                if (Inspection.IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == Types.CommandPropertyAttribute
+                    && attrib.AttributeClass.Arity == 1
+                    && attrib.AttributeClass.TypeArguments[0] is INamedTypeSymbol cmdType
+                    && attrib.ConstructorArguments.Length == 2
+                    && attrib.ConstructorArguments[0].Value is string name
+                    && attrib.ConstructorArguments[1].Value is object value)
+                {
+                    builder.Add(new(cmdType, name, value, location));
+                }
+            }
+            cmdProps = builder.ToImmutable();
+        }
+        else
+        {
+            cmdProps = ImmutableArray<CommandProperty>.Empty;
+        }
+
+
+        return cmdProps.IsDefaultOrEmpty && estimatedRowCount <= 0 && estimatedRowCountMember is null
+            ? null : new(estimatedRowCount, estimatedRowCountMember, cmdProps);
+    }
+
+    internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)
+    {
+        SortedDictionary<string, ElementMember>? byDbName = null;
+        var filter = ImmutableHashSet<string>.Empty;
+        ParameterMode mode;
+        if (flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect))
+        {
+            parseFlags = flags.HasAny(OperationFlags.StoredProcedure) ? SqlParseOutputFlags.MaybeQuery : SqlParseOutputFlags.Query;
+            mode = ParameterMode.All;
+        }
+        else
+        {
+            parseFlags = SqlParseOutputFlags.MaybeQuery;
+
+            // if command-type or command is not known statically: defer decision
+            if (!flags.HasAny(OperationFlags.Text) || string.IsNullOrWhiteSpace(sql))
+            {
+                mode = ParameterMode.Defer;
+            }
+            else
+            {
+                mode = ParameterMode.Filter;
+                filter = SqlTools.GetUniqueParameters(sql);
+            }
+        }
+        if (!flags.HasAny(OperationFlags.HasParameters))
+        {
+            mode = ParameterMode.None;
+        }
+
+        if (!(map is null || map.IsUnknownParameters))
+        {
+            // check the shape of the parameter type
+            string? rowCountMember = null, returnCodeMember = null;
+            foreach (var member in map.Members)
+            {
+                if (member.IsRowCount)
+                {
+                    if (rowCountMember is not null)
+                    {
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateRowCount, member.GetLocation(), member.CodeName, rowCountMember));
+                    }
+                    else
+                    {
+                        rowCountMember = member.CodeName;
+                    }
+                    if (member.HasDbValueAttribute)
+                    {
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.RowCountDbValue, member.GetLocation(), member.CodeName));
+                    }
+                }
+                if (member.Kind != ElementMemberKind.None)
+                {
+                    continue; // not treated as parameters for naming etc purposes
+                }
+
+                var dbName = member.DbName;
+                bool isRetVal = member.Direction == ParameterDirection.ReturnValue && flags.HasAny(OperationFlags.StoredProcedure);
+                switch (mode)
+                {
+                    case ParameterMode.None:
+                    case ParameterMode.Defer:
+                        continue; // don't include anything
+                    case ParameterMode.Filter:
+                        if (isRetVal)
+                        {   // always include retval on sproc
+                            break;
+                        }
+                        if (!filter.Contains(dbName))
+                        {
+                            // exclude other things that we can't see
+                            continue;
+                        }
+                        break;
+                    case ParameterMode.All:
+                        break; // g
+                }
+
+                byDbName ??= new(StringComparer.InvariantCultureIgnoreCase);
+                if (byDbName.TryGetValue(dbName, out var existing))
+                {
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateParameter, member.GetLocation(), member, existing, dbName));
+                }
+                else
+                {
+                    byDbName.Add(dbName, member);
+                }
+
+                if (isRetVal)
+                {
+                    if (returnCodeMember is null)
+                    {
+                        returnCodeMember = member.CodeName;
+                    }
+                    else
+                    {
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateReturn, member.GetLocation(), member.CodeName, returnCodeMember));
+                    }
+                }
+            }
+        }
+
+        if (mode == ParameterMode.Defer)
+        {
+            return null;
+        }
+        if (byDbName is null)
+        {
+            // nothing found
+            return ImmutableArray<ElementMember>.Empty;
+        }
+        if (byDbName.Count == 0)
+        {
+            // so common that it is worth special-casing
+            return ImmutableArray<ElementMember>.Empty.Add(byDbName.Single().Value);
+        }
+        var builder = ImmutableArray.CreateBuilder<ElementMember>(byDbName.Count);
+        // add everything we found, keeping "result" at the end; note already sorted
+        foreach (var pair in byDbName)
+        {
+            var member = pair.Value;
+            if (member.Direction != ParameterDirection.ReturnValue)
+            {
+                builder.Add(member);
+            }
+        }
+        foreach (var pair in byDbName)
+        {
+            var member = pair.Value;
+            if (member.Direction == ParameterDirection.ReturnValue)
+            {
+                builder.Add(member);
+            }
+        }
+        return builder.ToImmutable();
+
     }
 }

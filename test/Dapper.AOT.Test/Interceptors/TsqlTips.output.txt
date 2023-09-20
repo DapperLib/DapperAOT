@@ -1,31 +1,4 @@
-Generator produced 10 diagnostics:
+Generator produced 1 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 54 of 56 enabled call-sites using 10 interceptors, 3 commands and 1 readers
-
-Warning DAP018 Interceptors/TsqlTips.input.cs L76 C24
-Parameters are being supplied, but no parameters were detected in the command
-
-Warning DAP019 Interceptors/TsqlTips.input.cs L89 C24
-SQL parameters were detected, but no parameters are being supplied
-
-Warning DAP019 Interceptors/TsqlTips.input.cs L96 C24
-SQL parameters were detected, but no parameters are being supplied
-
-Info DAP013 Interceptors/TsqlTips.input.cs L111 C24
-Tuple-type results are not currently supported
-
-Info DAP013 Interceptors/TsqlTips.input.cs L117 C24
-Tuple-type results are not currently supported
-
-Warning DAP019 Interceptors/TsqlTips.input.cs L123 C20
-SQL parameters were detected, but no parameters are being supplied
-
-Warning DAP019 Interceptors/TsqlTips.input.cs L133 C20
-SQL parameters were detected, but no parameters are being supplied
-
-Warning DAP019 Interceptors/TsqlTips.input.cs L168 C15
-SQL parameters were detected, but no parameters are being supplied
-
-Warning DAP019 Interceptors/TsqlTips.input.cs L173 C17
-SQL parameters were detected, but no parameters are being supplied

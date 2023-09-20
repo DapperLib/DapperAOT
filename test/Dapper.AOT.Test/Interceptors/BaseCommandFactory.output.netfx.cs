@@ -6,7 +6,7 @@ file static class DapperGeneratedInterceptors
     {
         // Execute, HasParameters, StoredProcedure
         // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: (everything)
+        // parameter map: bar Foo
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
         global::System.Diagnostics.Debug.Assert(param is not null);

@@ -16,7 +16,7 @@ public class TSqlParserTests
 
     private readonly Action<string> _log;
 
-    private TestTSqlProcessor GetProcessor(SqlParseInputFlags flags = SqlParseInputFlags.None) => new(flags | SqlParseInputFlags.KnownParameters, log: _log);
+    private TestTSqlProcessor GetProcessor(SqlParseInputFlags flags = SqlParseInputFlags.None) => new(flags, log: _log);
 
     [Fact]
     public void DetectBadNullLiteralUsage()
@@ -33,9 +33,8 @@ public class TSqlParserTests
 
         var args = parser.GetParameters(out var errors);
         Assert.Empty(args);
-        Assert.Equal(2, errors.Length);
-        Assert.Equal("Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null' L4 C12", errors[0]);
-        Assert.Equal("Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null' L4 C29", errors[1]);
+        Assert.Equal(["Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null' L4 C12",
+            "Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null' L4 C29"], errors);
     }
 
     [Fact]
@@ -360,7 +359,7 @@ public class TSqlParserTests
 
     public void HandleParameterAssignment(ParameterDirection direction)
     {
-        var parser = GetProcessor();
+        var parser = GetProcessor(SqlParseInputFlags.KnownParameters);
         parser.AddParameter("@a", direction); // consumed before assign
         parser.AddParameter("@b", direction); // assigned, consumed
         parser.AddParameter("@c", direction); // assigned, not consumed

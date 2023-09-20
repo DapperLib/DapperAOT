@@ -25,15 +25,23 @@ internal static class Inspection
                 hasNames = false;
                 if (named is not null)
                 {
+                    int i = 1;
                     foreach (var field in named.TupleElements)
                     {
-                        if (!string.IsNullOrWhiteSpace(field.Name))
+                        if (!IsDefaultFieldName(field.Name, i))
                         {
                             hasNames = true;
                             break;
                         }
+                        i++;
                     }
                     return true;
+                }
+
+                static bool IsDefaultFieldName(string name, int index)
+                {
+                    if (string.IsNullOrWhiteSpace(name)) return true;
+                    return name.StartsWith("Item") && name == $"Item{index}";
                 }
             }
             if (type is IArrayTypeSymbol array)

@@ -14,27 +14,17 @@ partial class DapperInterceptorGenerator
         InterceptorsNotEnabled = LibraryWarning("DAP003", "Interceptors not enabled",
             "Interceptors need to be enabled (see help-link)", true),
         LanguageVersionTooLow = LibraryWarning("DAP004", "Language version too low", "Interceptors require at least C# version 11", true),
-        DapperLegacyTupleParameter = LibraryWarning("DAP006", "Dapper tuple-type parameter", "Dapper (original) does not work well with tuple-type parameters as name information is inaccessible"),
-        UnexpectedCommandType = LibraryInfo("DAP007", "Unexpected command type", "The command type specified is not understood"),
+        
+        //
         // space
-        UnexpectedArgument = LibraryInfo("DAP009", "Unexpected parameter", "The parameter '{0}' is not understood"),
+        
         // space
-        DapperLegacyBindNameTupleResults = LibraryWarning("DAP011", "Named-tuple results", "Dapper (original) does not support tuple results with bind-by-name semantics"),
-        DapperAotAddBindTupleByName = LibraryWarning("DAP012", "Add BindTupleByName", "Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindTupleByName({true|false})]' to clarify your intent"),
-        DapperAotTupleResults = LibraryInfo("DAP013", "Tuple-type results", "Tuple-type results are not currently supported"),
-        DapperAotTupleParameter = LibraryInfo("DAP014", "Tuple-type parameter", "Tuple-type parameters are not currently supported"),
-        UntypedParameter = LibraryInfo("DAP015", "Untyped parameter", "The parameter type could not be resolved"),
-        GenericTypeParameter = LibraryInfo("DAP016", "Generic type parameter", "Generic type parameters ({0}) are not currently supported"),
-        NonPublicType = LibraryInfo("DAP017", "Non-accessible type", "Type '{0}' is not accessible; {1} types are not currently supported"),
+
+
         SqlParametersNotDetected = SqlWarning("DAP018", "SQL parameters not detected", "Parameters are being supplied, but no parameters were detected in the command"),
         NoParametersSupplied = SqlWarning("DAP019", "No parameters supplied", "SQL parameters were detected, but no parameters are being supplied", false),
         SqlParameterNotBound = SqlWarning("DAP020", "SQL parameter not bound", "No member could be found for the SQL parameter '{0}' from type '{1}'", false),
-        DuplicateParameter = LibraryWarning("DAP021", "Duplicate parameter", "Members '{0}' and '{1}' both have the database name '{2}'; '{0}' will be ignored"),
-        DuplicateReturn = LibraryWarning("DAP022", "Duplicate return parameter", "Members '{0}' and '{1}' are both designated as return values; '{0}' will be ignored"),
-        DuplicateRowCount = LibraryWarning("DAP023", "Duplicate row-count member",
-            "Members '{0}' and '{1}' are both marked [RowCount]"),
-        RowCountDbValue = LibraryWarning("DAP024", "Member is both row-count and mapped value",
-            "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored"),
+
 
         MethodRowCountHintRedundant = LibraryInfo("DAP029", "Method-level row-count hint redundant", "The [EstimatedRowCount] will be ignored due to parameter member '{0}'"),
         MethodRowCountHintInvalid = LibraryError("DAP030", "Method-level row-count hint invalid",

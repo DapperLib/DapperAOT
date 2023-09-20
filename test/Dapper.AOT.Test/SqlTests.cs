@@ -1,6 +1,4 @@
 ﻿using Dapper.Internal;
-using Dapper.SqlAnalysis;
-using System;
 using Xunit;
 
 namespace Dapper.AOT.Test;
@@ -21,14 +19,10 @@ public class SqlTests
         """, "x y z")]
     [InlineData("""
        do thing;
-       return 12;
-       """, "", "Return")]
-    public void DetectParameters(string sql, string expected, string flags = "")
+       """, "")]
+    public void DetectParameters(string sql, string expected)
     {
-        var expectedFlags = string.IsNullOrWhiteSpace(flags) ? SqlParseOutputFlags.None
-            : (SqlParseOutputFlags)Enum.Parse(typeof(SqlParseOutputFlags), flags);
-        Assert.Equal(expected, string.Join(" ", SqlTools.GetParameters(sql, out var actualFlags)));
-        Assert.Equal(expectedFlags, actualFlags);
+        Assert.Equal(expected, string.Join(" ", SqlTools.GetParameters(sql)));
     }
 
 
