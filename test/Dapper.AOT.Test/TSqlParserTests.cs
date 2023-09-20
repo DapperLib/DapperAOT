@@ -16,7 +16,7 @@ public class TSqlParserTests
 
     private readonly Action<string> _log;
 
-    private TestTSqlProcessor GetProcessor() => new(log: _log);
+    private TestTSqlProcessor GetProcessor(SqlParseInputFlags flags = SqlParseInputFlags.None) => new(flags | SqlParseInputFlags.KnownParameters, log: _log);
 
     [Fact]
     public void DetectBadNullLiteralUsage()
