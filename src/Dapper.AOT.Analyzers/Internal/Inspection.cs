@@ -477,15 +477,55 @@ internal static class Inspection
         // look for remaining constructors
         foreach (var ctor in ctors)
         {
+            switch (ctor.DeclaredAccessibility)
+            {
+                case Accessibility.Private:
+                case Accessibility.Protected:
+                case Accessibility.Friend:
+                case Accessibility.ProtectedAndInternal:
+                    continue; // we can't use it, so...
+            }
             var args = ctor.Parameters;
             if (args.Length == 0) continue; // default constructor
 
-            // exclude copy constructors (in particular: records)
-            if (args.Length == 1 && SymbolEqualityComparer.Default.Equals(args[0].Type, named))
+            // exclude copy constructors (anything that takes the own type) and serialization constructors
+            bool exclude = false;
+            foreach (var arg in args)
             {
+                if (SymbolEqualityComparer.Default.Equals(arg.Type, named))
+                {
+                    exclude = true;
+                    break;
+                }
+                if (arg.Type is INamedTypeSymbol
+                    {
+                        Name: "SerializationInfo" or "StreamingContext",
+                        ContainingType: null,
+                        Arity: 0,
+                        ContainingNamespace:
+                        {
+                            Name: "Serialization",
+                            ContainingNamespace:
+                            {
+                                Name: "Runtime",
+                                ContainingNamespace: {
+                                    Name: "System",
+                                    ContainingNamespace.IsGlobalNamespace: true
+                                }
+                            }
+                        }
+                    })
+                {
+                    exclude = true;
+                    break;
+                }
+            }
+            if (exclude)
+            {
+                // ruled out by signature
                 continue;
             }
-
+            
             if (constructor is not null)
             {
                 return ConstructorResult.FailMultipleImplicit;
@@ -933,7 +973,7 @@ internal static class Inspection
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0042:Deconstruct variable declaration", Justification = "Fine as is; let's not pay the unwrap cost")]
-    public static SqlSyntax IdentifySqlSyntax(in ParseState ctx, IOperation op, out bool caseSensitive)
+    public static SqlSyntax? IdentifySqlSyntax(in ParseState ctx, IOperation op, out bool caseSensitive)
     {
         caseSensitive = false;
         // get from known connection-type
@@ -963,8 +1003,7 @@ internal static class Inspection
             return (SqlSyntax)i;
         }
 
-        // look at global setup, or give up
-        return ctx.Options.TryGetSqlSyntax(out var syntax) ? syntax : SqlSyntax.General;
+        return null;
 
         static bool AssertAndAscend(ref INamespaceSymbol ns, string? expected)
         {

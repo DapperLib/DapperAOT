@@ -29,7 +29,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
     private void OnCompilationStart(CompilationStartAnalysisContext context)
     {
         // per-run state (in particular, so we can have "first time only" diagnostics)
-        var state = new AnalyzerState();
+        var state = new AnalyzerState(context.Compilation, context.Options);
 
         // respond to method usages
         context.RegisterOperationAction(state.OnOperation, OperationKind.Invocation, OperationKind.SimpleAssignment);
@@ -46,7 +46,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         private int _dapperHits; // this isn't a true count; it'll usually be 0 or 1, no matter the number of calls, because we stop tracking
         private void OnDapperAotHit()
         {
-            if (Thread.VolatileRead(ref _dapperHits) == 0) // fast short-circuit if we know we're all good
+            if (Thread.VolatileRead(ref _dapperHits) == 0 && IsDapperAotAvailable) // fast short-circuit if we know we're all good
             {
                 lock (_missedOpportunities)
                 {
@@ -63,7 +63,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         private void OnDapperAotMiss(OperationAnalysisContext ctx, Location location)
         {
             if (Thread.VolatileRead(ref _dapperHits) == 0 // fast short-circuit if we know we're all good
-                && ctx.Compilation.Language == LanguageNames.CSharp) // no point warning for VB etc
+                && IsDapperAotAvailable) // don't warn if not available!
             {
                 lock (_missedOpportunities)
                 {
@@ -81,7 +81,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             lock (_missedOpportunities)
             {
                 var count = _missedOpportunities.Count;
-                if (count != 0 && IsDapperAotAvailable(ctx.Compilation))
+                if (count != 0)
                 {
                     var location = _missedOpportunities[0];
                     Location[]? additionalLocations = null;
@@ -93,12 +93,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.DapperAotNotEnabled, location, additionalLocations, count));
                 }
             }
-
-            static bool IsDapperAotAvailable(Compilation compilation)
-                => compilation.GetTypeByMetadataName("Dapper." + Types.DapperAotAttribute) is not null;
         }
-        //private int _missedOpportunities;
-        //private bool IsFirstMiss() => Interlocked.Increment(ref _missedOpportunities) == 1;
 
         public void OnOperation(OperationAnalysisContext ctx)
         {
@@ -165,7 +160,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             var location = invoke.GetMemberLocation();
             var parseState = new ParseState(ctx);
 
-            if (Inspection.IsEnabled(in parseState, invoke, Types.DapperAotAttribute, out var aotAttribExists))
+            bool aotEnabled = Inspection.IsEnabled(in parseState, invoke, Types.DapperAotAttribute, out var aotAttribExists);
+            if (aotEnabled)
             {
                 OnDapperAotHit(); // all good for AOT
                 if (flags.HasAny(OperationFlags.NotAotSupported))
@@ -194,7 +190,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 DiagnosticDescriptor? ctorFault = Inspection.ChooseConstructor(resultMap.ElementType, out var ctor) switch
                 {
                     Inspection.ConstructorResult.FailMultipleExplicit => Diagnostics.ConstructorMultipleExplicit,
-                    Inspection.ConstructorResult.FailMultipleImplicit => Diagnostics.ConstructorAmbiguous,
+                    Inspection.ConstructorResult.FailMultipleImplicit when aotEnabled => Diagnostics.ConstructorAmbiguous,
                     _ => null,
                 };
                 if (ctorFault is not null)
@@ -277,14 +273,14 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        private static void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource)
+        private void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource)
         {
             // TODO: check other parameters for special markers like command type?
             var flags = SqlParseInputFlags.None;
             ValidateSql(ctx, sqlSource, flags);
         }
 
-        private static void ValidatePropertyUsage(in OperationAnalysisContext ctx, IOperation sqlSource, bool isCommand)
+        private void ValidatePropertyUsage(in OperationAnalysisContext ctx, IOperation sqlSource, bool isCommand)
         {
             var flags = SqlParseInputFlags.None;
             if (isCommand)
@@ -297,12 +293,37 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         private static readonly Regex HasWhitespace = new Regex(@"\s", RegexOptions.Compiled | RegexOptions.Multiline);
 
-        private static void ValidateSql(in OperationAnalysisContext ctx, IOperation sqlSource, SqlParseInputFlags flags, Location? location = null)
+        
+        private readonly SqlSyntax? DefaultSqlSyntax;
+        private readonly SqlParseInputFlags? DebugSqlFlags;
+        private readonly Compilation _compilation;
+        private bool? _isDapperAotAvailable;
+
+        internal bool IsDapperAotAvailable => _isDapperAotAvailable ?? LazyIsDapperAotAvailable();
+        private bool LazyIsDapperAotAvailable()
+        {
+            _isDapperAotAvailable = _compilation.Language == LanguageNames.CSharp &&  _compilation.GetTypeByMetadataName("Dapper." + Types.DapperAotAttribute) is not null;
+            return _isDapperAotAvailable.Value;
+        }
+        public AnalyzerState(Compilation compilation, AnalyzerOptions options)
+        {
+            _compilation = compilation;
+            if (options.TryGetSqlSyntax(out var syntax))
+            {
+                DefaultSqlSyntax = syntax;
+            }
+            if (options.TryGetDebugModeFlags(out var flags))
+            {
+                DebugSqlFlags = flags;
+            }
+        }
+
+        private void ValidateSql(in OperationAnalysisContext ctx, IOperation sqlSource, SqlParseInputFlags flags, Location? location = null)
         {
             var parseState = new ParseState(ctx);
 
             // should we consider this as a syntax we can handle?
-            var syntax = Inspection.IdentifySqlSyntax(parseState, ctx.Operation, out var caseSensitive);
+            var syntax = Inspection.IdentifySqlSyntax(parseState, ctx.Operation, out var caseSensitive) ?? DefaultSqlSyntax ?? SqlSyntax.General;
             switch (syntax)
             {
                 case SqlSyntax.SqlServer:
@@ -321,8 +342,9 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
             location ??= ctx.Operation.Syntax.GetLocation();
 
-            if (parseState.Options.TryGetDebugModeFlags(out var debugModeFlags))
+            if (DebugSqlFlags is not null)
             {
+                var debugModeFlags = DebugSqlFlags.Value;
                 if ((debugModeFlags & SqlParseInputFlags.DebugMode) != 0)
                 {
                     // debug mode flags **replace** all other flags

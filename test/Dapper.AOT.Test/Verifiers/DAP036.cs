@@ -11,6 +11,7 @@ public class DAP036 : Verifier<DapperAnalyzer>
     public Task ConstructorAmbiguous() => CSVerifyAsync("""
         using Dapper;
         using System.Data.Common;
+        using System.Runtime.Serialization;
 
         [DapperAot]
         class SomeCode
@@ -25,12 +26,21 @@ public class DAP036 : Verifier<DapperAnalyzer>
                 _ = conn.Query<RecordStruct>("storedproc");
                 _ = conn.Query<ReadOnlyRecordStruct>("storedproc");
             }
+
+            [DapperAot(false)]
+            public void NoAotMode(DbConnection conn)
+            {
+                // not a problem in legacy mode
+                _ = conn.Query<MultipleImplicit>("storedproc");
+            }
         }
         class NoConstructors {}
+        [System.Serializable]
         class SingleImplicit
         {
             public SingleImplicit(string a) {}
             public SingleImplicit(SingleImplicit b) {}
+            public SingleImplicit(SerializationInfo info, StreamingContext ctx) {}
         }
         class MultipleImplicit
         {
