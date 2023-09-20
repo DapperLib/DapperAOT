@@ -56,6 +56,8 @@ partial class DapperAnalyzer
         SelectSingleTopError = SqlWarning("DAP230", "SELECT for Single* with invalid TOP", "SELECT for Single* should use TOP 2; if you do not need to test over-read, use First*"),
         SelectSingleRowWithoutWhere = SqlWarning("DAP231", "SELECT for single row without WHERE", "SELECT for single row without WHERE or (TOP and ORDER BY)"),
         NonPositiveFetch = SqlError("DAP232", "Non-positive FETCH", "FETCH literals should be positive"),
-        NegativeOffset = SqlError("DAP233", "Negative OFFSET", "OFFSET literals should be non-negative");
+        NegativeOffset = SqlError("DAP233", "Negative OFFSET", "OFFSET literals should be non-negative"),
+        SimplifyExpression = SqlInfo("DAP234", "Expression can be simplified", "Expression evaluates to a constant and can be replaced with '{0}'"),
+        TopWithOffset = SqlInfo("DAP235", "TOP with OFFSET clause", "TOP cannot be used in a query with OFFSET; use FETCH instead");
     }
 }

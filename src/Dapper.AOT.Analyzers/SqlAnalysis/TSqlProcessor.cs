@@ -167,6 +167,13 @@ internal class TSqlProcessor
     protected virtual void OnNullLiteralComparison(Location location)
         => OnError($"Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null'", location);
 
+    private void OnSimplifyExpression(Location location, int? value)
+        => OnSimplifyExpression(location, value is null ? "null" : value.Value.ToString(CultureInfo.InvariantCulture));
+    private void OnSimplifyExpression(Location location, decimal? value)
+        => OnSimplifyExpression(location, value is null ? "null" : value.Value.ToString(CultureInfo.InvariantCulture));
+    protected virtual void OnSimplifyExpression(Location location, string value)
+        => OnError($"Expression can be simplified to '{value}'", location);
+
     protected virtual void OnAdditionalBatch(Location location)
         => OnError($"Multiple batches are not permitted", location);
 
@@ -222,11 +229,14 @@ internal class TSqlProcessor
         => OnError($"FROM expressions with multiple elements should use aliases", location);
     protected virtual void OnFromMultiTableUnqualifiedColumn(Location location, string name)
         => OnError($"FROM expressions with multiple elements should qualify all columns; it is unclear where '{name}' is located", location);
+    protected virtual void OnTopWithOffset(Location location)
+        => OnError($"TOP cannot be used when OFFSET is specified", location);
 
 
     internal readonly struct Location
     {
-        public Location(TSqlFragment source) : this()
+        public static implicit operator Location(TSqlFragment source) => new(source);
+        private Location(TSqlFragment source) : this()
         {
             Line = source.StartLine;
             Column = source.StartColumn;
@@ -265,13 +275,13 @@ internal class TSqlProcessor
         {
             Flags = flags;
             Name = identifier.Value;
-            Location = new Location(identifier);
+            Location = identifier;
         }
         public Variable(VariableReference reference, VariableFlags flags)
         {
             Flags = flags;
             Name = reference.Name;
-            Location = new Location(reference);
+            Location = reference;
         }
 
         private Variable(scoped in Variable source, VariableFlags flags)
@@ -289,7 +299,7 @@ internal class TSqlProcessor
         public Variable WithUnconsumedValue() => new(in this, (Flags & ~VariableFlags.NoValue) | VariableFlags.Unconsumed);
         public Variable WithFlags(VariableFlags flags) => new(in this, flags);
 
-        public Variable WithLocation(TSqlFragment node) => new(in this, new Location(node));
+        public Variable WithLocation(TSqlFragment node) => new(in this, node);
     }
     class LoggingVariableTrackingVisitor : VariableTrackingVisitor
     {
@@ -388,7 +398,7 @@ internal class TSqlProcessor
         {
             if (++batchCount >= 2)
             {
-                parser.OnAdditionalBatch(new Location(node));
+                parser.OnAdditionalBatch(node);
             }
             base.Visit(node);
         }
@@ -488,11 +498,11 @@ internal class TSqlProcessor
         {
             if (node.FirstExpression is NullLiteral)
             {
-                parser.OnNullLiteralComparison(new Location(node.FirstExpression));
+                parser.OnNullLiteralComparison(node.FirstExpression);
             }
             if (node.SecondExpression is NullLiteral)
             {
-                parser.OnNullLiteralComparison(new Location(node.SecondExpression));
+                parser.OnNullLiteralComparison(node.SecondExpression);
             }
             base.Visit(node);
         }
@@ -571,6 +581,16 @@ internal class TSqlProcessor
             }
             return false;
         }
+
+        public override void Visit(QuerySpecification node)
+        {
+            if (node.TopRowFilter is not null && node.OffsetClause is not null)
+            {
+                parser.OnTopWithOffset(node.TopRowFilter);
+            }
+            base.Visit(node);
+        }
+
         public override void Visit(SelectStatement node)
         {
             if (node.QueryExpression is QuerySpecification spec)
@@ -580,7 +600,7 @@ internal class TSqlProcessor
                     && spec.SelectElements[0] is SelectScalarExpression { Expression: FunctionCall func }
                     && string.Equals(func.FunctionName?.Value, "SCOPE_IDENTITY", StringComparison.OrdinalIgnoreCase))
                 {
-                    parser.OnSelectScopeIdentity(new Location(func));
+                    parser.OnSelectScopeIdentity(func);
                 }
                 int sets = 0, reads = 0;
                 var checkNames = ValidateSelectNames;
@@ -592,7 +612,7 @@ internal class TSqlProcessor
                     switch (el)
                     {
                         case SelectStarExpression:
-                            parser.OnSelectStar(new Location(el));
+                            parser.OnSelectStar(el);
                             reads++;
                             break;
                         case SelectScalarExpression scalar:
@@ -609,11 +629,11 @@ internal class TSqlProcessor
                                 }
                                 if (string.IsNullOrWhiteSpace(name))
                                 {
-                                    parser.OnSelectEmptyColumnName(new(scalar), index);
+                                    parser.OnSelectEmptyColumnName(scalar, index);
                                 }
                                 else if (!names.Add(name!))
                                 {
-                                    parser.OnSelectDuplicateColumnName(new(scalar), name!);
+                                    parser.OnSelectDuplicateColumnName(scalar, name!);
                                 }
                             }
                             reads++;
@@ -628,18 +648,18 @@ internal class TSqlProcessor
                 {
                     if (sets != 0)
                     {
-                        parser.OnSelectAssignAndRead(new(spec));
+                        parser.OnSelectAssignAndRead(spec);
                     }
                     bool firstQuery = AddQuery();
                     if (firstQuery && SingleRow // optionally enforce single-row validation
                         && spec.FromClause is not null) // no "from" is things like 'select @id, @name' - always one row
                     {
                         bool haveTopOrFetch = false;
-                        if (spec.TopRowFilter is { Percent: false, Expression: IntegerLiteral top })
+                        if (spec.TopRowFilter is { Percent: false, Expression: ScalarExpression top })
                         {
                             haveTopOrFetch = EnforceTop(top);
                         }
-                        else if (spec.OffsetClause is { FetchExpression: IntegerLiteral fetch })
+                        else if (spec.OffsetClause is { FetchExpression: ScalarExpression fetch })
                         {
                             haveTopOrFetch = EnforceTop(fetch);
                         }
@@ -650,7 +670,7 @@ internal class TSqlProcessor
                         else if (haveTopOrFetch && spec.OrderByClause is not null) { } // fine
                         else
                         {
-                            parser.OnSelectSingleRowWithoutWhere(new(node));
+                            parser.OnSelectSingleRowWithoutWhere(node);
                         }
                     }
                 }
@@ -659,22 +679,22 @@ internal class TSqlProcessor
             base.Visit(node);
         }
 
-        private bool EnforceTop(IntegerLiteral top)
+        private bool EnforceTop(ScalarExpression expr)
         {
-            if (ParseInt32(top, out int i))
+            if (IsInt32(expr, out var i, complex: true) && i.HasValue)
             {
                 if (AtMostOne) // Single[OrDefault][Async]
                 {
-                    if (i != 2)
+                    if (i.Value != 2)
                     {
-                        parser.OnSelectSingleTopError(new(top));
+                        parser.OnSelectSingleTopError(expr);
                     }
                 }
                 else // First[OrDefault][Async]
                 {
-                    if (i != 1)
+                    if (i.Value != 1)
                     {
-                        parser.OnSelectFirstTopError(new(top));
+                        parser.OnSelectFirstTopError(expr);
                     }
                 }
                 return true;
@@ -682,42 +702,217 @@ internal class TSqlProcessor
             return false;
         }
 
-        static bool ParseInt32(IntegerLiteral node, out int value) => int.TryParse(node.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
-        static bool ParseNumeric(NumericLiteral node, out decimal value) => decimal.TryParse(node.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
-
         public override void Visit(OffsetClause node)
         {
-            IntegerLiteral? iLit;
-            if ((iLit = (node.FetchExpression as IntegerLiteral)) is not null && ParseInt32(iLit, out var i) && i <= 0)
+            if (IsInt32(node.FetchExpression, out var i) && i <= 0)
             {
-                parser.OnNonPositiveFetch(new(iLit));
+                parser.OnNonPositiveFetch(node.FetchExpression);
             }
-            if ((iLit = (node.OffsetExpression as IntegerLiteral)) is not null && ParseInt32(iLit, out i) && i < 0)
+            if (IsInt32(node.OffsetExpression, out i) && i < 0)
             {
-                parser.OnNegativeOffset(new(iLit));
-            }
-            else if (node.OffsetExpression is UnaryExpression { UnaryExpressionType: UnaryExpressionType.Negative } neg && (iLit = (neg.Expression as IntegerLiteral)) is not null && ParseInt32(iLit, out i) && i > 0)
-            {
-                parser.OnNegativeOffset(new(neg));
+                parser.OnNegativeOffset(node.OffsetExpression);
             }
             base.Visit(node);
         }
+
+        static bool IsInt32(ScalarExpression scalar, out int? value, bool complex = false)
+        {
+            try
+            {
+                checked {
+                    switch (scalar)
+                    {
+                        case NullLiteral:
+                            value = null;
+                            return true;
+                        case IntegerLiteral integer when int.TryParse(integer.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i):
+                            value = i;
+                            return true;
+                        case UnaryExpression unary when IsInt32(unary.Expression, out value, complex):
+                            switch (unary.UnaryExpressionType)
+                            {
+                                case UnaryExpressionType.Negative: // note -ve is always allowed, even when not complex
+                                    value = -value;
+                                    return true;
+                                case UnaryExpressionType.Positive when complex:
+                                    return true;
+                                case UnaryExpressionType.BitwiseNot when complex:
+                                    value = ~value;
+                                    return true;
+                            }
+                            break;
+                        case BinaryExpression binary when complex && IsInt32(binary.FirstExpression, out var first, true) && IsInt32(binary.SecondExpression, out var second, true):
+                            switch (binary.BinaryExpressionType)
+                            {
+                                case BinaryExpressionType.Add:
+                                    value = first + second;
+                                    return true;
+                                case BinaryExpressionType.Subtract:
+                                    value = first - second;
+                                    return true;
+                                case BinaryExpressionType.Divide:
+                                    value = first / second; // TSQL is integer division
+                                    return true;
+                                case BinaryExpressionType.Multiply:
+                                    value = first * second;
+                                    return true;
+                                case BinaryExpressionType.Modulo:
+                                    value = first % second;
+                                    return true;
+                                case BinaryExpressionType.BitwiseXor:
+                                    value = first ^ second;
+                                    return true;
+                                case BinaryExpressionType.BitwiseOr:
+                                    value = first | second;
+                                    return true;
+                                case BinaryExpressionType.BitwiseAnd:
+                                    value = first & second;
+                                    return true;
+                                case BinaryExpressionType.LeftShift:
+                                    if (first is null || second is null) break; // null not allowed here
+                                    if (second < 0)
+                                    {
+                                        second = -second; // TSQL: neg-shift allowed
+                                        goto case BinaryExpressionType.RightShift;
+                                    }
+                                    if (second >= 32) // c# shift masks "by" to 5 bits 
+                                    {
+                                        value = 0;
+                                        return true;
+                                    }
+                                    value = first << second;
+                                    return true;
+                                case BinaryExpressionType.RightShift:
+                                    if (first is null || second is null) break; // null not allowed here
+                                    if (second < 0)
+                                    {
+                                        second = -second; // TSQL: neg-shift allowed
+                                        goto case BinaryExpressionType.LeftShift;
+                                    }
+                                    if (second >= 32) // c# shift masks "by" to 5 bits 
+                                    {
+                                        value = 0;
+                                        return true;
+                                    }
+                                    value = first >>> second; // TSQL right-shift is unsigned
+                                    return true;
+                            }
+                            break;
+                    }
+                }
+            }
+            catch {} // overflow etc
+            value = default;
+            return false;
+        }
+
+        static bool IsDecimal(ScalarExpression scalar, out decimal? value, bool complex = false)
+        {
+            try
+            {
+                checked
+                {
+                    switch (scalar)
+                    {
+                        case NullLiteral:
+                            value = null;
+                            return true;
+                        case IntegerLiteral integer when int.TryParse(integer.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i):
+                            value = i;
+                            return true;
+                        case NumericLiteral number when decimal.TryParse(number.Value, NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out var d):
+                            value = d;
+                            return true;
+                        case UnaryExpression unary when IsDecimal(unary.Expression, out value, complex):
+                            switch (unary.UnaryExpressionType)
+                            {
+                                case UnaryExpressionType.Negative: // note -ve is always allowed, even when not complex
+                                    value = -value;
+                                    return true;
+                                case UnaryExpressionType.Positive when complex:
+                                    return true;
+                            }
+                            break;
+                        case BinaryExpression binary when complex && IsDecimal(binary.FirstExpression, out var first, true) && IsDecimal(binary.SecondExpression, out var second, true):
+                            switch (binary.BinaryExpressionType)
+                            {
+                                case BinaryExpressionType.Add:
+                                    value = first + second;
+                                    return true;
+                                case BinaryExpressionType.Subtract:
+                                    value = first - second;
+                                    return true;
+                                case BinaryExpressionType.Divide:
+                                    value = first / second; // TSQL is integer division
+                                    return true;
+                                case BinaryExpressionType.Multiply:
+                                    value = first * second;
+                                    return true;
+                                case BinaryExpressionType.Modulo:
+                                    value = first % second;
+                                    return true;
+                            }
+                            break;
+                    }
+                }
+            }
+            catch { } // overflow etc
+            value = default;
+            return false;
+        }
+
         public override void Visit(TopRowFilter node)
         {
-            if (node.Expression is IntegerLiteral iLit && ParseInt32(iLit, out var i) && i <= 0)
+            if (node.Expression is ScalarExpression scalar)
             {
-                parser.OnNonPositiveTop(new(iLit));
-            }
-            else if (node.Expression is NumericLiteral nLit)
-            {
-                if (!node.Percent)
+                if (IsInt32(scalar, out var i, true))
                 {
-                    parser.OnNonIntegerTop(new(nLit));
+                    if (i <= 0)
+                    {
+                        parser.OnNonPositiveTop(scalar);
+                    }
                 }
-                if (ParseNumeric(nLit, out var n) && n <= 0)
-                {   // don't expect to see this; parser rejects them
-                    parser.OnNonPositiveTop(new(nLit));
+                else if (IsDecimal(scalar, out var d, true))
+                {
+                    if (!node.Percent)
+                    {
+                        parser.OnNonIntegerTop(scalar);
+                    }
+                    if (d <= 0)
+                    {   // don't expect to see this; parser rejects them
+                        parser.OnNonPositiveTop(scalar);
+                    }
                 }
+            }
+            base.Visit(node);
+        }
+
+        public override void Visit(UnaryExpression node)
+        {
+            if (node.UnaryExpressionType != UnaryExpressionType.Negative) // need to allow unary
+            {
+                // if operand is simple, compute and report
+                if (IsInt32(node.Expression, out _, complex: false))
+                {
+                    if (IsInt32(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
+                }
+                else if (IsDecimal(node.Expression, out _, complex: false))
+                {
+                    if (IsDecimal(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
+                }
+            }
+            base.Visit(node);
+        }
+        public override void Visit(BinaryExpression node)
+        {
+            // if operands are simple, compute and report
+            if (IsInt32(node.FirstExpression, out _, complex: false) && IsInt32(node.SecondExpression, out _, complex: false))
+            {
+                if (IsInt32(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
+            }
+            else if (IsDecimal(node.FirstExpression, out _, complex: false) && IsDecimal(node.SecondExpression, out _, complex: false))
+            {
+                if (IsDecimal(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
             }
             base.Visit(node);
         }
@@ -751,7 +946,7 @@ internal class TSqlProcessor
                 _demandAliases = IsMultiTable(node.FromClause) ? new(true, node.Target) : default;
                 base.ExplicitVisit(node);
                 if (_demandAliases.Active && !_demandAliases.AmnestyNodeIsAlias)
-                    parser.OnFromMultiTableMissingAlias(new(node.Target));
+                    parser.OnFromMultiTableMissingAlias(node.Target);
             }
             finally
             {
@@ -768,7 +963,7 @@ internal class TSqlProcessor
                 _demandAliases = IsMultiTable(node.FromClause) ? new(true, node.Target) : default;
                 base.ExplicitVisit(node);
                 if (_demandAliases.Active && !_demandAliases.AmnestyNodeIsAlias)
-                    parser.OnFromMultiTableMissingAlias(new(node.Target));
+                    parser.OnFromMultiTableMissingAlias(node.Target);
             }
             finally
             {
@@ -807,7 +1002,7 @@ internal class TSqlProcessor
                 }
                 else if (string.IsNullOrWhiteSpace(node.Alias?.Value))
                 {
-                    parser.OnFromMultiTableMissingAlias(new(node));
+                    parser.OnFromMultiTableMissingAlias(node);
                 }
                 else if (node.Alias!.Value == _demandAliases.HuntingAlias)
                 {
@@ -821,7 +1016,7 @@ internal class TSqlProcessor
         {
             if (_demandAliases.Active && node.MultiPartIdentifier.Count == 1)
             {
-                parser.OnFromMultiTableUnqualifiedColumn(new(node), node.MultiPartIdentifier[0].Value);
+                parser.OnFromMultiTableUnqualifiedColumn(node, node.MultiPartIdentifier[0].Value);
             }
             base.Visit(node);
         }
@@ -830,7 +1025,7 @@ internal class TSqlProcessor
         {
             if (IsUnfiltered(node.FromClause, node.WhereClause))
             {
-                parser.OnDeleteWithoutWhere(new(node));
+                parser.OnDeleteWithoutWhere(node);
             }
             base.Visit(node);
         }
@@ -839,7 +1034,7 @@ internal class TSqlProcessor
         {
             if (IsUnfiltered(node.FromClause, node.WhereClause))
             {
-                parser.OnUpdateWithoutWhere(new(node));
+                parser.OnUpdateWithoutWhere(node);
             }
             base.Visit(node);
         }
@@ -860,7 +1055,7 @@ internal class TSqlProcessor
                     { } // we'll let them off
                     else
                     {
-                        parser.OnExecComposedSql(new Location(node));
+                        parser.OnExecComposedSql(node);
                     }
                 }
             }
@@ -923,7 +1118,7 @@ internal class TSqlProcessor
         {
             if (string.Equals(node.Name, "@@IDENTITY", StringComparison.OrdinalIgnoreCase))
             {
-                parser.OnGlobalIdentity(new Location(node));
+                parser.OnGlobalIdentity(node);
             }
             base.Visit(node);
         }
@@ -933,15 +1128,15 @@ internal class TSqlProcessor
             var knownInsertedCount = TryCount(node.InsertSource, out var count, out bool unbalanced);
             if (unbalanced)
             {
-                parser.OnInsertColumnsUnbalanced(new Location(node.InsertSource));
+                parser.OnInsertColumnsUnbalanced(node.InsertSource);
             }
             if (node.Columns.Count == 0)
             {
-                parser.OnInsertColumnsNotSpecified(new Location(node));
+                parser.OnInsertColumnsNotSpecified(node);
             }
             else if (knownInsertedCount && count != node.Columns.Count)
             {
-                parser.OnInsertColumnMismatch(new Location(node.InsertSource));
+                parser.OnInsertColumnMismatch(node.InsertSource);
             }
 
             base.Visit(node);

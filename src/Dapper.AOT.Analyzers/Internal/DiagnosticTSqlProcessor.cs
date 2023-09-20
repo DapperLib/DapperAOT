@@ -171,6 +171,12 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     protected override void OnSelectSingleTopError(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectSingleTopError, location);
 
+    protected override void OnSimplifyExpression(Location location, string value)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.SimplifyExpression, location, value);
+
+    protected override void OnTopWithOffset(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.TopWithOffset, location);
+
     protected override bool TryGetParameter(string name, out ParameterDirection direction)
     {
         // we have knowledge of the type system; use it
