@@ -719,7 +719,8 @@ internal class TSqlProcessor
         {
             try
             {
-                checked {
+                checked
+                {
                     switch (scalar)
                     {
                         case NullLiteral:
@@ -829,7 +830,7 @@ internal class TSqlProcessor
                     }
                 }
             }
-            catch {} // overflow etc
+            catch { } // overflow etc
             value = default;
             return false;
         }
