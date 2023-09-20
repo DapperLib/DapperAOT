@@ -15,12 +15,14 @@ public class DAP234 : Verifier<DapperAnalyzer>
         select 11 as [Score], (11) as [Meh]
 
         select {|#3:1 / null|} as [oops]
-       
+        declare @i int = 42;
+        select {|#4:15 / @i + null|}
         """,
         Diagnostic(Diagnostics.SimplifyExpression).WithLocation(0).WithArguments("10"),
         Diagnostic(Diagnostics.SimplifyExpression).WithLocation(1).WithArguments("1"),
         Diagnostic(Diagnostics.SimplifyExpression).WithLocation(2).WithArguments("11"),
-        Diagnostic(Diagnostics.SimplifyExpression).WithLocation(3).WithArguments("null")
+        Diagnostic(Diagnostics.SimplifyExpression).WithLocation(3).WithArguments("null"),
+        Diagnostic(Diagnostics.SimplifyExpression).WithLocation(4).WithArguments("null")
         );
     
 }

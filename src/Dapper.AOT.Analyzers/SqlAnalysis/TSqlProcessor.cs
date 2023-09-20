@@ -704,18 +704,18 @@ internal class TSqlProcessor
 
         public override void Visit(OffsetClause node)
         {
-            if (IsInt32(node.FetchExpression, out var i) && i <= 0)
+            if (IsInt32(node.FetchExpression, out var i, true) && i <= 0)
             {
                 parser.OnNonPositiveFetch(node.FetchExpression);
             }
-            if (IsInt32(node.OffsetExpression, out i) && i < 0)
+            if (IsInt32(node.OffsetExpression, out i, true) && i < 0)
             {
                 parser.OnNegativeOffset(node.OffsetExpression);
             }
             base.Visit(node);
         }
 
-        static bool IsInt32(ScalarExpression scalar, out int? value, bool complex = false)
+        static bool IsInt32(ScalarExpression scalar, out int? value, bool complex)
         {
             try
             {
@@ -741,7 +741,35 @@ internal class TSqlProcessor
                                     return true;
                             }
                             break;
-                        case BinaryExpression binary when complex && IsInt32(binary.FirstExpression, out var first, true) && IsInt32(binary.SecondExpression, out var second, true):
+                        case BinaryExpression binary when complex:
+                            var haveFirst = IsInt32(binary.FirstExpression, out var first, true);
+                            var haveSecond = IsInt32(binary.SecondExpression, out var second, true);
+
+                            // if either half is *known* to be null; we're good
+                            if ((haveFirst && first is null) || (haveSecond && second is null))
+                            {
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                    case BinaryExpressionType.Subtract:
+                                    case BinaryExpressionType.Divide:
+                                    case BinaryExpressionType.Multiply:
+                                    case BinaryExpressionType.Modulo:
+                                    case BinaryExpressionType.BitwiseXor:
+                                    case BinaryExpressionType.BitwiseOr:
+                                    case BinaryExpressionType.BitwiseAnd:
+                                        value = null;
+                                        return true;
+                                }
+                                break;
+                            }
+
+                            // otherwise, need both
+                            if (!(haveFirst && haveSecond))
+                            {
+                                break;
+                            }
+
                             switch (binary.BinaryExpressionType)
                             {
                                 case BinaryExpressionType.Add:
@@ -833,7 +861,32 @@ internal class TSqlProcessor
                                     return true;
                             }
                             break;
-                        case BinaryExpression binary when complex && IsDecimal(binary.FirstExpression, out var first, true) && IsDecimal(binary.SecondExpression, out var second, true):
+                        case BinaryExpression binary when complex:
+                            var haveFirst = IsDecimal(binary.FirstExpression, out var first, true);
+                            var haveSecond = IsDecimal(binary.SecondExpression, out var second, true);
+
+                            // if either half is *known* to be null; we're good
+                            if ((haveFirst && first is null) || (haveSecond && second is null))
+                            {
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                    case BinaryExpressionType.Subtract:
+                                    case BinaryExpressionType.Divide:
+                                    case BinaryExpressionType.Multiply:
+                                    case BinaryExpressionType.Modulo:
+                                        value = null;
+                                        return true;
+                                }
+                                break;
+                            }
+
+                            // otherwise, need both
+                            if (!(haveFirst && haveSecond))
+                            {
+                                break;
+                            }
+
                             switch (binary.BinaryExpressionType)
                             {
                                 case BinaryExpressionType.Add:
@@ -906,11 +959,12 @@ internal class TSqlProcessor
         public override void Visit(BinaryExpression node)
         {
             // if operands are simple, compute and report
-            if (IsInt32(node.FirstExpression, out _, complex: false) && IsInt32(node.SecondExpression, out _, complex: false))
+            bool haveNull = node.FirstExpression is NullLiteral || node.SecondExpression is NullLiteral;
+            if (haveNull || (IsInt32(node.FirstExpression, out _, complex: false) && IsInt32(node.SecondExpression, out _, complex: false)))
             {
                 if (IsInt32(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
             }
-            else if (IsDecimal(node.FirstExpression, out _, complex: false) && IsDecimal(node.SecondExpression, out _, complex: false))
+            else if (haveNull || (IsDecimal(node.FirstExpression, out _, complex: false) && IsDecimal(node.SecondExpression, out _, complex: false)))
             {
                 if (IsDecimal(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
             }
