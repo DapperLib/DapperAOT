@@ -212,6 +212,10 @@ internal class TSqlProcessor
         => OnError($"SELECT for single row without WHERE or (TOP and ORDER BY)", location);
     protected virtual void OnNonPositiveTop(Location location)
         => OnError($"TOP literals should be positive", location);
+    protected virtual void OnNonPositiveFetch(Location location)
+        => OnError($"FETCH literals should be positive", location);
+    protected virtual void OnNegativeOffset(Location location)
+        => OnError($"OFFSET literals should be non-negative", location);
     protected virtual void OnNonIntegerTop(Location location)
         => OnError($"TOP literals should be integers", location);
     protected virtual void OnFromMultiTableMissingAlias(Location location)
@@ -630,61 +634,89 @@ internal class TSqlProcessor
                     if (firstQuery && SingleRow // optionally enforce single-row validation
                         && spec.FromClause is not null) // no "from" is things like 'select @id, @name' - always one row
                     {
-                        bool haveTop = false;
-                        if (spec.TopRowFilter is { Percent: false, Expression: IntegerLiteral top }
-                            && ParseInt32(top, out int i))
+                        bool haveTopOrFetch = false;
+                        if (spec.TopRowFilter is { Percent: false, Expression: IntegerLiteral top })
                         {
-                            haveTop = true;
-                            if (AtMostOne) // Single[OrDefault][Async]
-                            {
-                                if (i != 2)
-                                {
-                                    parser.OnSelectSingleTopError(new(spec.TopRowFilter));
-                                }
-                            }
-                            else // First[OrDefault][Async]
-                            {
-                                if (i != 1)
-                                {
-                                    parser.OnSelectFirstTopError(new(spec.TopRowFilter));
-                                }
-                            }
+                            haveTopOrFetch = EnforceTop(top);
+                        }
+                        else if (spec.OffsetClause is { FetchExpression: IntegerLiteral fetch })
+                        {
+                            haveTopOrFetch = EnforceTop(fetch);
                         }
 
                         // we want *either* a WHERE (which we will allow with/without a TOP),
                         // or a TOP + ORDER BY
                         if (!IsUnfiltered(spec.FromClause, spec.WhereClause)) { } // fine
-                        else if (haveTop && spec.OrderByClause is not null) { } // fine
+                        else if (haveTopOrFetch && spec.OrderByClause is not null) { } // fine
                         else
                         {
                             parser.OnSelectSingleRowWithoutWhere(new(node));
                         }
                     }
-
                 }
-
             }
 
             base.Visit(node);
         }
 
+        private bool EnforceTop(IntegerLiteral top)
+        {
+            if (ParseInt32(top, out int i))
+            {
+                if (AtMostOne) // Single[OrDefault][Async]
+                {
+                    if (i != 2)
+                    {
+                        parser.OnSelectSingleTopError(new(top));
+                    }
+                }
+                else // First[OrDefault][Async]
+                {
+                    if (i != 1)
+                    {
+                        parser.OnSelectFirstTopError(new(top));
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
         static bool ParseInt32(IntegerLiteral node, out int value) => int.TryParse(node.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
         static bool ParseNumeric(NumericLiteral node, out decimal value) => decimal.TryParse(node.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+
+        public override void Visit(OffsetClause node)
+        {
+            IntegerLiteral? iLit;
+            if ((iLit = (node.FetchExpression as IntegerLiteral)) is not null && ParseInt32(iLit, out var i) && i <= 0)
+            {
+                parser.OnNonPositiveFetch(new(iLit));
+            }
+            if ((iLit = (node.OffsetExpression as IntegerLiteral)) is not null && ParseInt32(iLit, out i) && i < 0)
+            {
+                parser.OnNegativeOffset(new(iLit));
+            }
+            else if (node.OffsetExpression is UnaryExpression { UnaryExpressionType: UnaryExpressionType.Negative } neg && (iLit = (neg.Expression as IntegerLiteral)) is not null && ParseInt32(iLit, out i) && i > 0)
+            {
+                parser.OnNegativeOffset(new(neg));
+            }
+            base.Visit(node);
+        }
         public override void Visit(TopRowFilter node)
         {
             if (node.Expression is IntegerLiteral iLit && ParseInt32(iLit, out var i) && i <= 0)
             {
-                parser.OnNonPositiveTop(new(node));
+                parser.OnNonPositiveTop(new(iLit));
             }
             else if (node.Expression is NumericLiteral nLit)
             {
                 if (!node.Percent)
                 {
-                    parser.OnNonIntegerTop(new(node));
+                    parser.OnNonIntegerTop(new(nLit));
                 }
                 if (ParseNumeric(nLit, out var n) && n <= 0)
                 {   // don't expect to see this; parser rejects them
-                    parser.OnNonPositiveTop(new(node));
+                    parser.OnNonPositiveTop(new(nLit));
                 }
             }
             base.Visit(node);

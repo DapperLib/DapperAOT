@@ -8,7 +8,7 @@ public class DAP227 : Verifier<DapperAnalyzer>
 {
     [Fact]
     public Task NonIntegerTop() => SqlVerifyAsync("""
-        select {|#0:top 22.5|} Id, Name from Users
+        select top {|#0:22.5|} Id, Name from Users
 
         select top 22.5 percent Id, Name from Users
         

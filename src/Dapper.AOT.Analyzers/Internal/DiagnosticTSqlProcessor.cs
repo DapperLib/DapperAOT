@@ -160,6 +160,10 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
         => OnDiagnostic(DapperAnalyzer.Diagnostics.NonIntegerTop, location);
     protected override void OnNonPositiveTop(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.NonPositiveTop, location);
+    protected override void OnNonPositiveFetch(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.NonPositiveFetch, location);
+    protected override void OnNegativeOffset(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.NegativeOffset, location);
     protected override void OnSelectFirstTopError(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectFirstTopError, location);
     protected override void OnSelectSingleRowWithoutWhere(Location location)

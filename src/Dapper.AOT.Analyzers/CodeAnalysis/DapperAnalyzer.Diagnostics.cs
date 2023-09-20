@@ -54,6 +54,8 @@ partial class DapperAnalyzer
         NonPositiveTop = SqlError("DAP228", "Non-positive TOP", "TOP literals should be positive"),
         SelectFirstTopError = SqlWarning("DAP229", "SELECT for First* with invalid TOP", "SELECT for First* should use TOP 1"),
         SelectSingleTopError = SqlWarning("DAP230", "SELECT for Single* with invalid TOP", "SELECT for Single* should use TOP 2; if you do not need to test over-read, use First*"),
-        SelectSingleRowWithoutWhere = SqlWarning("DAP231", "SELECT for single row without WHERE", "SELECT for single row without WHERE or (TOP and ORDER BY)");
+        SelectSingleRowWithoutWhere = SqlWarning("DAP231", "SELECT for single row without WHERE", "SELECT for single row without WHERE or (TOP and ORDER BY)"),
+        NonPositiveFetch = SqlError("DAP232", "Non-positive FETCH", "FETCH literals should be positive"),
+        NegativeOffset = SqlError("DAP233", "Negative OFFSET", "OFFSET literals should be non-negative");
     }
 }

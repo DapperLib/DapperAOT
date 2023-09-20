@@ -8,7 +8,7 @@ public class DAP229 : Verifier<DapperAnalyzer>
 {
     [Fact]
     public Task SelectFirstTopError() => SqlVerifyAsync("""
-        select {|#0:top 2|} Id, Name from Users where Id=42
+        select top {|#0:2|} Id, Name from Users where Id=42
         """, SqlAnalysis.SqlParseInputFlags.SingleRow, Diagnostic(Diagnostics.SelectFirstTopError).WithLocation(0));
 
     [Fact]
