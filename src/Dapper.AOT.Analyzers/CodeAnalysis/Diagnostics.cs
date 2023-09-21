@@ -11,7 +11,7 @@ internal abstract class DiagnosticsBase
 {
     protected const string DocsRoot = "https://aot.dapperlib.dev/", RulesRoot = DocsRoot + "rules/";
 
-    private static DiagnosticDescriptor Create(string id, string title, string messageFormat, string? category, DiagnosticSeverity severity, bool docs) =>
+    private static DiagnosticDescriptor Create(string id, string title, string messageFormat, string category, DiagnosticSeverity severity, bool docs) =>
         new(id, title,
             messageFormat, category, severity, true, helpLinkUri: docs ? (RulesRoot + id) : null);
 
