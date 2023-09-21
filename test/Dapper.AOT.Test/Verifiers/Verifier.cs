@@ -1,4 +1,4 @@
-﻿using Dapper.CodeAnalysis;
+using Dapper.CodeAnalysis;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -15,7 +15,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static Dapper.SqlAnalysis.TSqlProcessor;
+
 
 namespace Dapper.AOT.Test.Verifiers;
 // inspiration: https://www.thinktecture.com/en/net/roslyn-source-generators-analyzers-code-fixes-testing/
@@ -25,6 +25,7 @@ public abstract class Verifier
 
     protected static DiagnosticResult Diagnostic(DiagnosticDescriptor diagnostic)
         => new DiagnosticResult(diagnostic);
+
     protected static DiagnosticResult InterceptorsNotEnabled = Diagnostic(DapperInterceptorGenerator.Diagnostics.InterceptorsNotEnabled);
 
     protected static DiagnosticResult InterceptorsGenerated(int handled, int total,
@@ -168,7 +169,6 @@ public abstract class Verifier
             return solution.WithProjectParseOptions(projectId, func(options));
         };
     }
-
 }
 
 public class Verifier<TAnalyzer> : Verifier where TAnalyzer : DiagnosticAnalyzer, new()
@@ -214,15 +214,22 @@ public class Verifier<TAnalyzer> : Verifier where TAnalyzer : DiagnosticAnalyzer
         => VBVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected, sqlSyntax);
 
 }
-public class Verifier<TAnalyzer, TCodeFix> : Verifier
-    where TAnalyzer : DiagnosticAnalyzer, new()
-    where TCodeFix : CodeFixProvider, new()
-{
-    protected Task CSVerifyAsync(string source, Func<Solution, ProjectId, Solution>[] transforms, 
-        DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer)
-        => CSVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected, sqlSyntax);
+//public class Verifier<TAnalyzer, TCodeFix> : Verifier
+//    where TAnalyzer : DiagnosticAnalyzer, new()
+//    where TCodeFix : CodeFixProvider, new()
+//{
+//    protected Task CSVerifyAsync(string source, Func<Solution, ProjectId, Solution>[] transforms,
+//        DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer)
+//        => CSVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected, sqlSyntax);
 
-    protected Task VBVerifyAsync(string source, Func<Solution, ProjectId, Solution>[] transforms,
-        DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer)
-        => VBVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected, sqlSyntax);
-}
+//    protected Task VBVerifyAsync(string source, Func<Solution, ProjectId, Solution>[] transforms,
+//        DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer)
+//        => VBVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected, sqlSyntax);
+
+//    protected Task VerifyAsync(string source,
+//        Func<Solution, ProjectId, Solution>[] transforms,
+//        params DiagnosticResult[] expected)
+//        => base.VerifyAsync<TAnalyzer>(source, transforms, expected);
+//    protected Task VerifyAsync(string source, params DiagnosticResult[] expected)
+//        => base.VerifyAsync<TAnalyzer>(source, DefaultConfig, expected);
+//}

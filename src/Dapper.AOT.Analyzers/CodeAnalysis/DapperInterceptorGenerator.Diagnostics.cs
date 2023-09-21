@@ -14,17 +14,11 @@ partial class DapperInterceptorGenerator
         InterceptorsNotEnabled = LibraryWarning("DAP003", "Interceptors not enabled",
             "Interceptors need to be enabled (see help-link)", true),
         LanguageVersionTooLow = LibraryWarning("DAP004", "Language version too low", "Interceptors require at least C# version 11", true),
-        
-        //
-        // space
-        
-        // space
 
-
+        // space
         SqlParametersNotDetected = SqlWarning("DAP018", "SQL parameters not detected", "Parameters are being supplied, but no parameters were detected in the command"),
         NoParametersSupplied = SqlWarning("DAP019", "No parameters supplied", "SQL parameters were detected, but no parameters are being supplied", false),
         SqlParameterNotBound = SqlWarning("DAP020", "SQL parameter not bound", "No member could be found for the SQL parameter '{0}' from type '{1}'", false),
-
 
         MethodRowCountHintRedundant = LibraryInfo("DAP029", "Method-level row-count hint redundant", "The [EstimatedRowCount] will be ignored due to parameter member '{0}'"),
         MethodRowCountHintInvalid = LibraryError("DAP030", "Method-level row-count hint invalid",
