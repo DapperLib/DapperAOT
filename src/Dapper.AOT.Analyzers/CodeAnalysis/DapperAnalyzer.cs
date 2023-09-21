@@ -65,7 +65,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 }
             }
         }
-        private void OnDapperAotMiss(OperationAnalysisContext ctx, Location location)
+        private void OnDapperAotMiss(Location location)
         {
             if (Thread.VolatileRead(ref _dapperHits) == 0 // fast short-circuit if we know we're all good
                 && IsDapperAotAvailable) // don't warn if not available!
@@ -181,7 +181,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             else if (!aotAttribExists && !flags.HasAny(OperationFlags.NotAotSupported))
             {
                 // we might have been able to do more, but Dapper.AOT wasn't enabled
-                OnDapperAotMiss(ctx, location);
+                OnDapperAotMiss(location);
             }
 
             // check the types
@@ -333,7 +333,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             ValidateSql(ctx, sqlSource, flags);
         }
 
-        private static readonly Regex HasWhitespace = new Regex(@"\s", RegexOptions.Compiled | RegexOptions.Multiline);
+        private static readonly Regex HasWhitespace = new(@"\s", RegexOptions.Compiled | RegexOptions.Multiline);
 
         
         private readonly SqlSyntax? DefaultSqlSyntax;

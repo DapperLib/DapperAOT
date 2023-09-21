@@ -23,10 +23,9 @@ public abstract class Verifier
 {
     public CancellationToken CancellationToken { get; private set; }
 
-    protected static DiagnosticResult Diagnostic(DiagnosticDescriptor diagnostic)
-        => new DiagnosticResult(diagnostic);
+    protected static DiagnosticResult Diagnostic(DiagnosticDescriptor diagnostic) => new(diagnostic);
 
-    protected static DiagnosticResult InterceptorsNotEnabled = Diagnostic(DapperInterceptorGenerator.Diagnostics.InterceptorsNotEnabled);
+    protected static readonly DiagnosticResult InterceptorsNotEnabled = Diagnostic(DapperInterceptorGenerator.Diagnostics.InterceptorsNotEnabled);
 
     protected static DiagnosticResult InterceptorsGenerated(int handled, int total,
         int interceptors, int commands, int readers)
@@ -120,17 +119,17 @@ public abstract class Verifier
 
     private static readonly SourceText AssumeSqlServer = CreateEditorConfig(SqlSyntax.SqlServer, SqlParseInputFlags.None);
 
-    protected static Func<Solution, ProjectId, Solution> InterceptorsEnabled = WithFeatures(
+    protected static readonly Func<Solution, ProjectId, Solution> InterceptorsEnabled = WithFeatures(
         new("InterceptorsPreview", "true"), // rc 1
         new("InterceptorsPreviewNamespaces", "Dapper.AOT") // rc2 ?
     );
 
-    protected static Func<Solution, ProjectId, Solution> CSharpPreview = WithCSharpLanguageVersion(Microsoft.CodeAnalysis.CSharp.LanguageVersion.Preview);
+    protected static readonly Func<Solution, ProjectId, Solution> CSharpPreview = WithCSharpLanguageVersion(Microsoft.CodeAnalysis.CSharp.LanguageVersion.Preview);
 
-    protected static Func<Solution, ProjectId, Solution> VisualBasic14 = WithVisualBasicLanguageVersion(Microsoft.CodeAnalysis.VisualBasic.LanguageVersion.VisualBasic14);
+    protected static readonly Func<Solution, ProjectId, Solution> VisualBasic14 = WithVisualBasicLanguageVersion(Microsoft.CodeAnalysis.VisualBasic.LanguageVersion.VisualBasic14);
 
-    protected static Func<Solution, ProjectId, Solution>[] DefaultConfig = new[] {
-        InterceptorsEnabled, CSharpPreview, VisualBasic14 };
+    protected static readonly Func<Solution, ProjectId, Solution>[] DefaultConfig = [
+        InterceptorsEnabled, CSharpPreview, VisualBasic14 ];
 
     protected static Func<Solution, ProjectId, Solution> WithCSharpLanguageVersion(Microsoft.CodeAnalysis.CSharp.LanguageVersion version)
         => WithCSharpParseOptions(options => options.WithLanguageVersion(version));
@@ -154,8 +153,7 @@ public abstract class Verifier
         if (func is null) return static (solution, _) => solution;
         return (solution, projectId) =>
         {
-            var options = solution.GetProject(projectId)?.ParseOptions as CSharpParseOptions;
-            if (options is null) return solution;
+            if (solution.GetProject(projectId)?.ParseOptions is not CSharpParseOptions options) return solution;
             return solution.WithProjectParseOptions(projectId, func(options));
         };
     }
@@ -164,8 +162,7 @@ public abstract class Verifier
         if (func is null) return static (solution, _) => solution;
         return (solution, projectId) =>
         {
-            var options = solution.GetProject(projectId)?.ParseOptions as VisualBasicParseOptions;
-            if (options is null) return solution;
+            if (solution.GetProject(projectId)?.ParseOptions is not VisualBasicParseOptions options) return solution;
             return solution.WithProjectParseOptions(projectId, func(options));
         };
     }

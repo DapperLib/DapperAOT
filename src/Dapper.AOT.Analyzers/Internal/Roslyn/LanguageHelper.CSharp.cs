@@ -37,6 +37,7 @@ partial class LanguageHelper
 
         internal override string GetDisplayString(ISymbol symbol)
             => symbol.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat);
+        // if (deconstruct && method.IsGenericMethod) method = method.ConstructedFrom ?? method;
 
         internal override bool TryGetStringSpan(SyntaxToken token, string text, scoped in TSqlProcessor.Location location, out int skip, out int take)
         {

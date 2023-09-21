@@ -8,7 +8,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -54,6 +53,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     private SourceState? Parse(GeneratorSyntaxContext ctx, CancellationToken cancellationToken)
         => Parse(new(ctx, cancellationToken));
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Chosen API")]
     internal SourceState? Parse(in ParseState ctx)
     {
         if (ctx.Node is not InvocationExpressionSyntax ie
@@ -156,12 +156,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
         canConstruct = true; // we mean the default Dapper one, which can be constructed
         return null;
-    }
-
-    private static string GetSignature(IMethodSymbol method, bool deconstruct = true)
-    {
-        if (deconstruct && method.IsGenericMethod) method = method.ConstructedFrom ?? method;
-        return method.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat);
     }
 
     private bool CheckPrerequisites(in GenerateState ctx, out int enabledCount)
@@ -658,7 +652,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         bool hasExplicitConstructor = ctorType == Inspection.ConstructorResult.SuccessSingleExplicit
             && constructor is not null;
 
-        var members = Inspection.GetMembers(type, dapperAotConstructor: constructor).ToImmutableArray();
+        var members = Inspection.GetMembers(type, dapperAotConstructor: constructor);
         var membersCount = members.Length;
 
         if (membersCount == 0 && !hasExplicitConstructor)
@@ -1136,7 +1130,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         InitialLONGFetchSize = 1 << 1,
     }
 
-    private ImmutableArray<ITypeSymbol> IdentifyDbCommandTypes(Compilation compilation, out bool needsPrepare)
+    private static ImmutableArray<ITypeSymbol> IdentifyDbCommandTypes(Compilation compilation, out bool needsPrepare)
     {
         needsPrepare = false;
         var dbCommand = compilation.GetTypeByMetadataName("System.Data.Common.DbCommand");

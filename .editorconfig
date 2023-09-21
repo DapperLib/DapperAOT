@@ -2,3 +2,6 @@
 
 # RS2008: Enable analyzer release tracking
 dotnet_diagnostic.RS2008.severity = none
+
+# IDE0290: Use primary constructor
+dotnet_diagnostic.IDE0290.severity = none

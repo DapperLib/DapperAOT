@@ -57,17 +57,17 @@ internal static class SqlTools
     {
         if (string.IsNullOrWhiteSpace(sql))
         {
-            return Array.Empty<string>();
+            return [];
         }
 
         if (!ParameterRegex.IsMatch(sql))
         {
-            return Array.Empty<string>();
+            return [];
         }
         var matches = ParameterRegex.Matches(sql);
         if (matches.Count == 0)
         {
-            return Array.Empty<string>();
+            return [];
         }
         var arr = new string[matches.Count];
         for (int i = 0; i < arr.Length; i++)

@@ -27,6 +27,7 @@
         <AnalysisMode>latest-Recommended</AnalysisMode>
         <LangVersion>preview</LangVersion>
         <Features>($Features);strict</Features>
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
     </PropertyGroup>
     <ItemGroup>
         <None Include="$(MSBuildThisFileDirectory)Dapper.png" Visible="false">
