@@ -20,6 +20,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 {
     public sealed override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => DiagnosticsBase.All<Diagnostics>();
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("MicrosoftCodeAnalysisCorrectness", "RS1026:Enable concurrent execution", Justification = "Only disabled for debugging")]
     public override void Initialize(AnalysisContext context)
     {
 #if !DEBUG
