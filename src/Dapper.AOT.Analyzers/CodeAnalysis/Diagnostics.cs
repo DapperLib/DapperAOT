@@ -23,11 +23,11 @@ internal abstract class DiagnosticsBase
 
     protected static DiagnosticDescriptor LibraryInfo(string id, string title, string messageFormat, bool docs = false) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Info, docs);
 
-    protected static DiagnosticDescriptor SqlWarning(string id, string title, string messageFormat, bool docs = false) => Create(id, title, messageFormat, Category.Sql, DiagnosticSeverity.Warning, docs);
+    protected static DiagnosticDescriptor SqlWarning(string id, string title, string messageFormat, bool docs = true) => Create(id, title, messageFormat, Category.Sql, DiagnosticSeverity.Warning, docs);
 
-    protected static DiagnosticDescriptor SqlError(string id, string title, string messageFormat, bool docs = false) => Create(id, title, messageFormat, Category.Sql, DiagnosticSeverity.Error, docs);
+    protected static DiagnosticDescriptor SqlError(string id, string title, string messageFormat, bool docs = true) => Create(id, title, messageFormat, Category.Sql, DiagnosticSeverity.Error, docs);
 
-    protected static DiagnosticDescriptor SqlInfo(string id, string title, string messageFormat, bool docs = false) => Create(id, title, messageFormat, Category.Sql, DiagnosticSeverity.Info, docs);
+    protected static DiagnosticDescriptor SqlInfo(string id, string title, string messageFormat, bool docs = true) => Create(id, title, messageFormat, Category.Sql, DiagnosticSeverity.Info, docs);
 
     protected static DiagnosticDescriptor PerformanceWarning(string id, string title, string messageFormat, bool docs = false) => Create(id, title, messageFormat, Category.Performance, DiagnosticSeverity.Warning, docs);
 
@@ -41,7 +41,7 @@ internal abstract class DiagnosticsBase
         return (_idsToFieldNames ??= Build()).TryGetValue(id, out field!);
         static ImmutableDictionary<string, string> Build()
             => GetAllFor<DapperInterceptorGenerator.Diagnostics>()
-            .Concat(GetAllFor<OpinionatedAnalyzer.Diagnostics>())
+            .Concat(GetAllFor<DapperAnalyzer.Diagnostics>())
             .Concat(GetAllFor<TypeAccessorInterceptorGenerator.Diagnostics>())
             .ToImmutableDictionary(x => x.Value.Id, x => x.Key, StringComparer.Ordinal, StringComparer.Ordinal);
     }

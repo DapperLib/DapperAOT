@@ -42,97 +42,15 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
 
     public bool HasCommandProperties => !CommandProperties.IsDefaultOrEmpty;
 
-    public static AdditionalCommandState? Parse(ISymbol? target, ITypeSymbol? parameterType, ref object? diagnostics)
+    public static AdditionalCommandState? Parse(ISymbol? target, MemberMap? map)
     {
         if (target is null) return null;
 
-        var inherited = target is IAssemblySymbol ? null : Parse(target.ContainingSymbol, parameterType, ref diagnostics);
-        var local = ReadFor(target, parameterType, ref diagnostics);
+        var inherited = target is IAssemblySymbol ? null : Parse(target.ContainingSymbol, map);
+        var local = DapperAnalyzer.SharedGetAdditionalCommandState(target, map, null);
         if (inherited is null) return local;
         if (local is null) return inherited;
         return Combine(inherited, local);
-    }
-
-    private static AdditionalCommandState? ReadFor(ISymbol target, ITypeSymbol? parameterType, ref object? diagnostics)
-    {
-        var attribs = target.GetAttributes();
-        if (attribs.IsDefaultOrEmpty) return null;
-
-        int cmdPropsCount = 0;
-        int estimatedRowCount = 0;
-        string? estimatedRowCountMember = null;
-        if (parameterType is not null)
-        {
-            foreach (var member in Inspection.GetMembers(parameterType))
-            {
-                if (member.IsEstimatedRowCount)
-                {
-                    if (estimatedRowCountMember is not null)
-                    {
-                        DiagnosticsBase.Add(ref diagnostics, Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MemberRowCountHintDuplicated, member.GetLocation()));
-                    }
-                    estimatedRowCountMember = member.Member.Name;
-                }
-            }
-        }
-        var location = target.Locations.FirstOrDefault();
-        foreach (var attrib in attribs)
-        {
-            if (Inspection.IsDapperAttribute(attrib))
-            {
-                switch (attrib.AttributeClass!.Name)
-                {
-                    case Types.EstimatedRowCountAttribute:
-                        if (attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i
-                            && i > 0)
-                        {
-                            if (estimatedRowCountMember is null)
-                            {
-                                estimatedRowCount = i;
-                            }
-                            else
-                            {
-                                DiagnosticsBase.Add(ref diagnostics, Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MethodRowCountHintRedundant, location, estimatedRowCountMember));
-                            }
-                        }
-                        else
-                        {
-                            DiagnosticsBase.Add(ref diagnostics, Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MethodRowCountHintInvalid, location));
-                        }
-                        break;
-                    case Types.CommandPropertyAttribute:
-                        cmdPropsCount++;
-                        break;
-                }
-            }
-        }
-
-        ImmutableArray<CommandProperty> cmdProps;
-        if (cmdPropsCount != 0)
-        {
-            var builder = ImmutableArray.CreateBuilder<CommandProperty>(cmdPropsCount);
-            foreach (var attrib in attribs)
-            {
-                if (Inspection.IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == Types.CommandPropertyAttribute
-                    && attrib.AttributeClass.Arity == 1
-                    && attrib.AttributeClass.TypeArguments[0] is INamedTypeSymbol cmdType
-                    && attrib.ConstructorArguments.Length == 2
-                    && attrib.ConstructorArguments[0].Value is string name
-                    && attrib.ConstructorArguments[1].Value is object value)
-                {
-                    builder.Add(new(cmdType, name, value, location));
-                }
-            }
-            cmdProps = builder.ToImmutable();
-        }
-        else
-        {
-            cmdProps = ImmutableArray<CommandProperty>.Empty;
-        }
-
-
-        return cmdProps.IsDefaultOrEmpty && estimatedRowCount <= 0 && estimatedRowCountMember is null
-            ? null : new(estimatedRowCount, estimatedRowCountMember, cmdProps);
     }
 
     private static AdditionalCommandState Combine(AdditionalCommandState inherited, AdditionalCommandState overrides)
@@ -167,7 +85,7 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
         return builder.ToImmutable();
     }
 
-    private AdditionalCommandState(int estimatedRowCount, string? estimatedRowCountMemberName, ImmutableArray<CommandProperty> commandProperties)
+    internal AdditionalCommandState(int estimatedRowCount, string? estimatedRowCountMemberName, ImmutableArray<CommandProperty> commandProperties)
     {
         EstimatedRowCount = estimatedRowCount;
         EstimatedRowCountMemberName = estimatedRowCountMemberName;

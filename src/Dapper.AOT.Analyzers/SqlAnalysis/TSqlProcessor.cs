@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -15,15 +16,7 @@ namespace Dapper.SqlAnalysis;
 
 internal class TSqlProcessor
 {
-    [Flags]
-    internal enum ModeFlags
-    {
-        None = 0,
-        CaseSensitive = 1 << 0,
-        ValidateSelectNames = 1 << 1,
-        SingleRow = 1 << 2,
-        AtMostOne = 1 << 3,
-    }
+
     [Flags]
     internal enum VariableFlags
     {
@@ -38,12 +31,12 @@ internal class TSqlProcessor
 
     protected bool CaseSensitive => _visitor.CaseSensitive;
     protected bool ValidateSelectNames => _visitor.ValidateSelectNames;
-    public TSqlProcessor(ModeFlags flags = ModeFlags.None, Action<string>? log = null)
+    public TSqlProcessor(SqlParseInputFlags flags = SqlParseInputFlags.None, Action<string>? log = null)
     {
         _visitor = log is null ? new VariableTrackingVisitor(flags, this) : new LoggingVariableTrackingVisitor(flags, this, log);
     }
 
-    static string HackAroundDapperSyntax(string sql, ImmutableArray<ElementMember> members)
+    static string ReplaceDapperSyntaxWithValidSql(string sql, ImmutableArray<ElementMember> members)
     {
         if (SqlTools.LiteralTokens.IsMatch(sql))
         {
@@ -86,24 +79,45 @@ internal class TSqlProcessor
             members = ImmutableArray<ElementMember>.Empty;
         }
         Reset();
-        sql = HackAroundDapperSyntax(sql, members);
+        var fixedSql = ReplaceDapperSyntaxWithValidSql(sql, members);
+        if (fixedSql != sql)
+        {
+            Flags |= SqlParseOutputFlags.SqlAdjustedForDapperSyntax;
+        }
         var parser = new TSql160Parser(true, SqlEngineType.All);
         TSqlFragment tree;
-        using (var reader = new StringReader(sql))
+        using (var reader = new StringReader(fixedSql))
         {
             tree = parser.Parse(reader, out var errors);
             if (errors is not null && errors.Count != 0)
             {
-                Flags |= ParseFlags.SyntaxError;
+                Flags |= SqlParseOutputFlags.SyntaxError;
                 foreach (var error in errors)
                 {
                     OnParseError(error, new Location(error.Line, error.Column, error.Offset, 0));
                 }
             }
+            else
+            {
+                Flags |= SqlParseOutputFlags.Reliable;
+            }
         }
+
         tree.Accept(_visitor);
         foreach (var variable in _visitor.Variables)
         {
+            if (_visitor.KnownParameters)
+            {
+                if (variable.IsParameter && TryGetParameter(variable.Name, out var direction) && direction != ParameterDirection.ReturnValue)
+                {
+                    // fine, handled
+                }
+                else
+                {
+                    // no such parameter? then: it wasn't a parameter, and wasn't declared
+                    OnVariableNotDeclared(variable);
+                }
+            }
             if (variable.IsUnconsumed && !variable.IsTable && !variable.IsOutputParameter)
             {
                 if (_visitor.AssignmentTracking) OnVariableValueNotConsumed(variable);
@@ -114,11 +128,13 @@ internal class TSqlProcessor
 
     public IEnumerable<Variable> Variables => _visitor.Variables;
 
-    public ParseFlags Flags { get; private set; }
-    protected void AddFlags(ParseFlags flags) => Flags |= flags;
+    public SqlParseOutputFlags Flags { get; private set; }
     public virtual void Reset()
     {
-        Flags = ParseFlags.Reliable;
+        var flags = SqlParseOutputFlags.None;
+        if (_visitor.KnownParameters) flags |= SqlParseOutputFlags.KnownParameters;
+        Flags = flags;
+
         _visitor.Reset();
     }
 
@@ -151,6 +167,13 @@ internal class TSqlProcessor
     protected virtual void OnNullLiteralComparison(Location location)
         => OnError($"Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null'", location);
 
+    private void OnSimplifyExpression(Location location, int? value)
+        => OnSimplifyExpression(location, value is null ? "null" : value.Value.ToString(CultureInfo.InvariantCulture));
+    private void OnSimplifyExpression(Location location, decimal? value)
+        => OnSimplifyExpression(location, value is null ? "null" : value.Value.ToString(CultureInfo.InvariantCulture));
+    protected virtual void OnSimplifyExpression(Location location, string value)
+        => OnError($"Expression can be simplified to '{value}'", location);
+
     protected virtual void OnAdditionalBatch(Location location)
         => OnError($"Multiple batches are not permitted", location);
 
@@ -160,7 +183,7 @@ internal class TSqlProcessor
     protected virtual void OnSelectScopeIdentity(Location location)
         => OnError($"Consider OUTPUT INSERTED.yourid on the INSERT instead of SELECT SCOPE_IDENTITY()", location);
 
-    protected virtual void OnExecVariable(Location location)
+    protected virtual void OnExecComposedSql(Location location)
         => OnError($"EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters", location);
 
     protected virtual void OnTableVariableOutputParameter(Variable variable)
@@ -196,17 +219,24 @@ internal class TSqlProcessor
         => OnError($"SELECT for single row without WHERE or (TOP and ORDER BY)", location);
     protected virtual void OnNonPositiveTop(Location location)
         => OnError($"TOP literals should be positive", location);
+    protected virtual void OnNonPositiveFetch(Location location)
+        => OnError($"FETCH literals should be positive", location);
+    protected virtual void OnNegativeOffset(Location location)
+        => OnError($"OFFSET literals should be non-negative", location);
     protected virtual void OnNonIntegerTop(Location location)
         => OnError($"TOP literals should be integers", location);
     protected virtual void OnFromMultiTableMissingAlias(Location location)
         => OnError($"FROM expressions with multiple elements should use aliases", location);
     protected virtual void OnFromMultiTableUnqualifiedColumn(Location location, string name)
         => OnError($"FROM expressions with multiple elements should qualify all columns; it is unclear where '{name}' is located", location);
+    protected virtual void OnTopWithOffset(Location location)
+        => OnError($"TOP cannot be used when OFFSET is specified", location);
 
 
     internal readonly struct Location
     {
-        public Location(TSqlFragment source) : this()
+        public static implicit operator Location(TSqlFragment source) => new(source);
+        private Location(TSqlFragment source) : this()
         {
             Line = source.StartLine;
             Column = source.StartColumn;
@@ -245,13 +275,13 @@ internal class TSqlProcessor
         {
             Flags = flags;
             Name = identifier.Value;
-            Location = new Location(identifier);
+            Location = identifier;
         }
         public Variable(VariableReference reference, VariableFlags flags)
         {
             Flags = flags;
             Name = reference.Name;
-            Location = new Location(reference);
+            Location = reference;
         }
 
         private Variable(scoped in Variable source, VariableFlags flags)
@@ -269,12 +299,12 @@ internal class TSqlProcessor
         public Variable WithUnconsumedValue() => new(in this, (Flags & ~VariableFlags.NoValue) | VariableFlags.Unconsumed);
         public Variable WithFlags(VariableFlags flags) => new(in this, flags);
 
-        public Variable WithLocation(TSqlFragment node) => new(in this, new Location(node));
+        public Variable WithLocation(TSqlFragment node) => new(in this, node);
     }
     class LoggingVariableTrackingVisitor : VariableTrackingVisitor
     {
         private readonly Action<string> log;
-        public LoggingVariableTrackingVisitor(ModeFlags flags, TSqlProcessor parser, Action<string> log) : base(flags, parser)
+        public LoggingVariableTrackingVisitor(SqlParseInputFlags flags, TSqlProcessor parser, Action<string> log) : base(flags, parser)
         {
             this.log = log;
         }
@@ -336,18 +366,19 @@ internal class TSqlProcessor
         //   call base.ExplicitVisit; VariableTableReference is an example, omitting node.Variable?.Accept(this)
         //   to avoid a problem; also, be sure to think "nulls", so: ?.Accept(this), if you're not sure
 
-        private readonly ModeFlags _flags;
-        public VariableTrackingVisitor(ModeFlags flags, TSqlProcessor parser)
+        private readonly SqlParseInputFlags _flags;
+        public VariableTrackingVisitor(SqlParseInputFlags flags, TSqlProcessor parser)
         {
             _flags = flags;
             variables = CaseSensitive ? new(StringComparer.Ordinal) : new(StringComparer.OrdinalIgnoreCase);
             this.parser = parser;
         }
 
-        public bool CaseSensitive => (_flags & ModeFlags.CaseSensitive) != 0;
-        public bool ValidateSelectNames => (_flags & ModeFlags.ValidateSelectNames) != 0;
-        public bool SingleRow => (_flags & ModeFlags.SingleRow) != 0;
-        public bool AtMostOne => (_flags & ModeFlags.AtMostOne) != 0;
+        public bool CaseSensitive => (_flags & SqlParseInputFlags.CaseSensitive) != 0;
+        public bool ValidateSelectNames => (_flags & SqlParseInputFlags.ValidateSelectNames) != 0;
+        public bool SingleRow => (_flags & SqlParseInputFlags.SingleRow) != 0;
+        public bool AtMostOne => (_flags & SqlParseInputFlags.AtMostOne) != 0;
+        public bool KnownParameters => (_flags & SqlParseInputFlags.KnownParameters) != 0;
 
         private readonly Dictionary<string, Variable> variables;
         private int batchCount;
@@ -367,7 +398,7 @@ internal class TSqlProcessor
         {
             if (++batchCount >= 2)
             {
-                parser.OnAdditionalBatch(new Location(node));
+                parser.OnAdditionalBatch(node);
             }
             base.Visit(node);
         }
@@ -442,7 +473,7 @@ internal class TSqlProcessor
 
         public override void Visit(ReturnStatement node)
         {
-            parser.Flags |= ParseFlags.Return;
+            parser.Flags |= SqlParseOutputFlags.Return;
             base.Visit(node);
         }
 
@@ -467,18 +498,29 @@ internal class TSqlProcessor
         {
             if (node.FirstExpression is NullLiteral)
             {
-                parser.OnNullLiteralComparison(new Location(node.FirstExpression));
+                parser.OnNullLiteralComparison(node.FirstExpression);
             }
             if (node.SecondExpression is NullLiteral)
             {
-                parser.OnNullLiteralComparison(new Location(node.SecondExpression));
+                parser.OnNullLiteralComparison(node.SecondExpression);
             }
             base.Visit(node);
         }
 
         public override void ExplicitVisit(QuerySpecification node)
         {
-            base.ExplicitVisit(node);
+            var oldDemandAlias = _demandAliases;
+            try
+            {
+                // set ambient state so we can complain more as we walk the nodes
+                _demandAliases = IsMultiTable(node.FromClause)
+                    ? new(true, null) : default;
+                base.ExplicitVisit(node);
+            }
+            finally
+            {
+                _demandAliases = oldDemandAlias;
+            }
             foreach (var el in node.SelectElements)
             {
                 if (el is SelectSetVariable setVar && setVar.Variable is not null)
@@ -522,23 +564,33 @@ internal class TSqlProcessor
 
         public override void Visit(ExecuteStatement node)
         {
-            parser.Flags |= ParseFlags.MaybeQuery;
+            parser.Flags |= SqlParseOutputFlags.MaybeQuery;
             base.Visit(node);
         }
 
         private bool AddQuery() // returns true if the first
         {
-            switch (parser.Flags & (ParseFlags.Query | ParseFlags.Queries))
+            switch (parser.Flags & (SqlParseOutputFlags.Query | SqlParseOutputFlags.Queries))
             {
-                case ParseFlags.None:
-                    parser.Flags |= ParseFlags.Query;
+                case SqlParseOutputFlags.None:
+                    parser.Flags |= SqlParseOutputFlags.Query;
                     return true;
-                case ParseFlags.Query:
-                    parser.Flags |= ParseFlags.Queries;
+                case SqlParseOutputFlags.Query:
+                    parser.Flags |= SqlParseOutputFlags.Queries;
                     break;
             }
             return false;
         }
+
+        public override void Visit(QuerySpecification node)
+        {
+            if (node.TopRowFilter is not null && node.OffsetClause is not null)
+            {
+                parser.OnTopWithOffset(node.TopRowFilter);
+            }
+            base.Visit(node);
+        }
+
         public override void Visit(SelectStatement node)
         {
             if (node.QueryExpression is QuerySpecification spec)
@@ -548,7 +600,7 @@ internal class TSqlProcessor
                     && spec.SelectElements[0] is SelectScalarExpression { Expression: FunctionCall func }
                     && string.Equals(func.FunctionName?.Value, "SCOPE_IDENTITY", StringComparison.OrdinalIgnoreCase))
                 {
-                    parser.OnSelectScopeIdentity(new Location(func));
+                    parser.OnSelectScopeIdentity(func);
                 }
                 int sets = 0, reads = 0;
                 var checkNames = ValidateSelectNames;
@@ -560,7 +612,7 @@ internal class TSqlProcessor
                     switch (el)
                     {
                         case SelectStarExpression:
-                            parser.OnSelectStar(new Location(el));
+                            parser.OnSelectStar(el);
                             reads++;
                             break;
                         case SelectScalarExpression scalar:
@@ -577,11 +629,11 @@ internal class TSqlProcessor
                                 }
                                 if (string.IsNullOrWhiteSpace(name))
                                 {
-                                    parser.OnSelectEmptyColumnName(new(scalar), index);
+                                    parser.OnSelectEmptyColumnName(scalar, index);
                                 }
                                 else if (!names.Add(name!))
                                 {
-                                    parser.OnSelectDuplicateColumnName(new(scalar), name!);
+                                    parser.OnSelectDuplicateColumnName(scalar, name!);
                                 }
                             }
                             reads++;
@@ -596,67 +648,326 @@ internal class TSqlProcessor
                 {
                     if (sets != 0)
                     {
-                        parser.OnSelectAssignAndRead(new(spec));
+                        parser.OnSelectAssignAndRead(spec);
                     }
                     bool firstQuery = AddQuery();
-                    if (firstQuery && SingleRow)
+                    if (firstQuery && SingleRow // optionally enforce single-row validation
+                        && spec.FromClause is not null) // no "from" is things like 'select @id, @name' - always one row
                     {
-                        bool haveTop = false;
-                        if (spec.TopRowFilter is { Percent: false, Expression: IntegerLiteral top }
-                            && ParseInt32(top, out int i))
+                        bool haveTopOrFetch = false;
+                        if (spec.TopRowFilter is { Percent: false, Expression: ScalarExpression top })
                         {
-                            haveTop = true;
-                            if (AtMostOne) // Single[OrDefault][Async]
-                            {
-                                if (i != 2)
-                                {
-                                    parser.OnSelectSingleTopError(new(node));
-                                }
-                            }
-                            else // First[OrDefault][Async]
-                            {
-                                if (i != 1)
-                                {
-                                    parser.OnSelectFirstTopError(new(node));
-                                }
-                            }
+                            haveTopOrFetch = EnforceTop(top);
+                        }
+                        else if (spec.OffsetClause is { FetchExpression: ScalarExpression fetch })
+                        {
+                            haveTopOrFetch = EnforceTop(fetch);
                         }
 
                         // we want *either* a WHERE (which we will allow with/without a TOP),
                         // or a TOP + ORDER BY
                         if (!IsUnfiltered(spec.FromClause, spec.WhereClause)) { } // fine
-                        else if (haveTop && spec.OrderByClause is not null) { } // fine
+                        else if (haveTopOrFetch && spec.OrderByClause is not null) { } // fine
                         else
                         {
-                            parser.OnSelectSingleRowWithoutWhere(new(node));
+                            parser.OnSelectSingleRowWithoutWhere(node);
                         }
                     }
-
                 }
-
             }
 
             base.Visit(node);
         }
 
-        static bool ParseInt32(IntegerLiteral node, out int value) => int.TryParse(node.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
-        static bool ParseNumeric(NumericLiteral node, out decimal value) => decimal.TryParse(node.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+        private bool EnforceTop(ScalarExpression expr)
+        {
+            if (IsInt32(expr, out var i, complex: true) && i.HasValue)
+            {
+                if (AtMostOne) // Single[OrDefault][Async]
+                {
+                    if (i.Value != 2)
+                    {
+                        parser.OnSelectSingleTopError(expr);
+                    }
+                }
+                else // First[OrDefault][Async]
+                {
+                    if (i.Value != 1)
+                    {
+                        parser.OnSelectFirstTopError(expr);
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
+        public override void Visit(OffsetClause node)
+        {
+            if (IsInt32(node.FetchExpression, out var i, true) && i <= 0)
+            {
+                parser.OnNonPositiveFetch(node.FetchExpression);
+            }
+            if (IsInt32(node.OffsetExpression, out i, true) && i < 0)
+            {
+                parser.OnNegativeOffset(node.OffsetExpression);
+            }
+            base.Visit(node);
+        }
+
+        static bool IsInt32(ScalarExpression scalar, out int? value, bool complex)
+        {
+            try
+            {
+                checked
+                {
+                    switch (scalar)
+                    {
+                        case NullLiteral:
+                            value = null;
+                            return true;
+                        case IntegerLiteral integer when int.TryParse(integer.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i):
+                            value = i;
+                            return true;
+                        case UnaryExpression unary when IsInt32(unary.Expression, out value, complex):
+                            switch (unary.UnaryExpressionType)
+                            {
+                                case UnaryExpressionType.Negative: // note -ve is always allowed, even when not complex
+                                    value = -value;
+                                    return true;
+                                case UnaryExpressionType.Positive when complex:
+                                    return true;
+                                case UnaryExpressionType.BitwiseNot when complex:
+                                    value = ~value;
+                                    return true;
+                            }
+                            break;
+                        case BinaryExpression binary when complex:
+                            var haveFirst = IsInt32(binary.FirstExpression, out var first, true);
+                            var haveSecond = IsInt32(binary.SecondExpression, out var second, true);
+
+                            // if either half is *known* to be null; we're good
+                            if ((haveFirst && first is null) || (haveSecond && second is null))
+                            {
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                    case BinaryExpressionType.Subtract:
+                                    case BinaryExpressionType.Divide:
+                                    case BinaryExpressionType.Multiply:
+                                    case BinaryExpressionType.Modulo:
+                                    case BinaryExpressionType.BitwiseXor:
+                                    case BinaryExpressionType.BitwiseOr:
+                                    case BinaryExpressionType.BitwiseAnd:
+                                        value = null;
+                                        return true;
+                                }
+                                break;
+                            }
+
+                            // otherwise, need both
+                            if (!(haveFirst && haveSecond))
+                            {
+                                break;
+                            }
+
+                            switch (binary.BinaryExpressionType)
+                            {
+                                case BinaryExpressionType.Add:
+                                    value = first + second;
+                                    return true;
+                                case BinaryExpressionType.Subtract:
+                                    value = first - second;
+                                    return true;
+                                case BinaryExpressionType.Divide:
+                                    value = first / second; // TSQL is integer division
+                                    return true;
+                                case BinaryExpressionType.Multiply:
+                                    value = first * second;
+                                    return true;
+                                case BinaryExpressionType.Modulo:
+                                    value = first % second;
+                                    return true;
+                                case BinaryExpressionType.BitwiseXor:
+                                    value = first ^ second;
+                                    return true;
+                                case BinaryExpressionType.BitwiseOr:
+                                    value = first | second;
+                                    return true;
+                                case BinaryExpressionType.BitwiseAnd:
+                                    value = first & second;
+                                    return true;
+                                case BinaryExpressionType.LeftShift:
+                                    if (first is null || second is null) break; // null not allowed here
+                                    if (second < 0)
+                                    {
+                                        second = -second; // TSQL: neg-shift allowed
+                                        goto case BinaryExpressionType.RightShift;
+                                    }
+                                    if (second >= 32) // c# shift masks "by" to 5 bits 
+                                    {
+                                        value = 0;
+                                        return true;
+                                    }
+                                    value = first << second;
+                                    return true;
+                                case BinaryExpressionType.RightShift:
+                                    if (first is null || second is null) break; // null not allowed here
+                                    if (second < 0)
+                                    {
+                                        second = -second; // TSQL: neg-shift allowed
+                                        goto case BinaryExpressionType.LeftShift;
+                                    }
+                                    if (second >= 32) // c# shift masks "by" to 5 bits 
+                                    {
+                                        value = 0;
+                                        return true;
+                                    }
+                                    value = first >>> second; // TSQL right-shift is unsigned
+                                    return true;
+                            }
+                            break;
+                    }
+                }
+            }
+            catch { } // overflow etc
+            value = default;
+            return false;
+        }
+
+        static bool IsDecimal(ScalarExpression scalar, out decimal? value, bool complex = false)
+        {
+            try
+            {
+                checked
+                {
+                    switch (scalar)
+                    {
+                        case NullLiteral:
+                            value = null;
+                            return true;
+                        case IntegerLiteral integer when int.TryParse(integer.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i):
+                            value = i;
+                            return true;
+                        case NumericLiteral number when decimal.TryParse(number.Value, NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out var d):
+                            value = d;
+                            return true;
+                        case UnaryExpression unary when IsDecimal(unary.Expression, out value, complex):
+                            switch (unary.UnaryExpressionType)
+                            {
+                                case UnaryExpressionType.Negative: // note -ve is always allowed, even when not complex
+                                    value = -value;
+                                    return true;
+                                case UnaryExpressionType.Positive when complex:
+                                    return true;
+                            }
+                            break;
+                        case BinaryExpression binary when complex:
+                            var haveFirst = IsDecimal(binary.FirstExpression, out var first, true);
+                            var haveSecond = IsDecimal(binary.SecondExpression, out var second, true);
+
+                            // if either half is *known* to be null; we're good
+                            if ((haveFirst && first is null) || (haveSecond && second is null))
+                            {
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                    case BinaryExpressionType.Subtract:
+                                    case BinaryExpressionType.Divide:
+                                    case BinaryExpressionType.Multiply:
+                                    case BinaryExpressionType.Modulo:
+                                        value = null;
+                                        return true;
+                                }
+                                break;
+                            }
+
+                            // otherwise, need both
+                            if (!(haveFirst && haveSecond))
+                            {
+                                break;
+                            }
+
+                            switch (binary.BinaryExpressionType)
+                            {
+                                case BinaryExpressionType.Add:
+                                    value = first + second;
+                                    return true;
+                                case BinaryExpressionType.Subtract:
+                                    value = first - second;
+                                    return true;
+                                case BinaryExpressionType.Divide:
+                                    value = first / second; // TSQL is integer division
+                                    return true;
+                                case BinaryExpressionType.Multiply:
+                                    value = first * second;
+                                    return true;
+                                case BinaryExpressionType.Modulo:
+                                    value = first % second;
+                                    return true;
+                            }
+                            break;
+                    }
+                }
+            }
+            catch { } // overflow etc
+            value = default;
+            return false;
+        }
+
         public override void Visit(TopRowFilter node)
         {
-            if (node.Expression is IntegerLiteral iLit && ParseInt32(iLit, out var i) && i <= 0)
+            if (node.Expression is ScalarExpression scalar)
             {
-                parser.OnNonPositiveTop(new(node));
-            }
-            else if (node.Expression is NumericLiteral nLit)
-            {
-                if (!node.Percent)
+                if (IsInt32(scalar, out var i, true))
                 {
-                    parser.OnNonIntegerTop(new(node));
+                    if (i <= 0)
+                    {
+                        parser.OnNonPositiveTop(scalar);
+                    }
                 }
-                if (ParseNumeric(nLit, out var n) && n <= 0)
-                {   // don't expect to see this; parser rejects them
-                    parser.OnNonPositiveTop(new(node));
+                else if (IsDecimal(scalar, out var d, true))
+                {
+                    if (!node.Percent)
+                    {
+                        parser.OnNonIntegerTop(scalar);
+                    }
+                    if (d <= 0)
+                    {   // don't expect to see this; parser rejects them
+                        parser.OnNonPositiveTop(scalar);
+                    }
                 }
+            }
+            base.Visit(node);
+        }
+
+        public override void Visit(UnaryExpression node)
+        {
+            if (node.UnaryExpressionType != UnaryExpressionType.Negative) // need to allow unary
+            {
+                // if operand is simple, compute and report
+                if (IsInt32(node.Expression, out _, complex: false))
+                {
+                    if (IsInt32(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
+                }
+                else if (IsDecimal(node.Expression, out _, complex: false))
+                {
+                    if (IsDecimal(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
+                }
+            }
+            base.Visit(node);
+        }
+        public override void Visit(BinaryExpression node)
+        {
+            // if operands are simple, compute and report
+            bool haveNull = node.FirstExpression is NullLiteral || node.SecondExpression is NullLiteral;
+            if (haveNull || (IsInt32(node.FirstExpression, out _, complex: false) && IsInt32(node.SecondExpression, out _, complex: false)))
+            {
+                if (IsInt32(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
+            }
+            else if (haveNull || (IsDecimal(node.FirstExpression, out _, complex: false) && IsDecimal(node.SecondExpression, out _, complex: false)))
+            {
+                if (IsDecimal(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
             }
             base.Visit(node);
         }
@@ -680,76 +991,87 @@ internal class TSqlProcessor
             return tables.Count > 1 || tables[0] is JoinTableReference;
         }
 
-        public override void ExplicitVisit(SelectStatement node)
+        public override void ExplicitVisit(UpdateSpecification node)
         {
-            bool oldDemandAlias = _demandAliases;
+            Debug.Assert(!_demandAliases.Active);
+            var oldDemandAlias = _demandAliases;
             try
             {
                 // set ambient state so we can complain more as we walk the nodes
-                _demandAliases = IsMultiTable((node.QueryExpression as QuerySpecification)?.FromClause);
+                _demandAliases = IsMultiTable(node.FromClause) ? new(true, node.Target) : default;
                 base.ExplicitVisit(node);
+                if (_demandAliases.Active && !_demandAliases.AmnestyNodeIsAlias)
+                    parser.OnFromMultiTableMissingAlias(node.Target);
             }
             finally
             {
                 _demandAliases = oldDemandAlias;
             }
         }
-        public override void ExplicitVisit(UpdateStatement node)
+        public override void ExplicitVisit(DeleteSpecification node)
         {
-            bool oldDemandAlias = _demandAliases;
+            Debug.Assert(!_demandAliases.Active);
+            var oldDemandAlias = _demandAliases;
             try
             {
                 // set ambient state so we can complain more as we walk the nodes
-                _demandAliases = IsMultiTable(node.UpdateSpecification.FromClause);
+                _demandAliases = IsMultiTable(node.FromClause) ? new(true, node.Target) : default;
                 base.ExplicitVisit(node);
+                if (_demandAliases.Active && !_demandAliases.AmnestyNodeIsAlias)
+                    parser.OnFromMultiTableMissingAlias(node.Target);
             }
             finally
             {
                 _demandAliases = oldDemandAlias;
             }
         }
-        public override void ExplicitVisit(DeleteStatement node)
+
+        private struct DemandAliasesState
         {
-            bool oldDemandAlias = _demandAliases;
-            try
+            public DemandAliasesState(bool active, TableReference? amnesty)
             {
-                // set ambient state so we can complain more as we walk the nodes
-                _demandAliases = IsMultiTable(node.DeleteSpecification.FromClause);
-                base.ExplicitVisit(node);
+                Active = active;
+                Amnesty = amnesty;
+                AmnestyNodeIsAlias = false;
+                HuntingAlias = null;
+                if (amnesty is NamedTableReference { Alias: null } named && named.SchemaObject is { Count: 1 } schema)
+                {
+                    HuntingAlias = schema[0].Value;
+                }
             }
-            finally
-            {
-                _demandAliases = oldDemandAlias;
-            }
+            public readonly string? HuntingAlias;
+            public readonly bool Active;
+            public readonly TableReference? Amnesty; // we can't validate the target until too late
+            public bool AmnestyNodeIsAlias;
         }
-        private bool _demandAliases;
-        public override void ExplicitVisit(FromClause node)
-        {
-            bool oldDemandAlias = _demandAliases;
-            try
-            {
-                // set ambient state so we can complain more as we walk the nodes
-                _demandAliases = IsMultiTable(node);
-                base.ExplicitVisit(node);
-            }
-            finally
-            {
-                _demandAliases = oldDemandAlias;
-            }
-        }
+
+        private DemandAliasesState _demandAliases;
+
         public override void Visit(TableReferenceWithAlias node)
         {
-            if (_demandAliases && string.IsNullOrWhiteSpace(node.Alias?.Value))
+            if (_demandAliases.Active)
             {
-                parser.OnFromMultiTableMissingAlias(new(node));
+                if (ReferenceEquals(node, _demandAliases.Amnesty))
+                {
+                    // ignore for now
+                }
+                else if (string.IsNullOrWhiteSpace(node.Alias?.Value))
+                {
+                    parser.OnFromMultiTableMissingAlias(node);
+                }
+                else if (node.Alias!.Value == _demandAliases.HuntingAlias)
+                {
+                    // we've resolved the Target node as an alias
+                    _demandAliases.AmnestyNodeIsAlias = true;
+                }
             }
             base.Visit(node);
         }
         public override void Visit(ColumnReferenceExpression node)
         {
-            if (_demandAliases && node.MultiPartIdentifier.Count == 1)
+            if (_demandAliases.Active && node.MultiPartIdentifier.Count == 1)
             {
-                parser.OnFromMultiTableUnqualifiedColumn(new(node), node.MultiPartIdentifier[0].Value);
+                parser.OnFromMultiTableUnqualifiedColumn(node, node.MultiPartIdentifier[0].Value);
             }
             base.Visit(node);
         }
@@ -758,7 +1080,7 @@ internal class TSqlProcessor
         {
             if (IsUnfiltered(node.FromClause, node.WhereClause))
             {
-                parser.OnDeleteWithoutWhere(new(node));
+                parser.OnDeleteWithoutWhere(node);
             }
             base.Visit(node);
         }
@@ -767,7 +1089,7 @@ internal class TSqlProcessor
         {
             if (IsUnfiltered(node.FromClause, node.WhereClause))
             {
-                parser.OnUpdateWithoutWhere(new(node));
+                parser.OnUpdateWithoutWhere(node);
             }
             base.Visit(node);
         }
@@ -780,10 +1102,16 @@ internal class TSqlProcessor
             if (node.ExecutableEntity is not null)
             {
                 node.ExecutableEntity.Accept(this);
-                if (node.ExecutableEntity is ExecutableStringList list && list.Strings.Count == 1
-                    && list.Strings[0] is VariableReference)
+                if (node.ExecutableEntity is ExecutableStringList list)
                 {
-                    parser.OnExecVariable(new Location(node));
+                    if (list.Strings.Count == 0)
+                    { } // ??
+                    else if (list.Strings.Count == 1 && list.Strings[0] is StringLiteral)
+                    { } // we'll let them off
+                    else
+                    {
+                        parser.OnExecComposedSql(node);
+                    }
                 }
             }
             if (node.Variable is not null)
@@ -845,7 +1173,7 @@ internal class TSqlProcessor
         {
             if (string.Equals(node.Name, "@@IDENTITY", StringComparison.OrdinalIgnoreCase))
             {
-                parser.OnGlobalIdentity(new Location(node));
+                parser.OnGlobalIdentity(node);
             }
             base.Visit(node);
         }
@@ -855,15 +1183,15 @@ internal class TSqlProcessor
             var knownInsertedCount = TryCount(node.InsertSource, out var count, out bool unbalanced);
             if (unbalanced)
             {
-                parser.OnInsertColumnsUnbalanced(new Location(node.InsertSource));
+                parser.OnInsertColumnsUnbalanced(node.InsertSource);
             }
             if (node.Columns.Count == 0)
             {
-                parser.OnInsertColumnsNotSpecified(new Location(node));
+                parser.OnInsertColumnsNotSpecified(node);
             }
             else if (knownInsertedCount && count != node.Columns.Count)
             {
-                parser.OnInsertColumnMismatch(new Location(node.InsertSource));
+                parser.OnInsertColumnMismatch(node.InsertSource);
             }
 
             base.Visit(node);
@@ -939,8 +1267,10 @@ internal class TSqlProcessor
             {
                 var flags = VariableFlags.Parameter | (isTable ? VariableFlags.Table : VariableFlags.None);
 
-                if (parser.TryGetParameter(node.Name, out var direction) && direction != ParameterDirection.ReturnValue)
+                ParameterDirection direction;
+                if (KnownParameters && parser.TryGetParameter(node.Name, out direction) && direction != ParameterDirection.ReturnValue)
                 {
+                    // if it is known, we can infer the directionality and thus assignment state
                     switch (direction)
                     {
                         case ParameterDirection.Output:
@@ -948,31 +1278,32 @@ internal class TSqlProcessor
                             flags |= VariableFlags.OutputParameter;
                             break;
                     }
-
-                    if (mark && !isTable) flags |= VariableFlags.Unconsumed;
-
-                    var variable = new Variable(node, flags);
-                    OnDeclare(variable);
-
-                    if (!mark && direction == ParameterDirection.Output)
-                    {
-                        // pure output param, and first time we're seeing it is a read: that's not right
-                        parser.OnVariableAccessedBeforeAssignment(variable);
-                    }
-                    else if (mark && direction is ParameterDirection.Input or ParameterDirection.InputOutput)
-                    {
-                        // we haven't consumed the original value - but watch out for "if" etc
-                        if (AssignmentTracking) parser.OnVariableValueNotConsumed(variable);
-                    }
-
-                    if (variable.IsTable && variable.IsOutputParameter)
-                    {
-                        parser.OnTableVariableOutputParameter(variable);
-                    }
                 }
                 else
                 {
-                    parser.OnVariableNotDeclared(new(node, flags));
+                    direction = ParameterDirection.Input;
+                }
+
+
+                if (mark && !isTable) flags |= VariableFlags.Unconsumed;
+
+                var variable = new Variable(node, flags);
+                OnDeclare(variable);
+
+                if (!mark && direction == ParameterDirection.Output)
+                {
+                    // pure output param, and first time we're seeing it is a read: that's not right
+                    parser.OnVariableAccessedBeforeAssignment(variable);
+                }
+                else if (mark && direction is ParameterDirection.Input or ParameterDirection.InputOutput)
+                {
+                    // we haven't consumed the original value - but watch out for "if" etc
+                    if (AssignmentTracking) parser.OnVariableValueNotConsumed(variable);
+                }
+
+                if (variable.IsTable && variable.IsOutputParameter)
+                {
+                    parser.OnTableVariableOutputParameter(variable);
                 }
             }
         }

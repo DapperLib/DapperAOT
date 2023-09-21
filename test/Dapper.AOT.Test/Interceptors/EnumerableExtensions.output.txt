@@ -1,19 +1,4 @@
-Generator produced 6 diagnostics:
+Generator produced 1 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 6 of 6 enabled call-sites using 1 interceptors, 0 commands and 0 readers
-
-Warning DAP028 Interceptors/EnumerableExtensions.input.cs L10 C13
-Use Query(...).AsList() instead of Query(...).ToList()
-
-Warning DAP027 Interceptors/EnumerableExtensions.input.cs L13 C13
-Use QueryFirst() instead of Query(...).First()
-
-Warning DAP027 Interceptors/EnumerableExtensions.input.cs L14 C13
-Use QuerySingle() instead of Query(...).Single()
-
-Warning DAP027 Interceptors/EnumerableExtensions.input.cs L15 C13
-Use QueryFirstOrDefault() instead of Query(...).FirstOrDefault()
-
-Warning DAP027 Interceptors/EnumerableExtensions.input.cs L16 C13
-Use QuerySingleOrDefault() instead of Query(...).SingleOrDefault()

@@ -44,7 +44,7 @@ public sealed class WrappedDapperInterceptorAnalyzer : DiagnosticAnalyzer
         public void OnOperation(OperationAnalysisContext context)
         {
             if (!inner.PreFilter(context.Operation.Syntax, context.CancellationToken)) return;
-            var state = new ParseState(ParseContextProxy.Create(context));
+            var state = new ParseState(context);
             var parsed = inner.Parse(state);
             if (parsed is not null)
             {

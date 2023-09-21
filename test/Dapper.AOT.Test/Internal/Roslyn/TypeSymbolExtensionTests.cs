@@ -4,6 +4,7 @@ using Xunit;
 using System.Linq;
 using Microsoft.CodeAnalysis.Operations;
 using Dapper.TestCommon;
+using static Dapper.Internal.Inspection;
 
 namespace Dapper.Internal.Roslyn
 {
@@ -20,9 +21,9 @@ namespace Dapper.Internal.Roslyn
             var argumentOperation = GetInvocationArgumentOperation(text);
             var typeSymbol = GetConversionTypeSymbol(argumentOperation);
 
-            var result = typeSymbol.TryGetConstructors(out var constructors);
-            Assert.True(result);
-            Assert.Single(constructors!);
+            var result = ChooseConstructor(typeSymbol, out var ctor);
+            Assert.Equal(ConstructorResult.SuccessSingleImplicit, result);
+            Assert.NotNull(ctor);
         }
 
         [Fact]

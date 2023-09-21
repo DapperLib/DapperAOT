@@ -1,9 +1,8 @@
 ﻿using Dapper.CodeAnalysis;
 using Dapper.Internal.Roslyn;
+using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -11,7 +10,6 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 
 namespace Dapper.Internal;
 
@@ -27,15 +25,23 @@ internal static class Inspection
                 hasNames = false;
                 if (named is not null)
                 {
+                    int i = 1;
                     foreach (var field in named.TupleElements)
                     {
-                        if (!string.IsNullOrWhiteSpace(field.Name))
+                        if (!IsDefaultFieldName(field.Name, i))
                         {
                             hasNames = true;
                             break;
                         }
+                        i++;
                     }
                     return true;
+                }
+
+                static bool IsDefaultFieldName(string name, int index)
+                {
+                    if (string.IsNullOrWhiteSpace(name)) return true;
+                    return name.StartsWith("Item") && name == $"Item{index}";
                 }
             }
             if (type is IArrayTypeSymbol array)
@@ -101,7 +107,7 @@ internal static class Inspection
             var syntax = op.Syntax;
             while (syntax is not null)
             {
-                if (syntax.IsKind(SyntaxKind.MethodDeclaration))
+                if (syntax.IsMethodDeclaration())
                 {
                     return syntax;
                 }
@@ -152,6 +158,18 @@ internal static class Inspection
     }
 
     public static bool IsMissingOrObjectOrDynamic(ITypeSymbol? type) => type is null || type.SpecialType == SpecialType.System_Object || type.TypeKind == TypeKind.Dynamic;
+
+    internal static bool IsDynamicParameters(ITypeSymbol? type)
+    {
+        if (type is null || type.SpecialType != SpecialType.None) return false;
+        if (Inspection.IsBasicDapperType(type, Types.DynamicParameters)
+            || Inspection.IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
+        foreach (var i in type.AllInterfaces)
+        {
+            if (Inspection.IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
+        }
+        return false;
+    }
 
     public static bool IsPublicOrAssemblyLocal(ISymbol? symbol, in ParseState ctx, out ISymbol? failingSymbol)
         => IsPublicOrAssemblyLocal(symbol, ctx.SemanticModel.Compilation.Assembly, out failingSymbol);
@@ -430,55 +448,13 @@ internal static class Inspection
         public Location? GetLocation() => Member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
     }
 
-    /// <summary>
-    /// Chooses a single constructor of type which to use for type's instances creation.
-    /// </summary>
-    /// <param name="typeSymbol">symbol for type to analyze</param>
-    /// <param name="constructor">the method symbol for selected constructor</param>
-    /// <param name="errorDiagnostic">if constructor selection was invalid, contains a diagnostic with error to emit to generation context</param>
-    /// <returns></returns>
-    public static bool TryGetSingleCompatibleDapperAotConstructor(
-        ITypeSymbol? typeSymbol,
-        out IMethodSymbol? constructor,
-        out Diagnostic? errorDiagnostic)
+    public enum ConstructorResult
     {
-        var (standardCtors, dapperAotEnabledCtors) = ChooseDapperAotCompatibleConstructors(typeSymbol);
-        if (standardCtors.Count == 0 && dapperAotEnabledCtors.Count == 0)
-        {
-            errorDiagnostic = null;
-            constructor = null!;
-            return false;
-        }
-
-        // if multiple constructors remain, and multiple are marked [DapperAot]/[DapperAot(true)], a generator error is emitted and no constructor is selected
-        if (dapperAotEnabledCtors.Count > 1)
-        {
-            // attaching diagnostic to first location of first ctor
-            var loc = dapperAotEnabledCtors.First().Locations.First();
-
-            errorDiagnostic = Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.TooManyDapperAotEnabledConstructors, loc, typeSymbol!.ToDisplayString());
-            constructor = null!;
-            return false;
-        }
-
-        if (dapperAotEnabledCtors.Count == 1)
-        {
-            errorDiagnostic = null;
-            constructor = dapperAotEnabledCtors.First();
-            return true;
-        }
-
-        if (standardCtors.Count == 1)
-        {
-            errorDiagnostic = null;
-            constructor = standardCtors.First();
-            return true;
-        }
-
-        // we cant choose a constructor, so we simply dont choose any
-        errorDiagnostic = null;
-        constructor = null!;
-        return false;
+        NoneFound,
+        SuccessSingleExplicit,
+        SuccessSingleImplicit,
+        FailMultipleExplicit,
+        FailMultipleImplicit,
     }
 
     /// <summary>
@@ -486,59 +462,97 @@ internal static class Inspection
     /// a) parameterless
     /// b) marked with [DapperAot(false)]
     /// </summary>
-    private static (IReadOnlyCollection<IMethodSymbol> standardConstructors, IReadOnlyCollection<IMethodSymbol> dapperAotEnabledConstructors) ChooseDapperAotCompatibleConstructors(ITypeSymbol? typeSymbol)
+    internal static ConstructorResult ChooseConstructor(ITypeSymbol? typeSymbol, out IMethodSymbol? constructor)
     {
-        if (!typeSymbol.TryGetConstructors(out var constructors))
+        constructor = null;
+        if (typeSymbol is not INamedTypeSymbol named)
         {
-            return (standardConstructors: Array.Empty<IMethodSymbol>(), dapperAotEnabledConstructors: Array.Empty<IMethodSymbol>());
+            return ConstructorResult.NoneFound;
         }
 
-        // special case
-        if (typeSymbol!.IsRecord && constructors?.Length == 2)
+        var ctors = named.Constructors;
+        if (ctors.IsDefaultOrEmpty)
         {
-            // in case of record syntax with primary constructor like:
-            // `public record MyRecord(int Id, string Name);`
-            // we need to pick the first constructor, which is the primary one. The second one would contain single parameter of type itself.
-            // So checking second constructor suits this rule and picking the first one.
+            return ConstructorResult.NoneFound;
+        }
 
-            if (constructors.Value[1].Parameters.Length == 1 && constructors.Value[1].Parameters.First().Type.ToDisplayString() == typeSymbol.ToDisplayString())
+        // look for [ExplicitConstructor]
+        foreach (var ctor in ctors)
+        {
+            if (GetDapperAttribute(ctor, Types.ExplicitConstructorAttribute) is not null)
             {
-                return (standardConstructors: new[] { constructors.Value.First() }, dapperAotEnabledConstructors: Array.Empty<IMethodSymbol>());
+                if (constructor is not null)
+                {
+                    return ConstructorResult.FailMultipleExplicit;
+                }
+                constructor = ctor;
             }
         }
-
-        var standardCtors = new List<IMethodSymbol>();
-        var dapperAotEnabledCtors = new List<IMethodSymbol>();
-
-        foreach (var constructorMethodSymbol in constructors!)
+        if (constructor is not null)
         {
-            // not taking into an account parameterless constructors
-            if (constructorMethodSymbol.Parameters.Length == 0) continue;
+            // we found one [ExplicitConstructor]
+            return ConstructorResult.SuccessSingleExplicit;
+        }
 
-            var dapperAotAttribute = GetDapperAttribute(constructorMethodSymbol, Types.DapperAotAttribute);
-            if (dapperAotAttribute is null)
+        // look for remaining constructors
+        foreach (var ctor in ctors)
+        {
+            switch (ctor.DeclaredAccessibility)
             {
-                // picking constructor which is not marked with [DapperAot] attribute at all
-                standardCtors.Add(constructorMethodSymbol);
+                case Accessibility.Private:
+                case Accessibility.Protected:
+                case Accessibility.Friend:
+                case Accessibility.ProtectedAndInternal:
+                    continue; // we can't use it, so...
+            }
+            var args = ctor.Parameters;
+            if (args.Length == 0) continue; // default constructor
+
+            // exclude copy constructors (anything that takes the own type) and serialization constructors
+            bool exclude = false;
+            foreach (var arg in args)
+            {
+                if (SymbolEqualityComparer.Default.Equals(arg.Type, named))
+                {
+                    exclude = true;
+                    break;
+                }
+                if (arg.Type is INamedTypeSymbol
+                    {
+                        Name: "SerializationInfo" or "StreamingContext",
+                        ContainingType: null,
+                        Arity: 0,
+                        ContainingNamespace:
+                        {
+                            Name: "Serialization",
+                            ContainingNamespace:
+                            {
+                                Name: "Runtime",
+                                ContainingNamespace: {
+                                    Name: "System",
+                                    ContainingNamespace.IsGlobalNamespace: true
+                                }
+                            }
+                        }
+                    })
+                {
+                    exclude = true;
+                    break;
+                }
+            }
+            if (exclude)
+            {
+                // ruled out by signature
                 continue;
             }
-
-            if (dapperAotAttribute.ConstructorArguments.Length == 0)
+            
+            if (constructor is not null)
             {
-                // picking constructor which is marked with [DapperAot] attribute without arguments (its enabled by default)
-                dapperAotEnabledCtors.Add(constructorMethodSymbol);
-                continue;
+                return ConstructorResult.FailMultipleImplicit;
             }
-
-            var typedArg = dapperAotAttribute.ConstructorArguments.First();
-            if (typedArg.Value is bool isAot && isAot)
-            {
-                // picking constructor which is marked with explicit [DapperAot(true)]
-                dapperAotEnabledCtors.Add(constructorMethodSymbol);
-            }
+            constructor = ctor;
         }
-
-        return (standardCtors, dapperAotEnabledCtors);
+        return constructor is null ? ConstructorResult.NoneFound : ConstructorResult.SuccessSingleImplicit;
     }
 
     /// <summary>
@@ -775,18 +789,18 @@ internal static class Inspection
         return null;
     }
 
-    public static DapperMethodKind IsSupportedDapperMethod(this IInvocationOperation operation, out OperationFlags flags)
+    public static bool IsDapperMethod(this IInvocationOperation operation, out OperationFlags flags)
     {
         flags = OperationFlags.None;
         var method = operation?.TargetMethod;
         if (method is null || !method.IsExtensionMethod)
         {
-            return DapperMethodKind.NotDapper;
+            return false;
         }
         var type = method.ContainingType;
         if (type is not { Name: Types.SqlMapper, ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } })
         {
-            return DapperMethodKind.NotDapper;
+            return false;
         }
         if (method.Name.EndsWith("Async"))
         {
@@ -800,7 +814,8 @@ internal static class Inspection
         {
             case "Query":
                 flags |= OperationFlags.Query;
-                return method.Arity <= 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+                if (method.Arity > 1) flags |= OperationFlags.NotAotSupported;
+                return true;
             case "QueryAsync":
             case "QueryUnbufferedAsync":
                 flags |= method.Name.Contains("Unbuffered") ? OperationFlags.Unbuffered : OperationFlags.Buffered;
@@ -821,21 +836,226 @@ internal static class Inspection
             case "QuerySingleOrDefaultAsync":
                 flags |= OperationFlags.SingleRow | OperationFlags.AtMostOne;
                 goto case "Query";
+            case "QueryMultiple":
+            case "QueryMultipleAsync":
+                flags |= OperationFlags.Query | OperationFlags.QueryMultiple | OperationFlags.NotAotSupported;
+                return true;
             case "Execute":
             case "ExecuteAsync":
                 flags |= OperationFlags.Execute;
-                return method.Arity == 0 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+                if (method.Arity != 0) flags |= OperationFlags.NotAotSupported;
+                return true;
             case "ExecuteScalar":
             case "ExecuteScalarAsync":
                 flags |= OperationFlags.Execute | OperationFlags.Scalar;
-                return method.Arity <= 1 ? DapperMethodKind.DapperSupported : DapperMethodKind.DapperUnsupported;
+                if (method.Arity >= 2) flags |= OperationFlags.NotAotSupported;
+                return true;
             default:
-                return DapperMethodKind.DapperUnsupported;
+                flags = OperationFlags.NotAotSupported;
+                return true;
         }
     }
     public static bool HasAny(this OperationFlags value, OperationFlags testFor) => (value & testFor) != 0;
     public static bool HasAll(this OperationFlags value, OperationFlags testFor) => (value & testFor) == testFor;
 
+    public static bool TryGetConstantValue<T>(IOperation op, out T? value)
+            => TryGetConstantValueWithSyntax(op, out value, out _);
+
+    public static ITypeSymbol? GetResultType(this IInvocationOperation invocation, OperationFlags flags)
+    {
+        if (flags.HasAny(OperationFlags.TypedResult))
+        {
+            var typeArgs = invocation.TargetMethod.TypeArguments;
+            if (typeArgs.Length == 1)
+            {
+                return typeArgs[0];
+            }
+        }
+        return null;
+    }
+
+    internal static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
+        ? symbol.NullableAnnotation == NullableAnnotation.Annotated
+        : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
+
+    public static bool TryGetConstantValueWithSyntax<T>(IOperation val, out T? value, out SyntaxNode? syntax)
+    {
+        try
+        {
+            if (val.ConstantValue.HasValue)
+            {
+                value = (T?)val.ConstantValue.Value;
+                syntax = val.Syntax;
+                return true;
+            }
+            if (val is IArgumentOperation arg)
+            {
+                val = arg.Value;
+            }
+            // work through any implicit/explicit conversion steps
+            while (val is IConversionOperation conv)
+            {
+                val = conv.Operand;
+            }
+
+            // type-level constants
+            if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
+            {
+                value = (T?)field.Field.ConstantValue;
+                syntax = field.Field.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                return true;
+            }
+
+            // local constants
+            if (val is ILocalReferenceOperation local && local.Local.HasConstantValue)
+            {
+                value = (T?)local.Local.ConstantValue;
+                syntax = local.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                return true;
+            }
+
+            // other non-trivial default constant values
+            if (val.ConstantValue.HasValue)
+            {
+                value = (T?)val.ConstantValue.Value;
+                syntax = val.Syntax;
+                return true;
+            }
+
+            // other trivial default constant values
+            if (val is ILiteralOperation or IDefaultValueOperation)
+            {
+                // we already ruled out explicit constant above, so: must be default
+                value = default;
+                syntax = val.Syntax;
+                return true;
+            }
+        }
+        catch { }
+        value = default!;
+        syntax = null;
+        return false;
+    }
+
+    internal static bool IsCommand(INamedTypeSymbol type)
+    {
+        switch (type.TypeKind)
+        {
+            case TypeKind.Interface:
+                return type is
+                {
+                    Name: nameof(IDbCommand),
+                    ContainingType: null,
+                    Arity: 0,
+                    IsGenericType: false,
+                    ContainingNamespace:
+                    {
+                        Name: "Data",
+                        ContainingNamespace:
+                        {
+                            Name: "System",
+                            ContainingNamespace.IsGlobalNamespace: true,
+                        }
+                    }
+                };
+            case TypeKind.Class when !type.IsStatic:
+                while (type.SpecialType != SpecialType.System_Object)
+                {
+                    if (type is
+                    {
+                        Name: nameof(DbCommand),
+                        ContainingType: null,
+                        Arity: 0,
+                        IsGenericType: false,
+                        ContainingNamespace:
+                        {
+                            Name: "Common",
+                            ContainingNamespace:
+                            {
+                                Name: "Data",
+                                ContainingNamespace:
+                                {
+                                    Name: "System",
+                                    ContainingNamespace.IsGlobalNamespace: true,
+                                }
+                            }
+                        }
+                    })
+                    {
+                        return true;
+                    }
+                    if (type.BaseType is null) break;
+                    type = type.BaseType;
+                }
+                break;
+        }
+        return false;
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0042:Deconstruct variable declaration", Justification = "Fine as is; let's not pay the unwrap cost")]
+    public static SqlSyntax? IdentifySqlSyntax(in ParseState ctx, IOperation op, out bool caseSensitive)
+    {
+        caseSensitive = false;
+        // get from known connection-type
+        if (op is IInvocationOperation invoke)
+        {
+            if (!invoke.Arguments.IsDefaultOrEmpty && invoke.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
+            {
+                var ns = type.ContainingNamespace;
+                foreach (var candidate in KnownConnectionTypes)
+                {
+                    var current = ns;
+                    if (type.Name == candidate.Connection
+                        && AssertAndAscend(ref current, candidate.Namespace0)
+                        && AssertAndAscend(ref current, candidate.Namespace1)
+                        && AssertAndAscend(ref current, candidate.Namespace2))
+                    {
+                        return candidate.Syntax;
+                    }
+                }
+            }
+        }
+
+        // get fom [SqlSyntax(...)] hint
+        var attrib = GetClosestDapperAttribute(ctx, op, Types.SqlSyntaxAttribute);
+        if (attrib is not null && attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i)
+        {
+            return (SqlSyntax)i;
+        }
+
+        return null;
+
+        static bool AssertAndAscend(ref INamespaceSymbol ns, string? expected)
+        {
+            if (expected is null)
+            {
+                return ns.IsGlobalNamespace;
+            }
+            else
+            {
+                if (ns.Name == expected)
+                {
+                    ns = ns.ContainingNamespace;
+                    return true;
+                }
+                return false;
+            }
+        }
+    }
+
+    private static readonly ImmutableArray<(string? Namespace2, string? Namespace1, string Namespace0, string Connection, SqlSyntax Syntax)> KnownConnectionTypes = new[]
+    {
+            ("System", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
+            ("Microsoft", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
+
+            (null, null, "Npgsql", "NpgsqlConnection", SqlSyntax.PostgreSql),
+
+            ("MySql", "Data", "MySqlClient", "MySqlConnection", SqlSyntax.MySql),
+
+            ("Oracle", "DataAccess", "Client", "OracleConnection", SqlSyntax.Oracle),
+
+            ("Microsoft", "Data", "Sqlite", "SqliteConnection", SqlSyntax.SQLite),
+        }.ToImmutableArray();
 }
 
 enum DapperMethodKind
@@ -870,4 +1090,7 @@ enum OperationFlags
     BindTupleParameterByName = 1 << 18,
     CacheCommand = 1 << 19,
     IncludeLocation = 1 << 20, // include -- SomeFile.cs#40 when possible
+    UnknownParameters = 1 << 21,
+    QueryMultiple = 1 << 22,
+    NotAotSupported = 1 << 23,
 }

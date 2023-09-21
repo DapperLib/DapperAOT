@@ -1,7 +1,0 @@
-Generator produced 2 diagnostics:
-
-Info DAP001 Interceptors/QueryMultiple.input.cs L11 C39
-The Dapper method 'SqlMapper.QueryMultiple(IDbConnection, string, object?, IDbTransaction?, int?, CommandType?)' is not currently supported by Dapper.AOT
-
-Info DAP001 Interceptors/QueryMultiple.input.cs L18 C45
-The Dapper method 'SqlMapper.QueryMultipleAsync(IDbConnection, string, object?, IDbTransaction?, int?, CommandType?)' is not currently supported by Dapper.AOT
