@@ -36,6 +36,10 @@ public class DAP013 : Verifier<DapperAnalyzer>
             }
             public readonly record struct MyData(string name, int id);
         }
+        namespace System.Runtime.CompilerServices
+        {
+            static file class IsExternalInit {}
+        }
         """, DefaultConfig, [Diagnostic(Diagnostics.DapperAotTupleResults).WithLocation(0),
         Diagnostic(Diagnostics.DapperAotTupleResults).WithLocation(1)]);
 }
