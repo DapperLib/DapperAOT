@@ -21,8 +21,8 @@
 
         <!-- nuget package items -->
         <None Include="readme.md" Pack="true" PackagePath="/" />
-        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
-        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Microsoft.SqlServer.TransactSql.ScriptDom.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
+        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet" Visible="true" />
+        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Microsoft.SqlServer.TransactSql.ScriptDom.dll" Pack="true" PackagePath="analyzers/dotnet" Visible="true" />
     </ItemGroup>
 
 
