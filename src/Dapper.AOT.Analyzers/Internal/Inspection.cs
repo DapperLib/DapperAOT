@@ -445,7 +445,21 @@ internal static class Inspection
         public override bool Equals(object obj) => obj is ElementMember other
             && SymbolEqualityComparer.Default.Equals(Member, other.Member);
 
-        public Location? GetLocation() => Member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
+
+        public Location? GetDbValueLocation() => GetDapperAttribute(Member, Types.DbValueAttribute)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
+
+        public Location? GetMemberLocation()
+        {
+            foreach (var node in Member.DeclaringSyntaxReferences)
+            {
+                if (node.GetSyntax().GetLocation() is { } loc)
+                {
+                    return loc;
+                }
+            }
+            return null;
+        }
+        public Location? GetDbValueOrMemberLocation() => GetDbValueLocation() ?? GetMemberLocation();
     }
 
     public enum ConstructorResult

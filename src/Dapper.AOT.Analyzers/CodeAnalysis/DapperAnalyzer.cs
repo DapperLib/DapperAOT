@@ -673,7 +673,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 {
                     if (estimatedRowCountMember is not null)
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MemberRowCountHintDuplicated, member.GetLocation()));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MemberRowCountHintDuplicated, member.GetDbValueOrMemberLocation()));
                     }
                     estimatedRowCountMember = member.Member.Name;
                 }
@@ -779,7 +779,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 {
                     if (rowCountMember is not null)
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateRowCount, member.GetLocation(), member.CodeName, rowCountMember));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateRowCount, member.GetDbValueOrMemberLocation(), member.CodeName, rowCountMember));
                     }
                     else
                     {
@@ -787,7 +787,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     }
                     if (member.HasDbValueAttribute)
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.RowCountDbValue, member.GetLocation(), member.CodeName));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.RowCountDbValue, member.GetDbValueOrMemberLocation(), member.CodeName));
                     }
                 }
                 if (member.Kind != ElementMemberKind.None)
@@ -820,7 +820,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 byDbName ??= new(StringComparer.InvariantCultureIgnoreCase);
                 if (byDbName.TryGetValue(dbName, out var existing))
                 {
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateParameter, member.GetLocation(), member, existing, dbName));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateParameter,
+                        location: existing.GetDbValueOrMemberLocation(),
+                        additionalLocations: [member.GetDbValueOrMemberLocation()],
+                        messageArgs: [existing.CodeName, member.CodeName, dbName ]));
                 }
                 else
                 {
@@ -835,7 +838,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     }
                     else
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateReturn, member.GetLocation(), member.CodeName, returnCodeMember));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateReturn, member.GetDbValueOrMemberLocation(), member.CodeName, returnCodeMember));
                     }
                 }
             }

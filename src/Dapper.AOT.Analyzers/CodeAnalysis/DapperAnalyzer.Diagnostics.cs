@@ -21,7 +21,7 @@ partial class DapperAnalyzer
         UntypedParameter = LibraryInfo("DAP015", "Untyped parameter", "The parameter type could not be resolved", true),
         GenericTypeParameter = LibraryInfo("DAP016", "Generic type parameter", "Generic type parameters ({0}) are not currently supported", true),
         NonPublicType = LibraryInfo("DAP017", "Non-accessible type", "Type '{0}' is not accessible; {1} types are not currently supported", true),
-        DuplicateParameter = LibraryWarning("DAP021", "Duplicate parameter", "Members '{0}' and '{1}' both have the database name '{2}'; '{0}' will be ignored"),
+        DuplicateParameter = LibraryWarning("DAP021", "Duplicate parameter", "Members '{0}' and '{1}' both have the database name '{2}'; '{0}' will be ignored", true),
         DuplicateReturn = LibraryWarning("DAP022", "Duplicate return parameter", "Members '{0}' and '{1}' are both designated as return values; '{0}' will be ignored"),
         DuplicateRowCount = LibraryWarning("DAP023", "Duplicate row-count member", "Members '{0}' and '{1}' are both marked [RowCount]"),
         RowCountDbValue = LibraryWarning("DAP024", "Member is both row-count and mapped value", "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored"),
