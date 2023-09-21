@@ -6,7 +6,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName, CacheCommand
         // takes parameter: <anonymous type: int Foo>
-        // parameter map: (everything)
+        // parameter map: Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
@@ -22,7 +22,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName, CacheCommand
         // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: (everything)
+        // parameter map: bar Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
@@ -38,7 +38,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName, CacheCommand
         // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: (everything)
+        // parameter map: bar Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
@@ -54,7 +54,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName
         // takes parameter: <anonymous type: int Foo>
-        // parameter map: (everything)
+        // parameter map: Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
@@ -71,7 +71,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName
         // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: (everything)
+        // parameter map: bar Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);

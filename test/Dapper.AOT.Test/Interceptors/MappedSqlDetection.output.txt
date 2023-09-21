@@ -1,10 +1,4 @@
-Generator produced 3 diagnostics:
+Generator produced 1 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 7 of 7 enabled call-sites using 6 interceptors, 6 commands and 0 readers
-
-Warning DAP023 Interceptors/MappedSqlDetection.input.cs L32 C20
-Members 'DuplicateToCauseProblems' and 'RowCount' are both marked [RowCount]
-
-Warning DAP024 Interceptors/MappedSqlDetection.input.cs L32 C20
-Member 'DuplicateToCauseProblems' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored
+Dapper.AOT handled 7 of 7 enabled call-sites using 5 interceptors, 5 commands and 0 readers

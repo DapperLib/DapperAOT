@@ -4,7 +4,6 @@
         <DelaySign>False</DelaySign>
         <Description>Build time (AOT) tools for Dapper</Description>
         <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Dapper.AOT.snk</AssemblyOriginatorKeyFile>
-        <LangVersion>9</LangVersion>
         <Nullable>enable</Nullable>
         <RootNamespace>Dapper</RootNamespace>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -26,6 +25,7 @@
         <DefaultLanguage>en-US</DefaultLanguage>
         <IncludeSymbols>false</IncludeSymbols>
         <AnalysisMode>latest-Recommended</AnalysisMode>
+        <LangVersion>preview</LangVersion>
         <Features>($Features);strict</Features>
     </PropertyGroup>
     <ItemGroup>

@@ -1,7 +1,0 @@
-Generator produced 2 diagnostics:
-
-Info DAP016 Interceptors/ComplexGenerics.input.cs L16 C36
-Generic type parameters (SomeLayer.Foo.Bar<T>.Blap) are not currently supported
-
-Info DAP016 Interceptors/ComplexGenerics.input.cs L17 C36
-Generic type parameters (SomeLayer.Foo.Bar<T>.Blap) are not currently supported

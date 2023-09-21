@@ -15,7 +15,7 @@ public sealed class DapperCodeFixes : CodeFixProvider
 {
     public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.CreateRange(new[]
     {
-        DapperInterceptorGenerator.Diagnostics.DapperAotNotEnabled.Id,
+        DapperAnalyzer.Diagnostics.DapperAotNotEnabled.Id,
     });
 
     public override FixAllProvider? GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
@@ -35,7 +35,7 @@ public sealed class DapperCodeFixes : CodeFixProvider
 
             switch (fieldName)
             {
-                case nameof(DapperInterceptorGenerator.Diagnostics.DapperAotNotEnabled):
+                case nameof(DapperAnalyzer.Diagnostics.DapperAotNotEnabled):
                     Register("Enable AOT", GlobalEnableAOT, nameof(GlobalEnableAOT));
                     break;
             }

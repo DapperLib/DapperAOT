@@ -17,6 +17,7 @@ file static class DapperGeneratedInterceptors
 
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 17, 20)]
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 23, 20)]
+    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 29, 20)]
     internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters, Text
@@ -57,22 +58,8 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 29, 20)]
-    internal static int Execute4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
-    {
-        // Execute, HasParameters, Text
-        // takes parameter: global::Foo.SomeArg
-        // parameter map: E
-        global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-        global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
-        global::System.Diagnostics.Debug.Assert(param is not null);
-
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory4.Instance).Execute((global::Foo.SomeArg)param!);
-
-    }
-
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 32, 20)]
-    internal static int Execute5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+    internal static int Execute4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
         // Execute, HasParameters, Text
         // takes parameter: global::Foo.SomeOtherArg
@@ -81,7 +68,7 @@ file static class DapperGeneratedInterceptors
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
 
-        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory5.Instance).Execute((global::Foo.SomeOtherArg)param!);
+        return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory4.Instance).Execute((global::Foo.SomeOtherArg)param!);
 
     }
 
@@ -204,46 +191,9 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory4 : CommonCommandFactory<global::Foo.SomeArg>
+    private sealed class CommandFactory4 : CommonCommandFactory<global::Foo.SomeOtherArg>
     {
         internal static readonly CommandFactory4 Instance = new();
-        public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
-        {
-            var ps = cmd.Parameters;
-            global::System.Data.Common.DbParameter p;
-            p = cmd.CreateParameter();
-            p.ParameterName = "E";
-            p.DbType = global::System.Data.DbType.String;
-            p.Size = -1;
-            p.Direction = global::System.Data.ParameterDirection.ReturnValue;
-            p.Value = global::System.DBNull.Value;
-            ps.Add(p);
-
-        }
-        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
-        {
-            var ps = cmd.Parameters;
-            ps[0].Value = global::System.DBNull.Value;
-
-        }
-        public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
-        {
-            var ps = cmd.Parameters;
-            args.E = Parse<string>(ps[0].Value);
-
-        }
-        public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args, int rowCount)
-        {
-            args.RowCount = rowCount;
-            PostProcess(cmd, args);
-        }
-        public override bool CanPrepare => true;
-
-    }
-
-    private sealed class CommandFactory5 : CommonCommandFactory<global::Foo.SomeOtherArg>
-    {
-        internal static readonly CommandFactory5 Instance = new();
         public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeOtherArg args)
         {
             var ps = cmd.Parameters;

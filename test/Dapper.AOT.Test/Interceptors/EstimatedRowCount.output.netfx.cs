@@ -20,7 +20,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName
         // takes parameter: <anonymous type: int Foo, string bar>
-        // parameter map: (everything)
+        // parameter map: bar Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
@@ -36,7 +36,7 @@ file static class DapperGeneratedInterceptors
     {
         // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName
         // takes parameter: global::Foo.DynamicHint
-        // parameter map: (everything)
+        // parameter map: Bar Foo
         // returns data: global::Foo.Customer
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.StoredProcedure);
@@ -190,20 +190,12 @@ file static class DapperGeneratedInterceptors
             p.Value = AsValue(args.Bar);
             ps.Add(p);
 
-            p = cmd.CreateParameter();
-            p.ParameterName = "Count";
-            p.DbType = global::System.Data.DbType.Int32;
-            p.Direction = global::System.Data.ParameterDirection.Input;
-            p.Value = AsValue(args.Count);
-            ps.Add(p);
-
         }
         public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.DynamicHint args)
         {
             var ps = cmd.Parameters;
             ps[0].Value = AsValue(args.Foo);
             ps[1].Value = AsValue(args.Bar);
-            ps[2].Value = AsValue(args.Count);
 
         }
         public override bool CanPrepare => true;

@@ -102,7 +102,6 @@ file static class DapperGeneratedInterceptors
     {
         // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName
         // takes parameter: <anonymous type: int a, string b>
-        // parameter map: a
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
         global::System.Diagnostics.Debug.Assert(param is not null);
@@ -303,29 +302,9 @@ file static class DapperGeneratedInterceptors
 
     }
 
-    private sealed class CommandFactory2 : CommonCommandFactory<object?> // <anonymous type: int a, string b>
+    private sealed class CommandFactory2 : CommonCommandFactory<object>
     {
         internal static readonly CommandFactory2 Instance = new();
-        public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
-        {
-            var typed = Cast(args, static () => new { a = default(int), b = default(string)! }); // expected shape
-            var ps = cmd.Parameters;
-            global::System.Data.Common.DbParameter p;
-            p = cmd.CreateParameter();
-            p.ParameterName = "a";
-            p.DbType = global::System.Data.DbType.Int32;
-            p.Direction = global::System.Data.ParameterDirection.Input;
-            p.Value = AsValue(typed.a);
-            ps.Add(p);
-
-        }
-        public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
-        {
-            var typed = Cast(args, static () => new { a = default(int), b = default(string)! }); // expected shape
-            var ps = cmd.Parameters;
-            ps[0].Value = AsValue(typed.a);
-
-        }
         public override bool CanPrepare => true;
 
     }

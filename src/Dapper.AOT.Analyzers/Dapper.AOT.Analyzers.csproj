@@ -23,20 +23,24 @@
         <Compile Update="CodeAnalysis/DapperInterceptorGenerator.*.cs">
             <DependentUpon>DapperInterceptorGenerator.cs</DependentUpon>
         </Compile>
-        <Compile Update="CodeAnalysis/OpinionatedAnalyzer.*.cs">
-            <DependentUpon>OpinionatedAnalyzer.cs</DependentUpon>
+        <Compile Update="CodeAnalysis/DapperAnalyzer.*.cs">
+            <DependentUpon>DapperAnalyzer.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Internal/Roslyn/LanguageHelper.*.cs">
+            <DependentUpon>LanguageHelper.cs</DependentUpon>
         </Compile>
         <Compile Update="CodeAnalysis/TypeAccessorInterceptorGenerator.*.cs">
             <DependentUpon>TypeAccessorInterceptorGenerator.cs</DependentUpon>
         </Compile>
 
         <Compile Include="..\Dapper.AOT\Internal\StringHashing.cs" Link="Internal\StringHashing.cs" />
-        <Compile Include="..\Dapper.AOT\SqlSyntax.cs" Link="SqlSyntax.cs" />
+        <!--<Compile Include="..\Dapper.AOT\SqlSyntax.cs" Link="SqlSyntax.cs" />-->
     </ItemGroup>
 
     <ItemGroup>
         <!-- build time deps -->
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Pack="false" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Pack="false" PrivateAssets="all" />
         <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Pack="false" GeneratePathProperty="true" />
         <None Include="$(PkgMicrosoft_SqlServer_TransactSql_ScriptDom)/lib/netstandard2.0/Microsoft.SqlServer.TransactSql.ScriptDom.dll" CopyToOutputDirectory="PreserveNewest" />
         <None Include="..\..\.editorconfig" Link=".editorconfig" />
@@ -48,6 +52,9 @@
       </Compile>
       <Compile Update="CodeAnalysis\DapperInterceptorGenerator.Multi.cs">
         <DependentUpon>DapperInterceptorGenerator.cs</DependentUpon>
+      </Compile>
+      <Compile Update="CodeAnalysis\DapperAnalyzer.Diagnostics.cs">
+        <DependentUpon>DapperAnalyzer.cs</DependentUpon>
       </Compile>
     </ItemGroup>
 </Project>

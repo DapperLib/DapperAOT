@@ -2,12 +2,13 @@
 using Dapper.CodeAnalysis.Writers;
 using Dapper.Internal;
 using Dapper.Internal.Roslyn;
+using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.CodeAnalysis.Text;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -15,7 +16,6 @@ using System.Data;
 using System.Data.Common;
 using System.Globalization;
 using System.Linq;
-using System.Net.Mime;
 using System.Text;
 using System.Threading;
 
@@ -57,288 +57,24 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     internal SourceState? Parse(in ParseState ctx)
     {
         if (ctx.Node is not InvocationExpressionSyntax ie
-            || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op)
-        {
-            return null;
-        }
-        var methodKind = op.IsSupportedDapperMethod(out var flags);
-        switch (methodKind)
-        {
-            case DapperMethodKind.DapperUnsupported:
-                flags |= OperationFlags.DoNotGenerate;
-                break;
-            case DapperMethodKind.DapperSupported:
-                break;
-            default: // includes NotDapper
-                return null;
-        }
-
-        // everything requires location
-        Location? loc = null;
-
-        if (op.Syntax.ChildNodes().FirstOrDefault() is MemberAccessExpressionSyntax ma)
-        {
-            loc = ma.ChildNodes().Skip(1).FirstOrDefault()?.GetLocation();
-        }
-        loc ??= op.Syntax.GetLocation();
-        if (loc is null)
+            || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op
+            || !op.IsDapperMethod(out var flags)
+            || flags.HasAny(OperationFlags.NotAotSupported)
+            || !Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out var aotAttribExists))
         {
             return null;
         }
 
-        // check whether we can use this method
-        object? diagnostics = null;
-        bool dapperEnabled = Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out var aotAttribExists);
-        if (dapperEnabled)
-        {
-            if (methodKind == DapperMethodKind.DapperUnsupported)
-            {
-                flags |= OperationFlags.DoNotGenerate;
-                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnsupportedMethod, loc, GetSignature(op.TargetMethod)));
-            }
-        }
-        else
-        {
-            // no diagnostic per-item; the generator will emit a single diagnostic if everything is disabled
-            flags |= OperationFlags.AotNotEnabled | OperationFlags.DoNotGenerate;
-            if (aotAttribExists) flags |= OperationFlags.AotDisabled; // active opt-out
-            // but we still process the other bits, as there might be relevant additional things
-        }
 
-        if (Inspection.IsEnabled(ctx, op, Types.CacheCommandAttribute, out _))
-        {
-            flags |= OperationFlags.CacheCommand;
-        }
+        var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var paramType, reportDiagnostic: null, out var resultType);
 
-        ITypeSymbol? resultType = null, paramType = null;
-        if (flags.HasAny(OperationFlags.TypedResult))
-        {
-            var typeArgs = op.TargetMethod.TypeArguments;
-            if (typeArgs.Length == 1)
-            {
-                resultType = typeArgs[0];
 
-                // check for value-type single
-                if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
-                    && resultType.IsValueType && !CouldBeNullable(resultType))
-                {
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, loc, resultType.Name, op.TargetMethod.Name));
-                }
-            }
-        }
-
-        string? sql = null;
-        SyntaxNode? sqlSyntax = null;
-        bool? buffered = null;
-
-        // check the args
-        foreach (var arg in op.Arguments)
-        {
-            switch (arg.Parameter?.Name)
-            {
-                case "sql":
-                    if (TryGetConstantValueWithSyntax(arg, out string? s, out sqlSyntax))
-                    {
-                        sql = s;
-                    }
-                    break;
-                case "buffered":
-                    if (TryGetConstantValue(arg, out bool b))
-                    {
-                        buffered = b;
-                    }
-                    break;
-                case "param":
-                    if (arg.Value is not IDefaultValueOperation)
-                    {
-                        var expr = arg.Value;
-                        if (expr is IConversionOperation conv && expr.Type?.SpecialType == SpecialType.System_Object)
-                        {
-                            expr = conv.Operand;
-                        }
-                        paramType = expr?.Type;
-                        flags |= OperationFlags.HasParameters;
-                    }
-                    break;
-                case "cnn":
-                case "commandTimeout":
-                case "transaction":
-                    // nothing to do
-                    break;
-                case "commandType":
-                    if (TryGetConstantValue(arg, out int? ct))
-                    {
-                        switch (ct)
-                        {
-                            case null when !string.IsNullOrWhiteSpace(sql):
-                                // if no spaces: interpret as stored proc, else: text
-                                flags |= sql!.Trim().IndexOf(' ') < 0 ? OperationFlags.StoredProcedure : OperationFlags.Text;
-                                break;
-                            case null:
-                                break; // flexible
-                            case 1:
-                                flags |= OperationFlags.Text;
-                                break;
-                            case 4:
-                                flags |= OperationFlags.StoredProcedure;
-                                break;
-                            case 512:
-                                flags |= OperationFlags.TableDirect;
-                                break;
-                            default:
-                                flags |= OperationFlags.DoNotGenerate;
-                                if (dapperEnabled)
-                                {
-                                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedCommandType, arg.Syntax.GetLocation()));
-                                }
-                                break;
-                        }
-                    }
-                    break;
-                default:
-                    if (dapperEnabled && !flags.HasAny(OperationFlags.DoNotGenerate))
-                    {
-                        flags |= OperationFlags.DoNotGenerate;
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UnexpectedArgument, arg.Syntax.GetLocation(), arg.Parameter?.Name));
-                    }
-                    break;
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(sql) && flags.HasAny(OperationFlags.Text)
-            && Inspection.IsEnabled(ctx, op, Types.IncludeLocationAttribute, out _))
-        {
-            flags |= OperationFlags.IncludeLocation;
-        }
-
-        if (flags.HasAny(OperationFlags.Query) && buffered.HasValue)
-        {
-            flags |= buffered.GetValueOrDefault() ? OperationFlags.Buffered : OperationFlags.Unbuffered;
-        }
 
         // additional result-type checks
-        if (flags.HasAny(OperationFlags.Query) && Inspection.IdentifyDbType(resultType, out _) is null)
-        {
-            flags |= OperationFlags.BindResultsByName;
-        }
-
-        if (flags.HasAny(OperationFlags.Query) || flags.HasAll(OperationFlags.Execute | OperationFlags.Scalar))
-        {
-            bool resultTuple = Inspection.InvolvesTupleType(resultType, out _), bindByNameDefined = false;
-            // tuples are positional by default
-            if (resultTuple && !Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out bindByNameDefined))
-            {
-                flags &= ~OperationFlags.BindResultsByName;
-            }
-
-            if (flags.HasAny(OperationFlags.DoNotGenerate))
-            {
-                // extra checks specific to Dapper vanilla
-                if (resultTuple && Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out _))
-                {   // Dapper vanilla supports bind-by-position for tuples; warn if bind-by-name is enabled
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyBindNameTupleResults, loc));
-                }
-            }
-            else
-            {
-                // extra checks specific to DapperAOT
-                if (Inspection.InvolvesGenericTypeParameter(resultType))
-                {
-                    flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, resultType!.ToDisplayString()));
-                }
-                else if (resultTuple)
-                {
-                    if (!bindByNameDefined)
-                    {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
-                    }
-
-                    // but not implemented currently!
-                    flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleResults, loc));
-                }
-                else if (!Inspection.IsPublicOrAssemblyLocal(resultType, ctx, out var failing))
-                {
-                    flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
-                }
-            }
-        }
-
-        // additional parameter checks
-        if (flags.HasAny(OperationFlags.HasParameters))
-        {
-            bool paramTuple = Inspection.InvolvesTupleType(paramType, out _);
-            if (flags.HasAny(OperationFlags.DoNotGenerate))
-            {
-                // extra checks specific to Dapper vanilla
-                if (paramTuple)
-                {
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperLegacyTupleParameter, loc));
-                }
-            }
-            else
-            {
-                // extra checks specific to DapperAOT
-                if (paramTuple)
-                {
-                    if (Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out var defined))
-                    {
-                        flags |= OperationFlags.BindTupleParameterByName;
-                    }
-                    if (!defined)
-                    {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, loc));
-                    }
-
-                    // but not implemented currently!
-                    flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DapperAotTupleParameter, loc));
-                }
-                else if (Inspection.InvolvesGenericTypeParameter(paramType))
-                {
-                    flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GenericTypeParameter, loc, paramType!.ToDisplayString()));
-                }
-                else if (Inspection.IsMissingOrObjectOrDynamic(paramType))
-                {
-                    flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UntypedParameter, loc));
-                }
-                else if (!Inspection.IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
-                {
-                    flags |= OperationFlags.DoNotGenerate;
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NonPublicType, loc, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
-                }
-            }
-        }
 
         // perform SQL inspection
-        var parameterMap = BuildParameterMap(ctx, op, sql, flags, paramType, loc, ref diagnostics, sqlSyntax, out var parseFlags);
-
-        // if we have a good parser *and* the SQL isn't invalid: check for obvious query/exec mismatch
-        if ((parseFlags & (ParseFlags.Reliable | ParseFlags.SyntaxError)) == ParseFlags.Reliable)
-        {
-            switch (flags & (OperationFlags.Execute | OperationFlags.Query | OperationFlags.Scalar))
-            {
-                case OperationFlags.Execute:
-                    if ((parseFlags & ParseFlags.Query) != 0)
-                    {
-                        // definitely have a query
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.ExecuteCommandWithQuery, loc));
-                    }
-                    break;
-                case OperationFlags.Query:
-                case OperationFlags.Execute | OperationFlags.Scalar:
-                    if ((parseFlags & (ParseFlags.Query | ParseFlags.MaybeQuery)) == 0)
-                    {
-                        // definitely do not have a query
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.QueryCommandMissingQuery, loc));
-                    }
-                    break;
-            }
-        }
+        var map = MemberMap.Create(paramType, true);
+        var parameterMap = BuildParameterMap(ctx, op, sql, flags, map, location, out var parseFlags);
 
         if (flags.HasAny(OperationFlags.CacheCommand))
         {
@@ -352,344 +88,36 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (!canBeCached) flags &= ~OperationFlags.CacheCommand;
         }
 
-        var estimatedRowCount = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), paramType, ref diagnostics);
-        CheckCallValidity(op, flags, ref diagnostics);
+        var estimatedRowCount = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), map);
 
-        return new SourceState(loc, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, estimatedRowCount, diagnostics);
+        return new SourceState(location, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, estimatedRowCount);
 
-        //static bool HasDiagnostic(object? diagnostics, DiagnosticDescriptor diagnostic)
-        //{
-        //    if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
-        //    switch (diagnostics)
-        //    {
-        //        case null: return false;
-        //        case Diagnostic single: return single.Descriptor == diagnostic;
-        //        case IEnumerable<Diagnostic> list:
-        //            foreach (var single in list)
-        //            {
-        //                if (single.Descriptor == diagnostic) return true;
-        //            }
-        //            return false;
-        //        default: throw new ArgumentException(nameof(diagnostics));
-        //    }
-        //}
 
-        static bool TryGetConstantValue<T>(IArgumentOperation op, out T? value)
-            => TryGetConstantValueWithSyntax<T>(op, out value, out _);
-
-        static bool TryGetConstantValueWithSyntax<T>(IArgumentOperation op, out T? value, out SyntaxNode? syntax)
+        static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, OperationFlags flags, MemberMap? map, Location loc, out SqlParseOutputFlags parseFlags)
         {
-            try
-            {
-                if (op.ConstantValue.HasValue)
-                {
-                    value = (T?)op.ConstantValue.Value;
-                    syntax = op.Syntax;
-                    return true;
-                }
-                var val = op.Value;
-                // work through any implicit/explicit conversion steps
-                while (val is IConversionOperation conv)
-                {
-                    val = conv.Operand;
-                }
-
-                // type-level constants
-                if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
-                {
-                    value = (T?)field.Field.ConstantValue;
-                    syntax = field.Field.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                    return true;
-                }
-
-                // local constants
-                if (val is ILocalReferenceOperation local && local.Local.HasConstantValue)
-                {
-                    value = (T?)local.Local.ConstantValue;
-                    syntax = local.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                    return true;
-                }
-
-                // other non-trivial default constant values
-                if (val.ConstantValue.HasValue)
-                {
-                    value = (T?)val.ConstantValue.Value;
-                    syntax = val.Syntax;
-                    return true;
-                }
-
-                // other trivial default constant values
-                if (val is ILiteralOperation or IDefaultValueOperation)
-                {
-                    // we already ruled out explicit constant above, so: must be default
-                    value = default;
-                    syntax = val.Syntax;
-                    return true;
-                }
-            }
-            catch { }
-            value = default!;
-            syntax = null;
-            return false;
-        }
-
-        static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, OperationFlags flags, ITypeSymbol? parameterType, Location loc, ref object? diagnostics, SyntaxNode? sqlSyntax, out ParseFlags parseFlags)
-        {
-            // if command-type is known statically to be stored procedure etc: pass everything
-            if (flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect))
-            {
-                parseFlags = flags.HasAny(OperationFlags.StoredProcedure) ? ParseFlags.MaybeQuery : ParseFlags.Query;
-                return flags.HasAny(OperationFlags.HasParameters) ? "*" : "";
-            }
-            // if command-type or command is not known statically: defer decision
-            if (!flags.HasAny(OperationFlags.Text) || string.IsNullOrWhiteSpace(sql))
-            {
-                parseFlags = ParseFlags.MaybeQuery;
-                return flags.HasAny(OperationFlags.HasParameters) ? "?" : "";
-            }
-
             // check the arg type
-            if (Inspection.IsCollectionType(parameterType, out var innerType))
+            var args = DapperAnalyzer.SharedGetParametersToInclude(map, flags, sql, null, out parseFlags);
+            if (args is null) return "?"; // deferred
+            var arr = args.Value;
+
+            if (arr.IsDefaultOrEmpty) return ""; // nothing to add
+
+            switch (arr.Length)
             {
-                parameterType = innerType;
+                case 0: return "";
+                case 1: return arr[0].CodeName;
+                case 2: return arr[0].CodeName + " " + arr[1].CodeName;
             }
-
-            var paramMembers = Inspection.GetMembers(parameterType);
-
-            // so: we know statically that we have known command-text
-            // first, try try to find any parameters
-            ImmutableHashSet<string> paramNames;
-            switch (IdentifySqlSyntax(ctx, op, out bool caseSensitive))
+            var sb = new StringBuilder();
+            foreach (var arg in arr)
             {
-                case SqlSyntax.SqlServer:
-                    SqlAnalysis.TSqlProcessor.ModeFlags modeFlags = SqlAnalysis.TSqlProcessor.ModeFlags.None;
-                    if (caseSensitive) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.CaseSensitive;
-                    if ((flags & OperationFlags.BindResultsByName) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.ValidateSelectNames;
-                    if ((flags & OperationFlags.SingleRow) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.SingleRow;
-                    if ((flags & OperationFlags.AtMostOne) != 0) modeFlags |= SqlAnalysis.TSqlProcessor.ModeFlags.AtMostOne;
-
-                    var proc = new DiagnosticTSqlProcessor(parameterType, modeFlags, diagnostics, loc, sqlSyntax);
-                    try
-                    {
-                        proc.Execute(sql!, paramMembers);
-                        parseFlags = proc.Flags;
-                        paramNames = (from var in proc.Variables
-                                      where var.IsParameter
-                                      select var.Name.StartsWith("@") ? var.Name.Substring(1) : var.Name
-                                      ).ToImmutableHashSet();
-                        diagnostics = proc.DiagnosticsObject;
-                    }
-                    catch (Exception ex)
-                    {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.GeneralSqlError, loc, ex.Message));
-                        goto default; // some internal failure
-                    }
-                    break;
-                default:
-                    paramNames = SqlTools.GetUniqueParameters(sql, out parseFlags);
-                    break;
+                if (sb.Length != 0) sb.Append(' ');
+                sb.Append(arg.CodeName);
             }
-
-            if (paramNames.IsEmpty && (parseFlags & ParseFlags.Return) == 0) // return is a parameter, sort of
-            {
-                if (flags.HasAny(OperationFlags.HasParameters))
-                {
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParametersNotDetected, loc));
-                }
-                return "";
-            }
-
-            // so, we definitely detect parameters (note: don't warn just for return)
-            if (!flags.HasAny(OperationFlags.HasParameters))
-            {
-                if (!paramNames.IsEmpty)
-                {
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
-                }
-                return "";
-            }
-            if (flags.HasAny(OperationFlags.HasParameters) && Inspection.IsMissingOrObjectOrDynamic(parameterType))
-            {
-                // unknown parameter type; defer decision
-                return "?";
-            }
-
-            // ok, so the SQL is using parameters; check what we have
-            var memberDbToCodeNames = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
-
-            string? returnCodeMember = null, rowCountMember = null;
-            foreach (var member in paramMembers)
-            {
-                if (member.IsRowCount)
-                {
-                    if (rowCountMember is null)
-                    {
-                        rowCountMember = member.CodeName;
-                    }
-                    else
-                    {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateRowCount, loc, member.CodeName, rowCountMember));
-                    }
-                    if (member.HasDbValueAttribute)
-                    {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.RowCountDbValue, loc, member.CodeName));
-                    }
-                }
-                if (member.Kind != Inspection.ElementMemberKind.None)
-                {
-                    continue; // not treated as parameters for naming etc purposes
-                }
-                var dbName = member.DbName;
-                if (memberDbToCodeNames.TryGetValue(dbName, out var existing))
-                {
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateParameter, loc, member.CodeName, existing, dbName));
-                }
-                else
-                {
-                    memberDbToCodeNames.Add(dbName, member.CodeName);
-                }
-                if (member.Direction == ParameterDirection.ReturnValue)
-                {
-                    if (returnCodeMember is null)
-                    {
-                        returnCodeMember = member.CodeName;
-                    }
-                    else
-                    {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.DuplicateReturn, loc, member.CodeName, returnCodeMember));
-                    }
-                }
-            }
-
-            StringBuilder? sb = null;
-            foreach (var sqlParamName in paramNames.OrderBy(x => x, StringComparer.InvariantCultureIgnoreCase))
-            {
-                if (memberDbToCodeNames.TryGetValue(sqlParamName, out var codeName))
-                {
-                    WithSpace(ref sb).Append(codeName);
-                }
-                else
-                {
-                    // we can only consider this an error if we're confident in how well we parsed the input
-                    // (unless we detected dynamic args, in which case: we don't know what we don't know)
-                    if ((parseFlags & (ParseFlags.Reliable | ParseFlags.DynamicParameters)) == ParseFlags.Reliable)
-                    {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(parameterType)));
-                    }
-                }
-            }
-            if ((parseFlags & ParseFlags.Return) != 0 && returnCodeMember is not null)
-            {
-                WithSpace(ref sb).Append(returnCodeMember);
-            }
-            return sb is null ? "" : sb.ToString();
-
-            static StringBuilder WithSpace(ref StringBuilder? sb) => sb is null ? (sb = new()) : (sb.Length == 0 ? sb : sb.Append(' '));
+            return sb.ToString();
         }
     }
 
-    private void CheckCallValidity(IInvocationOperation op, OperationFlags flags, ref object? diagnostics)
-    {
-        if (flags.HasAny(OperationFlags.Query) && !flags.HasAny(OperationFlags.SingleRow)
-            && op.Parent is IArgumentOperation arg
-            && arg.Parent is IInvocationOperation parent && parent.TargetMethod is
-            {
-                IsExtensionMethod: true,
-                Parameters.Length: 1, Arity: 1, ContainingType:
-                {
-                    Name: nameof(Enumerable),
-                    ContainingType: null,
-                    ContainingNamespace:
-                    {
-                        Name: "Linq",
-                        ContainingNamespace:
-                        {
-                            Name: "System",
-                            ContainingNamespace.IsGlobalNamespace: true
-                        }
-                    }
-                }
-            } target)
-        {
-            string? preferred = parent.TargetMethod.Name switch
-            {
-                nameof(Enumerable.First) => "Query" + nameof(Enumerable.First),
-                nameof(Enumerable.Single) => "Query" + nameof(Enumerable.Single),
-                nameof(Enumerable.FirstOrDefault) => "Query" + nameof(Enumerable.FirstOrDefault),
-                nameof(Enumerable.SingleOrDefault) => "Query" + nameof(Enumerable.SingleOrDefault),
-                _ => null,
-            };
-            if (preferred is not null)
-            {
-                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UseSingleRowQuery, parent.Syntax.GetLocation(), preferred, parent.TargetMethod.Name));
-            }
-            else if (parent.TargetMethod.Name == nameof(Enumerable.ToList))
-            {
-                Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.UseQueryAsList, parent.Syntax.GetLocation()));
-            }
-        }
-    }
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0042:Deconstruct variable declaration", Justification = "Fine as is; let's not pay the unwrap cost")]
-    private static SqlSyntax IdentifySqlSyntax(in ParseState ctx, IInvocationOperation op, out bool caseSensitive)
-    {
-        caseSensitive = false;
-        if (op.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
-        {
-            var ns = type.ContainingNamespace;
-            foreach (var candidate in KnownConnectionTypes)
-            {
-                var current = ns;
-                if (type.Name == candidate.Connection
-                    && AssertAndAscend(ref current, candidate.Namespace0)
-                    && AssertAndAscend(ref current, candidate.Namespace1)
-                    && AssertAndAscend(ref current, candidate.Namespace2))
-                {
-                    return candidate.Syntax;
-                }
-            }
-        }
-
-        // get fom [SqlSyntax(...)] hint
-        var attrib = Inspection.GetClosestDapperAttribute(ctx, op, Types.SqlSyntaxAttribute);
-        if (attrib is not null && attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i)
-        {
-            return (SqlSyntax)i;
-        }
-
-        return SqlSyntax.General;
-
-        static bool AssertAndAscend(ref INamespaceSymbol ns, string? expected)
-        {
-            if (expected is null)
-            {
-                return ns.IsGlobalNamespace;
-            }
-            else
-            {
-                if (ns.Name == expected)
-                {
-                    ns = ns.ContainingNamespace;
-                    return true;
-                }
-                return false;
-            }
-        }
-    }
-
-    private static readonly ImmutableArray<(string? Namespace2, string? Namespace1, string Namespace0, string Connection, SqlSyntax Syntax)> KnownConnectionTypes = new[]
-    {
-        ("System", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
-        ("Microsoft", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
-
-        (null, null, "Npgsql", "NpgsqlConnection", SqlSyntax.PostgreSql),
-
-        ("MySql", "Data", "MySqlClient", "MySqlConnection", SqlSyntax.MySql),
-
-        ("Oracle", "DataAccess", "Client", "OracleConnection", SqlSyntax.Oracle),
-
-        ("Microsoft", "Data", "Sqlite", "SqliteConnection", SqlSyntax.SQLite),
-    }.ToImmutableArray();
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
     {
@@ -782,11 +210,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                 }
             }
-            if (passiveDisabledCount == ctx.Nodes.Length && IsDapperAotAvailable(ctx.Compilation))
-            {
-                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.DapperAotNotEnabled, null));
-                errorCount++;
-            }
 
             if (doNotGenerateCount == ctx.Nodes.Length)
             {
@@ -798,9 +221,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
         return false; // nothing to validate - so: nothing to do, quick exit
     }
-
-    private bool IsDapperAotAvailable(Compilation compilation)
-        => compilation.GetTypeByMetadataName("Dapper." + Types.DapperAotAttribute) is not null;
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
         => Generate(new(ctx, state));
@@ -1226,17 +646,17 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index)
     {
-        var hasExplicitConstructor = Inspection.TryGetSingleCompatibleDapperAotConstructor(type, out var constructor, out var errorDiagnostic);
-        if (!hasExplicitConstructor && errorDiagnostic is not null)
+        var ctorType = Inspection.ChooseConstructor(type, out var constructor);
+        if (ctorType is Inspection.ConstructorResult.FailMultipleImplicit or Inspection.ConstructorResult.FailMultipleExplicit)
         {
-            context.ReportDiagnostic(errorDiagnostic);
-
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
             WriteRowFactoryHeader();
             WriteRowFactoryFooter();
 
             return;
         }
+        bool hasExplicitConstructor = ctorType == Inspection.ConstructorResult.SuccessSingleExplicit
+            && constructor is not null;
 
         var members = Inspection.GetMembers(type, dapperAotConstructor: constructor).ToImmutableArray();
         var membersCount = members.Length;
@@ -1313,7 +733,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             var constructorArgumentsOrdered = new SortedList<int, string>();
             if (useDeferredConstruction)
             {
-                // dont create an instance now, but define the variables to create an instance later like 
+                // don't create an instance now, but define the variables to create an instance later like 
                 // ```
                 // Type? member0 = default;
                 // Type? member1 = default;
@@ -1323,7 +743,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 {
                     var variableName = DeferredConstructionVariableName + token;
 
-                    if (CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
+                    if (Inspection.CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
                     else sb.Append(CodeWriter.GetTypeName(member.CodeType));
                     sb.Append(' ').Append(variableName).Append(" = default;").NewLine();
 
@@ -1353,7 +773,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 var memberType = member.CodeType;
 
                 member.GetDbType(out var readerMethod);
-                var nullCheck = CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
+                var nullCheck = Inspection.CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
                 sb.Append("case ").Append(token).Append(":").NewLine().Indent(false);
 
                 // write `result.X = ` or `member0 = `
@@ -1437,10 +857,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
         }
     }
-
-    static bool CouldBeNullable(ITypeSymbol symbol) => symbol.IsValueType
-            ? symbol.NullableAnnotation == NullableAnnotation.Annotated
-            : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
 
     [Flags]
     enum WriteArgsFlags
