@@ -996,10 +996,24 @@ internal static class Inspection
     public static SqlSyntax? IdentifySqlSyntax(in ParseState ctx, IOperation op, out bool caseSensitive)
     {
         caseSensitive = false;
+
+        // get fom [SqlSyntax(...)] hint
+        var attrib = GetClosestDapperAttribute(ctx, op, Types.SqlSyntaxAttribute);
+        if (attrib is not null && attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i)
+        {
+            return (SqlSyntax)i;
+        }
+
         // get from known connection-type
         if (op is IInvocationOperation invoke)
         {
-            if (!invoke.Arguments.IsDefaultOrEmpty && invoke.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
+            IOperation? target = invoke.Instance;
+            if (target is null && invoke.TargetMethod.IsExtensionMethod && !invoke.Arguments.IsDefaultOrEmpty)
+            {
+                target = invoke.Arguments[0].Value;
+            }
+            var targetType = target is IConversionOperation conv ? conv.Operand.Type : target?.Type;
+            if (targetType is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
             {
                 var ns = type.ContainingNamespace;
                 foreach (var candidate in KnownConnectionTypes)
@@ -1015,12 +1029,23 @@ internal static class Inspection
                 }
             }
         }
-
-        // get fom [SqlSyntax(...)] hint
-        var attrib = GetClosestDapperAttribute(ctx, op, Types.SqlSyntaxAttribute);
-        if (attrib is not null && attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i)
+        else if (op is ISimpleAssignmentOperation assign && assign.Target is IMemberReferenceOperation member)
         {
-            return (SqlSyntax)i;
+            if (member.Member.ContainingType is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
+            {
+                var ns = type.ContainingNamespace;
+                foreach (var candidate in KnownConnectionTypes)
+                {
+                    var current = ns;
+                    if (type.Name == candidate.Command
+                        && AssertAndAscend(ref current, candidate.Namespace0)
+                        && AssertAndAscend(ref current, candidate.Namespace1)
+                        && AssertAndAscend(ref current, candidate.Namespace2))
+                    {
+                        return candidate.Syntax;
+                    }
+                }
+            }
         }
 
         return null;
@@ -1043,18 +1068,18 @@ internal static class Inspection
         }
     }
 
-    private static readonly ImmutableArray<(string? Namespace2, string? Namespace1, string Namespace0, string Connection, SqlSyntax Syntax)> KnownConnectionTypes = new[]
+    private static readonly ImmutableArray<(string? Namespace2, string? Namespace1, string Namespace0, string Connection, string Command, SqlSyntax Syntax)> KnownConnectionTypes = new[]
     {
-            ("System", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
-            ("Microsoft", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
+            ("System", "Data", "SqlClient", "SqlConnection", "SqlCommand", SqlSyntax.SqlServer),
+            ("Microsoft", "Data", "SqlClient", "SqlConnection", "SqlCommand", SqlSyntax.SqlServer),
 
-            (null, null, "Npgsql", "NpgsqlConnection", SqlSyntax.PostgreSql),
+            (null, null, "Npgsql", "NpgsqlConnection", "NpgsqlCommand", SqlSyntax.PostgreSql),
 
-            ("MySql", "Data", "MySqlClient", "MySqlConnection", SqlSyntax.MySql),
+            ("MySql", "Data", "MySqlClient", "MySqlConnection", "MySqlCommand", SqlSyntax.MySql),
 
-            ("Oracle", "DataAccess", "Client", "OracleConnection", SqlSyntax.Oracle),
+            ("Oracle", "DataAccess", "Client", "OracleConnection", "OracleCommand", SqlSyntax.Oracle),
 
-            ("Microsoft", "Data", "Sqlite", "SqliteConnection", SqlSyntax.SQLite),
+            ("Microsoft", "Data", "Sqlite", "SqliteConnection", "SqliteCommand", SqlSyntax.SQLite),
         }.ToImmutableArray();
 }
 
