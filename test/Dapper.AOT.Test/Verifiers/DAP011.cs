@@ -5,31 +5,37 @@ using static Dapper.CodeAnalysis.DapperAnalyzer;
 
 namespace Dapper.AOT.Test.Verifiers;
 
-public class DAP011 : Verifier<DapperAnalyzer>
+public class DAP013 : Verifier<DapperAnalyzer>
 {
     [Fact]
-    public Task DapperLegacyTupleParameter() => CSVerifyAsync("""
+    public Task DapperAotTupleResults() => CSVerifyAsync("""
         using Dapper;
         using System.Data.Common;
 
-        [DapperAot(false)]
+        [DapperAot(true)]
         class SomeCode
         {
-            [BindTupleByName]
+            [BindTupleByName(false)]
             public void EnabledWithoutNames(DbConnection conn)
             {
-                _ = conn.Query<(string,int)>("somesql");
+                _ = conn.{|#0:Query<(string,int)>|}("somesql");
             }
-            [BindTupleByName]
+            [BindTupleByName(true)]
             public void EnabledWithNames(DbConnection conn)
             {
-                _ = conn.{|#0:Query<(string s,int a)>|}("somesql");
+                _ = conn.{|#1:Query<(string s,int a)>|}("somesql");
             }
-            public void NotEnabled(DbConnection conn)
+            [DapperAot(false)]
+            public void UseVanillaDapper(DbConnection conn)
             {
                 _ = conn.Query<(string,int)>("somesql");
             }
+            public void UseRecordStruct(DbConnection conn)
+            {
+                _ = conn.Query<MyData>("somesql");
+            }
+            public readonly record struct MyData(string name, int id);
         }
-        """, DefaultConfig, [Diagnostic(Diagnostics.DapperLegacyBindNameTupleResults).WithLocation(0)]);
-
+        """, DefaultConfig, [Diagnostic(Diagnostics.DapperAotTupleResults).WithLocation(0),
+        Diagnostic(Diagnostics.DapperAotTupleResults).WithLocation(1)]);
 }

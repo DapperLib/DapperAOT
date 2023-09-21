@@ -451,7 +451,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
     internal static Location SharedParseArgsAndFlags(in ParseState ctx, IInvocationOperation op, ref OperationFlags flags, out string? sql, out ITypeSymbol? paramType,
         Action<Diagnostic>? reportDiagnostic, out ITypeSymbol? resultType)
     {
-        var location = op.GetMemberLocation();
+        var callLocation = op.GetMemberLocation();
+        Location? argLocation = null;
         sql = null;
         paramType = null;
         bool? buffered = null;
@@ -491,6 +492,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                             flags |= OperationFlags.HasParameters;
                         }
                     }
+                    argLocation = arg.Syntax.GetLocation();
                     break;
                 case "cnn":
                 case "commandTimeout":
@@ -568,7 +570,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 // extra checks specific to Dapper vanilla
                 if (resultTuple && withNames && Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out _))
                 {   // Dapper vanilla supports bind-by-position for tuples; warn if bind-by-name is enabled
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperLegacyBindNameTupleResults, location));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperLegacyBindNameTupleResults, callLocation));
                 }
             }
             else
@@ -577,23 +579,23 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 if (Inspection.InvolvesGenericTypeParameter(resultType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, location, resultType!.ToDisplayString()));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, callLocation, resultType!.ToDisplayString()));
                 }
                 else if (resultTuple)
                 {
                     if (!bindByNameDefined)
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, location));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, callLocation));
                     }
 
                     // but not implemented currently!
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotTupleResults, location));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotTupleResults, callLocation));
                 }
                 else if (!Inspection.IsPublicOrAssemblyLocal(resultType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, location, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, callLocation, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
                 }
             }
         }
@@ -601,13 +603,14 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         // additional parameter checks
         if (flags.HasAny(OperationFlags.HasParameters))
         {
+            argLocation ??= callLocation;
             bool paramTuple = Inspection.InvolvesTupleType(paramType, out _);
             if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
                 // extra checks specific to Dapper vanilla
                 if (paramTuple)
                 {
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperLegacyTupleParameter, location));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperLegacyTupleParameter, argLocation));
                 }
             }
             else
@@ -621,31 +624,31 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     }
                     if (!defined)
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, location));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotAddBindTupleByName, argLocation));
                     }
 
                     // but not implemented currently!
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotTupleParameter, location));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotTupleParameter, argLocation));
                 }
                 else if (Inspection.InvolvesGenericTypeParameter(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, location, paramType!.ToDisplayString()));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, argLocation, paramType!.ToDisplayString()));
                 }
-                else if (Inspection.IsMissingOrObjectOrDynamic(paramType))
+                else if (Inspection.IsMissingOrObjectOrDynamic(paramType) || Inspection.IsDynamicParameters(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UntypedParameter, location));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UntypedParameter, argLocation));
                 }
                 else if (!Inspection.IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, location, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, argLocation, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
                 }
             }
         }
-        return location;
+        return callLocation;
     }
 
     enum ParameterMode

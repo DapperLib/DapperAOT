@@ -32,7 +32,7 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     {
         if (parameterType is not null)
         {
-            if (Inspection.IsMissingOrObjectOrDynamic(parameterType) || IsDynamicParameters(parameterType))
+            if (Inspection.IsMissingOrObjectOrDynamic(parameterType) || Inspection.IsDynamicParameters(parameterType))
             { }
             else
             {
@@ -41,18 +41,6 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
             }
         }
         return flags;
-
-        static bool IsDynamicParameters(ITypeSymbol? type)
-        {
-            if (type is null || type.SpecialType != SpecialType.None) return false;
-            if (Inspection.IsBasicDapperType(type, Types.DynamicParameters)
-                || Inspection.IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
-            foreach (var i in type.AllInterfaces)
-            {
-                if (Inspection.IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
-            }
-            return false;
-        }
     }
     public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, SqlParseInputFlags flags,
         Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(CheckForKnownParameterType(flags, parameterType))
