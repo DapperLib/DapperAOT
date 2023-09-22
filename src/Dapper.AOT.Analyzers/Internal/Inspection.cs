@@ -445,10 +445,7 @@ internal static class Inspection
         public override bool Equals(object obj) => obj is ElementMember other
             && SymbolEqualityComparer.Default.Equals(Member, other.Member);
 
-
-        public Location? GetDbValueLocation() => GetDapperAttribute(Member, Types.DbValueAttribute)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
-
-        public Location? GetMemberLocation()
+        public Location? GetLocation()
         {
             foreach (var node in Member.DeclaringSyntaxReferences)
             {
@@ -459,7 +456,12 @@ internal static class Inspection
             }
             return null;
         }
-        public Location? GetDbValueOrMemberLocation() => GetDbValueLocation() ?? GetMemberLocation();
+        public Location? GetLocation(string? attributeName = null)
+        {
+            var loc = attributeName is null ? null :
+                GetDapperAttribute(Member, attributeName)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
+            return loc ?? GetLocation();
+        }
     }
 
     public enum ConstructorResult

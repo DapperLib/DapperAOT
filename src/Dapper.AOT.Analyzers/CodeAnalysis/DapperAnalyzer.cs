@@ -664,7 +664,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         int cmdPropsCount = 0;
         int estimatedRowCount = 0;
-        string? estimatedRowCountMember = null;
+        ElementMember? estimatedRowCountMember = null;
         if (map is not null)
         {
             foreach (var member in map.Members)
@@ -673,9 +673,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 {
                     if (estimatedRowCountMember is not null)
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MemberRowCountHintDuplicated, member.GetDbValueOrMemberLocation()));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MemberRowCountHintDuplicated, member.GetLocation(
+                            Types.EstimatedRowCountAttribute),
+                            additionalLocations: [estimatedRowCountMember.GetValueOrDefault().GetLocation(Types.EstimatedRowCountAttribute)]));
                     }
-                    estimatedRowCountMember = member.Member.Name;
+                    estimatedRowCountMember = member;
                 }
             }
         }
@@ -736,7 +738,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
 
         return cmdProps.IsDefaultOrEmpty && estimatedRowCount <= 0 && estimatedRowCountMember is null
-            ? null : new(estimatedRowCount, estimatedRowCountMember, cmdProps);
+            ? null : new(estimatedRowCount, estimatedRowCountMember?.Member.Name, cmdProps);
     }
 
     internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)
@@ -772,22 +774,28 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (!(map is null || map.IsUnknownParameters))
         {
             // check the shape of the parameter type
-            string? rowCountMember = null, returnCodeMember = null;
+            ElementMember? rowCountMember = null, returnCodeMember = null;
             foreach (var member in map.Members)
             {
                 if (member.IsRowCount)
                 {
                     if (rowCountMember is not null)
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateRowCount, member.GetDbValueOrMemberLocation(), member.CodeName, rowCountMember));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateRowCount,
+                            location: member.GetLocation(Types.RowCountAttribute),
+                            additionalLocations: [rowCountMember.GetValueOrDefault().GetLocation(Types.RowCountAttribute)],
+                            messageArgs: [rowCountMember.GetValueOrDefault().CodeName, member.CodeName]));
                     }
                     else
                     {
-                        rowCountMember = member.CodeName;
+                        rowCountMember = member;
                     }
                     if (member.HasDbValueAttribute)
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.RowCountDbValue, member.GetDbValueOrMemberLocation(), member.CodeName));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.RowCountDbValue,
+                            location: member.GetLocation(Types.DbValueAttribute),
+                            additionalLocations: [member.GetLocation(Types.RowCountAttribute)],
+                            messageArgs: [member.CodeName]));
                     }
                 }
                 if (member.Kind != ElementMemberKind.None)
@@ -821,8 +829,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 if (byDbName.TryGetValue(dbName, out var existing))
                 {
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateParameter,
-                        location: existing.GetDbValueOrMemberLocation(),
-                        additionalLocations: [member.GetDbValueOrMemberLocation()],
+                        location: member.GetLocation(Types.DbValueAttribute),
+                        additionalLocations: [existing.GetLocation(Types.DbValueAttribute)],
                         messageArgs: [existing.CodeName, member.CodeName, dbName ]));
                 }
                 else
@@ -834,11 +842,14 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 {
                     if (returnCodeMember is null)
                     {
-                        returnCodeMember = member.CodeName;
+                        returnCodeMember = member;
                     }
                     else
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateReturn, member.GetDbValueOrMemberLocation(), member.CodeName, returnCodeMember));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateReturn,
+                            location: member.GetLocation(Types.DbValueAttribute),
+                            additionalLocations: [returnCodeMember.GetValueOrDefault().GetLocation(Types.DbValueAttribute)],
+                            messageArgs: [returnCodeMember.GetValueOrDefault().CodeName, member.CodeName]));
                     }
                 }
             }
