@@ -12,7 +12,7 @@ partial class DapperInterceptorGenerator
         //UntypedResults = new("DAP002", "Untyped result types",
         //    "Dapper.AOT does not currently support untyped/dynamic results", Category.Library, DiagnosticSeverity.Info, true),
         InterceptorsNotEnabled = LibraryWarning("DAP003", "Interceptors not enabled",
-            "Interceptors need to be enabled (see help-link)", true),
+            "Interceptors need to be enabled", true),
         LanguageVersionTooLow = LibraryWarning("DAP004", "Language version too low", "Interceptors require at least C# version 11", true),
 
         // space
