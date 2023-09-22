@@ -209,8 +209,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 }
             }
 
-            var map = MemberMap.Create(paramType, true);
-            var args = SharedGetParametersToInclude(map, flags, sql, onDiagnostic, out var parseFlags);
+            var parameters = MemberMap.Create(paramType, true);
+            if (aotEnabled)
+            {
+                _ = AdditionalCommandState.Parse(GetSymbol(parseState, invoke), parameters, onDiagnostic);
+            }
+            var args = SharedGetParametersToInclude(parameters, flags, sql, onDiagnostic, out var parseFlags);
 
 
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), location);
@@ -335,7 +339,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         private static readonly Regex HasWhitespace = new(@"\s", RegexOptions.Compiled | RegexOptions.Multiline);
 
-        
+
         private readonly SqlSyntax? DefaultSqlSyntax;
         private readonly SqlParseInputFlags? DebugSqlFlags;
         private readonly Compilation _compilation;
@@ -344,7 +348,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         internal bool IsDapperAotAvailable => _isDapperAotAvailable ?? LazyIsDapperAotAvailable();
         private bool LazyIsDapperAotAvailable()
         {
-            _isDapperAotAvailable = _compilation.Language == LanguageNames.CSharp &&  _compilation.GetTypeByMetadataName("Dapper." + Types.DapperAotAttribute) is not null;
+            _isDapperAotAvailable = _compilation.Language == LanguageNames.CSharp && _compilation.GetTypeByMetadataName("Dapper." + Types.DapperAotAttribute) is not null;
             return _isDapperAotAvailable.Value;
         }
 #pragma warning disable RS1012 // Start action has no registered actions
@@ -657,53 +661,76 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         None, All, Defer, Filter
     }
 
-    internal static AdditionalCommandState? SharedGetAdditionalCommandState(ISymbol target, MemberMap? map, Action<Diagnostic>? reportDiagnostic)
+    internal static AdditionalCommandState? SharedGetAdditionalCommandState(ISymbol target, MemberMap? parameters, Action<Diagnostic>? reportDiagnostic)
     {
-        var attribs = target.GetAttributes();
-        if (attribs.IsDefaultOrEmpty) return null;
+        var methodAttribs = target.GetAttributes();
+        if (methodAttribs.IsDefaultOrEmpty && parameters is not { Members.IsDefaultOrEmpty: false }) return null;
 
         int cmdPropsCount = 0;
-        int estimatedRowCount = 0;
-        ElementMember? estimatedRowCountMember = null;
-        if (map is not null)
+        int rowCountHint = 0;
+        ElementMember? rowCountHintMember = null;
+        var location = target.Locations.FirstOrDefault();
+
+        if (parameters is not null)
         {
-            foreach (var member in map.Members)
+            foreach (var member in parameters.Members)
             {
-                if (member.IsEstimatedRowCount)
+                if (member.IsRowCountHint)
                 {
-                    if (estimatedRowCountMember is not null)
+                    if (rowCountHintMember is not null)
                     {
-                        reportDiagnostic?.Invoke(Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MemberRowCountHintDuplicated, member.GetLocation(
-                            Types.EstimatedRowCountAttribute),
-                            additionalLocations: [estimatedRowCountMember.GetValueOrDefault().GetLocation(Types.EstimatedRowCountAttribute)]));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.RowCountHintDuplicated, member.GetLocation(Types.RowCountHintAttribute),
+                            additionalLocations: [rowCountHintMember.GetValueOrDefault().GetLocation(Types.RowCountHintAttribute)],
+                            messageArgs: [member.CodeName]));
                     }
-                    estimatedRowCountMember = member;
+                    rowCountHintMember = member;
+
+                    if (reportDiagnostic is not null)
+                    {
+                        foreach (var attrib in member.Member.GetAttributes())
+                        {
+                            switch (attrib.AttributeClass!.Name)
+                            {
+                                case Types.RowCountHintAttribute:
+                                    if (attrib.ConstructorArguments.Length != 0)
+                                    {
+                                        reportDiagnostic.Invoke(Diagnostic.Create(Diagnostics.RowCountHintShouldNotSpecifyValue,
+                                            attrib.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? location));
+                                    }
+                                    break;
+                            }
+                        }
+                    }
                 }
             }
         }
-        var location = target.Locations.FirstOrDefault();
-        foreach (var attrib in attribs)
+
+        foreach (var attrib in methodAttribs)
         {
             if (Inspection.IsDapperAttribute(attrib))
             {
                 switch (attrib.AttributeClass!.Name)
                 {
-                    case Types.EstimatedRowCountAttribute:
+                    case Types.RowCountHintAttribute:
                         if (attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i
                             && i > 0)
                         {
-                            if (estimatedRowCountMember is null)
+                            if (rowCountHintMember is null)
                             {
-                                estimatedRowCount = i;
+                                rowCountHint = i;
                             }
                             else
                             {
-                                reportDiagnostic?.Invoke(Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MethodRowCountHintRedundant, location, estimatedRowCountMember));
+                                reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.RowCountHintRedundant,
+                                    attrib.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? location,
+                                    rowCountHintMember.GetValueOrDefault().CodeName));
                             }
                         }
                         else
                         {
-                            reportDiagnostic?.Invoke(Diagnostic.Create(DapperInterceptorGenerator.Diagnostics.MethodRowCountHintInvalid, location));
+                            reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.RowCountHintInvalidValue,
+                                attrib.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? location,
+                                location));
                         }
                         break;
                     case Types.CommandPropertyAttribute:
@@ -717,7 +744,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (cmdPropsCount != 0)
         {
             var builder = ImmutableArray.CreateBuilder<CommandProperty>(cmdPropsCount);
-            foreach (var attrib in attribs)
+            foreach (var attrib in methodAttribs)
             {
                 if (Inspection.IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == Types.CommandPropertyAttribute
                     && attrib.AttributeClass.Arity == 1
@@ -737,8 +764,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
 
 
-        return cmdProps.IsDefaultOrEmpty && estimatedRowCount <= 0 && estimatedRowCountMember is null
-            ? null : new(estimatedRowCount, estimatedRowCountMember?.Member.Name, cmdProps);
+        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null
+            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, cmdProps);
     }
 
     internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)

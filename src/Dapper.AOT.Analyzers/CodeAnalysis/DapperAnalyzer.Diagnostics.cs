@@ -8,7 +8,6 @@ partial class DapperAnalyzer
     {
         public static readonly DiagnosticDescriptor
         // general usage
-        UnknownError = LibraryWarning("DAP999", "Unknown analyzer error", "This isn't you; this is me; please log it! '{0}', '{1}'", true),
         UnsupportedMethod = LibraryInfo("DAP001", "Unsupported method", "The Dapper method '{0}' is not currently supported by Dapper.AOT", true),
         DapperAotNotEnabled = LibraryInfo("DAP005", "Dapper.AOT not enabled", "{0} candidate Dapper methods detected, but none have Dapper.AOT enabled", true),
         DapperLegacyTupleParameter = LibraryWarning("DAP006", "Dapper tuple-type parameter", "Dapper (original) does not work well with tuple-type parameters as name information is inaccessible", true),
@@ -32,6 +31,16 @@ partial class DapperAnalyzer
         ConstructorMultipleExplicit = LibraryError("DAP035", "Multiple explicit constructors", "Only one constructor should be marked [ExplicitConstructor] for type '{0}'", true),
         ConstructorAmbiguous = LibraryError("DAP036", "Ambiguous constructors", "Type '{0}' has more than 1 constructor; mark one constructor with [ExplicitConstructor] or reduce constructors", true),
         ValueTypeSingleFirstOrDefaultUsage = LibraryWarning("DAP038", "Value-type single row 'OrDefault' usage", "Type '{0}' is a value-type; it will not be trivial to identify missing rows from {1}", true),
+
+        // space
+        SqlParametersNotDetected = SqlWarning("DAP018", "SQL parameters not detected", "Parameters are being supplied, but no parameters were detected in the command"),
+        NoParametersSupplied = SqlWarning("DAP019", "No parameters supplied", "SQL parameters were detected, but no parameters are being supplied"),
+        SqlParameterNotBound = SqlWarning("DAP020", "SQL parameter not bound", "No member could be found for the SQL parameter '{0}' from type '{1}'"),
+
+        RowCountHintRedundant = LibraryInfo("DAP029", "Row-count hint redundant", "The method-level [RowCountHint] will be ignored due to parameter member '{0}'", true),
+        RowCountHintInvalidValue = LibraryError("DAP030", "Row-count hint invalid value", "The [RowCountHint] parameters are invalid; a positive integer must be supplied", true),
+        RowCountHintShouldNotSpecifyValue = LibraryError("DAP031", "Row-count hint should not specify value", "The [RowCountHint] parameters are invalid; no parameter should be supplied", true),
+        RowCountHintDuplicated = LibraryError("DAP032", "Row-count hint duplicated", "Only a single member or parameter should be marked [RowCountHint]; '{0} will be ignored", true),
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),

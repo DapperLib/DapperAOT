@@ -5,7 +5,7 @@ using System.Data.Common;
 
 public static class Foo
 {
-    [EstimatedRowCount(25)]
+    [RowCountHint(25)]
     static void SomeCode(DbConnection connection, string bar, bool isBuffered)
     {
         _ = connection.Query<Customer>("def");
@@ -22,7 +22,7 @@ public static class Foo
     {
         public int Foo { get; set; }
         public string Bar { get; set; }
-        [EstimatedRowCount]
+        [RowCountHint]
         public int Count { get; set; }
     }
 }

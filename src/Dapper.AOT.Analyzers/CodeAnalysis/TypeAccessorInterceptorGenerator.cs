@@ -46,7 +46,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
 
     private SourceState? Parse(GeneratorSyntaxContext ctx, CancellationToken cancellationToken)
     {
-        if (ctx.Node is not InvocationExpressionSyntax ie || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op)
+        if (ctx.Node is not InvocationExpressionSyntax ie || ctx.SemanticModel.GetOperation(ie, cancellationToken) is not IInvocationOperation op)
         {
             return null;
         }
@@ -563,7 +563,9 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
             }
         }
 
+#pragma warning disable IDE0305 // Simplify collection initialization
         return members.ToArray();
+#pragma warning restore IDE0305 // Simplify collection initialization
     }
 
     [DebuggerDisplay("{TypeSymbol} {Name}")]

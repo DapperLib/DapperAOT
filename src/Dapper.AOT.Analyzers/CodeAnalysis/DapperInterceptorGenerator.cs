@@ -88,9 +88,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (!canBeCached) flags &= ~OperationFlags.CacheCommand;
         }
 
-        var estimatedRowCount = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), map);
+        var additionalState = flags.HasAny(OperationFlags.DoNotGenerate) ? null : AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), map, null);
 
-        return new SourceState(location, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, estimatedRowCount);
+        return new SourceState(location, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, additionalState);
 
 
         static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, OperationFlags flags, MemberMap? map, Location loc, out SqlParseOutputFlags parseFlags)

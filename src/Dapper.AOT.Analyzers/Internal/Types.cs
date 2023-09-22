@@ -10,7 +10,7 @@ internal static class Types
         CacheCommandAttribute = nameof(CacheCommandAttribute),
         IncludeLocationAttribute = nameof(IncludeLocationAttribute),
         SqlSyntaxAttribute = nameof(SqlSyntaxAttribute),
-        EstimatedRowCountAttribute = nameof(EstimatedRowCountAttribute),
+        RowCountHintAttribute = nameof(RowCountHintAttribute),
         CommandPropertyAttribute = nameof(CommandPropertyAttribute),
         DynamicParameters = nameof(DynamicParameters),
         IDynamicParameters = nameof(IDynamicParameters),

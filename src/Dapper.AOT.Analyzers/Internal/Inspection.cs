@@ -360,7 +360,7 @@ internal static class Inspection
     {
         None = 0,
         RowCount = 1 << 0,
-        EstimatedRowCount = 1 << 1,
+        RowCountHint = 1 << 1,
     }
     public readonly struct ElementMember
     {
@@ -381,7 +381,7 @@ internal static class Inspection
         public ElementMemberKind Kind { get; }
 
         public bool IsRowCount => (Kind & ElementMemberKind.RowCount) != 0;
-        public bool IsEstimatedRowCount => (Kind & ElementMemberKind.EstimatedRowCount) != 0;
+        public bool IsRowCountHint => (Kind & ElementMemberKind.RowCountHint) != 0;
         public bool HasDbValueAttribute => _dbValue is not null;
 
         public T? TryGetValue<T>(string memberName) where T : struct
@@ -603,9 +603,9 @@ internal static class Inspection
                 {
                     kind |= ElementMemberKind.RowCount;
                 }
-                if (GetDapperAttribute(member, Types.EstimatedRowCountAttribute) is not null)
+                if (GetDapperAttribute(member, Types.RowCountHintAttribute) is not null)
                 {
-                    kind |= ElementMemberKind.EstimatedRowCount;
+                    kind |= ElementMemberKind.RowCountHint;
                 }
 
                 if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && kind == ElementMemberKind.None) continue;
