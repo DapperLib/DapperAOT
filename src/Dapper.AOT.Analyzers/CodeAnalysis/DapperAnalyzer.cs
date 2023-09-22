@@ -167,7 +167,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             var parseState = new ParseState(ctx);
             bool aotEnabled = Inspection.IsEnabled(in parseState, invoke, Types.DapperAotAttribute, out var aotAttribExists);
             if (!aotEnabled) flags |= OperationFlags.DoNotGenerate;
-            var location = SharedParseArgsAndFlags(parseState, invoke, ref flags, out var sql, out var paramType, onDiagnostic, out _);
+            var location = SharedParseArgsAndFlags(parseState, invoke, ref flags, out var sql, out var paramType, onDiagnostic, out _, exitFirstFailure: false);
 
             // report our AOT readiness
             if (aotEnabled)
@@ -454,7 +454,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
     // we want a common understanding of the setup between the analyzer and generator
     internal static Location SharedParseArgsAndFlags(in ParseState ctx, IInvocationOperation op, ref OperationFlags flags, out string? sql, out ITypeSymbol? paramType,
-        Action<Diagnostic>? reportDiagnostic, out ITypeSymbol? resultType)
+        Action<Diagnostic>? reportDiagnostic, out ITypeSymbol? resultType, bool exitFirstFailure)
     {
         var callLocation = op.GetMemberLocation();
         Location? argLocation = null;
@@ -539,6 +539,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     break;
             }
         }
+
+        if (exitFirstFailure && flags.HasAny(OperationFlags.DoNotGenerate))
+        {
+            resultType = null;
+            return callLocation;
+        }
+
         // additional flags
         if (Inspection.IsEnabled(ctx, op, Types.CacheCommandAttribute, out _))
         {
@@ -603,6 +610,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, callLocation, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
                 }
             }
+        }
+
+        if (exitFirstFailure && flags.HasAny(OperationFlags.DoNotGenerate))
+        {
+            resultType = null;
+            return callLocation;
         }
 
         // additional parameter checks

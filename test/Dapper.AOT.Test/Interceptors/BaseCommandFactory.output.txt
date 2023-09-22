@@ -8,7 +8,7 @@ There is no argument given that corresponds to the required parameter 'rowCount'
 Generator produced 1 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 1 of 1 enabled call-sites using 1 interceptors, 1 commands and 0 readers
+Dapper.AOT handled 1 of 1 possible call-sites using 1 interceptors, 1 commands and 0 readers
 Output code has 2 diagnostics from 'Interceptors/BaseCommandFactory.input.cs':
 
 Error CS0115 Interceptors/BaseCommandFactory.input.cs L28 C30

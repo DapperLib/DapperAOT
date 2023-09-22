@@ -36,7 +36,6 @@ public class AccessorInterceptorTests : GeneratorTestBase
         var sb = new StringBuilder();
         var result = Execute<TypeAccessorInterceptorGenerator>(sourceText, sb, fileName: path, initializer: g =>
         {
-            g.OverrideFeatureEnabled = true;
             g.Log += (severity, message) => Log($"{severity}: {message}");
         });
 
