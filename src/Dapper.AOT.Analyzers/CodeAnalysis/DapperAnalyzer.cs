@@ -114,7 +114,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                         foreach (var p in invoke.TargetMethod.Parameters)
                         {
                             if (p.Type.SpecialType == SpecialType.System_String && (
-                                p.Name == "sql" || Inspection.GetDapperAttribute(p, Types.SqlAttribute) is not null))
+                                p.Name == "sql" || GetDapperAttribute(p, Types.SqlAttribute) is not null))
                             {
                                 if (Inspection.IsDapperMethod(invoke, out var dapperFlags))
                                 {
@@ -138,12 +138,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                                 // check for DbConnection?
                             } prop)
                         {
-                            if (prop.Name == "CommandText" && Inspection.IsCommand(prop.ContainingType))
+                            if (prop.Name == "CommandText" && IsCommand(prop.ContainingType))
                             {
                                 // write to CommandText
                                 ValidatePropertyUsage(ctx, assignment.Value, true);
                             }
-                            else if (Inspection.GetDapperAttribute(prop, Types.SqlAttribute) is not null)
+                            else if (GetDapperAttribute(prop, Types.SqlAttribute) is not null)
                             {
                                 // write SQL to a string property
                                 ValidatePropertyUsage(ctx, assignment.Value, false);
@@ -154,7 +154,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
             catch (Exception ex)
             {
-                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnknownError, null, ex.Message, ex.StackTrace));
+                ctx.ReportDiagnostic(Diagnostic.Create(DiagnosticsBase.UnknownError, null, ex.Message, ex.StackTrace));
             }
         }
 
@@ -165,7 +165,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
             // check the args
             var parseState = new ParseState(ctx);
-            bool aotEnabled = Inspection.IsEnabled(in parseState, invoke, Types.DapperAotAttribute, out var aotAttribExists);
+            bool aotEnabled = IsEnabled(in parseState, invoke, Types.DapperAotAttribute, out var aotAttribExists);
             if (!aotEnabled) flags |= OperationFlags.DoNotGenerate;
             var location = SharedParseArgsAndFlags(parseState, invoke, ref flags, out var sql, out var paramType, onDiagnostic, out _, exitFirstFailure: false);
 
@@ -190,16 +190,16 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             {
                 // check for single-row value-type usage
                 if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
-                    && resultMap.ElementType.IsValueType && !Inspection.CouldBeNullable(resultMap.ElementType))
+                    && resultMap.ElementType.IsValueType && !CouldBeNullable(resultMap.ElementType))
                 {
                     ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultMap.ElementType.Name, invoke.TargetMethod.Name));
                 }
 
                 // check for constructors on the materialized type
-                DiagnosticDescriptor? ctorFault = Inspection.ChooseConstructor(resultMap.ElementType, out var ctor) switch
+                DiagnosticDescriptor? ctorFault = ChooseConstructor(resultMap.ElementType, out var ctor) switch
                 {
-                    Inspection.ConstructorResult.FailMultipleExplicit => Diagnostics.ConstructorMultipleExplicit,
-                    Inspection.ConstructorResult.FailMultipleImplicit when aotEnabled => Diagnostics.ConstructorAmbiguous,
+                    ConstructorResult.FailMultipleExplicit => Diagnostics.ConstructorMultipleExplicit,
+                    ConstructorResult.FailMultipleImplicit when aotEnabled => Diagnostics.ConstructorAmbiguous,
                     _ => null,
                 };
                 if (ctorFault is not null)
@@ -217,37 +217,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             var args = SharedGetParametersToInclude(parameters, flags, sql, onDiagnostic, out var parseFlags);
 
 
-            ValidateSql(ctx, sqlSource, GetModeFlags(flags), location);
-
-            /*
-             * 
-
-            if (paramNames.IsEmpty && (parseFlags & SqlParseOutputFlags.Return) == 0) // return is a parameter, sort of
-            {
-                if (flags.HasAny(OperationFlags.HasParameters))
-                {
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParametersNotDetected, loc));
-                }
-                return "";
-            }
-
-            // so, we definitely detect parameters (note: don't warn just for return)
-            if (!flags.HasAny(OperationFlags.HasParameters))
-            {
-                if (!paramNames.IsEmpty)
-                {
-                    Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
-                }
-                return "";
-            }
-
-                                // we can only consider this an error if we're confident in how well we parsed the input
-                    // (unless we detected dynamic args, in which case: we don't know what we don't know)
-                    if ((parseFlags & (SqlParseOutputFlags.Reliable | SqlParseOutputFlags.KnownParameters)) == (SqlParseOutputFlags.Reliable | SqlParseOutputFlags.KnownParameters))
-                    {
-                        Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(parameterType)));
-                    }
-            */
+            ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(parameters), location);
 
             ValidateSurroundingLinqUsage(ctx, flags);
 
@@ -323,7 +293,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         {
             // TODO: check other parameters for special markers like command type?
             var flags = SqlParseInputFlags.None;
-            ValidateSql(ctx, sqlSource, flags);
+            ValidateSql(ctx, sqlSource, flags, SqlParameters.None);
         }
 
         private void ValidatePropertyUsage(in OperationAnalysisContext ctx, IOperation sqlSource, bool isCommand)
@@ -334,7 +304,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 // TODO: check other parameters for special markers like command type?
                 // check the method being invoked - scalar, reader, etc
             }
-            ValidateSql(ctx, sqlSource, flags);
+            ValidateSql(ctx, sqlSource, flags, SqlParameters.None);
         }
 
         private static readonly Regex HasWhitespace = new(@"\s", RegexOptions.Compiled | RegexOptions.Multiline);
@@ -366,12 +336,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        private void ValidateSql(in OperationAnalysisContext ctx, IOperation sqlSource, SqlParseInputFlags flags, Location? location = null)
+        private void ValidateSql(in OperationAnalysisContext ctx, IOperation sqlSource, SqlParseInputFlags flags,
+            ImmutableArray<SqlParameter> parameters, Location? location = null)
         {
             var parseState = new ParseState(ctx);
 
             // should we consider this as a syntax we can handle?
-            var syntax = Inspection.IdentifySqlSyntax(parseState, ctx.Operation, out var caseSensitive) ?? DefaultSqlSyntax ?? SqlSyntax.General;
+            var syntax = IdentifySqlSyntax(parseState, ctx.Operation, out var caseSensitive) ?? DefaultSqlSyntax ?? SqlSyntax.General;
             switch (syntax)
             {
                 case SqlSyntax.SqlServer:
@@ -385,7 +356,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             if (caseSensitive) flags |= SqlParseInputFlags.CaseSensitive;
 
             // can we get the SQL itself?
-            if (!Inspection.TryGetConstantValueWithSyntax(sqlSource, out string? sql, out var sqlSyntax)) return;
+            if (!TryGetConstantValueWithSyntax(sqlSource, out string? sql, out var sqlSyntax)) return;
             if (string.IsNullOrWhiteSpace(sql) || !HasWhitespace.IsMatch(sql)) return; // need non-trivial content to validate
 
             location ??= ctx.Operation.Syntax.GetLocation();
@@ -405,15 +376,20 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 }
             }
 
+            bool forgiveSyntaxErrors = false;
             try
             {
                 SqlParseOutputFlags parseFlags;
                 switch (syntax)
                 {
+                    case SqlSyntax.GeneralWithAtParameters:
+                    case SqlSyntax.SQLite:
+                    case SqlSyntax.MySql:
+                        forgiveSyntaxErrors = true; // we're just taking a punt, honestly
+                        goto case SqlSyntax.SqlServer;
                     case SqlSyntax.SqlServer:
-
                         var proc = new OperationAnalysisContextTSqlProcessor(ctx, null, flags, location, sqlSyntax);
-                        proc.Execute(sql!, members: default);
+                        proc.Execute(sql!, parameters);
                         parseFlags = proc.Flags;
                         // paramMembers);
                         //parseFlags = proc.Flags;
@@ -447,7 +423,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
             catch (Exception ex)
             {
-                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.GeneralSqlError, location, ex.Message));
+                if (!forgiveSyntaxErrors)
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.GeneralSqlError, location, ex.Message));
+                }
             }
         }
     }
@@ -468,13 +447,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             switch (arg.Parameter?.Name)
             {
                 case "sql":
-                    if (Inspection.TryGetConstantValueWithSyntax(arg, out string? s, out _))
+                    if (TryGetConstantValueWithSyntax(arg, out string? s, out _))
                     {
                         sql = s;
                     }
                     break;
                 case "buffered":
-                    if (Inspection.TryGetConstantValue(arg, out bool b))
+                    if (TryGetConstantValue(arg, out bool b))
                     {
                         buffered = b;
                     }
@@ -505,7 +484,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     // nothing to do
                     break;
                 case "commandType":
-                    if (Inspection.TryGetConstantValue(arg, out int? ct))
+                    if (TryGetConstantValue(arg, out int? ct))
                     {
                         switch (ct)
                         {
@@ -547,13 +526,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
 
         // additional flags
-        if (Inspection.IsEnabled(ctx, op, Types.CacheCommandAttribute, out _))
+        if (IsEnabled(ctx, op, Types.CacheCommandAttribute, out _))
         {
             flags |= OperationFlags.CacheCommand;
         }
 
         if (!string.IsNullOrWhiteSpace(sql) && flags.HasAny(OperationFlags.Text)
-            && Inspection.IsEnabled(ctx, op, Types.IncludeLocationAttribute, out _))
+            && IsEnabled(ctx, op, Types.IncludeLocationAttribute, out _))
         {
             flags |= OperationFlags.IncludeLocation;
         }
@@ -563,7 +542,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             flags |= buffered.GetValueOrDefault() ? OperationFlags.Buffered : OperationFlags.Unbuffered;
         }
         resultType = op.GetResultType(flags);
-        if (flags.HasAny(OperationFlags.Query) && Inspection.IdentifyDbType(resultType, out _) is null)
+        if (flags.HasAny(OperationFlags.Query) && IdentifyDbType(resultType, out _) is null)
         {
             flags |= OperationFlags.BindResultsByName;
         }
@@ -572,7 +551,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         {
             bool resultTuple = Inspection.InvolvesTupleType(resultType, out var withNames), bindByNameDefined = false;
             // tuples are positional by default
-            if (resultTuple && !Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out bindByNameDefined))
+            if (resultTuple && !IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out bindByNameDefined))
             {
                 flags &= ~OperationFlags.BindResultsByName;
             }
@@ -580,7 +559,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
                 // extra checks specific to Dapper vanilla
-                if (resultTuple && withNames && Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out _))
+                if (resultTuple && withNames && IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out _))
                 {   // Dapper vanilla supports bind-by-position for tuples; warn if bind-by-name is enabled
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperLegacyBindNameTupleResults, callLocation));
                 }
@@ -588,7 +567,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             else
             {
                 // extra checks specific to DapperAOT
-                if (Inspection.InvolvesGenericTypeParameter(resultType))
+                if (InvolvesGenericTypeParameter(resultType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, callLocation, resultType!.ToDisplayString()));
@@ -604,10 +583,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotTupleResults, callLocation));
                 }
-                else if (!Inspection.IsPublicOrAssemblyLocal(resultType, ctx, out var failing))
+                else if (!IsPublicOrAssemblyLocal(resultType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, callLocation, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, callLocation, failing!.ToDisplayString(), NameAccessibility(failing)));
                 }
             }
         }
@@ -636,7 +615,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 // extra checks specific to DapperAOT
                 if (paramTuple)
                 {
-                    if (Inspection.IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out var defined))
+                    if (IsEnabled(ctx, op, Types.BindTupleByNameAttribute, out var defined))
                     {
                         flags |= OperationFlags.BindTupleParameterByName;
                     }
@@ -649,20 +628,20 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperAotTupleParameter, argLocation));
                 }
-                else if (Inspection.InvolvesGenericTypeParameter(paramType))
+                else if (InvolvesGenericTypeParameter(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, argLocation, paramType!.ToDisplayString()));
                 }
-                else if (Inspection.IsMissingOrObjectOrDynamic(paramType) || Inspection.IsDynamicParameters(paramType))
+                else if (IsMissingOrObjectOrDynamic(paramType) || IsDynamicParameters(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UntypedParameter, argLocation));
                 }
-                else if (!Inspection.IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
+                else if (!IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, argLocation, failing!.ToDisplayString(), Inspection.NameAccessibility(failing)));
+                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, argLocation, failing!.ToDisplayString(), NameAccessibility(failing)));
                 }
             }
         }
@@ -720,7 +699,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         foreach (var attrib in methodAttribs)
         {
-            if (Inspection.IsDapperAttribute(attrib))
+            if (IsDapperAttribute(attrib))
             {
                 switch (attrib.AttributeClass!.Name)
                 {
@@ -759,7 +738,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             var builder = ImmutableArray.CreateBuilder<CommandProperty>(cmdPropsCount);
             foreach (var attrib in methodAttribs)
             {
-                if (Inspection.IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == Types.CommandPropertyAttribute
+                if (IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == Types.CommandPropertyAttribute
                     && attrib.AttributeClass.Arity == 1
                     && attrib.AttributeClass.TypeArguments[0] is INamedTypeSymbol cmdType
                     && attrib.ConstructorArguments.Length == 2

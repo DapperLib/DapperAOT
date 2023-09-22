@@ -10,7 +10,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using static Dapper.Internal.Inspection;
 
 namespace Dapper.SqlAnalysis;
 
@@ -26,6 +25,8 @@ internal class TSqlProcessor
         Table = 1 << 2,
         Unconsumed = 1 << 3,
         OutputParameter = 1 << 4,
+        Declared = 1 << 5,
+        UsedInQuery = 1 << 6,
     }
     private readonly VariableTrackingVisitor _visitor;
 
@@ -36,7 +37,7 @@ internal class TSqlProcessor
         _visitor = log is null ? new VariableTrackingVisitor(flags, this) : new LoggingVariableTrackingVisitor(flags, this, log);
     }
 
-    static string ReplaceDapperSyntaxWithValidSql(string sql, ImmutableArray<ElementMember> members)
+    static string ReplaceDapperSyntaxWithValidSql(string sql, ImmutableArray<SqlParameter> members)
     {
         if (SqlTools.LiteralTokens.IsMatch(sql))
         {
@@ -50,7 +51,7 @@ internal class TSqlProcessor
             {
                 if (member.IsExpandable)
                 {
-                    var regexIncludingUnknown = ("([?@:$]" + Regex.Escape(member.CodeName) + @")(?!\w)(\s+(?i)unknown(?-i))?");
+                    var regexIncludingUnknown = ("([?@:$]" + Regex.Escape(member.Name) + @")(?!\w)(\s+(?i)unknown(?-i))?");
                     sql = Regex.Replace(sql, regexIncludingUnknown, match =>
                     {
                         var variableName = match.Groups[1].Value;
@@ -62,7 +63,7 @@ internal class TSqlProcessor
                         else
                         {
                             // expand it (as one for now)
-                            return "(@" + member.CodeName + ")";
+                            return "(@" + member.Name + ")";
                         }
                     }, RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant);
                 }
@@ -72,13 +73,14 @@ internal class TSqlProcessor
         return sql;
     }
 
-    public virtual bool Execute(string sql, ImmutableArray<ElementMember> members = default)
+    public virtual bool Execute(string sql, ImmutableArray<SqlParameter> members = default)
     {
         if (members.IsDefault)
         {
-            members = ImmutableArray<ElementMember>.Empty;
+            members = ImmutableArray<SqlParameter>.Empty;
         }
         Reset();
+        _visitor.AddParameters(members);
         var fixedSql = ReplaceDapperSyntaxWithValidSql(sql, members);
         if (fixedSql != sql)
         {
@@ -104,25 +106,53 @@ internal class TSqlProcessor
         }
 
         tree.Accept(_visitor);
+
+        // check state of locals after proc - was anything written and not read?
         foreach (var variable in _visitor.Variables)
         {
-            if (_visitor.KnownParameters)
-            {
-                if (variable.IsParameter && TryGetParameter(variable.Name, out var direction) && direction != ParameterDirection.ReturnValue)
-                {
-                    // fine, handled
-                }
-                else
-                {
-                    // no such parameter? then: it wasn't a parameter, and wasn't declared
-                    OnVariableNotDeclared(variable);
-                }
-            }
             if (variable.IsUnconsumed && !variable.IsTable && !variable.IsOutputParameter)
             {
                 if (_visitor.AssignmentTracking) OnVariableValueNotConsumed(variable);
             }
+            if (!variable.IsDeclared)
+            {
+                if (_visitor.KnownParameters) OnVariableNotDeclared(variable);
+            }
+            if (variable.IsUnusedParameter)
+            {
+                OnUnusedParameter(variable);
+            }
         }
+
+        /*
+* 
+
+if (paramNames.IsEmpty && (parseFlags & SqlParseOutputFlags.Return) == 0) // return is a parameter, sort of
+{
+if (flags.HasAny(OperationFlags.HasParameters))
+{
+Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParametersNotDetected, loc));
+}
+return "";
+}
+
+// so, we definitely detect parameters (note: don't warn just for return)
+if (!flags.HasAny(OperationFlags.HasParameters))
+{
+if (!paramNames.IsEmpty)
+{
+Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
+}
+return "";
+}
+
+    // we can only consider this an error if we're confident in how well we parsed the input
+// (unless we detected dynamic args, in which case: we don't know what we don't know)
+if ((parseFlags & (SqlParseOutputFlags.Reliable | SqlParseOutputFlags.KnownParameters)) == (SqlParseOutputFlags.Reliable | SqlParseOutputFlags.KnownParameters))
+{
+Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(parameterType)));
+}
+*/
         return true;
     }
 
@@ -154,6 +184,9 @@ internal class TSqlProcessor
 
     protected virtual void OnVariableNotDeclared(Variable variable)
         => OnError($"Variable {variable.Name} is not declared and no corresponding parameter exists", variable.Location);
+
+    protected virtual void OnUnusedParameter(Variable variable)
+        => OnError($"Parameter {variable.Name} is not not used in the query", variable.Location);
 
     protected virtual void OnDuplicateVariableDeclaration(Variable variable)
         => OnError($"Variable {variable.Name} is declared multiple times", variable.Location);
@@ -252,6 +285,8 @@ internal class TSqlProcessor
             Length = length;
         }
 
+        public static readonly Location Zero = new(0, 0, 0, 0);
+
         public readonly int Line, Column, Offset, Length;
 
         public override string ToString() => $"L{Line} C{Column}";
@@ -270,6 +305,28 @@ internal class TSqlProcessor
         public bool IsUnconsumed => (Flags & VariableFlags.Unconsumed) != 0;
         public bool IsParameter => (Flags & VariableFlags.Parameter) != 0;
         public bool IsOutputParameter => (Flags & VariableFlags.OutputParameter) != 0;
+        public bool IsDeclared => (Flags & VariableFlags.Declared) != 0;
+        public bool IsUnused => (Flags & VariableFlags.UsedInQuery) == 0;
+        public bool IsUnusedParameter => (Flags & (VariableFlags.Parameter | VariableFlags.Declared | VariableFlags.UsedInQuery)) == (VariableFlags.Parameter | VariableFlags.Declared);
+
+        public Variable(SqlParameter parameter)
+        {
+            Name = parameter.Name;
+            Location = Location.Zero;
+            Flags = VariableFlags.Parameter | VariableFlags.Declared;
+            switch (parameter.Direction)
+            {
+                case ParameterDirection.Input:
+                    Flags |= VariableFlags.Unconsumed;
+                    break;
+                case ParameterDirection.Output:
+                    Flags |= VariableFlags.NoValue | VariableFlags.OutputParameter;
+                    break;
+                case ParameterDirection.InputOutput:
+                    break;
+            }
+            if (parameter.IsTable) Flags |= VariableFlags.Table;
+        }
 
         public Variable(Identifier identifier, VariableFlags flags)
         {
@@ -296,6 +353,8 @@ internal class TSqlProcessor
         }
 
         public Variable WithConsumed() => new(in this, (Flags & ~VariableFlags.Unconsumed));
+        public Variable WithDeclared() => new(in this, (Flags | VariableFlags.Declared));
+        public Variable WithUsed() => new(in this, (Flags | VariableFlags.UsedInQuery));
         public Variable WithUnconsumedValue() => new(in this, (Flags & ~VariableFlags.NoValue) | VariableFlags.Unconsumed);
         public Variable WithFlags(VariableFlags flags) => new(in this, flags);
 
@@ -387,6 +446,16 @@ internal class TSqlProcessor
 
         public IEnumerable<Variable> Variables => variables.Values;
 
+        public void AddParameters(ImmutableArray<SqlParameter> parameters)
+        {
+            if (!parameters.IsDefaultOrEmpty)
+            {
+                foreach (var arg in parameters)
+                {
+                    variables.Add(arg.Name, new Variable(arg));
+                }
+            }
+        }
         public virtual void Reset()
         {
             AssignmentTracking = true;
@@ -407,24 +476,25 @@ internal class TSqlProcessor
         {
             if (variables.TryGetValue(variable.Name, out var existing))
             {
-                if (existing.IsParameter)
-                {
-                    // we previously assumed it was a parameter, but actually it was accessed before declaration
-                    variables[variable.Name] = existing.WithFlags(variable.Flags);
-                    // but the *original* one was accessed invalidly
-                    if (AssignmentTracking) parser.OnVariableAccessedBeforeDeclaration(existing);
-                }
-                else
+                if (existing.IsDeclared)
                 {
                     // two definitions? yeah, that's wrong
                     parser.OnDuplicateVariableDeclaration(variable);
                 }
+                else
+                {
+                    // we previously assumed it was a parameter, but actually it was accessed before declaration
+                    variables[variable.Name] = existing.WithFlags(variable.Flags | VariableFlags.Declared);
+                    // but the *original* one was accessed invalidly
+                    if (AssignmentTracking) parser.OnVariableAccessedBeforeDeclaration(existing);
+                }
             }
             else
             {
-                variables.Add(variable.Name, variable);
+                variables.Add(variable.Name, variable.WithDeclared());
             }
         }
+
         public override void ExplicitVisit(DeclareVariableElement node)
         {
             Visit(node);
@@ -1226,12 +1296,17 @@ internal class TSqlProcessor
             => EnsureOrMarkAssigned(node, isTable, true);
         private void EnsureAssigned(VariableReference node, bool isTable)
             => EnsureOrMarkAssigned(node, isTable, false);
-        private void EnsureOrMarkAssigned(VariableReference node, bool isTable, bool mark)
+        private void EnsureOrMarkAssigned(VariableReference node, bool isTable, bool markAssigned)
         {
             if (variables.TryGetValue(node.Name, out var existing))
             {
+                if (existing.IsUnusedParameter)
+                {
+                    variables[node.Name] = existing = existing.WithUsed(); // we found it!
+                }
+
                 var blame = existing.WithLocation(node);
-                if (mark)
+                if (markAssigned)
                 {
                     if (existing.IsUnconsumed && !existing.IsTable)
                     {
@@ -1265,46 +1340,11 @@ internal class TSqlProcessor
             }
             else
             {
-                var flags = VariableFlags.Parameter | (isTable ? VariableFlags.Table : VariableFlags.None);
+                // assume this is a local we don't know about; we'll figure out if it is a parameter afterwards
+                var flags = isTable ? (VariableFlags.Table | VariableFlags.UsedInQuery) : VariableFlags.UsedInQuery;
+                if (markAssigned && !isTable) flags |= VariableFlags.Unconsumed;
 
-                ParameterDirection direction;
-                if (KnownParameters && parser.TryGetParameter(node.Name, out direction) && direction != ParameterDirection.ReturnValue)
-                {
-                    // if it is known, we can infer the directionality and thus assignment state
-                    switch (direction)
-                    {
-                        case ParameterDirection.Output:
-                        case ParameterDirection.InputOutput:
-                            flags |= VariableFlags.OutputParameter;
-                            break;
-                    }
-                }
-                else
-                {
-                    direction = ParameterDirection.Input;
-                }
-
-
-                if (mark && !isTable) flags |= VariableFlags.Unconsumed;
-
-                var variable = new Variable(node, flags);
-                OnDeclare(variable);
-
-                if (!mark && direction == ParameterDirection.Output)
-                {
-                    // pure output param, and first time we're seeing it is a read: that's not right
-                    parser.OnVariableAccessedBeforeAssignment(variable);
-                }
-                else if (mark && direction is ParameterDirection.Input or ParameterDirection.InputOutput)
-                {
-                    // we haven't consumed the original value - but watch out for "if" etc
-                    if (AssignmentTracking) parser.OnVariableValueNotConsumed(variable);
-                }
-
-                if (variable.IsTable && variable.IsOutputParameter)
-                {
-                    parser.OnTableVariableOutputParameter(variable);
-                }
+                variables.Add(node.Name, new Variable(node, flags));
             }
         }
 
@@ -1321,12 +1361,5 @@ internal class TSqlProcessor
             // do *NOT* call  node.Variable?.Accept(this); - would trigger table/scalar warning
             node.Alias?.Accept(this);
         }
-    }
-
-    protected virtual bool TryGetParameter(string name, out ParameterDirection direction)
-    {
-        // simple mode; assume an input param exists
-        direction = ParameterDirection.Input;
-        return true;
     }
 }

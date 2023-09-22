@@ -162,11 +162,11 @@ internal static class Inspection
     internal static bool IsDynamicParameters(ITypeSymbol? type)
     {
         if (type is null || type.SpecialType != SpecialType.None) return false;
-        if (Inspection.IsBasicDapperType(type, Types.DynamicParameters)
-            || Inspection.IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
+        if (IsBasicDapperType(type, Types.DynamicParameters)
+            || IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
         foreach (var i in type.AllInterfaces)
         {
-            if (Inspection.IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
+            if (IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
         }
         return false;
     }
