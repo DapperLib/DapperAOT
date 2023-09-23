@@ -14,6 +14,7 @@ internal static class SqlTools
     // )
     private const RegexOptions SharedRegexOptions = RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.CultureInvariant;
     private static readonly Regex ParameterRegex = new(@"[?@:$]([\p{L}_][\p{L}\p{N}_]*)", SharedRegexOptions);
+    public const string ParameterPrefixCharacters = "?@:$";
 
     internal static readonly Regex LiteralTokens = new(@"(?<![\p{L}\p{N}_])\{=([\p{L}\p{N}_]+)\}", SharedRegexOptions);
 

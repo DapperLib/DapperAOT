@@ -110,18 +110,19 @@ internal class TSqlProcessor
         // check state of locals after proc - was anything written and not read?
         foreach (var variable in _visitor.Variables)
         {
-            if (variable.IsUnconsumed && !variable.IsTable && !variable.IsOutputParameter)
-            {
-                if (_visitor.AssignmentTracking) OnVariableValueNotConsumed(variable);
-            }
-            if (!variable.IsDeclared)
-            {
-                if (_visitor.KnownParameters) OnVariableNotDeclared(variable);
-            }
             if (variable.IsUnusedParameter)
             {
                 OnUnusedParameter(variable);
             }
+            else if (!variable.IsDeclared)
+            {
+                if (_visitor.KnownParameters) OnVariableNotDeclared(variable);
+            }
+            else if (variable.IsUnconsumed && !variable.IsTable && !variable.IsOutputParameter)
+            {
+                if (_visitor.AssignmentTracking) OnVariableValueNotConsumed(variable);
+            }
+            
         }
 
         /*
@@ -289,6 +290,8 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
 
         public readonly int Line, Column, Offset, Length;
 
+        public bool IsZero => Length == 0 && Offset == 0 && Line == 0 && Column == 0;
+
         public override string ToString() => $"L{Line} C{Column}";
 
     }
@@ -347,6 +350,13 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
             this = source;
             Flags = flags;
         }
+
+        private Variable(scoped in Variable source, string name)
+        {
+            this = source;
+            Name = name;
+        }
+
         private Variable(scoped in Variable source, Location location)
         {
             this = source;
@@ -360,6 +370,7 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
         public Variable WithFlags(VariableFlags flags) => new(in this, flags);
 
         public Variable WithLocation(TSqlFragment node) => new(in this, node);
+        public Variable WithName(string name) => new(in this, name);
     }
     class LoggingVariableTrackingVisitor : VariableTrackingVisitor
     {
@@ -430,7 +441,7 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
         public VariableTrackingVisitor(SqlParseInputFlags flags, TSqlProcessor parser)
         {
             _flags = flags;
-            variables = CaseSensitive ? new(StringComparer.Ordinal) : new(StringComparer.OrdinalIgnoreCase);
+            _variables = CaseSensitive ? new(StringComparer.Ordinal) : new(StringComparer.OrdinalIgnoreCase);
             this.parser = parser;
         }
 
@@ -440,12 +451,45 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
         public bool AtMostOne => (_flags & SqlParseInputFlags.AtMostOne) != 0;
         public bool KnownParameters => (_flags & SqlParseInputFlags.KnownParameters) != 0;
 
-        private readonly Dictionary<string, Variable> variables;
+        private bool TryGetVariable(string name, out Variable variable)
+            => _variables.TryGetValue(name, out variable) || SlowTryGetVariable(name, out variable);
+
+        private bool SlowTryGetVariable(string name, out Variable variable)
+        {
+            // parameters may have been added as "foo", but resolved by the parser as "@foo", ":foo", etc
+            // so: let's fix that!
+            string? nameWithoutPrefix = null;
+            if (name is not null && name.Length >= 2) // at least "@a"
+            {
+                foreach (var pair in _variables)
+                {
+                    if (pair.Value.IsParameter && pair.Key.Length == name.Length - 1 // key "foo", name "@foo"
+                        && SqlTools.ParameterPrefixCharacters.IndexOf(name[0]) >= 0 // name starts with token
+                        && SqlTools.ParameterPrefixCharacters.IndexOf(pair.Key[0]) < 0) // key doesn't
+                    {
+                        nameWithoutPrefix ??= name.Substring(1);
+                        // if same: remove the old and add the fixed-up one
+                        if (_variables.Comparer.Equals(nameWithoutPrefix, pair.Key) && _variables.Remove(pair.Key))
+                        {
+                            variable = pair.Value.WithName(name);
+                            _variables.Add(name, variable);
+                            return true;
+                        }
+                    }
+                }
+            }
+            variable = default;
+            return false;
+        }
+
+        private Variable SetVariable(Variable variable) => _variables[variable.Name] = variable;
+
+        private readonly Dictionary<string, Variable> _variables;
         private int batchCount;
         private readonly TSqlProcessor parser;
         public bool AssignmentTracking { get; private set; }
 
-        public IEnumerable<Variable> Variables => variables.Values;
+        public IEnumerable<Variable> Variables => _variables.Values;
 
         public void AddParameters(ImmutableArray<SqlParameter> parameters)
         {
@@ -453,8 +497,7 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
             {
                 foreach (var arg in parameters)
                 {
-                    var parsed = new Variable(arg);
-                    variables.Add(arg.Name, parsed);
+                    var parsed = SetVariable(new(arg));
                     if (parsed.IsOutputParameter && parsed.IsTable)
                     {
                         parser.OnTableVariableOutputParameter(parsed);
@@ -465,7 +508,7 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
         public virtual void Reset()
         {
             AssignmentTracking = true;
-            variables.Clear();
+            _variables.Clear();
             batchCount = 0;
         }
 
@@ -480,7 +523,7 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
 
         private void OnDeclare(Variable variable)
         {
-            if (variables.TryGetValue(variable.Name, out var existing))
+            if (TryGetVariable(variable.Name, out var existing))
             {
                 if (existing.IsDeclared)
                 {
@@ -490,25 +533,23 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
                 else
                 {
                     // we previously assumed it was a parameter, but actually it was accessed before declaration
-                    variables[variable.Name] = existing.WithFlags(variable.Flags | VariableFlags.Declared);
+                    existing = SetVariable(existing.WithFlags(variable.Flags | VariableFlags.Declared));
                     // but the *original* one was accessed invalidly
                     if (AssignmentTracking) parser.OnVariableAccessedBeforeDeclaration(existing);
                 }
             }
             else
             {
-                variables.Add(variable.Name, variable.WithDeclared());
+                SetVariable(variable.WithDeclared());
             }
         }
 
         public override void ExplicitVisit(DeclareVariableElement node)
         {
             Visit(node);
-            string? name = null;
             if (node.VariableName is not null)
             {
                 OnDeclare(new(node.VariableName, VariableFlags.NoValue));
-                name = node.VariableName.Value;
                 node.VariableName.Accept(this);
             }
             node.DataType?.Accept(this);
@@ -518,9 +559,9 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
             {
                 node.Value.Accept(this);
                 // mark assigned
-                if (name is not null)
+                if (node.VariableName is not null && TryGetVariable(node.VariableName.Value, out var variable))
                 {
-                    variables[name] = variables[name].WithUnconsumedValue();
+                    SetVariable(variable.WithUnconsumedValue());
                 }
             }
         }
@@ -1307,11 +1348,11 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
             => EnsureOrMarkAssigned(node, isTable, false);
         private Variable EnsureOrMarkAssigned(VariableReference node, bool isTable, bool markAssigned)
         {
-            if (variables.TryGetValue(node.Name, out var existing))
+            if (TryGetVariable(node.Name, out var existing))
             {
                 if (existing.IsUnusedParameter)
                 {
-                    variables[node.Name] = existing = existing.WithUsed(); // we found it!
+                    existing = existing.WithUsed(); // we found it!
                 }
 
                 var blame = existing.WithLocation(node);
@@ -1322,7 +1363,7 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
                         if (AssignmentTracking) parser.OnVariableValueNotConsumed(blame);
                     }
                     // mark as has value + unconsumed
-                    variables[node.Name] = existing.WithUnconsumedValue().WithLocation(node);
+                    existing = existing.WithUnconsumedValue().WithLocation(node);
                 }
                 else
                 {
@@ -1343,10 +1384,10 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
                     }
                     else if (existing.IsUnconsumed)
                     {
-                        variables[node.Name] = existing = existing.WithConsumed();
+                        existing = existing.WithConsumed();
                     }
                 }
-                return existing;
+                return SetVariable(existing);
             }
             else
             {
@@ -1354,9 +1395,7 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
                 var flags = isTable ? (VariableFlags.Table | VariableFlags.UsedInQuery) : VariableFlags.UsedInQuery;
                 if (markAssigned && !isTable) flags |= VariableFlags.Unconsumed;
 
-                var newVar = new Variable(node, flags);
-                variables.Add(node.Name, newVar);
-                return newVar;
+                return SetVariable(new(node, flags));
             }
         }
 

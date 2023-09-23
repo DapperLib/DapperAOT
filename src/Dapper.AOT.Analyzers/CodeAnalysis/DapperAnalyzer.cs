@@ -217,7 +217,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             var args = SharedGetParametersToInclude(parameters, flags, sql, onDiagnostic, out var parseFlags);
 
 
-            ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(parameters), location);
+            ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(args), location);
 
             ValidateSurroundingLinqUsage(ctx, flags);
 

@@ -35,9 +35,10 @@ internal readonly struct SqlParameter
 internal static class SqlParameters
 {
     public static ImmutableArray<SqlParameter> None => ImmutableArray<SqlParameter>.Empty;
-    public static ImmutableArray<SqlParameter> From(MemberMap? parameters)
+    public static ImmutableArray<SqlParameter> From(ImmutableArray<ElementMember>? parameters)
     {
-        var args = parameters?.Members ?? default;
+        if (parameters is null) return None;
+        var args = parameters.GetValueOrDefault();
         if (args.IsDefaultOrEmpty) return None;
 
         var builder = ImmutableArray.CreateBuilder<SqlParameter>(args.Length);

@@ -365,7 +365,7 @@ public class TSqlParserTests
 
         var args = parser.GetParameters(out var errors);
         Assert.Empty(args);
-        Assert.Equal(["Table variable @x cannot be used as an output parameter L1 C9"], errors);
+        Assert.Equal(["Table variable @x cannot be used as an output parameter L2 C15"], errors);
     }
 
     [Theory]

@@ -43,7 +43,7 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
 
     private Microsoft.CodeAnalysis.Location? GetLocation(in Location location)
     {
-        if (_sourceToken is not null)
+        if (_sourceToken is not null && !location.IsZero)
         {
             return _sourceToken.GetValueOrDefault().ComputeLocation(in location);
         }
