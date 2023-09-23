@@ -353,6 +353,21 @@ public class TSqlParserTests
         Assert.Empty(errors); // because we just gave up
     }
 
+    [Fact]
+    public void ExecOutputTVP()
+    {
+        var parser = GetProcessor();
+        parser.Execute("""
+            declare @x table (id int not null);
+            exec SomeProc @x output;
+            select id from @x;
+            """);
+
+        var args = parser.GetParameters(out var errors);
+        Assert.Empty(args);
+        Assert.Equal(["Table variable @x cannot be used as an output parameter L1 C9"], errors);
+    }
+
     [Theory]
     [InlineData(ParameterDirection.Input)]
     [InlineData(ParameterDirection.Output)]
@@ -412,6 +427,7 @@ public class TSqlParserTests
         public string[] GetParameters(out string[] errors)
         {
             var parameters = (from p in this.Variables
+                              where p.IsParameter || !p.IsDeclared
                               orderby p.Name
                               select p.IsDeclared ? $"{p.Name}!" : p.Name).ToArray();
             errors = this.errors.ToArray();

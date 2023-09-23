@@ -323,6 +323,7 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
                     Flags |= VariableFlags.NoValue | VariableFlags.OutputParameter;
                     break;
                 case ParameterDirection.InputOutput:
+                    Flags |= VariableFlags.Unconsumed | VariableFlags.OutputParameter;
                     break;
             }
             if (parameter.IsTable) Flags |= VariableFlags.Table;
@@ -452,7 +453,12 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
             {
                 foreach (var arg in parameters)
                 {
-                    variables.Add(arg.Name, new Variable(arg));
+                    var parsed = new Variable(arg);
+                    variables.Add(arg.Name, parsed);
+                    if (parsed.IsOutputParameter && parsed.IsTable)
+                    {
+                        parser.OnTableVariableOutputParameter(parsed);
+                    }
                 }
             }
         }
@@ -1194,20 +1200,23 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
             {
                 foreach (var p in node.ExecutableEntity.Parameters)
                 {
-                    if (p.IsOutput && p.ParameterValue is VariableReference variable)
+                    if (p.IsOutput && p.ParameterValue is VariableReference variableRef)
                     {
-                        MarkAssigned(variable, false);
+                        var variable = MarkAssigned(variableRef, false);
+                        if (variable.IsTable)
+                        {
+                            parser.OnTableVariableOutputParameter(variable);
+                        }
                     }
                 }
             }
-
         }
 
         public override void ExplicitVisit(ExecuteParameter node)
         {
             Visit(node);
             // node.Variable?.Accept(this); // this isn't our variable; don't demand it exists
-            if (node.IsOutput && node.ParameterValue is VariableReference)
+            if (node.IsOutput && node.ParameterValue is VariableReference variable)
             {
                 // don't visit - we don't demand a value before
             }
@@ -1292,11 +1301,11 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
             }
         }
 
-        private void MarkAssigned(VariableReference node, bool isTable)
+        private Variable MarkAssigned(VariableReference node, bool isTable)
             => EnsureOrMarkAssigned(node, isTable, true);
-        private void EnsureAssigned(VariableReference node, bool isTable)
+        private Variable EnsureAssigned(VariableReference node, bool isTable)
             => EnsureOrMarkAssigned(node, isTable, false);
-        private void EnsureOrMarkAssigned(VariableReference node, bool isTable, bool markAssigned)
+        private Variable EnsureOrMarkAssigned(VariableReference node, bool isTable, bool markAssigned)
         {
             if (variables.TryGetValue(node.Name, out var existing))
             {
@@ -1334,9 +1343,10 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
                     }
                     else if (existing.IsUnconsumed)
                     {
-                        variables[node.Name] = existing.WithConsumed();
+                        variables[node.Name] = existing = existing.WithConsumed();
                     }
                 }
+                return existing;
             }
             else
             {
@@ -1344,7 +1354,9 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
                 var flags = isTable ? (VariableFlags.Table | VariableFlags.UsedInQuery) : VariableFlags.UsedInQuery;
                 if (markAssigned && !isTable) flags |= VariableFlags.Unconsumed;
 
-                variables.Add(node.Name, new Variable(node, flags));
+                var newVar = new Variable(node, flags);
+                variables.Add(node.Name, newVar);
+                return newVar;
             }
         }
 
