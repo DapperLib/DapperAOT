@@ -12,12 +12,15 @@ public class SharedSqlClient : ICollectionFixture<SqlClientFixture>
 
 public sealed class SqlClientFixture : IDisposable
 {
-    private SqlConnection? connection;
+    const string connectionString = "Server=.;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=True;Connection Timeout=2";
+    private readonly bool canConnect;
+    private readonly string? message;
     public SqlClientFixture()
     {
         try
         {
-            connection = new("Server=.;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=True;Connection Timeout=2");
+            using SqlConnection connection = new("Server=.;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=True;Connection Timeout=2");
+            connection.Open();
             try
             {
                 connection.Execute(
@@ -33,25 +36,26 @@ public sealed class SqlClientFixture : IDisposable
                 create table AotIntegrationDynamicTests(Id int not null identity(1,1), Name nvarchar(200) not null);
                 insert AotIntegrationDynamicTests (Name) values ('Fred'), ('Barney'), ('Wilma'), ('Betty');
                 """);
+            canConnect = true;
         }
-        catch
+        catch (Exception ex)
         {
             // unable to guarantee working fixture
-            connection?.Dispose();
-            connection = null;
+            canConnect = false;
+            message = ex.Message;
         }
     }
-    public void Dispose()
+    public void Dispose() { }
+
+    public SqlConnection CreateConnection()
     {
-        connection?.Dispose();
-        connection = null;
+        if (!canConnect) SkipTest();
+        return new(connectionString);
     }
 
-    public SqlConnection Connection => connection ?? SkipTest();
-
-    private static SqlConnection SkipTest()
+    private SqlConnection SkipTest()
     {
-        throw new InvalidOperationException("Database not available");
+        throw new InvalidOperationException("Database not available: " + message);
         //Skip.Inconclusive("Database unavailable");
         //return null!;
     }

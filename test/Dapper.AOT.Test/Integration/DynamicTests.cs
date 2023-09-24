@@ -1,19 +1,21 @@
-﻿using System;
+﻿using Microsoft.Data.SqlClient;
+using System;
 using System.Collections.Generic;
 using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
 
 [Collection(SharedSqlClient.Collection)]
-public class DynamicTests
+public class DynamicTests : IDisposable
 {
-    private readonly SqlClientFixture Database;
-    public DynamicTests(SqlClientFixture database) => Database = database;
+    private readonly SqlConnection connection;
+    void IDisposable.Dispose() => connection?.Dispose();
+    public DynamicTests(SqlClientFixture database) => connection = database.CreateConnection();
 
     [SkippableFact]
     public void CanAccessDynamicData()
     {
-        var wilma = Database.Connection.Command("select * from AotIntegrationDynamicTests where Name = 'Wilma';", handler: CommandFactory.Simple)
+        var wilma = connection.Command("select * from AotIntegrationDynamicTests where Name = 'Wilma';", handler: CommandFactory.Simple)
             .QuerySingle(null, RowFactory.Inbuilt.Dynamic);
         Assert.NotNull(wilma);
         Assert.Equal("Wilma", (string)wilma.Name);
