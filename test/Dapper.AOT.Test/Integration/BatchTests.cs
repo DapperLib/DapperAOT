@@ -9,8 +9,8 @@ using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
 
-[Collection(nameof(SqlClientFixture))]
-public class BatchTests : IClassFixture<SqlClientFixture>
+[Collection(SharedSqlClient.Collection)]
+public class BatchTests
 {
     private readonly SqlClientFixture Database;
     public BatchTests(SqlClientFixture database) => Database = database;

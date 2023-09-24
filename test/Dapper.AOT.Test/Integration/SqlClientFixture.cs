@@ -1,11 +1,18 @@
 ﻿using Microsoft.Data.SqlClient;
 using System;
+using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
 
+[CollectionDefinition(Collection)]
+public class SharedSqlClient : ICollectionFixture<SqlClientFixture>
+{
+    public const string Collection = nameof(SharedSqlClient);
+}
+
 public sealed class SqlClientFixture : IDisposable
 {
-    private readonly SqlConnection? connection;
+    private SqlConnection? connection;
     public SqlClientFixture()
     {
         try
@@ -34,7 +41,11 @@ public sealed class SqlClientFixture : IDisposable
             connection = null;
         }
     }
-    public void Dispose() => connection?.Dispose();
+    public void Dispose()
+    {
+        connection?.Dispose();
+        connection = null;
+    }
 
     public SqlConnection Connection => connection ?? SkipTest();
 

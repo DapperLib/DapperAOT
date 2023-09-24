@@ -80,6 +80,9 @@ partial class DapperAnalyzer
         NegativeOffset = SqlError("DAP233", "Negative OFFSET", "OFFSET literals should be non-negative"),
         SimplifyExpression = SqlInfo("DAP234", "Expression can be simplified", "Expression evaluates to a constant and can be replaced with '{0}'"),
         TopWithOffset = SqlError("DAP235", "TOP with OFFSET clause", "TOP cannot be used in a query with OFFSET; use FETCH instead"),
-        UnusedParameter = SqlWarning("DAP236", "Unused parameter", "Parameter '{0}' is not used, but will be included");
+        UnusedParameter = SqlWarning("DAP236", "Unused parameter", "Parameter '{0}' is not used, but will be included"),
+        DivideByZero = SqlWarning("DAP237", "Divide by zero", "Division by zero detected"),
+        TrivialOperand = SqlWarning("DAP238", "Trivial operand", "Operand makes this calculation trivial; it can be simplified"),
+        InvalidNullExpression = SqlWarning("DAP239", "Invalid null expression", "Operation requires a non-null operand");
     }
 }

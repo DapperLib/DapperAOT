@@ -4,9 +4,9 @@ using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
 
-[Collection(nameof(SqlClientFixture))]
+[Collection(SharedSqlClient.Collection)]
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments", Justification = "Clearer for test")]
-public class ManualGridReaderTests : IClassFixture<SqlClientFixture>
+public class ManualGridReaderTests
 {
     private readonly SqlClientFixture Database;
     public ManualGridReaderTests(SqlClientFixture database) => Database = database;

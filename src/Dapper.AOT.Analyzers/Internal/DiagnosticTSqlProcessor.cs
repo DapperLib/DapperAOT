@@ -146,4 +146,13 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
 
     protected override void OnUnusedParameter(Variable variable)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.UnusedParameter, variable.Location, variable.Name);
+
+    protected override void OnDivideByZero(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.DivideByZero, location);
+
+    protected override void OnInvalidNullExpression(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.InvalidNullExpression, location);
+
+    protected override void OnTrivialOperand(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.TrivialOperand, location);
 }

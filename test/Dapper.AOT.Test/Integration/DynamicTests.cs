@@ -4,8 +4,8 @@ using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
 
-[Collection(nameof(SqlClientFixture))]
-public class DynamicTests : IClassFixture<SqlClientFixture>
+[Collection(SharedSqlClient.Collection)]
+public class DynamicTests
 {
     private readonly SqlClientFixture Database;
     public DynamicTests(SqlClientFixture database) => Database = database;

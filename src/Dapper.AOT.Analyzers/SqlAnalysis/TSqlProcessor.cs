@@ -122,7 +122,7 @@ internal class TSqlProcessor
             {
                 if (_visitor.AssignmentTracking) OnVariableValueNotConsumed(variable);
             }
-            
+
         }
 
         /*
@@ -204,7 +204,20 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
     private void OnSimplifyExpression(Location location, int? value)
         => OnSimplifyExpression(location, value is null ? "null" : value.Value.ToString(CultureInfo.InvariantCulture));
     private void OnSimplifyExpression(Location location, decimal? value)
-        => OnSimplifyExpression(location, value is null ? "null" : value.Value.ToString(CultureInfo.InvariantCulture));
+        => OnSimplifyExpression(location, value switch
+        {
+            null => "null",
+            0M => "0.0",
+            _ => value.Value.ToString(CultureInfo.InvariantCulture),
+        });
+
+    protected virtual void OnDivideByZero(Location location)
+        => OnError($"Division by zero detected", location);
+    protected virtual void OnTrivialOperand(Location location)
+        => OnError($"Operand makes this calculation trivial; it can be simplified", location);
+    protected virtual void OnInvalidNullExpression(Location location)
+        => OnError($"Operation requires non-null operand", location);
+
     protected virtual void OnSimplifyExpression(Location location, string value)
         => OnError($"Expression can be simplified to '{value}'", location);
 
@@ -798,7 +811,7 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
 
         private bool EnforceTop(ScalarExpression expr)
         {
-            if (IsInt32(expr, out var i, complex: true) && i.HasValue)
+            if (IsInt32(expr, out var i) == TryEvaluateResult.SuccessConstant && i.HasValue)
             {
                 if (AtMostOne) // Single[OrDefault][Async]
                 {
@@ -821,47 +834,69 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
 
         public override void Visit(OffsetClause node)
         {
-            if (IsInt32(node.FetchExpression, out var i, true) && i <= 0)
+            if (IsInt32(node.FetchExpression, out var i) == TryEvaluateResult.SuccessConstant && i <= 0)
             {
                 parser.OnNonPositiveFetch(node.FetchExpression);
             }
-            if (IsInt32(node.OffsetExpression, out i, true) && i < 0)
+            if (IsInt32(node.OffsetExpression, out i) == TryEvaluateResult.SuccessConstant && i < 0)
             {
                 parser.OnNegativeOffset(node.OffsetExpression);
             }
             base.Visit(node);
         }
 
-        static bool IsInt32(ScalarExpression scalar, out int? value, bool complex)
+        TryEvaluateResult IsInt32(ScalarExpression scalar, out int? value, int complexity = 10, bool vocal = false)
+            => IsInt32Impl(scalar, out value, vocal, ref complexity);
+
+        static bool IsHardNull(ScalarExpression expression)
         {
+            while (true)
+            {
+                if (expression is NullLiteral) return true;
+                if (expression is UnaryExpression unary)
+                {
+                    expression = unary.Expression; // +~~null is still hard null for the purposes of >> etc
+                    continue;
+                }
+                return false;
+            }
+        }
+        TryEvaluateResult IsInt32Impl(ScalarExpression scalar, out int? value, bool vocal, ref int complexity)
+        {
+            bool hasWarnings = false;
             try
             {
+                while (scalar is ParenthesisExpression parens && complexity-- > 0)
+                {
+                    scalar = parens.Expression;
+                }
+                complexity--;
                 checked
                 {
                     switch (scalar)
                     {
                         case NullLiteral:
                             value = null;
-                            return true;
+                            return TryEvaluateResult.SuccessConstant;
                         case IntegerLiteral integer when int.TryParse(integer.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i):
                             value = i;
-                            return true;
-                        case UnaryExpression unary when IsInt32(unary.Expression, out value, complex):
+                            return TryEvaluateResult.SuccessConstant;
+                        case UnaryExpression unary when complexity > 0 && IsInt32Impl(unary.Expression, out value, false, ref complexity) == TryEvaluateResult.SuccessConstant:
                             switch (unary.UnaryExpressionType)
                             {
-                                case UnaryExpressionType.Negative: // note -ve is always allowed, even when not complex
+                                case UnaryExpressionType.Negative:
                                     value = -value;
-                                    return true;
-                                case UnaryExpressionType.Positive when complex:
-                                    return true;
-                                case UnaryExpressionType.BitwiseNot when complex:
+                                    return TryEvaluateResult.SuccessConstant;
+                                case UnaryExpressionType.Positive:
+                                    return TryEvaluateResult.SuccessConstant;
+                                case UnaryExpressionType.BitwiseNot:
                                     value = ~value;
-                                    return true;
+                                    return TryEvaluateResult.SuccessConstant;
                             }
                             break;
-                        case BinaryExpression binary when complex:
-                            var haveFirst = IsInt32(binary.FirstExpression, out var first, true);
-                            var haveSecond = IsInt32(binary.SecondExpression, out var second, true);
+                        case BinaryExpression binary when complexity > 2:
+                            var haveFirst = IsInt32Impl(binary.FirstExpression, out var first, false, ref complexity) == TryEvaluateResult.SuccessConstant;
+                            var haveSecond = IsInt32Impl(binary.SecondExpression, out var second, false, ref complexity) == TryEvaluateResult.SuccessConstant;
 
                             // if either half is *known* to be null; we're good
                             if ((haveFirst && first is null) || (haveSecond && second is null))
@@ -873,75 +908,196 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
                                     case BinaryExpressionType.Divide:
                                     case BinaryExpressionType.Multiply:
                                     case BinaryExpressionType.Modulo:
+                                        value = null;
+                                        return TryEvaluateResult.SuccessConstant;
                                     case BinaryExpressionType.BitwiseXor:
                                     case BinaryExpressionType.BitwiseOr:
                                     case BinaryExpressionType.BitwiseAnd:
                                         value = null;
-                                        return true;
+                                        // need at least one not-null-literal operand
+                                        if (IsHardNull(binary.FirstExpression) && IsHardNull(binary.SecondExpression))
+                                        {
+                                            if (vocal) parser.OnInvalidNullExpression(binary);
+                                            return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                        }
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.LeftShift:
+                                    case BinaryExpressionType.RightShift:
+                                        value = null;
+                                        // need both to be not-null-literal operands
+                                        if (IsHardNull(binary.FirstExpression))
+                                        {
+                                            if (vocal) parser.OnInvalidNullExpression(binary.FirstExpression);
+                                            return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                        }
+                                        if (IsHardNull(binary.SecondExpression))
+                                        {
+                                            if (vocal) parser.OnInvalidNullExpression(binary.SecondExpression);
+                                            return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                        }
+                                        return TryEvaluateResult.SuccessConstant;
                                 }
                                 break;
                             }
 
-                            // otherwise, need both
-                            if (!(haveFirst && haveSecond))
+                            // if we have both, we may be able to fully evaluate
+                            if (haveFirst && haveSecond)
                             {
-                                break;
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                        value = first + second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Subtract:
+                                        value = first - second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Divide when second == 0:
+                                        if (vocal) parser.OnDivideByZero(binary.SecondExpression);
+                                        value = null;
+                                        return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                    case BinaryExpressionType.Divide:
+                                        value = first / second; // TSQL is integer division
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Multiply:
+                                        value = first * second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Modulo when second == 0:
+                                        if (vocal) parser.OnDivideByZero(binary.SecondExpression);
+                                        value = null;
+                                        return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                    case BinaryExpressionType.Modulo:
+                                        value = first % second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.BitwiseXor:
+                                        value = first ^ second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.BitwiseOr:
+                                        value = first | second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.BitwiseAnd:
+                                        value = first & second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.LeftShift:
+                                        if (first is null || second is null) break; // null not allowed here
+                                        if (second < 0)
+                                        {
+                                            second = -second; // TSQL: neg-shift allowed
+                                            goto case BinaryExpressionType.RightShift;
+                                        }
+                                        if (second >= 32) // c# shift masks "by" to 5 bits 
+                                        {
+                                            value = 0;
+                                            return TryEvaluateResult.SuccessConstant;
+                                        }
+                                        value = first << second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.RightShift:
+                                        if (first is null || second is null) break; // null not allowed here
+                                        if (second < 0)
+                                        {
+                                            second = -second; // TSQL: neg-shift allowed
+                                            goto case BinaryExpressionType.LeftShift;
+                                        }
+                                        if (second >= 32) // c# shift masks "by" to 5 bits 
+                                        {
+                                            value = 0;
+                                            return TryEvaluateResult.SuccessConstant;
+                                        }
+                                        value = first >>> second; // TSQL right-shift is unsigned
+                                        return TryEvaluateResult.SuccessConstant;
+                                }
                             }
 
-                            switch (binary.BinaryExpressionType)
+                            // if we have either, we may be able to check undesirable cases
+                            if (vocal && (haveFirst || haveSecond))
                             {
-                                case BinaryExpressionType.Add:
-                                    value = first + second;
-                                    return true;
-                                case BinaryExpressionType.Subtract:
-                                    value = first - second;
-                                    return true;
-                                case BinaryExpressionType.Divide:
-                                    value = first / second; // TSQL is integer division
-                                    return true;
-                                case BinaryExpressionType.Multiply:
-                                    value = first * second;
-                                    return true;
-                                case BinaryExpressionType.Modulo:
-                                    value = first % second;
-                                    return true;
-                                case BinaryExpressionType.BitwiseXor:
-                                    value = first ^ second;
-                                    return true;
-                                case BinaryExpressionType.BitwiseOr:
-                                    value = first | second;
-                                    return true;
-                                case BinaryExpressionType.BitwiseAnd:
-                                    value = first & second;
-                                    return true;
-                                case BinaryExpressionType.LeftShift:
-                                    if (first is null || second is null) break; // null not allowed here
-                                    if (second < 0)
-                                    {
-                                        second = -second; // TSQL: neg-shift allowed
-                                        goto case BinaryExpressionType.RightShift;
-                                    }
-                                    if (second >= 32) // c# shift masks "by" to 5 bits 
-                                    {
-                                        value = 0;
-                                        return true;
-                                    }
-                                    value = first << second;
-                                    return true;
-                                case BinaryExpressionType.RightShift:
-                                    if (first is null || second is null) break; // null not allowed here
-                                    if (second < 0)
-                                    {
-                                        second = -second; // TSQL: neg-shift allowed
-                                        goto case BinaryExpressionType.LeftShift;
-                                    }
-                                    if (second >= 32) // c# shift masks "by" to 5 bits 
-                                    {
-                                        value = 0;
-                                        return true;
-                                    }
-                                    value = first >>> second; // TSQL right-shift is unsigned
-                                    return true;
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                    case BinaryExpressionType.Subtract:
+                                        if (haveFirst && first == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Multiply:
+                                        if (haveFirst && first is 0 or 1)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second is 0 or 1)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Divide:
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnDivideByZero(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        else
+                                        {
+                                            if (haveFirst && first == 0)
+                                            {
+                                                parser.OnTrivialOperand(binary.FirstExpression);
+                                                hasWarnings = true;
+                                            }
+                                            if (haveSecond && second == 1)
+                                            {
+                                                parser.OnTrivialOperand(binary.SecondExpression);
+                                                hasWarnings = true;
+                                            }
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Modulo:
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnDivideByZero(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        else if (haveFirst && first == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.LeftShift:
+                                    case BinaryExpressionType.RightShift:
+                                        if (haveFirst && first == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.BitwiseAnd:
+                                    case BinaryExpressionType.BitwiseOr:
+                                    case BinaryExpressionType.BitwiseXor:
+                                        if (haveFirst && first is 0 or -1)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second is 0 or -1)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                }
                             }
                             break;
                     }
@@ -949,39 +1105,54 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
             }
             catch { } // overflow etc
             value = default;
-            return false;
+            return hasWarnings ? TryEvaluateResult.FailureNonConstantWithWarnings : TryEvaluateResult.FailureNonConstant;
         }
 
-        static bool IsDecimal(ScalarExpression scalar, out decimal? value, bool complex = false)
+        enum TryEvaluateResult
         {
+            FailureNonConstant = 0,
+            SuccessConstant = 1,
+            FailureNonConstantWithWarnings = 2,
+        }
+        TryEvaluateResult IsDecimal(ScalarExpression scalar, out decimal? value, int complexity = 64, bool vocal = false)
+            => IsDecimalImpl(scalar, out value, vocal, ref complexity);
+
+        TryEvaluateResult IsDecimalImpl(ScalarExpression scalar, out decimal? value, bool vocal, ref int complexity)
+        {
+            bool hasWarnings = false;
             try
             {
+                while (scalar is ParenthesisExpression parens && complexity-- > 0)
+                {
+                    scalar = parens.Expression;
+                }
+                complexity--;
                 checked
                 {
                     switch (scalar)
                     {
                         case NullLiteral:
                             value = null;
-                            return true;
+                            return TryEvaluateResult.SuccessConstant;
                         case IntegerLiteral integer when int.TryParse(integer.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i):
                             value = i;
-                            return true;
+                            return TryEvaluateResult.SuccessConstant;
                         case NumericLiteral number when decimal.TryParse(number.Value, NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out var d):
                             value = d;
-                            return true;
-                        case UnaryExpression unary when IsDecimal(unary.Expression, out value, complex):
+                            return TryEvaluateResult.SuccessConstant;
+                        case UnaryExpression unary when complexity > 0 && IsDecimalImpl(unary.Expression, out value, false, ref complexity) == TryEvaluateResult.SuccessConstant:
                             switch (unary.UnaryExpressionType)
                             {
                                 case UnaryExpressionType.Negative: // note -ve is always allowed, even when not complex
                                     value = -value;
-                                    return true;
-                                case UnaryExpressionType.Positive when complex:
-                                    return true;
+                                    return TryEvaluateResult.SuccessConstant;
+                                case UnaryExpressionType.Positive:
+                                    return TryEvaluateResult.SuccessConstant;
                             }
                             break;
-                        case BinaryExpression binary when complex:
-                            var haveFirst = IsDecimal(binary.FirstExpression, out var first, true);
-                            var haveSecond = IsDecimal(binary.SecondExpression, out var second, true);
+                        case BinaryExpression binary when complexity > 1:
+                            var haveFirst = IsDecimalImpl(binary.FirstExpression, out var first, false, ref complexity) == TryEvaluateResult.SuccessConstant;
+                            var haveSecond = IsDecimalImpl(binary.SecondExpression, out var second, false, ref complexity) == TryEvaluateResult.SuccessConstant;
 
                             // if either half is *known* to be null; we're good
                             if ((haveFirst && first is null) || (haveSecond && second is null))
@@ -994,34 +1165,105 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
                                     case BinaryExpressionType.Multiply:
                                     case BinaryExpressionType.Modulo:
                                         value = null;
-                                        return true;
+                                        return TryEvaluateResult.SuccessConstant;
                                 }
                                 break;
                             }
 
-                            // otherwise, need both
-                            if (!(haveFirst && haveSecond))
+                            // if we have both, we may be able to fully evaluate
+                            if (haveFirst && haveSecond)
                             {
-                                break;
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                        value = first + second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Subtract:
+                                        value = first - second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Divide when second == 0:
+                                        if (vocal) parser.OnDivideByZero(binary.SecondExpression);
+                                        value = null;
+                                        return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                    case BinaryExpressionType.Divide:
+                                        value = first / second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Multiply:
+                                        value = first * second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Modulo when second == 0:
+                                        if (vocal) parser.OnDivideByZero(binary.SecondExpression);
+                                        value = null;
+                                        return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                    case BinaryExpressionType.Modulo:
+                                        value = first % second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                }
                             }
 
-                            switch (binary.BinaryExpressionType)
+                            // if we have either, we may be able to check undesirable cases
+                            if (vocal && (haveFirst || haveSecond))
                             {
-                                case BinaryExpressionType.Add:
-                                    value = first + second;
-                                    return true;
-                                case BinaryExpressionType.Subtract:
-                                    value = first - second;
-                                    return true;
-                                case BinaryExpressionType.Divide:
-                                    value = first / second; // TSQL is integer division
-                                    return true;
-                                case BinaryExpressionType.Multiply:
-                                    value = first * second;
-                                    return true;
-                                case BinaryExpressionType.Modulo:
-                                    value = first % second;
-                                    return true;
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                    case BinaryExpressionType.Subtract:
+                                        if (haveFirst && first == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Multiply:
+                                        if (haveFirst && first is 0 or 1)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second is 0 or 1)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Divide:
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnDivideByZero(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        else
+                                        {
+                                            if (haveFirst && first == 0)
+                                            {
+                                                parser.OnTrivialOperand(binary.FirstExpression);
+                                                hasWarnings = true;
+                                            }
+                                            if (haveSecond && second == 1)
+                                            {
+                                                parser.OnTrivialOperand(binary.SecondExpression);
+                                                hasWarnings = true;
+                                            }
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Modulo:
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnDivideByZero(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        else if (haveFirst && first == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                }
                             }
                             break;
                     }
@@ -1029,64 +1271,90 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
             }
             catch { } // overflow etc
             value = default;
-            return false;
+            return hasWarnings ? TryEvaluateResult.FailureNonConstantWithWarnings : TryEvaluateResult.FailureNonConstant;
         }
 
         public override void Visit(TopRowFilter node)
         {
             if (node.Expression is ScalarExpression scalar)
             {
-                if (IsInt32(scalar, out var i, true))
+                switch (IsInt32(scalar, out var i))
                 {
-                    if (i <= 0)
-                    {
-                        parser.OnNonPositiveTop(scalar);
-                    }
+                    case TryEvaluateResult.SuccessConstant:
+                        if (i <= 0)
+                        {
+                            parser.OnNonPositiveTop(scalar);
+                        }
+                        break;
+                    case TryEvaluateResult.FailureNonConstant:
+                        if (IsDecimal(scalar, out var d) == TryEvaluateResult.SuccessConstant)
+                        {
+                            if (!node.Percent)
+                            {
+                                parser.OnNonIntegerTop(scalar);
+                            }
+                            if (d <= 0)
+                            {   // don't expect to see this; parser rejects them
+                                parser.OnNonPositiveTop(scalar);
+                            }
+                        }
+                        break;
                 }
-                else if (IsDecimal(scalar, out var d, true))
-                {
-                    if (!node.Percent)
-                    {
-                        parser.OnNonIntegerTop(scalar);
-                    }
-                    if (d <= 0)
-                    {   // don't expect to see this; parser rejects them
-                        parser.OnNonPositiveTop(scalar);
-                    }
-                }
+                base.Visit(node);
             }
-            base.Visit(node);
         }
 
-        public override void Visit(UnaryExpression node)
+        bool _expressionAlreadyEvaluated;
+
+        bool TrySimplifyExpression(ScalarExpression node)
         {
-            if (node.UnaryExpressionType != UnaryExpressionType.Negative) // need to allow unary
+            if (_expressionAlreadyEvaluated) return true;
+
+            if (node is UnaryExpression {  UnaryExpressionType: UnaryExpressionType.Negative, Expression: IntegerLiteral or NumericLiteral })
             {
-                // if operand is simple, compute and report
-                if (IsInt32(node.Expression, out _, complex: false))
-                {
-                    if (IsInt32(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
-                }
-                else if (IsDecimal(node.Expression, out _, complex: false))
-                {
-                    if (IsDecimal(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
-                }
+                // just "-4" or similar; don't warn the user to simplify that!
+                _expressionAlreadyEvaluated = true;
+                return false;
             }
-            base.Visit(node);
+
+            switch (IsInt32(node, out var intValue, vocal: true))
+            {
+                case TryEvaluateResult.SuccessConstant:
+                    parser.OnSimplifyExpression(node, intValue);
+                    _expressionAlreadyEvaluated = true;
+                    break;
+                case TryEvaluateResult.FailureNonConstantWithWarnings:
+                    _expressionAlreadyEvaluated = true;
+                    break;
+                case TryEvaluateResult.FailureNonConstant:
+                    // retry as decimal
+                    switch (IsDecimal(node, out var decimalValue, vocal: true))
+                    {
+                        case TryEvaluateResult.SuccessConstant:
+                            parser.OnSimplifyExpression(node, decimalValue);
+                            _expressionAlreadyEvaluated = true;
+                            break;
+                        case TryEvaluateResult.FailureNonConstantWithWarnings:
+                            _expressionAlreadyEvaluated = true;
+                            break;
+                    }
+                    break;
+            }
+
+            return false;
         }
-        public override void Visit(BinaryExpression node)
+        public override void ExplicitVisit(UnaryExpression node)
         {
-            // if operands are simple, compute and report
-            bool haveNull = node.FirstExpression is NullLiteral || node.SecondExpression is NullLiteral;
-            if (haveNull || (IsInt32(node.FirstExpression, out _, complex: false) && IsInt32(node.SecondExpression, out _, complex: false)))
-            {
-                if (IsInt32(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
-            }
-            else if (haveNull || (IsDecimal(node.FirstExpression, out _, complex: false) && IsDecimal(node.SecondExpression, out _, complex: false)))
-            {
-                if (IsDecimal(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
-            }
-            base.Visit(node);
+            bool restore = TrySimplifyExpression(node);
+            base.ExplicitVisit(node);
+            _expressionAlreadyEvaluated = restore;
+        }
+
+        public override void ExplicitVisit(BinaryExpression node)
+        {
+            bool restore = TrySimplifyExpression(node);
+            base.ExplicitVisit(node);
+            _expressionAlreadyEvaluated = restore;
         }
 
         public override void Visit(OutputClause node)
