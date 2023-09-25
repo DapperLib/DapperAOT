@@ -78,7 +78,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         // perform SQL inspection
         var map = MemberMap.Create(paramType, true);
-        var parameterMap = BuildParameterMap(ctx, op, sql, flags, map, location, out var parseFlags);
+        var parameterMap = BuildParameterMap(ctx, op, sql, ref flags, map, location, out var parseFlags);
 
         if (flags.HasAny(OperationFlags.CacheCommand))
         {
@@ -98,10 +98,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         return new SourceState(location, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, additionalState);
 
 
-        static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, OperationFlags flags, MemberMap? map, Location loc, out SqlParseOutputFlags parseFlags)
+        static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, ref OperationFlags flags, MemberMap? map, Location loc, out SqlParseOutputFlags parseFlags)
         {
             // check the arg type
-            var args = DapperAnalyzer.SharedGetParametersToInclude(map, flags, sql, null, out parseFlags);
+            var args = DapperAnalyzer.SharedGetParametersToInclude(map, ref flags, sql, null, out parseFlags);
             if (args is null) return "?"; // deferred
             var arr = args.Value;
 

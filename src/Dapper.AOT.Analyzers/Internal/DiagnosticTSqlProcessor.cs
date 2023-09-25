@@ -63,6 +63,9 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     protected override void OnDuplicateVariableDeclaration(Variable variable)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.DuplicateVariableDeclaration, variable.Location, variable.Name);
 
+    protected override void OnVariableParameterConflict(Variable variable)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.VariableParameterConflict, variable.Location, variable.Name);
+
     protected override void OnExecComposedSql(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.ExecComposedSql, location);
     protected override void OnSelectScopeIdentity(Location location)

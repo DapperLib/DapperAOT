@@ -214,7 +214,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             {
                 _ = AdditionalCommandState.Parse(GetSymbol(parseState, invoke), parameters, onDiagnostic);
             }
-            var args = SharedGetParametersToInclude(parameters, flags, sql, onDiagnostic, out var parseFlags);
+            var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags);
 
 
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(args), location);
@@ -225,12 +225,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         static SqlParseInputFlags GetModeFlags(OperationFlags flags)
         {
-
             var modeFlags = SqlParseInputFlags.None;
             // if (caseSensitive) modeFlags |= ModeFlags.CaseSensitive;
             if ((flags & OperationFlags.BindResultsByName) != 0) modeFlags |= SqlParseInputFlags.ValidateSelectNames;
             if ((flags & OperationFlags.SingleRow) != 0) modeFlags |= SqlParseInputFlags.SingleRow;
             if ((flags & OperationFlags.AtMostOne) != 0) modeFlags |= SqlParseInputFlags.AtMostOne;
+            if ((flags & OperationFlags.KnownParameters) != 0) modeFlags |= SqlParseInputFlags.KnownParameters;
             if ((flags & OperationFlags.Scalar) != 0)
             {
                 modeFlags |= SqlParseInputFlags.ExpectQuery | SqlParseInputFlags.SingleRow | SqlParseInputFlags.SingleQuery | SqlParseInputFlags.SingleColumn;
@@ -241,7 +241,6 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 if ((flags & OperationFlags.QueryMultiple) == 0) modeFlags |= SqlParseInputFlags.SingleQuery;
             }
             else if ((flags & (OperationFlags.Execute)) != 0) modeFlags |= SqlParseInputFlags.ExpectNoQuery;
-
             return modeFlags;
         }
 
@@ -760,7 +759,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             ? null : new(rowCountHint, rowCountHintMember?.Member.Name, cmdProps);
     }
 
-    internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)
+    internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, ref OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)
     {
         SortedDictionary<string, ElementMember>? byDbName = null;
         var filter = ImmutableHashSet<string>.Empty;
@@ -793,6 +792,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (!(map is null || map.IsUnknownParameters))
         {
             // check the shape of the parameter type
+            flags |= OperationFlags.KnownParameters;
             ElementMember? rowCountMember = null, returnCodeMember = null;
             foreach (var member in map.Members)
             {

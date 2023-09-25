@@ -51,7 +51,7 @@ internal class TSqlProcessor
             {
                 if (member.IsExpandable)
                 {
-                    var regexIncludingUnknown = ("([?@:$]" + Regex.Escape(member.Name) + @")(?!\w)(\s+(?i)unknown(?-i))?");
+                    var regexIncludingUnknown = ("(?<![?@:$\\p{L}\\p{N}_])([?@:$]" + Regex.Escape(member.Name) + @")(?!\w)(\s+(?i)unknown(?-i))?");
                     sql = Regex.Replace(sql, regexIncludingUnknown, match =>
                     {
                         var variableName = match.Groups[1].Value;
@@ -191,6 +191,9 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
 
     protected virtual void OnDuplicateVariableDeclaration(Variable variable)
         => OnError($"Variable {variable.Name} is declared multiple times", variable.Location);
+
+    protected virtual void OnVariableParameterConflict(Variable variable)
+        => OnError($"Variable {variable.Name} conflicts with a parameter of the same name", variable.Location);
 
     protected virtual void OnScalarVariableUsedAsTable(Variable variable)
         => OnError($"Scalar variable {variable.Name} is used like a table", variable.Location);
@@ -541,7 +544,14 @@ Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBo
                 if (existing.IsDeclared)
                 {
                     // two definitions? yeah, that's wrong
-                    parser.OnDuplicateVariableDeclaration(variable);
+                    if (existing.IsParameter)
+                    {
+                        parser.OnVariableParameterConflict(variable);
+                    }
+                    else
+                    {
+                        parser.OnDuplicateVariableDeclaration(variable);
+                    }
                 }
                 else
                 {

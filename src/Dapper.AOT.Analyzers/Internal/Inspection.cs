@@ -1131,7 +1131,7 @@ enum OperationFlags
     BindTupleParameterByName = 1 << 18,
     CacheCommand = 1 << 19,
     IncludeLocation = 1 << 20, // include -- SomeFile.cs#40 when possible
-    UnknownParameters = 1 << 21,
+    KnownParameters = 1 << 21,
     QueryMultiple = 1 << 22,
     NotAotSupported = 1 << 23,
 }

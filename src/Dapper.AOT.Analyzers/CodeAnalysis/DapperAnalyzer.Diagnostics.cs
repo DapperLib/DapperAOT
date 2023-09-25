@@ -20,13 +20,7 @@ partial class DapperAnalyzer
         UntypedParameter = LibraryInfo("DAP015", "Untyped parameter", "The parameter type could not be resolved", true),
         GenericTypeParameter = LibraryInfo("DAP016", "Generic type parameter", "Generic type parameters ({0}) are not currently supported", true),
         NonPublicType = LibraryInfo("DAP017", "Non-accessible type", "Type '{0}' is not accessible; {1} types are not currently supported", true),
-
-            // TODO
-        SqlParametersNotDetected = SqlWarning("DAP018", "SQL parameters not detected", "Parameters are being supplied, but no parameters were detected in the command"),
-        NoParametersSupplied = SqlWarning("DAP019", "No parameters supplied", "SQL parameters were detected, but no parameters are being supplied"),
-        SqlParameterNotBound = SqlWarning("DAP020", "SQL parameter not bound", "No member could be found for the SQL parameter '{0}' from type '{1}'"),
-            // ^^^ TODO
-
+        SqlParametersNotDetected = SqlWarning("DAP018", "SQL parameters not detected", "Parameters are being supplied, but no parameters were detected in the command", true),
         DuplicateParameter = LibraryWarning("DAP021", "Duplicate parameter", "Members '{0}' and '{1}' both have the database name '{2}'; '{1}' will be ignored", true),
         DuplicateReturn = LibraryWarning("DAP022", "Duplicate return parameter", "Members '{0}' and '{1}' are both designated as return values; '{1}' will be ignored", true),
         DuplicateRowCount = LibraryWarning("DAP023", "Duplicate row-count member", "Members '{0}' and '{1}' are both marked [RowCount]", true),
@@ -83,6 +77,7 @@ partial class DapperAnalyzer
         UnusedParameter = SqlWarning("DAP236", "Unused parameter", "Parameter '{0}' is not used, but will be included"),
         DivideByZero = SqlWarning("DAP237", "Divide by zero", "Division by zero detected"),
         TrivialOperand = SqlWarning("DAP238", "Trivial operand", "Operand makes this calculation trivial; it can be simplified"),
-        InvalidNullExpression = SqlWarning("DAP239", "Invalid null expression", "Operation requires a non-null operand");
+        InvalidNullExpression = SqlWarning("DAP239", "Invalid null expression", "Operation requires a non-null operand"),
+        VariableParameterConflict = SqlError("DAP240", "Parameter/variable conflict", "The declaration of variable '{0}' conflicts with a parameter");
     }
 }
