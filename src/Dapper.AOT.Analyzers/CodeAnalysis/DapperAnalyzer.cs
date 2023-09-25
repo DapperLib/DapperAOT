@@ -195,7 +195,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             var resultType = invoke.GetResultType(flags);
             if (resultType is not null && IdentifyDbType(resultType, out _) is null) // don't warn if handled as an inbuilt
             {
-                var resultMap = MemberMap.Create(resultType, location);
+                var resultMap = MemberMap.CreateForResults(resultType, location);
                 if (resultMap is not null)
                 {
                     // check for single-row value-type usage
@@ -226,7 +226,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 }
             }
 
-            var parameters = MemberMap.Create(argExpression);
+            var parameters = MemberMap.CreateForParameters(argExpression);
             if (aotEnabled)
             {
                 _ = AdditionalCommandState.Parse(GetSymbol(parseState, invoke), parameters, onDiagnostic);
