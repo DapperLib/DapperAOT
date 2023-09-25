@@ -4,7 +4,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 14, 24)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::System.Collections.Generic.List<global::Foo.Customer>
         // parameter map: X Y Z
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -18,7 +18,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 15, 24)]
     internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::System.Collections.Generic.List<global::<anonymous type: int Foo, string bar>>
         // parameter map: bar Foo
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -32,7 +32,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 16, 24)]
     internal static int Execute2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::Foo.Customer[]
         // parameter map: X Y Z
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -46,7 +46,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 17, 24)]
     internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, Text
+        // Execute, HasParameters, Text, KnownParameters
         // takes parameter: global::System.Collections.Immutable.ImmutableArray<global::Foo.Customer>
         // parameter map: X
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -60,7 +60,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 18, 24)]
     internal static int Execute4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::Foo.CustomerEnumerable
         // parameter map: X Y Z
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -74,7 +74,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 19, 24)]
     internal static int Execute5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::Foo.CustomerICollection
         // parameter map: X Y Z
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -88,7 +88,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 20, 24)]
     internal static int Execute6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::Foo.CustomerIList
         // parameter map: X Y Z
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -102,7 +102,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 21, 24)]
     internal static int Execute7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::Foo.CustomerIReadOnlyCollection
         // parameter map: X Y Z
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -116,7 +116,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteBatch.input.cs", 22, 24)]
     internal static int Execute8(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::Foo.CustomerIReadOnlyList
         // parameter map: X Y Z
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));

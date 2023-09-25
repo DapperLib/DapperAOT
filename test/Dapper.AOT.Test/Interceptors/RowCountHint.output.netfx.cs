@@ -18,7 +18,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\RowCountHint.input.cs", 12, 24)]
     internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName
+        // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: bar Foo
         // returns data: global::Foo.Customer
@@ -34,7 +34,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\RowCountHint.input.cs", 13, 24)]
     internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName
+        // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName, KnownParameters
         // takes parameter: global::Foo.DynamicHint
         // parameter map: Bar Foo
         // returns data: global::Foo.Customer

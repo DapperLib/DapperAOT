@@ -40,7 +40,7 @@ public class DAP027 : Verifier<DapperAnalyzer>
                 _ = conn.QuerySingleOrDefault<SomeType>("storedproc");
             }
         }
-        class SomeType {}
+        class SomeType { public int Id {get;set;} }
         """, DefaultConfig, [
             Diagnostic(Diagnostics.UseSingleRowQuery).WithLocation(0).WithArguments("QueryFirst", "First"),
             Diagnostic(Diagnostics.UseSingleRowQuery).WithLocation(1).WithArguments("QuerySingle", "Single"),

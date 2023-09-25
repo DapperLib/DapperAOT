@@ -5,7 +5,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 12, 12)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, Text
+        // Execute, HasParameters, Text, KnownParameters
         // takes parameter: global::Foo.Customer
         // parameter map: Name
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -20,7 +20,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 21, 12)]
     internal static int QuerySingle1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne
+        // Query, TypedResult, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, KnownParameters
         // takes parameter: global::Foo.Customer
         // parameter map: Name
         // returns data: int
@@ -36,7 +36,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 22, 12)]
     internal static int ExecuteScalar2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, TypedResult, HasParameters, Text, Scalar
+        // Execute, TypedResult, HasParameters, Text, Scalar, KnownParameters
         // takes parameter: global::Foo.Customer
         // parameter map: Name
         // returns data: int

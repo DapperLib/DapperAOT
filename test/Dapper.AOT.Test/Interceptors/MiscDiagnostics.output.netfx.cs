@@ -41,7 +41,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 92, 24)]
     internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::SomeCode.InternalNesting.SomePublicType
         // parameter map: Id
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -68,7 +68,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 40, 24)]
     internal static int Execute5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::SomeCode.InternalNesting.SomeInternalType
         // parameter map: Id
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -95,7 +95,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MiscDiagnostics.input.cs", 56, 24)]
     internal static int Execute7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: global::SomeCode.InternalNesting.SomeProtectedInternalType
         // parameter map: Id
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));

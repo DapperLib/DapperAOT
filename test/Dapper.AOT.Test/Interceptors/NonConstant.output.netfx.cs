@@ -4,7 +4,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\NonConstant.input.cs", 17, 20)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters
+        // Execute, HasParameters, KnownParameters
         // takes parameter: <anonymous type: int A, int B, int C>
         // parameter map: (deferred)
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -17,7 +17,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\NonConstant.input.cs", 19, 20)]
     internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters
+        // Execute, HasParameters, KnownParameters
         // takes parameter: global::<anonymous type: int A, int B, int C>[]
         // parameter map: (deferred)
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));

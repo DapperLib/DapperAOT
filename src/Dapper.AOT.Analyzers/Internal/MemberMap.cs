@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
+using System.Linq;
 using static Dapper.Internal.Inspection;
 
 namespace Dapper.Internal;
@@ -28,28 +29,31 @@ internal sealed class MemberMap
         IsCollection = 1 << 2,
     }
 
-    public static MemberMap? Create(IOperation? parameters)
-        => parameters is null or { Type: null} ? null : new (parameters.Syntax.GetLocation(), parameters.Type, parameters);
+    public static MemberMap? CreateForParameters(IOperation? parameters)
+        => parameters is null or { Type: null} ? null : new (true, parameters.Syntax.GetLocation(), parameters.Type, parameters);
 
-    public static MemberMap? Create(ITypeSymbol? type, Location location)
-        => type is null ? null : new(location, type, null);
+    public static MemberMap? CreateForResults(ITypeSymbol? type, Location? location = null)
+        => type is null ? null : new(false, location, type, null);
+
+    public static MemberMap? CreateForParameters(ITypeSymbol? type, Location? location = null)
+        => type is null ? null : new(true, location, type, null);
 
     public IOperation? Parameters { get; }
-    public Location Location { get; }
+    public Location? Location { get; }
 
-    private MemberMap(Location location, ITypeSymbol declaredType, IOperation? parameters)
+    private MemberMap(bool forParameters, Location? location, ITypeSymbol declaredType, IOperation? parameters)
     {
         Parameters = parameters;
-        Location = location;
         ElementType = DeclaredType = declaredType;
-
-        if (parameters  is not null && IsCollectionType(declaredType, out var elementType, out var castType)
+        Location = location ?? declaredType.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax().GetLocation();
+        if (forParameters && IsCollectionType(declaredType, out var elementType, out var castType)
             && elementType is not null)
         {
             ElementType = elementType;
             CSharpCastType = castType;
             _flags |= MapFlags.IsCollection;
         }
+        
         if (IsMissingOrObjectOrDynamic(ElementType))
         {
             _flags |= MapFlags.IsObject;
@@ -58,14 +62,17 @@ internal sealed class MemberMap
         {
             _flags |= MapFlags.IsDapperDynamic;
         }
-        switch (ChooseConstructor(ElementType, out var constructor))
+        if (!forParameters)
         {
-            case ConstructorResult.SuccessSingleImplicit:
-            case ConstructorResult.SuccessSingleExplicit:
-                Constructor = constructor;
-                break;
+            switch (ChooseConstructor(ElementType, out var constructor))
+            {
+                case ConstructorResult.SuccessSingleImplicit:
+                case ConstructorResult.SuccessSingleExplicit:
+                    Constructor = constructor;
+                    break;
+            }
         }
-        Members = GetMembers(ElementType, constructor);
+        Members = GetMembers(forParameters, ElementType, Constructor);
     }
 
     static bool IsDynamicParameters(ITypeSymbol? type)

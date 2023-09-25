@@ -573,10 +573,10 @@ internal static class Inspection
 
     /// <summary>
     /// Yields the type's members.
-    /// If <param name="dapperAotConstructor"/> is passed, will be used to associate element member with the constructor parameter by name (case-insensitive).
+    /// If <param name="constructor"/> is passed, will be used to associate element member with the constructor parameter by name (case-insensitive).
     /// </summary>
     /// <param name="elementType">type, which elements to parse</param>
-    public static ImmutableArray<ElementMember> GetMembers(ITypeSymbol? elementType, IMethodSymbol? dapperAotConstructor = null)
+    internal static ImmutableArray<ElementMember> GetMembers(bool forParameters, ITypeSymbol? elementType, IMethodSymbol? constructor)
     {
         if (elementType is null)
         {
@@ -590,7 +590,7 @@ internal static class Inspection
         {
             var elMembers = elementType.GetMembers();
             var builder = ImmutableArray.CreateBuilder<ElementMember>(elMembers.Length);
-            var constructorParameters = (dapperAotConstructor is not null) ? ParseConstructorParameters(dapperAotConstructor) : null;
+            var constructorParameters = (constructor is not null) ? ParseConstructorParameters(constructor) : null;
             foreach (var member in elMembers)
             {
                 // instance only, must be able to access by name
@@ -627,6 +627,7 @@ internal static class Inspection
                     default:
                         continue;
                 }
+                if (memberType is null) continue;
 
                 int? constructorParameterOrder = constructorParameters?.TryGetValue(member.Name, out var constructorParameter) == true
                     ? constructorParameter.Order
@@ -637,8 +638,20 @@ internal static class Inspection
                 if (CodeWriter.IsSettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsSettable;
                 if (CodeWriter.IsInitOnlyInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsInitOnly;
 
+                if (forParameters)
+                {
+                    // needs to be readable
+                    if ((flags & ElementMember.ElementMemberFlags.IsGettable) == 0) continue;
+                }
+                else
+                {
+                    // needs to be writable
+                    if (constructorParameterOrder is null &&
+                        (flags & (ElementMember.ElementMemberFlags.IsSettable | ElementMember.ElementMemberFlags.IsInitOnly)) == 0) continue;
+                }
+
                 // see Dapper's TryStringSplit logic
-                if (memberType is not null && IsCollectionType(memberType, out var innerType) && innerType is not null)
+                if (IsCollectionType(memberType, out var innerType) && innerType is not null)
                 {
                     flags |= ElementMember.ElementMemberFlags.IsExpandable;
                 }

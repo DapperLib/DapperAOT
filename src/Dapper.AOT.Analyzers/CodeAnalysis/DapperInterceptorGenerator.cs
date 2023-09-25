@@ -53,9 +53,19 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     }
 
     private SourceState? Parse(GeneratorSyntaxContext ctx, CancellationToken cancellationToken)
-        => Parse(new(ctx, cancellationToken));
+    {
+        try
+        {
+            return Parse(new(ctx, cancellationToken));
+        }
+        catch (Exception ex)
+        {
+            Debug.Fail(ex.Message);
+            return null;
+        }
+    }
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Chosen API")]
-    internal SourceState? Parse(in ParseState ctx)
+    internal SourceState? Parse(ParseState ctx)
     {
         if (ctx.Node is not InvocationExpressionSyntax ie
             || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op
@@ -77,7 +87,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         // additional result-type checks
 
         // perform SQL inspection
-        var map = MemberMap.Create(argExpression);
+        var map = MemberMap.CreateForParameters(argExpression);
         var parameterMap = BuildParameterMap(ctx, op, sql, ref flags, map, location, out var parseFlags);
 
         if (flags.HasAny(OperationFlags.CacheCommand))
@@ -188,8 +198,18 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     }
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
-        => Generate(new(ctx, state));
+    {
+        try
+        {
+            Generate(new(ctx, state));
+        }
+        catch (Exception ex)
+        {
+            ctx.ReportDiagnostic(Diagnostic.Create(DiagnosticsBase.UnknownError, null, ex.Message, ex.StackTrace));
+        }
+    }
 
+    const string DapperBaseCommandFactory = "global::Dapper.CommandFactory";
     internal void Generate(in GenerateState ctx)
     {
         if (!CheckPrerequisites(ctx)) // also reports per-item diagnostics
@@ -302,7 +322,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
         }
 
-        const string DapperBaseCommandFactory = "global::Dapper.CommandFactory";
         var baseCommandFactory = GetCommandFactory(ctx.Compilation, out var canConstruct) ?? DapperBaseCommandFactory;
         if (needsCommandPrep || !canConstruct)
         {
@@ -420,18 +439,21 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             sb.Outdent().NewLine();
 
 
-            if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
-            {
-                sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-                WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
-                sb.Outdent().NewLine();
-            }
-
-            if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
+            if ((flags & (WriteArgsFlags.NeedsPostProcess | WriteArgsFlags.NeedsRowCount)) != 0)
             {
                 sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
-                WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
-                sb.Append("PostProcess(cmd, args);");
+                if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
+                {
+                    WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
+                }
+                if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
+                {
+                    WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
+                }
+                if (baseFactory != DapperBaseCommandFactory)
+                {
+                    sb.Append("base.PostProcess(cmd, args, rowCount);").NewLine();
+                }
                 sb.Outdent().NewLine();
             }
         }
@@ -611,26 +633,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index)
     {
-        var ctorType = Inspection.ChooseConstructor(type, out var constructor);
-        if (ctorType is Inspection.ConstructorResult.FailMultipleImplicit or Inspection.ConstructorResult.FailMultipleExplicit)
+        var map = MemberMap.CreateForResults(type);
+        if (map is null) return;
+
+        var members = map.Members;
+
+        if (members.IsDefaultOrEmpty && map.Constructor is null)
         {
-            // error is emitted, but we still generate default RowFactory to not emit more errors for this type
-            WriteRowFactoryHeader();
-            WriteRowFactoryFooter();
-
-            return;
-        }
-        bool hasExplicitConstructor = ctorType == Inspection.ConstructorResult.SuccessSingleExplicit
-            && constructor is not null;
-
-        var members = Inspection.GetMembers(type, dapperAotConstructor: constructor);
-        var membersCount = members.Length;
-
-        if (membersCount == 0 && !hasExplicitConstructor)
-        {
-            // there are so settable members + there is no constructor to use
-            context.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, type.Locations.First(), type.ToDisplayString()));
-
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
             WriteRowFactoryHeader();
             WriteRowFactoryFooter();
@@ -640,7 +649,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         var hasInitOnlyMembers = members.Any(member => member.IsInitOnly);
         var hasGetOnlyMembers = members.Any(member => member.IsGettable && !member.IsSettable && !member.IsInitOnly);
-        var useDeferredConstruction = hasExplicitConstructor || hasInitOnlyMembers || hasGetOnlyMembers;
+        var useDeferredConstruction = map.Constructor is not null || hasInitOnlyMembers || hasGetOnlyMembers;
 
         WriteRowFactoryHeader();
 
@@ -678,7 +687,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     .Append(" when NormalizedEquals(name, ")
                     .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine()
                     .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(token)
-                    .Append(" : ").Append(token + membersCount).Append(";")
+                    .Append(" : ").Append(token + map.Members.Length).Append(";")
                     .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
                     .Append("break;").Outdent(false).NewLine();
                 token++;
@@ -758,7 +767,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
 
                 sb.NewLine().Append("break;").NewLine().Outdent(false)
-                    .Append("case ").Append(token + membersCount).Append(":").NewLine().Indent(false);
+                    .Append("case ").Append(token + map.Members.Length).Append(":").NewLine().Indent(false);
 
                 // write `result.X = ` or `member0 = `
                 if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
@@ -787,7 +796,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 // ```
 
                 sb.Append("return new ").Append(type);
-                if (hasExplicitConstructor && constructorArgumentsOrdered.Count != 0)
+                if (map.Constructor is not null && constructorArgumentsOrdered.Count != 0)
                 {
                     // write `(member0, member1, member2, ...)` part of constructor
                     sb.Append('(');
@@ -862,7 +871,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         bool first = true, firstTest = true;
         int parameterIndex = 0;
-        foreach (var member in Inspection.GetMembers(parameterType))
+        var memberMap = MemberMap.CreateForParameters(parameterType);
+        if (memberMap is null or { Members.IsDefaultOrEmpty: true }) return;
+
+        foreach (var member in memberMap.Members)
         {
             if (member.IsRowCount)
             {

@@ -9,44 +9,44 @@ partial class DapperAnalyzer
         public static readonly DiagnosticDescriptor
         // general usage
         // 000: InterceptorsGenerated
-        UnsupportedMethod = LibraryInfo("DAP001", "Unsupported method", "The Dapper method '{0}' is not currently supported by Dapper.AOT", true),
+        UnsupportedMethod = LibraryInfo("DAP001", "Unsupported method", "The Dapper method '{0}' is not currently supported by Dapper.AOT"),
         // unused: DAP002
         // 003: InterceptorsNotEnabled
         // 004: LanguageVersionTooLow
-        DapperAotNotEnabled = LibraryInfo("DAP005", "Dapper.AOT not enabled", "{0} candidate Dapper methods detected, but none have Dapper.AOT enabled", true),
-        DapperLegacyTupleParameter = LibraryWarning("DAP006", "Dapper tuple-type parameter", "Dapper (original) does not work well with tuple-type parameters as name information is inaccessible", true),
-        UnexpectedCommandType = LibraryInfo("DAP007", "Unexpected command type", "The command type specified is not understood", true),
+        DapperAotNotEnabled = LibraryInfo("DAP005", "Dapper.AOT not enabled", "{0} candidate Dapper methods detected, but none have Dapper.AOT enabled"),
+        DapperLegacyTupleParameter = LibraryWarning("DAP006", "Dapper tuple-type parameter", "Dapper (original) does not work well with tuple-type parameters as name information is inaccessible"),
+        UnexpectedCommandType = LibraryInfo("DAP007", "Unexpected command type", "The command type specified is not understood"),
         // unused: DAP008
-        UnexpectedArgument = LibraryInfo("DAP009", "Unexpected parameter", "The parameter '{0}' is not understood", true),
+        UnexpectedArgument = LibraryInfo("DAP009", "Unexpected parameter", "The parameter '{0}' is not understood"),
         // unused: DAP010
-        DapperLegacyBindNameTupleResults = LibraryWarning("DAP011", "Named-tuple results", "Dapper (original) does not support tuple results with bind-by-name semantics", true),
-        DapperAotAddBindTupleByName = LibraryWarning("DAP012", "Add BindTupleByName", "Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindTupleByName({true|false})]' to clarify your intent", true),
-        DapperAotTupleResults = LibraryInfo("DAP013", "Tuple-type results", "Tuple-type results are not currently supported", true),
-        DapperAotTupleParameter = LibraryInfo("DAP014", "Tuple-type parameter", "Tuple-type parameters are not currently supported", true),
-        UntypedParameter = LibraryInfo("DAP015", "Untyped parameter", "The parameter type could not be resolved", true),
-        GenericTypeParameter = LibraryInfo("DAP016", "Generic type parameter", "Generic type parameters ({0}) are not currently supported", true),
-        NonPublicType = LibraryInfo("DAP017", "Non-accessible type", "Type '{0}' is not accessible; {1} types are not currently supported", true),
-        SqlParametersNotDetected = SqlWarning("DAP018", "SQL parameters not detected", "Parameters are being supplied, but no parameters were detected in the command", true),
+        DapperLegacyBindNameTupleResults = LibraryWarning("DAP011", "Named-tuple results", "Dapper (original) does not support tuple results with bind-by-name semantics"),
+        DapperAotAddBindTupleByName = LibraryWarning("DAP012", "Add BindTupleByName", "Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindTupleByName({true|false})]' to clarify your intent"),
+        DapperAotTupleResults = LibraryInfo("DAP013", "Tuple-type results", "Tuple-type results are not currently supported"),
+        DapperAotTupleParameter = LibraryInfo("DAP014", "Tuple-type parameter", "Tuple-type parameters are not currently supported"),
+        UntypedParameter = LibraryInfo("DAP015", "Untyped parameter", "The parameter type could not be resolved"),
+        GenericTypeParameter = LibraryInfo("DAP016", "Generic type parameter", "Generic type parameters ({0}) are not currently supported"),
+        NonPublicType = LibraryInfo("DAP017", "Non-accessible type", "Type '{0}' is not accessible; {1} types are not currently supported"),
+        SqlParametersNotDetected = SqlWarning("DAP018", "SQL parameters not detected", "Parameters are being supplied, but no parameters were detected in the command"),
         // unused: DAP019
         // unused: DAP020
-        DuplicateParameter = LibraryWarning("DAP021", "Duplicate parameter", "Members '{0}' and '{1}' both have the database name '{2}'; '{1}' will be ignored", true),
-        DuplicateReturn = LibraryWarning("DAP022", "Duplicate return parameter", "Members '{0}' and '{1}' are both designated as return values; '{1}' will be ignored", true),
-        DuplicateRowCount = LibraryWarning("DAP023", "Duplicate row-count member", "Members '{0}' and '{1}' are both marked [RowCount]", true),
-        RowCountDbValue = LibraryWarning("DAP024", "Member is both row-count and mapped value", "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored", true),
-        ExecuteCommandWithQuery = SqlWarning("DAP025", "Execute command with query", "The command has a query that will be ignored", true),
-        QueryCommandMissingQuery = SqlError("DAP026", "Query/scalar command lacks query", "The command lacks a query", true),
-        UseSingleRowQuery = PerformanceWarning("DAP027", "Use single-row query", "Use {0}() instead of Query(...).{1}()", true),
-        UseQueryAsList = PerformanceWarning("DAP028", "Use AsList instead of ToList", "Use Query(...).AsList() instead of Query(...).ToList()", true),
-        RowCountHintRedundant = LibraryInfo("DAP029", "Row-count hint redundant", "The method-level [RowCountHint] will be ignored due to parameter member '{0}'", true),
-        RowCountHintInvalidValue = LibraryError("DAP030", "Row-count hint invalid value", "The [RowCountHint] parameters are invalid; a positive integer must be supplied", true),
-        RowCountHintShouldNotSpecifyValue = LibraryError("DAP031", "Row-count hint should not specify value", "The [RowCountHint] parameters are invalid; no parameter should be supplied", true),
-        RowCountHintDuplicated = LibraryError("DAP032", "Row-count hint duplicated", "Only a single member or parameter should be marked [RowCountHint]; '{0} will be ignored", true),
+        DuplicateParameter = LibraryWarning("DAP021", "Duplicate parameter", "Members '{0}' and '{1}' both have the database name '{2}'; '{1}' will be ignored"),
+        DuplicateReturn = LibraryWarning("DAP022", "Duplicate return parameter", "Members '{0}' and '{1}' are both designated as return values; '{1}' will be ignored"),
+        DuplicateRowCount = LibraryWarning("DAP023", "Duplicate row-count member", "Members '{0}' and '{1}' are both marked [RowCount]"),
+        RowCountDbValue = LibraryWarning("DAP024", "Member is both row-count and mapped value", "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored"),
+        ExecuteCommandWithQuery = SqlWarning("DAP025", "Execute command with query", "The command has a query that will be ignored"),
+        QueryCommandMissingQuery = SqlError("DAP026", "Query/scalar command lacks query", "The command lacks a query"),
+        UseSingleRowQuery = PerformanceWarning("DAP027", "Use single-row query", "Use {0}() instead of Query(...).{1}()"),
+        UseQueryAsList = PerformanceWarning("DAP028", "Use AsList instead of ToList", "Use Query(...).AsList() instead of Query(...).ToList()"),
+        RowCountHintRedundant = LibraryInfo("DAP029", "Row-count hint redundant", "The method-level [RowCountHint] will be ignored due to parameter member '{0}'"),
+        RowCountHintInvalidValue = LibraryError("DAP030", "Row-count hint invalid value", "The [RowCountHint] parameters are invalid; a positive integer must be supplied"),
+        RowCountHintShouldNotSpecifyValue = LibraryError("DAP031", "Row-count hint should not specify value", "The [RowCountHint] parameters are invalid; no parameter should be supplied"),
+        RowCountHintDuplicated = LibraryError("DAP032", "Row-count hint duplicated", "Only a single member or parameter should be marked [RowCountHint]; '{0} will be ignored"),
         // 033: CommandPropertyNotFound
         // 034: CommandPropertyReserved
-        ConstructorMultipleExplicit = LibraryError("DAP035", "Multiple explicit constructors", "Only one constructor should be marked [ExplicitConstructor] for type '{0}'", true),
-        ConstructorAmbiguous = LibraryError("DAP036", "Ambiguous constructors", "Type '{0}' has more than 1 constructor; mark one constructor with [ExplicitConstructor] or reduce constructors", true),
-        // 037: UserTypeNoSettableMembersFound
-        ValueTypeSingleFirstOrDefaultUsage = LibraryWarning("DAP038", "Value-type single row 'OrDefault' usage", "Type '{0}' is a value-type; it will not be trivial to identify missing rows from {1}", true),
+        ConstructorMultipleExplicit = LibraryError("DAP035", "Multiple explicit constructors", "Only one constructor should be marked [ExplicitConstructor] for type '{0}'"),
+        ConstructorAmbiguous = LibraryError("DAP036", "Ambiguous constructors", "Type '{0}' has more than 1 constructor; mark one constructor with [ExplicitConstructor] or reduce constructors"),
+        UserTypeNoSettableMembersFound = LibraryError("DAP037", "No settable members exist for user type", "Type '{0}' has no settable fields or properties"),
+        ValueTypeSingleFirstOrDefaultUsage = LibraryWarning("DAP038", "Value-type single row 'OrDefault' usage", "Type '{0}' is a value-type; it will not be trivial to identify missing rows from {1}"),
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),

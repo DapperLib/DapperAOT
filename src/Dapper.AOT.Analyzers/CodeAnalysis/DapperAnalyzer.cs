@@ -83,20 +83,27 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         internal void OnCompilationEndAction(CompilationAnalysisContext ctx)
         {
-            lock (_missedOpportunities)
+            try
             {
-                var count = _missedOpportunities.Count;
-                if (count != 0)
+                lock (_missedOpportunities)
                 {
-                    var location = _missedOpportunities[0];
-                    Location[]? additionalLocations = null;
-                    if (count > 1)
+                    var count = _missedOpportunities.Count;
+                    if (count != 0)
                     {
-                        additionalLocations = new Location[count - 1];
-                        _missedOpportunities.CopyTo(1, additionalLocations, 0, count - 1);
+                        var location = _missedOpportunities[0];
+                        Location[]? additionalLocations = null;
+                        if (count > 1)
+                        {
+                            additionalLocations = new Location[count - 1];
+                            _missedOpportunities.CopyTo(1, additionalLocations, 0, count - 1);
+                        }
+                        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.DapperAotNotEnabled, location, additionalLocations, count));
                     }
-                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.DapperAotNotEnabled, location, additionalLocations, count));
                 }
+            }
+            catch (Exception ex)
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(DiagnosticsBase.UnknownError, null, ex.Message, ex.StackTrace));
             }
         }
 
@@ -185,31 +192,41 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
 
             // check the types
-            var resultMap = MemberMap.Create(invoke.GetResultType(flags), location);
-            if (resultMap is not null)
+            var resultType = invoke.GetResultType(flags);
+            if (resultType is not null && IdentifyDbType(resultType, out _) is null) // don't warn if handled as an inbuilt
             {
-                // check for single-row value-type usage
-                if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
-                    && resultMap.ElementType.IsValueType && !CouldBeNullable(resultMap.ElementType))
+                var resultMap = MemberMap.CreateForResults(resultType, location);
+                if (resultMap is not null)
                 {
-                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultMap.ElementType.Name, invoke.TargetMethod.Name));
-                }
+                    // check for single-row value-type usage
+                    if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
+                        && resultMap.ElementType.IsValueType && !CouldBeNullable(resultMap.ElementType))
+                    {
+                        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultMap.ElementType.Name, invoke.TargetMethod.Name));
+                    }
 
-                // check for constructors on the materialized type
-                DiagnosticDescriptor? ctorFault = ChooseConstructor(resultMap.ElementType, out var ctor) switch
-                {
-                    ConstructorResult.FailMultipleExplicit => Diagnostics.ConstructorMultipleExplicit,
-                    ConstructorResult.FailMultipleImplicit when aotEnabled => Diagnostics.ConstructorAmbiguous,
-                    _ => null,
-                };
-                if (ctorFault is not null)
-                {
-                    var loc = ctor?.Locations.FirstOrDefault() ?? resultMap.ElementType.Locations.FirstOrDefault();
-                    ctx.ReportDiagnostic(Diagnostic.Create(ctorFault, loc, resultMap.ElementType.GetDisplayString()));
+                    // check for constructors on the materialized type
+                    DiagnosticDescriptor? ctorFault = ChooseConstructor(resultMap.ElementType, out var ctor) switch
+                    {
+                        ConstructorResult.FailMultipleExplicit => Diagnostics.ConstructorMultipleExplicit,
+                        ConstructorResult.FailMultipleImplicit when aotEnabled => Diagnostics.ConstructorAmbiguous,
+                        _ => null,
+                    };
+                    if (ctorFault is not null)
+                    {
+                        var loc = ctor?.Locations.FirstOrDefault() ?? resultMap.ElementType.Locations.FirstOrDefault();
+                        ctx.ReportDiagnostic(Diagnostic.Create(ctorFault, loc, resultMap.ElementType.GetDisplayString()));
+                    }
+                    else if (resultMap.Members.IsDefaultOrEmpty && IsPublicOrAssemblyLocal(resultType, parseState, out _))
+                    {
+                        // there are so settable members + there is no constructor to use
+                        // (note: generator uses Inspection.GetMembers(type, dapperAotConstructor: constructor)
+                        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, resultMap.Location, resultType.Name));
+                    }
                 }
             }
 
-            var parameters = MemberMap.Create(argExpression);
+            var parameters = MemberMap.CreateForParameters(argExpression);
             if (aotEnabled)
             {
                 _ = AdditionalCommandState.Parse(GetSymbol(parseState, invoke), parameters, onDiagnostic);

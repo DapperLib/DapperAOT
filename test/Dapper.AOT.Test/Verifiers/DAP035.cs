@@ -22,10 +22,11 @@ public class DAP035 : Verifier<DapperAnalyzer>
                 _ = conn.Query<MultipleExplicit>("storedproc");
             }
         }
-        class NoConstructors {}
+        class NoConstructors { public int Id {get;set;} }
         class SingleExplicit
         {
-            [ExplicitConstructor] public SingleExplicit(int a) {}
+            public int A {get;}
+            [ExplicitConstructor] public SingleExplicit(int a) => A = a;
             public SingleExplicit(string b) {}
             public SingleExplicit(decimal c) {}
             public SingleExplicit(SingleExplicit d) {}
