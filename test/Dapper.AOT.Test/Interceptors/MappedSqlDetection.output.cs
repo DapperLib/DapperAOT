@@ -161,7 +161,8 @@ file static class DapperGeneratedInterceptors
         {
             args.RowCount = rowCount;
             args.DuplicateToCauseProblems = rowCount;
-            PostProcess(cmd, args);
+            base.PostProcess(cmd, args, rowCount);
+
         }
         public override bool CanPrepare => true;
 

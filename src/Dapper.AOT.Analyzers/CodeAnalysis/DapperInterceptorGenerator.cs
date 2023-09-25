@@ -209,6 +209,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
+    const string DapperBaseCommandFactory = "global::Dapper.CommandFactory";
     internal void Generate(in GenerateState ctx)
     {
         if (!CheckPrerequisites(ctx)) // also reports per-item diagnostics
@@ -321,7 +322,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
         }
 
-        const string DapperBaseCommandFactory = "global::Dapper.CommandFactory";
         var baseCommandFactory = GetCommandFactory(ctx.Compilation, out var canConstruct) ?? DapperBaseCommandFactory;
         if (needsCommandPrep || !canConstruct)
         {
@@ -439,18 +439,21 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             sb.Outdent().NewLine();
 
 
-            if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
-            {
-                sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-                WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
-                sb.Outdent().NewLine();
-            }
-
-            if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
+            if ((flags & (WriteArgsFlags.NeedsPostProcess | WriteArgsFlags.NeedsRowCount)) != 0)
             {
                 sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
-                WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
-                sb.Append("PostProcess(cmd, args);");
+                if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
+                {
+                    WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
+                }
+                if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
+                {
+                    WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
+                }
+                if (baseFactory != DapperBaseCommandFactory)
+                {
+                    sb.Append("base.PostProcess(cmd, args, rowCount);").NewLine();
+                }
                 sb.Outdent().NewLine();
             }
         }
