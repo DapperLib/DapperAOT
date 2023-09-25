@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -59,22 +60,25 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         if (ctx.Node is not InvocationExpressionSyntax ie
             || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op
             || !op.IsDapperMethod(out var flags)
-            || flags.HasAny(OperationFlags.NotAotSupported)
+            || flags.HasAny(OperationFlags.NotAotSupported | OperationFlags.DoNotGenerate)
             || !Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out var aotAttribExists))
         {
             return null;
         }
 
-
-        var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var paramType, reportDiagnostic: null, out var resultType);
+        var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var argExpression, reportDiagnostic: null, out var resultType, exitFirstFailure: true);
+        if (flags.HasAny(OperationFlags.DoNotGenerate))
+        {
+            return null;
+        }
 
 
 
         // additional result-type checks
 
         // perform SQL inspection
-        var map = MemberMap.Create(paramType, true);
-        var parameterMap = BuildParameterMap(ctx, op, sql, flags, map, location, out var parseFlags);
+        var map = MemberMap.Create(argExpression);
+        var parameterMap = BuildParameterMap(ctx, op, sql, ref flags, map, location, out var parseFlags);
 
         if (flags.HasAny(OperationFlags.CacheCommand))
         {
@@ -88,15 +92,16 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (!canBeCached) flags &= ~OperationFlags.CacheCommand;
         }
 
-        var estimatedRowCount = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), map);
+        var additionalState = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), map, null);
 
-        return new SourceState(location, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, estimatedRowCount);
+        Debug.Assert(!flags.HasAny(OperationFlags.DoNotGenerate), "should have already exited");
+        return new SourceState(location, op.TargetMethod, flags, sql, resultType, argExpression?.Type, parameterMap, additionalState);
 
 
-        static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, OperationFlags flags, MemberMap? map, Location loc, out SqlParseOutputFlags parseFlags)
+        static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, ref OperationFlags flags, MemberMap? map, Location loc, out SqlParseOutputFlags parseFlags)
         {
             // check the arg type
-            var args = DapperAnalyzer.SharedGetParametersToInclude(map, flags, sql, null, out parseFlags);
+            var args = DapperAnalyzer.SharedGetParametersToInclude(map, ref flags, sql, null, out parseFlags);
             if (args is null) return "?"; // deferred
             var arr = args.Value;
 
@@ -158,62 +163,28 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         return null;
     }
 
-    private bool CheckPrerequisites(in GenerateState ctx, out int enabledCount)
+    private static bool CheckPrerequisites(in GenerateState ctx)
     {
-        enabledCount = 0;
-        if (!ctx.Nodes.IsDefaultOrEmpty)
+        if (ctx.Nodes.IsDefaultOrEmpty) return false; // nothing to do
+
+        // find the first enabled thing with a C# parse options
+        if (ctx.Nodes[0].Location.SourceTree?.Options is not CSharpParseOptions options) return false; // not C#
+
+        bool success = true;
+        if (!options.Features.ContainsKey("InterceptorsPreview"))
         {
-            int errorCount = 0, passiveDisabledCount = 0, doNotGenerateCount = 0;
-            bool checkParseOptions = true;
-            foreach (var node in ctx.Nodes)
-            {
-                var count = node.DiagnosticCount;
-                for (int i = 0; i < count; i++)
-                {
-                    ctx.ReportDiagnostic(node.GetDiagnostic(i));
-                }
-
-                if (node.Flags.HasAny(OperationFlags.DoNotGenerate)) doNotGenerateCount++;
-
-                if ((node.Flags & OperationFlags.AotNotEnabled) != 0) // passive or active disabled
-                {
-                    if ((node.Flags & OperationFlags.AotDisabled) == 0)
-                    {
-                        passiveDisabledCount++;
-                    }
-                }
-                else
-                {
-                    enabledCount++;
-                    // find the first enabled thing with a C# parse options
-                    if (checkParseOptions && node.Location.SourceTree?.Options is CSharpParseOptions options)
-                    {
-                        checkParseOptions = false; // only do this once
-                        if (!(OverrideFeatureEnabled || options.Features.ContainsKey("InterceptorsPreview")))
-                        {
-                            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsNotEnabled, null));
-                            errorCount++;
-                        }
-
-                        var version = options.LanguageVersion;
-                        if (version != LanguageVersion.Default && version < LanguageVersion.CSharp11)
-                        {
-                            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.LanguageVersionTooLow, null));
-                            errorCount++;
-                        }
-                    }
-                }
-            }
-
-            if (doNotGenerateCount == ctx.Nodes.Length)
-            {
-                // nothing but nope
-                errorCount++;
-            }
-
-            return errorCount == 0;
+            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsNotEnabled, null));
+            success = false;
         }
-        return false; // nothing to validate - so: nothing to do, quick exit
+
+        var version = options.LanguageVersion;
+        if (version != LanguageVersion.Default && version < LanguageVersion.CSharp11)
+        {
+            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.LanguageVersionTooLow, null));
+            success = false;
+        }
+        return success;
+        
     }
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
@@ -221,7 +192,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     internal void Generate(in GenerateState ctx)
     {
-        if (!CheckPrerequisites(ctx, out int enabledCount)) // also reports per-item diagnostics
+        if (!CheckPrerequisites(ctx)) // also reports per-item diagnostics
         {
             // failed checks; do nothing
             return;
@@ -396,7 +367,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         interceptsLocationWriter.Write(ctx.Compilation);
 
         ctx.AddSource((ctx.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.ToString());
-        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, enabledCount, methodIndex, factories.Count(), readers.Count()));
+        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, ctx.Nodes.Length, methodIndex, factories.Count(), readers.Count()));
     }
 
     private static void WriteCommandFactory(in GenerateState ctx, string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount, AdditionalCommandState? additionalCommandState)
@@ -1206,8 +1177,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     internal sealed class SourceState
     {
-        private readonly object? diagnostics;
-
         public Location Location { get; }
         public OperationFlags Flags { get; }
         public string? Sql { get; }
@@ -1218,7 +1187,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public AdditionalCommandState? AdditionalCommandState { get; }
         public SourceState(Location location, IMethodSymbol method, OperationFlags flags, string? sql,
             ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap,
-            AdditionalCommandState? additionalCommandState, object? diagnostics = null)
+            AdditionalCommandState? additionalCommandState)
         {
             Location = location;
             Flags = flags;
@@ -1228,23 +1197,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             Method = method;
             ParameterMap = parameterMap;
             AdditionalCommandState = additionalCommandState;
-            this.diagnostics = diagnostics;
         }
-
-        public int DiagnosticCount => diagnostics switch
-        {
-            null => 0,
-            Diagnostic => 1,
-            IReadOnlyList<Diagnostic> list => list.Count,
-            _ => -1
-        };
-
-        public Diagnostic GetDiagnostic(int index) => diagnostics switch
-        {
-            Diagnostic d when index is 0 => d,
-            IReadOnlyList<Diagnostic> list => list[index],
-            _ => throw new IndexOutOfRangeException(nameof(index)),
-        };
 
         public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) Group()
             => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location, AdditionalCommandState);

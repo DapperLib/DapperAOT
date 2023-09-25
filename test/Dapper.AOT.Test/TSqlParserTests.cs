@@ -1,7 +1,9 @@
-﻿using Dapper.SqlAnalysis;
+﻿using Dapper.Internal;
+using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
 using Xunit;
@@ -351,6 +353,21 @@ public class TSqlParserTests
         Assert.Empty(errors); // because we just gave up
     }
 
+    [Fact]
+    public void ExecOutputTVP()
+    {
+        var parser = GetProcessor();
+        parser.Execute("""
+            declare @x table (id int not null);
+            exec SomeProc @x output;
+            select id from @x;
+            """);
+
+        var args = parser.GetParameters(out var errors);
+        Assert.Empty(args);
+        Assert.Equal(["Table variable @x cannot be used as an output parameter L2 C15"], errors);
+    }
+
     [Theory]
     [InlineData(ParameterDirection.Input)]
     [InlineData(ParameterDirection.Output)]
@@ -360,9 +377,11 @@ public class TSqlParserTests
     public void HandleParameterAssignment(ParameterDirection direction)
     {
         var parser = GetProcessor(SqlParseInputFlags.KnownParameters);
-        parser.AddParameter("@a", direction); // consumed before assign
-        parser.AddParameter("@b", direction); // assigned, consumed
-        parser.AddParameter("@c", direction); // assigned, not consumed
+        var parameters = new[] {
+            new SqlParameter("@a", direction), // consumed before assign
+            new SqlParameter("@b", direction), // assigned, consumed
+            new SqlParameter("@c", direction), // assigned, not consumed
+        };
         parser.Execute("""
             select @a;
 
@@ -370,10 +389,10 @@ public class TSqlParserTests
             print @b
 
             set @c = 42;
-            """);
+            """, parameters.ToImmutableArray());
 
         var args = parser.GetParameters(out var errors);
-        Assert.Equal(new[] { "@a", "@b", "@c" }, args);
+        Assert.Equal(new[] { "@a!", "@b!", "@c!" }, args);
         switch (direction)
         {
             case ParameterDirection.Input:
@@ -408,27 +427,17 @@ public class TSqlParserTests
         public string[] GetParameters(out string[] errors)
         {
             var parameters = (from p in this.Variables
-                              where p.IsParameter
+                              where p.IsParameter || !p.IsDeclared
                               orderby p.Name
-                              select p.Name).ToArray();
+                              select p.IsDeclared ? $"{p.Name}!" : p.Name).ToArray();
             errors = this.errors.ToArray();
             return parameters;
         }
-
-        private Dictionary<string, ParameterDirection>? _extraArgs;
-
-        public void AddParameter(string name, ParameterDirection direction) => (_extraArgs ??= new()).Add(name, direction);
 
         private readonly List<string> errors = new();
         protected override void OnError(string error, in Location location)
         {
             errors.Add($"{error} {location}");
-        }
-
-        protected override bool TryGetParameter(string name, out ParameterDirection direction)
-        {
-            if (_extraArgs is not null && _extraArgs.TryGetValue(name, out direction)) return true;
-            return base.TryGetParameter(name, out direction);
         }
     }
 }

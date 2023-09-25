@@ -10,7 +10,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using static Dapper.Internal.Inspection;
 
 namespace Dapper.SqlAnalysis;
 
@@ -26,6 +25,8 @@ internal class TSqlProcessor
         Table = 1 << 2,
         Unconsumed = 1 << 3,
         OutputParameter = 1 << 4,
+        Declared = 1 << 5,
+        UsedInQuery = 1 << 6,
     }
     private readonly VariableTrackingVisitor _visitor;
 
@@ -36,7 +37,7 @@ internal class TSqlProcessor
         _visitor = log is null ? new VariableTrackingVisitor(flags, this) : new LoggingVariableTrackingVisitor(flags, this, log);
     }
 
-    static string ReplaceDapperSyntaxWithValidSql(string sql, ImmutableArray<ElementMember> members)
+    static string ReplaceDapperSyntaxWithValidSql(string sql, ImmutableArray<SqlParameter> members)
     {
         if (SqlTools.LiteralTokens.IsMatch(sql))
         {
@@ -50,7 +51,7 @@ internal class TSqlProcessor
             {
                 if (member.IsExpandable)
                 {
-                    var regexIncludingUnknown = ("([?@:$]" + Regex.Escape(member.CodeName) + @")(?!\w)(\s+(?i)unknown(?-i))?");
+                    var regexIncludingUnknown = ("(?<![?@:$\\p{L}\\p{N}_])([?@:$]" + Regex.Escape(member.Name) + @")(?!\w)(\s+(?i)unknown(?-i))?");
                     sql = Regex.Replace(sql, regexIncludingUnknown, match =>
                     {
                         var variableName = match.Groups[1].Value;
@@ -62,7 +63,7 @@ internal class TSqlProcessor
                         else
                         {
                             // expand it (as one for now)
-                            return "(@" + member.CodeName + ")";
+                            return "(@" + member.Name + ")";
                         }
                     }, RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant);
                 }
@@ -72,13 +73,14 @@ internal class TSqlProcessor
         return sql;
     }
 
-    public virtual bool Execute(string sql, ImmutableArray<ElementMember> members = default)
+    public virtual bool Execute(string sql, ImmutableArray<SqlParameter> members = default)
     {
         if (members.IsDefault)
         {
-            members = ImmutableArray<ElementMember>.Empty;
+            members = ImmutableArray<SqlParameter>.Empty;
         }
         Reset();
+        _visitor.AddParameters(members);
         var fixedSql = ReplaceDapperSyntaxWithValidSql(sql, members);
         if (fixedSql != sql)
         {
@@ -104,25 +106,25 @@ internal class TSqlProcessor
         }
 
         tree.Accept(_visitor);
+
+        // check state of locals after proc - was anything written and not read?
         foreach (var variable in _visitor.Variables)
         {
-            if (_visitor.KnownParameters)
+            if (variable.IsUnusedParameter)
             {
-                if (variable.IsParameter && TryGetParameter(variable.Name, out var direction) && direction != ParameterDirection.ReturnValue)
-                {
-                    // fine, handled
-                }
-                else
-                {
-                    // no such parameter? then: it wasn't a parameter, and wasn't declared
-                    OnVariableNotDeclared(variable);
-                }
+                OnUnusedParameter(variable);
             }
-            if (variable.IsUnconsumed && !variable.IsTable && !variable.IsOutputParameter)
+            else if (!variable.IsDeclared)
+            {
+                if (_visitor.KnownParameters) OnVariableNotDeclared(variable);
+            }
+            else if (variable.IsUnconsumed && !variable.IsTable && !variable.IsOutputParameter)
             {
                 if (_visitor.AssignmentTracking) OnVariableValueNotConsumed(variable);
             }
+
         }
+
         return true;
     }
 
@@ -155,8 +157,14 @@ internal class TSqlProcessor
     protected virtual void OnVariableNotDeclared(Variable variable)
         => OnError($"Variable {variable.Name} is not declared and no corresponding parameter exists", variable.Location);
 
+    protected virtual void OnUnusedParameter(Variable variable)
+        => OnError($"Parameter {variable.Name} is not not used in the query", variable.Location);
+
     protected virtual void OnDuplicateVariableDeclaration(Variable variable)
         => OnError($"Variable {variable.Name} is declared multiple times", variable.Location);
+
+    protected virtual void OnVariableParameterConflict(Variable variable)
+        => OnError($"Variable {variable.Name} conflicts with a parameter of the same name", variable.Location);
 
     protected virtual void OnScalarVariableUsedAsTable(Variable variable)
         => OnError($"Scalar variable {variable.Name} is used like a table", variable.Location);
@@ -170,7 +178,20 @@ internal class TSqlProcessor
     private void OnSimplifyExpression(Location location, int? value)
         => OnSimplifyExpression(location, value is null ? "null" : value.Value.ToString(CultureInfo.InvariantCulture));
     private void OnSimplifyExpression(Location location, decimal? value)
-        => OnSimplifyExpression(location, value is null ? "null" : value.Value.ToString(CultureInfo.InvariantCulture));
+        => OnSimplifyExpression(location, value switch
+        {
+            null => "null",
+            0M => "0.0",
+            _ => value.Value.ToString(CultureInfo.InvariantCulture),
+        });
+
+    protected virtual void OnDivideByZero(Location location)
+        => OnError($"Division by zero detected", location);
+    protected virtual void OnTrivialOperand(Location location)
+        => OnError($"Operand makes this calculation trivial; it can be simplified", location);
+    protected virtual void OnInvalidNullExpression(Location location)
+        => OnError($"Operation requires non-null operand", location);
+
     protected virtual void OnSimplifyExpression(Location location, string value)
         => OnError($"Expression can be simplified to '{value}'", location);
 
@@ -252,7 +273,11 @@ internal class TSqlProcessor
             Length = length;
         }
 
+        public static readonly Location Zero = new(0, 0, 0, 0);
+
         public readonly int Line, Column, Offset, Length;
+
+        public bool IsZero => Length == 0 && Offset == 0 && Line == 0 && Column == 0;
 
         public override string ToString() => $"L{Line} C{Column}";
 
@@ -270,6 +295,29 @@ internal class TSqlProcessor
         public bool IsUnconsumed => (Flags & VariableFlags.Unconsumed) != 0;
         public bool IsParameter => (Flags & VariableFlags.Parameter) != 0;
         public bool IsOutputParameter => (Flags & VariableFlags.OutputParameter) != 0;
+        public bool IsDeclared => (Flags & VariableFlags.Declared) != 0;
+        public bool IsUnused => (Flags & VariableFlags.UsedInQuery) == 0;
+        public bool IsUnusedParameter => (Flags & (VariableFlags.Parameter | VariableFlags.Declared | VariableFlags.UsedInQuery)) == (VariableFlags.Parameter | VariableFlags.Declared);
+
+        public Variable(SqlParameter parameter)
+        {
+            Name = parameter.Name;
+            Location = Location.Zero;
+            Flags = VariableFlags.Parameter | VariableFlags.Declared;
+            switch (parameter.Direction)
+            {
+                case ParameterDirection.Input:
+                    Flags |= VariableFlags.Unconsumed;
+                    break;
+                case ParameterDirection.Output:
+                    Flags |= VariableFlags.NoValue | VariableFlags.OutputParameter;
+                    break;
+                case ParameterDirection.InputOutput:
+                    Flags |= VariableFlags.Unconsumed | VariableFlags.OutputParameter;
+                    break;
+            }
+            if (parameter.IsTable) Flags |= VariableFlags.Table;
+        }
 
         public Variable(Identifier identifier, VariableFlags flags)
         {
@@ -289,6 +337,13 @@ internal class TSqlProcessor
             this = source;
             Flags = flags;
         }
+
+        private Variable(scoped in Variable source, string name)
+        {
+            this = source;
+            Name = name;
+        }
+
         private Variable(scoped in Variable source, Location location)
         {
             this = source;
@@ -296,10 +351,13 @@ internal class TSqlProcessor
         }
 
         public Variable WithConsumed() => new(in this, (Flags & ~VariableFlags.Unconsumed));
+        public Variable WithDeclared() => new(in this, (Flags | VariableFlags.Declared));
+        public Variable WithUsed() => new(in this, (Flags | VariableFlags.UsedInQuery));
         public Variable WithUnconsumedValue() => new(in this, (Flags & ~VariableFlags.NoValue) | VariableFlags.Unconsumed);
         public Variable WithFlags(VariableFlags flags) => new(in this, flags);
 
         public Variable WithLocation(TSqlFragment node) => new(in this, node);
+        public Variable WithName(string name) => new(in this, name);
     }
     class LoggingVariableTrackingVisitor : VariableTrackingVisitor
     {
@@ -370,7 +428,7 @@ internal class TSqlProcessor
         public VariableTrackingVisitor(SqlParseInputFlags flags, TSqlProcessor parser)
         {
             _flags = flags;
-            variables = CaseSensitive ? new(StringComparer.Ordinal) : new(StringComparer.OrdinalIgnoreCase);
+            _variables = CaseSensitive ? new(StringComparer.Ordinal) : new(StringComparer.OrdinalIgnoreCase);
             this.parser = parser;
         }
 
@@ -380,17 +438,64 @@ internal class TSqlProcessor
         public bool AtMostOne => (_flags & SqlParseInputFlags.AtMostOne) != 0;
         public bool KnownParameters => (_flags & SqlParseInputFlags.KnownParameters) != 0;
 
-        private readonly Dictionary<string, Variable> variables;
+        private bool TryGetVariable(string name, out Variable variable)
+            => _variables.TryGetValue(name, out variable) || SlowTryGetVariable(name, out variable);
+
+        private bool SlowTryGetVariable(string name, out Variable variable)
+        {
+            // parameters may have been added as "foo", but resolved by the parser as "@foo", ":foo", etc
+            // so: let's fix that!
+            string? nameWithoutPrefix = null;
+            if (name is not null && name.Length >= 2) // at least "@a"
+            {
+                foreach (var pair in _variables)
+                {
+                    if (pair.Value.IsParameter && pair.Key.Length == name.Length - 1 // key "foo", name "@foo"
+                        && SqlTools.ParameterPrefixCharacters.IndexOf(name[0]) >= 0 // name starts with token
+                        && SqlTools.ParameterPrefixCharacters.IndexOf(pair.Key[0]) < 0) // key doesn't
+                    {
+                        nameWithoutPrefix ??= name.Substring(1);
+                        // if same: remove the old and add the fixed-up one
+                        if (_variables.Comparer.Equals(nameWithoutPrefix, pair.Key) && _variables.Remove(pair.Key))
+                        {
+                            variable = pair.Value.WithName(name);
+                            _variables.Add(name, variable);
+                            return true;
+                        }
+                    }
+                }
+            }
+            variable = default;
+            return false;
+        }
+
+        private Variable SetVariable(Variable variable) => _variables[variable.Name] = variable;
+
+        private readonly Dictionary<string, Variable> _variables;
         private int batchCount;
         private readonly TSqlProcessor parser;
         public bool AssignmentTracking { get; private set; }
 
-        public IEnumerable<Variable> Variables => variables.Values;
+        public IEnumerable<Variable> Variables => _variables.Values;
 
+        public void AddParameters(ImmutableArray<SqlParameter> parameters)
+        {
+            if (!parameters.IsDefaultOrEmpty)
+            {
+                foreach (var arg in parameters)
+                {
+                    var parsed = SetVariable(new(arg));
+                    if (parsed.IsOutputParameter && parsed.IsTable)
+                    {
+                        parser.OnTableVariableOutputParameter(parsed);
+                    }
+                }
+            }
+        }
         public virtual void Reset()
         {
             AssignmentTracking = true;
-            variables.Clear();
+            _variables.Clear();
             batchCount = 0;
         }
 
@@ -405,34 +510,40 @@ internal class TSqlProcessor
 
         private void OnDeclare(Variable variable)
         {
-            if (variables.TryGetValue(variable.Name, out var existing))
+            if (TryGetVariable(variable.Name, out var existing))
             {
-                if (existing.IsParameter)
+                if (existing.IsDeclared)
                 {
-                    // we previously assumed it was a parameter, but actually it was accessed before declaration
-                    variables[variable.Name] = existing.WithFlags(variable.Flags);
-                    // but the *original* one was accessed invalidly
-                    if (AssignmentTracking) parser.OnVariableAccessedBeforeDeclaration(existing);
+                    // two definitions? yeah, that's wrong
+                    if (existing.IsParameter)
+                    {
+                        parser.OnVariableParameterConflict(variable);
+                    }
+                    else
+                    {
+                        parser.OnDuplicateVariableDeclaration(variable);
+                    }
                 }
                 else
                 {
-                    // two definitions? yeah, that's wrong
-                    parser.OnDuplicateVariableDeclaration(variable);
+                    // we previously assumed it was a parameter, but actually it was accessed before declaration
+                    existing = SetVariable(existing.WithFlags(variable.Flags | VariableFlags.Declared));
+                    // but the *original* one was accessed invalidly
+                    if (AssignmentTracking) parser.OnVariableAccessedBeforeDeclaration(existing);
                 }
             }
             else
             {
-                variables.Add(variable.Name, variable);
+                SetVariable(variable.WithDeclared());
             }
         }
+
         public override void ExplicitVisit(DeclareVariableElement node)
         {
             Visit(node);
-            string? name = null;
             if (node.VariableName is not null)
             {
                 OnDeclare(new(node.VariableName, VariableFlags.NoValue));
-                name = node.VariableName.Value;
                 node.VariableName.Accept(this);
             }
             node.DataType?.Accept(this);
@@ -442,9 +553,9 @@ internal class TSqlProcessor
             {
                 node.Value.Accept(this);
                 // mark assigned
-                if (name is not null)
+                if (node.VariableName is not null && TryGetVariable(node.VariableName.Value, out var variable))
                 {
-                    variables[name] = variables[name].WithUnconsumedValue();
+                    SetVariable(variable.WithUnconsumedValue());
                 }
             }
         }
@@ -681,7 +792,7 @@ internal class TSqlProcessor
 
         private bool EnforceTop(ScalarExpression expr)
         {
-            if (IsInt32(expr, out var i, complex: true) && i.HasValue)
+            if (IsInt32(expr, out var i) == TryEvaluateResult.SuccessConstant && i.HasValue)
             {
                 if (AtMostOne) // Single[OrDefault][Async]
                 {
@@ -704,47 +815,69 @@ internal class TSqlProcessor
 
         public override void Visit(OffsetClause node)
         {
-            if (IsInt32(node.FetchExpression, out var i, true) && i <= 0)
+            if (IsInt32(node.FetchExpression, out var i) == TryEvaluateResult.SuccessConstant && i <= 0)
             {
                 parser.OnNonPositiveFetch(node.FetchExpression);
             }
-            if (IsInt32(node.OffsetExpression, out i, true) && i < 0)
+            if (IsInt32(node.OffsetExpression, out i) == TryEvaluateResult.SuccessConstant && i < 0)
             {
                 parser.OnNegativeOffset(node.OffsetExpression);
             }
             base.Visit(node);
         }
 
-        static bool IsInt32(ScalarExpression scalar, out int? value, bool complex)
+        TryEvaluateResult IsInt32(ScalarExpression scalar, out int? value, int complexity = 10, bool vocal = false)
+            => IsInt32Impl(scalar, out value, vocal, ref complexity);
+
+        static bool IsHardNull(ScalarExpression expression)
         {
+            while (true)
+            {
+                if (expression is NullLiteral) return true;
+                if (expression is UnaryExpression unary)
+                {
+                    expression = unary.Expression; // +~~null is still hard null for the purposes of >> etc
+                    continue;
+                }
+                return false;
+            }
+        }
+        TryEvaluateResult IsInt32Impl(ScalarExpression scalar, out int? value, bool vocal, ref int complexity)
+        {
+            bool hasWarnings = false;
             try
             {
+                while (scalar is ParenthesisExpression parens && complexity-- > 0)
+                {
+                    scalar = parens.Expression;
+                }
+                complexity--;
                 checked
                 {
                     switch (scalar)
                     {
                         case NullLiteral:
                             value = null;
-                            return true;
+                            return TryEvaluateResult.SuccessConstant;
                         case IntegerLiteral integer when int.TryParse(integer.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i):
                             value = i;
-                            return true;
-                        case UnaryExpression unary when IsInt32(unary.Expression, out value, complex):
+                            return TryEvaluateResult.SuccessConstant;
+                        case UnaryExpression unary when complexity > 0 && IsInt32Impl(unary.Expression, out value, false, ref complexity) == TryEvaluateResult.SuccessConstant:
                             switch (unary.UnaryExpressionType)
                             {
-                                case UnaryExpressionType.Negative: // note -ve is always allowed, even when not complex
+                                case UnaryExpressionType.Negative:
                                     value = -value;
-                                    return true;
-                                case UnaryExpressionType.Positive when complex:
-                                    return true;
-                                case UnaryExpressionType.BitwiseNot when complex:
+                                    return TryEvaluateResult.SuccessConstant;
+                                case UnaryExpressionType.Positive:
+                                    return TryEvaluateResult.SuccessConstant;
+                                case UnaryExpressionType.BitwiseNot:
                                     value = ~value;
-                                    return true;
+                                    return TryEvaluateResult.SuccessConstant;
                             }
                             break;
-                        case BinaryExpression binary when complex:
-                            var haveFirst = IsInt32(binary.FirstExpression, out var first, true);
-                            var haveSecond = IsInt32(binary.SecondExpression, out var second, true);
+                        case BinaryExpression binary when complexity > 2:
+                            var haveFirst = IsInt32Impl(binary.FirstExpression, out var first, false, ref complexity) == TryEvaluateResult.SuccessConstant;
+                            var haveSecond = IsInt32Impl(binary.SecondExpression, out var second, false, ref complexity) == TryEvaluateResult.SuccessConstant;
 
                             // if either half is *known* to be null; we're good
                             if ((haveFirst && first is null) || (haveSecond && second is null))
@@ -756,75 +889,196 @@ internal class TSqlProcessor
                                     case BinaryExpressionType.Divide:
                                     case BinaryExpressionType.Multiply:
                                     case BinaryExpressionType.Modulo:
+                                        value = null;
+                                        return TryEvaluateResult.SuccessConstant;
                                     case BinaryExpressionType.BitwiseXor:
                                     case BinaryExpressionType.BitwiseOr:
                                     case BinaryExpressionType.BitwiseAnd:
                                         value = null;
-                                        return true;
+                                        // need at least one not-null-literal operand
+                                        if (IsHardNull(binary.FirstExpression) && IsHardNull(binary.SecondExpression))
+                                        {
+                                            if (vocal) parser.OnInvalidNullExpression(binary);
+                                            return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                        }
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.LeftShift:
+                                    case BinaryExpressionType.RightShift:
+                                        value = null;
+                                        // need both to be not-null-literal operands
+                                        if (IsHardNull(binary.FirstExpression))
+                                        {
+                                            if (vocal) parser.OnInvalidNullExpression(binary.FirstExpression);
+                                            return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                        }
+                                        if (IsHardNull(binary.SecondExpression))
+                                        {
+                                            if (vocal) parser.OnInvalidNullExpression(binary.SecondExpression);
+                                            return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                        }
+                                        return TryEvaluateResult.SuccessConstant;
                                 }
                                 break;
                             }
 
-                            // otherwise, need both
-                            if (!(haveFirst && haveSecond))
+                            // if we have both, we may be able to fully evaluate
+                            if (haveFirst && haveSecond)
                             {
-                                break;
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                        value = first + second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Subtract:
+                                        value = first - second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Divide when second == 0:
+                                        if (vocal) parser.OnDivideByZero(binary.SecondExpression);
+                                        value = null;
+                                        return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                    case BinaryExpressionType.Divide:
+                                        value = first / second; // TSQL is integer division
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Multiply:
+                                        value = first * second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Modulo when second == 0:
+                                        if (vocal) parser.OnDivideByZero(binary.SecondExpression);
+                                        value = null;
+                                        return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                    case BinaryExpressionType.Modulo:
+                                        value = first % second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.BitwiseXor:
+                                        value = first ^ second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.BitwiseOr:
+                                        value = first | second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.BitwiseAnd:
+                                        value = first & second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.LeftShift:
+                                        if (first is null || second is null) break; // null not allowed here
+                                        if (second < 0)
+                                        {
+                                            second = -second; // TSQL: neg-shift allowed
+                                            goto case BinaryExpressionType.RightShift;
+                                        }
+                                        if (second >= 32) // c# shift masks "by" to 5 bits 
+                                        {
+                                            value = 0;
+                                            return TryEvaluateResult.SuccessConstant;
+                                        }
+                                        value = first << second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.RightShift:
+                                        if (first is null || second is null) break; // null not allowed here
+                                        if (second < 0)
+                                        {
+                                            second = -second; // TSQL: neg-shift allowed
+                                            goto case BinaryExpressionType.LeftShift;
+                                        }
+                                        if (second >= 32) // c# shift masks "by" to 5 bits 
+                                        {
+                                            value = 0;
+                                            return TryEvaluateResult.SuccessConstant;
+                                        }
+                                        value = first >>> second; // TSQL right-shift is unsigned
+                                        return TryEvaluateResult.SuccessConstant;
+                                }
                             }
 
-                            switch (binary.BinaryExpressionType)
+                            // if we have either, we may be able to check undesirable cases
+                            if (vocal && (haveFirst || haveSecond))
                             {
-                                case BinaryExpressionType.Add:
-                                    value = first + second;
-                                    return true;
-                                case BinaryExpressionType.Subtract:
-                                    value = first - second;
-                                    return true;
-                                case BinaryExpressionType.Divide:
-                                    value = first / second; // TSQL is integer division
-                                    return true;
-                                case BinaryExpressionType.Multiply:
-                                    value = first * second;
-                                    return true;
-                                case BinaryExpressionType.Modulo:
-                                    value = first % second;
-                                    return true;
-                                case BinaryExpressionType.BitwiseXor:
-                                    value = first ^ second;
-                                    return true;
-                                case BinaryExpressionType.BitwiseOr:
-                                    value = first | second;
-                                    return true;
-                                case BinaryExpressionType.BitwiseAnd:
-                                    value = first & second;
-                                    return true;
-                                case BinaryExpressionType.LeftShift:
-                                    if (first is null || second is null) break; // null not allowed here
-                                    if (second < 0)
-                                    {
-                                        second = -second; // TSQL: neg-shift allowed
-                                        goto case BinaryExpressionType.RightShift;
-                                    }
-                                    if (second >= 32) // c# shift masks "by" to 5 bits 
-                                    {
-                                        value = 0;
-                                        return true;
-                                    }
-                                    value = first << second;
-                                    return true;
-                                case BinaryExpressionType.RightShift:
-                                    if (first is null || second is null) break; // null not allowed here
-                                    if (second < 0)
-                                    {
-                                        second = -second; // TSQL: neg-shift allowed
-                                        goto case BinaryExpressionType.LeftShift;
-                                    }
-                                    if (second >= 32) // c# shift masks "by" to 5 bits 
-                                    {
-                                        value = 0;
-                                        return true;
-                                    }
-                                    value = first >>> second; // TSQL right-shift is unsigned
-                                    return true;
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                    case BinaryExpressionType.Subtract:
+                                        if (haveFirst && first == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Multiply:
+                                        if (haveFirst && first is 0 or 1)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second is 0 or 1)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Divide:
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnDivideByZero(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        else
+                                        {
+                                            if (haveFirst && first == 0)
+                                            {
+                                                parser.OnTrivialOperand(binary.FirstExpression);
+                                                hasWarnings = true;
+                                            }
+                                            if (haveSecond && second == 1)
+                                            {
+                                                parser.OnTrivialOperand(binary.SecondExpression);
+                                                hasWarnings = true;
+                                            }
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Modulo:
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnDivideByZero(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        else if (haveFirst && first == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.LeftShift:
+                                    case BinaryExpressionType.RightShift:
+                                        if (haveFirst && first == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.BitwiseAnd:
+                                    case BinaryExpressionType.BitwiseOr:
+                                    case BinaryExpressionType.BitwiseXor:
+                                        if (haveFirst && first is 0 or -1)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second is 0 or -1)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                }
                             }
                             break;
                     }
@@ -832,39 +1086,54 @@ internal class TSqlProcessor
             }
             catch { } // overflow etc
             value = default;
-            return false;
+            return hasWarnings ? TryEvaluateResult.FailureNonConstantWithWarnings : TryEvaluateResult.FailureNonConstant;
         }
 
-        static bool IsDecimal(ScalarExpression scalar, out decimal? value, bool complex = false)
+        enum TryEvaluateResult
         {
+            FailureNonConstant = 0,
+            SuccessConstant = 1,
+            FailureNonConstantWithWarnings = 2,
+        }
+        TryEvaluateResult IsDecimal(ScalarExpression scalar, out decimal? value, int complexity = 64, bool vocal = false)
+            => IsDecimalImpl(scalar, out value, vocal, ref complexity);
+
+        TryEvaluateResult IsDecimalImpl(ScalarExpression scalar, out decimal? value, bool vocal, ref int complexity)
+        {
+            bool hasWarnings = false;
             try
             {
+                while (scalar is ParenthesisExpression parens && complexity-- > 0)
+                {
+                    scalar = parens.Expression;
+                }
+                complexity--;
                 checked
                 {
                     switch (scalar)
                     {
                         case NullLiteral:
                             value = null;
-                            return true;
+                            return TryEvaluateResult.SuccessConstant;
                         case IntegerLiteral integer when int.TryParse(integer.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i):
                             value = i;
-                            return true;
+                            return TryEvaluateResult.SuccessConstant;
                         case NumericLiteral number when decimal.TryParse(number.Value, NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out var d):
                             value = d;
-                            return true;
-                        case UnaryExpression unary when IsDecimal(unary.Expression, out value, complex):
+                            return TryEvaluateResult.SuccessConstant;
+                        case UnaryExpression unary when complexity > 0 && IsDecimalImpl(unary.Expression, out value, false, ref complexity) == TryEvaluateResult.SuccessConstant:
                             switch (unary.UnaryExpressionType)
                             {
                                 case UnaryExpressionType.Negative: // note -ve is always allowed, even when not complex
                                     value = -value;
-                                    return true;
-                                case UnaryExpressionType.Positive when complex:
-                                    return true;
+                                    return TryEvaluateResult.SuccessConstant;
+                                case UnaryExpressionType.Positive:
+                                    return TryEvaluateResult.SuccessConstant;
                             }
                             break;
-                        case BinaryExpression binary when complex:
-                            var haveFirst = IsDecimal(binary.FirstExpression, out var first, true);
-                            var haveSecond = IsDecimal(binary.SecondExpression, out var second, true);
+                        case BinaryExpression binary when complexity > 1:
+                            var haveFirst = IsDecimalImpl(binary.FirstExpression, out var first, false, ref complexity) == TryEvaluateResult.SuccessConstant;
+                            var haveSecond = IsDecimalImpl(binary.SecondExpression, out var second, false, ref complexity) == TryEvaluateResult.SuccessConstant;
 
                             // if either half is *known* to be null; we're good
                             if ((haveFirst && first is null) || (haveSecond && second is null))
@@ -877,34 +1146,105 @@ internal class TSqlProcessor
                                     case BinaryExpressionType.Multiply:
                                     case BinaryExpressionType.Modulo:
                                         value = null;
-                                        return true;
+                                        return TryEvaluateResult.SuccessConstant;
                                 }
                                 break;
                             }
 
-                            // otherwise, need both
-                            if (!(haveFirst && haveSecond))
+                            // if we have both, we may be able to fully evaluate
+                            if (haveFirst && haveSecond)
                             {
-                                break;
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                        value = first + second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Subtract:
+                                        value = first - second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Divide when second == 0:
+                                        if (vocal) parser.OnDivideByZero(binary.SecondExpression);
+                                        value = null;
+                                        return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                    case BinaryExpressionType.Divide:
+                                        value = first / second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Multiply:
+                                        value = first * second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                    case BinaryExpressionType.Modulo when second == 0:
+                                        if (vocal) parser.OnDivideByZero(binary.SecondExpression);
+                                        value = null;
+                                        return TryEvaluateResult.FailureNonConstantWithWarnings;
+                                    case BinaryExpressionType.Modulo:
+                                        value = first % second;
+                                        return TryEvaluateResult.SuccessConstant;
+                                }
                             }
 
-                            switch (binary.BinaryExpressionType)
+                            // if we have either, we may be able to check undesirable cases
+                            if (vocal && (haveFirst || haveSecond))
                             {
-                                case BinaryExpressionType.Add:
-                                    value = first + second;
-                                    return true;
-                                case BinaryExpressionType.Subtract:
-                                    value = first - second;
-                                    return true;
-                                case BinaryExpressionType.Divide:
-                                    value = first / second; // TSQL is integer division
-                                    return true;
-                                case BinaryExpressionType.Multiply:
-                                    value = first * second;
-                                    return true;
-                                case BinaryExpressionType.Modulo:
-                                    value = first % second;
-                                    return true;
+                                switch (binary.BinaryExpressionType)
+                                {
+                                    case BinaryExpressionType.Add:
+                                    case BinaryExpressionType.Subtract:
+                                        if (haveFirst && first == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Multiply:
+                                        if (haveFirst && first is 0 or 1)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        if (haveSecond && second is 0 or 1)
+                                        {
+                                            parser.OnTrivialOperand(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Divide:
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnDivideByZero(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        else
+                                        {
+                                            if (haveFirst && first == 0)
+                                            {
+                                                parser.OnTrivialOperand(binary.FirstExpression);
+                                                hasWarnings = true;
+                                            }
+                                            if (haveSecond && second == 1)
+                                            {
+                                                parser.OnTrivialOperand(binary.SecondExpression);
+                                                hasWarnings = true;
+                                            }
+                                        }
+                                        break;
+                                    case BinaryExpressionType.Modulo:
+                                        if (haveSecond && second == 0)
+                                        {
+                                            parser.OnDivideByZero(binary.SecondExpression);
+                                            hasWarnings = true;
+                                        }
+                                        else if (haveFirst && first == 0)
+                                        {
+                                            parser.OnTrivialOperand(binary.FirstExpression);
+                                            hasWarnings = true;
+                                        }
+                                        break;
+                                }
                             }
                             break;
                     }
@@ -912,64 +1252,90 @@ internal class TSqlProcessor
             }
             catch { } // overflow etc
             value = default;
-            return false;
+            return hasWarnings ? TryEvaluateResult.FailureNonConstantWithWarnings : TryEvaluateResult.FailureNonConstant;
         }
 
         public override void Visit(TopRowFilter node)
         {
             if (node.Expression is ScalarExpression scalar)
             {
-                if (IsInt32(scalar, out var i, true))
+                switch (IsInt32(scalar, out var i))
                 {
-                    if (i <= 0)
-                    {
-                        parser.OnNonPositiveTop(scalar);
-                    }
+                    case TryEvaluateResult.SuccessConstant:
+                        if (i <= 0)
+                        {
+                            parser.OnNonPositiveTop(scalar);
+                        }
+                        break;
+                    case TryEvaluateResult.FailureNonConstant:
+                        if (IsDecimal(scalar, out var d) == TryEvaluateResult.SuccessConstant)
+                        {
+                            if (!node.Percent)
+                            {
+                                parser.OnNonIntegerTop(scalar);
+                            }
+                            if (d <= 0)
+                            {   // don't expect to see this; parser rejects them
+                                parser.OnNonPositiveTop(scalar);
+                            }
+                        }
+                        break;
                 }
-                else if (IsDecimal(scalar, out var d, true))
-                {
-                    if (!node.Percent)
-                    {
-                        parser.OnNonIntegerTop(scalar);
-                    }
-                    if (d <= 0)
-                    {   // don't expect to see this; parser rejects them
-                        parser.OnNonPositiveTop(scalar);
-                    }
-                }
+                base.Visit(node);
             }
-            base.Visit(node);
         }
 
-        public override void Visit(UnaryExpression node)
+        bool _expressionAlreadyEvaluated;
+
+        bool TrySimplifyExpression(ScalarExpression node)
         {
-            if (node.UnaryExpressionType != UnaryExpressionType.Negative) // need to allow unary
+            if (_expressionAlreadyEvaluated) return true;
+
+            if (node is UnaryExpression {  UnaryExpressionType: UnaryExpressionType.Negative, Expression: IntegerLiteral or NumericLiteral })
             {
-                // if operand is simple, compute and report
-                if (IsInt32(node.Expression, out _, complex: false))
-                {
-                    if (IsInt32(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
-                }
-                else if (IsDecimal(node.Expression, out _, complex: false))
-                {
-                    if (IsDecimal(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
-                }
+                // just "-4" or similar; don't warn the user to simplify that!
+                _expressionAlreadyEvaluated = true;
+                return false;
             }
-            base.Visit(node);
+
+            switch (IsInt32(node, out var intValue, vocal: true))
+            {
+                case TryEvaluateResult.SuccessConstant:
+                    parser.OnSimplifyExpression(node, intValue);
+                    _expressionAlreadyEvaluated = true;
+                    break;
+                case TryEvaluateResult.FailureNonConstantWithWarnings:
+                    _expressionAlreadyEvaluated = true;
+                    break;
+                case TryEvaluateResult.FailureNonConstant:
+                    // retry as decimal
+                    switch (IsDecimal(node, out var decimalValue, vocal: true))
+                    {
+                        case TryEvaluateResult.SuccessConstant:
+                            parser.OnSimplifyExpression(node, decimalValue);
+                            _expressionAlreadyEvaluated = true;
+                            break;
+                        case TryEvaluateResult.FailureNonConstantWithWarnings:
+                            _expressionAlreadyEvaluated = true;
+                            break;
+                    }
+                    break;
+            }
+
+            return false;
         }
-        public override void Visit(BinaryExpression node)
+        public override void ExplicitVisit(UnaryExpression node)
         {
-            // if operands are simple, compute and report
-            bool haveNull = node.FirstExpression is NullLiteral || node.SecondExpression is NullLiteral;
-            if (haveNull || (IsInt32(node.FirstExpression, out _, complex: false) && IsInt32(node.SecondExpression, out _, complex: false)))
-            {
-                if (IsInt32(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
-            }
-            else if (haveNull || (IsDecimal(node.FirstExpression, out _, complex: false) && IsDecimal(node.SecondExpression, out _, complex: false)))
-            {
-                if (IsDecimal(node, out var value, complex: true)) parser.OnSimplifyExpression(node, value);
-            }
-            base.Visit(node);
+            bool restore = TrySimplifyExpression(node);
+            base.ExplicitVisit(node);
+            _expressionAlreadyEvaluated = restore;
+        }
+
+        public override void ExplicitVisit(BinaryExpression node)
+        {
+            bool restore = TrySimplifyExpression(node);
+            base.ExplicitVisit(node);
+            _expressionAlreadyEvaluated = restore;
         }
 
         public override void Visit(OutputClause node)
@@ -1124,20 +1490,23 @@ internal class TSqlProcessor
             {
                 foreach (var p in node.ExecutableEntity.Parameters)
                 {
-                    if (p.IsOutput && p.ParameterValue is VariableReference variable)
+                    if (p.IsOutput && p.ParameterValue is VariableReference variableRef)
                     {
-                        MarkAssigned(variable, false);
+                        var variable = MarkAssigned(variableRef, false);
+                        if (variable.IsTable)
+                        {
+                            parser.OnTableVariableOutputParameter(variable);
+                        }
                     }
                 }
             }
-
         }
 
         public override void ExplicitVisit(ExecuteParameter node)
         {
             Visit(node);
             // node.Variable?.Accept(this); // this isn't our variable; don't demand it exists
-            if (node.IsOutput && node.ParameterValue is VariableReference)
+            if (node.IsOutput && node.ParameterValue is VariableReference variable)
             {
                 // don't visit - we don't demand a value before
             }
@@ -1222,23 +1591,28 @@ internal class TSqlProcessor
             }
         }
 
-        private void MarkAssigned(VariableReference node, bool isTable)
+        private Variable MarkAssigned(VariableReference node, bool isTable)
             => EnsureOrMarkAssigned(node, isTable, true);
-        private void EnsureAssigned(VariableReference node, bool isTable)
+        private Variable EnsureAssigned(VariableReference node, bool isTable)
             => EnsureOrMarkAssigned(node, isTable, false);
-        private void EnsureOrMarkAssigned(VariableReference node, bool isTable, bool mark)
+        private Variable EnsureOrMarkAssigned(VariableReference node, bool isTable, bool markAssigned)
         {
-            if (variables.TryGetValue(node.Name, out var existing))
+            if (TryGetVariable(node.Name, out var existing))
             {
+                if (existing.IsUnusedParameter)
+                {
+                    existing = existing.WithUsed(); // we found it!
+                }
+
                 var blame = existing.WithLocation(node);
-                if (mark)
+                if (markAssigned)
                 {
                     if (existing.IsUnconsumed && !existing.IsTable)
                     {
                         if (AssignmentTracking) parser.OnVariableValueNotConsumed(blame);
                     }
                     // mark as has value + unconsumed
-                    variables[node.Name] = existing.WithUnconsumedValue().WithLocation(node);
+                    existing = existing.WithUnconsumedValue().WithLocation(node);
                 }
                 else
                 {
@@ -1259,52 +1633,18 @@ internal class TSqlProcessor
                     }
                     else if (existing.IsUnconsumed)
                     {
-                        variables[node.Name] = existing.WithConsumed();
+                        existing = existing.WithConsumed();
                     }
                 }
+                return SetVariable(existing);
             }
             else
             {
-                var flags = VariableFlags.Parameter | (isTable ? VariableFlags.Table : VariableFlags.None);
+                // assume this is a local we don't know about; we'll figure out if it is a parameter afterwards
+                var flags = isTable ? (VariableFlags.Table | VariableFlags.UsedInQuery) : VariableFlags.UsedInQuery;
+                if (markAssigned && !isTable) flags |= VariableFlags.Unconsumed;
 
-                ParameterDirection direction;
-                if (KnownParameters && parser.TryGetParameter(node.Name, out direction) && direction != ParameterDirection.ReturnValue)
-                {
-                    // if it is known, we can infer the directionality and thus assignment state
-                    switch (direction)
-                    {
-                        case ParameterDirection.Output:
-                        case ParameterDirection.InputOutput:
-                            flags |= VariableFlags.OutputParameter;
-                            break;
-                    }
-                }
-                else
-                {
-                    direction = ParameterDirection.Input;
-                }
-
-
-                if (mark && !isTable) flags |= VariableFlags.Unconsumed;
-
-                var variable = new Variable(node, flags);
-                OnDeclare(variable);
-
-                if (!mark && direction == ParameterDirection.Output)
-                {
-                    // pure output param, and first time we're seeing it is a read: that's not right
-                    parser.OnVariableAccessedBeforeAssignment(variable);
-                }
-                else if (mark && direction is ParameterDirection.Input or ParameterDirection.InputOutput)
-                {
-                    // we haven't consumed the original value - but watch out for "if" etc
-                    if (AssignmentTracking) parser.OnVariableValueNotConsumed(variable);
-                }
-
-                if (variable.IsTable && variable.IsOutputParameter)
-                {
-                    parser.OnTableVariableOutputParameter(variable);
-                }
+                return SetVariable(new(node, flags));
             }
         }
 
@@ -1321,12 +1661,5 @@ internal class TSqlProcessor
             // do *NOT* call  node.Variable?.Accept(this); - would trigger table/scalar warning
             node.Alias?.Accept(this);
         }
-    }
-
-    protected virtual bool TryGetParameter(string name, out ParameterDirection direction)
-    {
-        // simple mode; assume an input param exists
-        direction = ParameterDirection.Input;
-        return true;
     }
 }

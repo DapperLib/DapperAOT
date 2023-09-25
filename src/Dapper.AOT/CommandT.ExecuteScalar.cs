@@ -15,7 +15,7 @@ partial struct Command<TArgs>
         try
         {
             var result = state.ExecuteScalar(GetCommand(args));
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(ref state, args, -1);
             return result;
         }
         finally
@@ -33,7 +33,7 @@ partial struct Command<TArgs>
         try
         {
             var result = await state.ExecuteScalarAsync(GetCommand(args), cancellationToken);
-            PostProcessAndRecycle(state, args);
+            PostProcessAndRecycle(state, args, -1);
             return result;
         }
         finally
@@ -51,7 +51,7 @@ partial struct Command<TArgs>
         try
         {
             var result = state.ExecuteScalar(GetCommand(args));
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(ref state, args, -1);
             return CommandUtils.As<T>(result);
         }
         finally
@@ -69,7 +69,7 @@ partial struct Command<TArgs>
         try
         {
             var result = await state.ExecuteScalarAsync(GetCommand(args), cancellationToken);
-            PostProcessAndRecycle(state, args);
+            PostProcessAndRecycle(state, args, -1);
             return CommandUtils.As<T>(result);
         }
         finally

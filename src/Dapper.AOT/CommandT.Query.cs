@@ -52,7 +52,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (state.Reader.NextResult()) { }
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(ref state, args, state.Reader.RecordsAffected);
             return results;
         }
         finally
@@ -91,7 +91,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(state, args);
+            PostProcessAndRecycle(state, args, state.Reader.RecordsAffected);
             return results;
         }
         finally
@@ -123,7 +123,7 @@ partial struct Command<TArgs>
             }
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(state, args);
+            PostProcessAndRecycle(state, args, state.Reader.RecordsAffected);
         }
         finally
         {
@@ -153,7 +153,7 @@ partial struct Command<TArgs>
             }
             // consume entire results (avoid unobserved TDS error messages)
             while (state.Reader.NextResult()) { }
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(ref state, args, state.Reader.RecordsAffected);
         }
         finally
         {
@@ -199,7 +199,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (state.Reader.NextResult()) { }
-            PostProcessAndRecycle(ref state, args);
+            PostProcessAndRecycle(ref state, args, state.Reader.RecordsAffected);
             return result;
         }
         finally
@@ -242,7 +242,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(state, args);
+            PostProcessAndRecycle(state, args, state.Reader.RecordsAffected);
             return result;
         }
         finally

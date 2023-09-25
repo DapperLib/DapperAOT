@@ -86,40 +86,20 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         return cmd;
     }
 
-    internal void PostProcessAndRecycle(ref SyncCommandState state, TArgs args)
+    internal void PostProcessAndRecycle(ref SyncQueryState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(state.Command!, args);
+        commandFactory.PostProcess(state.Command!, args, rowCount);
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;
         }
     }
 
-    internal void PostProcessAndRecycle(AsyncCommandState state, TArgs args)
+    internal void PostProcessAndRecycle(AsyncQueryState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(state.Command!, args);
-        if (commandFactory.TryRecycle(state.Command!))
-        {
-            state.Command = null;
-        }
-    }
-
-    internal void PostProcessAndRecycle(ref SyncQueryState state, TArgs args)
-    {
-        Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(state.Command!, args);
-        if (commandFactory.TryRecycle(state.Command!))
-        {
-            state.Command = null;
-        }
-    }
-
-    internal void PostProcessAndRecycle(AsyncQueryState state, TArgs args)
-    {
-        Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(state.Command!, args);
+        commandFactory.PostProcess(state.Command!, args, rowCount);
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;

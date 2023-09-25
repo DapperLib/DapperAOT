@@ -189,15 +189,15 @@ public sealed partial class DapperInterceptorGenerator
         {
             sb.NewLine().Append("#error not supported: ").Append(method.Name).NewLine();
         }
-        if (flags.HasAny(OperationFlags.Query) && additionalCommandState is { HasEstimatedRowCount: true })
+        if (flags.HasAny(OperationFlags.Query) && additionalCommandState is { HasRowCountHint: true })
         {
-            if (additionalCommandState.EstimatedRowCountMemberName is null)
+            if (additionalCommandState.RowCountHintMemberName is null)
             {
-                sb.Append(", rowCountHint: ").Append(additionalCommandState.EstimatedRowCount);
+                sb.Append(", rowCountHint: ").Append(additionalCommandState.RowCountHint);
             }
             else if (parameterType is not null && !parameterType.IsAnonymousType)
             {
-                sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param!).").Append(additionalCommandState.EstimatedRowCountMemberName);
+                sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param!).").Append(additionalCommandState.RowCountHintMemberName);
             }
         }
         if (isAsync && HasParam(methodParameters, "cancellationToken"))

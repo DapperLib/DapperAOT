@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Data.SqlClient;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading.Tasks;
@@ -6,14 +7,14 @@ using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
 
-[Collection(nameof(SqlClientFixture))]
-public class QueryTests : IClassFixture<SqlClientFixture>
+[Collection(SharedSqlClient.Collection)]
+public class QueryTests : IDisposable
 {
-    private readonly SqlClientFixture Database;
+    private readonly SqlConnection connection;
+    void IDisposable.Dispose() => connection?.Dispose();
+    public QueryTests(SqlClientFixture database) => connection = database.CreateConnection();
 
-    public QueryTests(SqlClientFixture database) => Database = database;
-
-    private Command<object?> Read(int count) => Database.Connection.Command<object?>(
+    private Command<object?> Read(int count) => connection.Command<object?>(
         count switch
         {
             0 => "select 1 as Id, 'abc' as Name where 1 = 0",
@@ -22,7 +23,7 @@ public class QueryTests : IClassFixture<SqlClientFixture>
             _ => throw new ArgumentOutOfRangeException(nameof(count)),
         });
 
-    private void AssertClosed() => Assert.Equal(System.Data.ConnectionState.Closed, Database.Connection.State);
+    private void AssertClosed() => Assert.Equal(System.Data.ConnectionState.Closed, connection.State);
 
     private void AssertExpectedTypedRow(Foo? row, int expected)
     {

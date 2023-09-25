@@ -7,6 +7,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Data;
 using System.Diagnostics;
+using static Dapper.SqlAnalysis.TSqlProcessor;
 
 namespace Dapper.Internal;
 
@@ -25,28 +26,11 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
 {
     private readonly Microsoft.CodeAnalysis.Location? _location;
     private readonly SyntaxToken? _sourceToken;
-    
-    private readonly ITypeSymbol? _parameterType;
 
-    private static SqlParseInputFlags CheckForKnownParameterType(SqlParseInputFlags flags, ITypeSymbol? parameterType)
-    {
-        if (parameterType is not null)
-        {
-            if (Inspection.IsMissingOrObjectOrDynamic(parameterType) || Inspection.IsDynamicParameters(parameterType))
-            { }
-            else
-            {
-                // we think we understand what is going on, yay!
-                flags |= SqlParseInputFlags.KnownParameters;
-            }
-        }
-        return flags;
-    }
     public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, SqlParseInputFlags flags,
-        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(CheckForKnownParameterType(flags, parameterType))
+        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(flags)
     {
         _location = sqlSyntax?.GetLocation() ?? location;
-        _parameterType = parameterType;
         if (sqlSyntax.TryGetLiteralToken(out var token))
         {
             _sourceToken = token;
@@ -57,14 +41,9 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     private void OnDiagnostic(DiagnosticDescriptor descriptor, Location location, params object[] args)
         => OnDiagnostic(Diagnostic.Create(descriptor, GetLocation(location), args));
 
-    public override void Reset()
-    {
-        base.Reset();
-    }
-
     private Microsoft.CodeAnalysis.Location? GetLocation(in Location location)
     {
-        if (_sourceToken is not null)
+        if (_sourceToken is not null && !location.IsZero)
         {
             return _sourceToken.GetValueOrDefault().ComputeLocation(in location);
         }
@@ -83,6 +62,9 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
 
     protected override void OnDuplicateVariableDeclaration(Variable variable)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.DuplicateVariableDeclaration, variable.Location, variable.Name);
+
+    protected override void OnVariableParameterConflict(Variable variable)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.VariableParameterConflict, variable.Location, variable.Name);
 
     protected override void OnExecComposedSql(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.ExecComposedSql, location);
@@ -165,37 +147,15 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     protected override void OnTopWithOffset(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.TopWithOffset, location);
 
-    protected override bool TryGetParameter(string name, out ParameterDirection direction)
-    {
-        // we have knowledge of the type system; use it
-        if (_parameterType is null)
-        {
-            // no parameter
-            direction = default;
-            return false;
-        }
+    protected override void OnUnusedParameter(Variable variable)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.UnusedParameter, variable.Location, variable.Name);
 
+    protected override void OnDivideByZero(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.DivideByZero, location);
 
+    protected override void OnInvalidNullExpression(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.InvalidNullExpression, location);
 
-        if (!string.IsNullOrEmpty(name) && name[0] == '@')
-        {
-            name = name.Substring(1);
-        }
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            bool caseSensitive = CaseSensitive;
-            foreach (var member in Inspection.GetMembers(_parameterType))
-            {
-                if (caseSensitive ? member.DbName == name : string.Equals(member.DbName, name, StringComparison.OrdinalIgnoreCase))
-                {
-                    direction = member.Direction;
-                    return true;
-                }
-            }
-        }
-
-        // nope
-        direction = default;
-        return false;
-    }
+    protected override void OnTrivialOperand(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.TrivialOperand, location);
 }

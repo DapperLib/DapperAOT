@@ -9,6 +9,8 @@ namespace Dapper.CodeAnalysis;
 
 internal abstract class DiagnosticsBase
 {
+    public static readonly DiagnosticDescriptor UnknownError = LibraryWarning("DAP999", "Unknown analyzer error", "This isn't you; this is me; please log it! '{0}', '{1}'", true);
+
     protected const string DocsRoot = "https://aot.dapperlib.dev/", RulesRoot = DocsRoot + "rules/";
 
     private static DiagnosticDescriptor Create(string id, string title, string messageFormat, string category, DiagnosticSeverity severity, bool docs) =>
@@ -43,6 +45,7 @@ internal abstract class DiagnosticsBase
             => GetAllFor<DapperInterceptorGenerator.Diagnostics>()
             .Concat(GetAllFor<DapperAnalyzer.Diagnostics>())
             .Concat(GetAllFor<TypeAccessorInterceptorGenerator.Diagnostics>())
+            .Distinct()
             .ToImmutableDictionary(x => x.Value.Id, x => x.Key, StringComparer.Ordinal, StringComparer.Ordinal);
     }
     public static ImmutableArray<DiagnosticDescriptor> All<T>() where T : DiagnosticsBase
@@ -50,7 +53,7 @@ internal abstract class DiagnosticsBase
 
     private static IEnumerable<KeyValuePair<string, DiagnosticDescriptor>> GetAllFor<T>() where T : DiagnosticsBase
     {
-        var fields = typeof(T).GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+        var fields = typeof(T).GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.FlattenHierarchy);
         foreach (var field in fields)
         {
             if (field.FieldType == typeof(DiagnosticDescriptor) && field.GetValue(null) is DiagnosticDescriptor descriptor)
@@ -73,27 +76,5 @@ internal abstract class DiagnosticsBase
         public const string Library = nameof(Library);
         public const string Sql = nameof(Sql);
         public const string Performance = nameof(Performance);
-    }
-
-    internal static void Add(ref object? diagnostics, Diagnostic diagnostic)
-    {
-        if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
-        switch (diagnostics)
-        {   // single
-            case null:
-                diagnostics = diagnostic;
-                break;
-            case Diagnostic d:
-                diagnostics = new List<Diagnostic> { d, diagnostic };
-                break;
-            case IList<Diagnostic> list when !list.IsReadOnly:
-                list.Add(diagnostic);
-                break;
-            case IEnumerable<Diagnostic> list:
-                diagnostics = new List<Diagnostic>(list) { diagnostic };
-                break;
-            default:
-                throw new ArgumentException(nameof(diagnostics));
-        }
     }
 }

@@ -142,4 +142,82 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(1)
             .WithArguments(46010, "Incorrect syntax near 333.")]);
+
+    [Fact]
+    public Task CSharpSmokeTestVanilla() => CSVerifyAsync(""""
+        using Microsoft.Data.SqlClient;
+        using Dapper;
+        static class Program
+        {
+            static void Main()
+            {
+        using var conn = new SqlConnection("my connection string here");
+        string name = "abc";
+        conn.{|#0:Execute|}("""
+            select Id, Name, Age
+            from Users
+            where Id = @id
+            and Name = @name
+            and Age = @age
+            and Something = {|#1:null|}
+            """, new
+        {
+            name,
+            id = 42,
+            age = 24,
+        });
+
+        using var cmd = new SqlCommand("should ' verify this too", conn);
+        cmd.CommandText = """
+            select Id, Name, Age
+            from Users
+            where Id = @id
+            and Name = @name
+            and Age = @age
+            and Something = {|#2:null|}
+            """;
+        cmd.ExecuteNonQuery();
+            }
+        }
+"""", [], [
+        // (not enabled) Diagnostic(DapperAnalyzer.Diagnostics.DapperAotNotEnabled).WithLocation(0).WithArguments(1),
+        Diagnostic(DapperAnalyzer.Diagnostics.ExecuteCommandWithQuery).WithLocation(0),
+        Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(1),
+        Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2),
+    ], SqlSyntax.General, refDapperAot: false);
+
+    [Fact]
+    public Task VBSmokeTestVanilla() => VBVerifyAsync("""
+        Imports Dapper
+        Imports Microsoft.Data.SqlClient
+        Module Program
+            Sub Main()
+                Using conn As New SqlConnection("my connection string here")
+                    Dim name As String = "name"
+                    conn.{|#0:Execute|}("
+            select Id, Name, Age
+            from Users
+            where Id = @id
+            and Name = @name
+            and Age = @age
+            and Something = {|#1:null|}", New With {name, .id = 42, .age = 24 })
+
+                    Using cmd As New SqlCommand("should ' verify this too", conn)
+                        cmd.CommandText = "
+            select Id, Name, Age
+            from Users
+            where Id = @id
+            and Name = @name
+            and Age = @age
+            and Something = {|#2:null|}"
+                        cmd.ExecuteNonQuery()
+                    End Using
+                End Using
+            End Sub
+        End Module
+""", [], [
+        Diagnostic(DapperAnalyzer.Diagnostics.ExecuteCommandWithQuery).WithLocation(0),
+        Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(1),
+        Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2)
+    ], SqlSyntax.General, refDapperAot: false);
 }

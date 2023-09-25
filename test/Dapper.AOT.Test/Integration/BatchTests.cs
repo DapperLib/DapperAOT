@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Data.SqlClient;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
@@ -9,13 +10,15 @@ using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
 
-[Collection(nameof(SqlClientFixture))]
-public class BatchTests : IClassFixture<SqlClientFixture>
+[Collection(SharedSqlClient.Collection)]
+public class BatchTests : IDisposable
 {
-    private readonly SqlClientFixture Database;
-    public BatchTests(SqlClientFixture database) => Database = database;
+    private readonly SqlConnection connection;
+    void IDisposable.Dispose() => connection?.Dispose();
 
-    private Command<string> Batch => Database.Connection.Command("insert AotIntegrationBatchTests (Name) values (@name)", handler: CustomHandler.Instance);
+    public BatchTests(SqlClientFixture database) => connection = database.CreateConnection();
+
+    private Command<string> Batch => connection.Command("insert AotIntegrationBatchTests (Name) values (@name)", handler: CustomHandler.Instance);
 
     [SkippableTheory]
     [InlineData(-1)]
@@ -61,7 +64,7 @@ public class BatchTests : IClassFixture<SqlClientFixture>
     [InlineData(5, 1, 3, true)]
     public void BasicBatchUsage_ArraySegment(int size, int offset, int count, bool valid)
     {
-        Assert.NotNull(Database.Connection);
+        Assert.NotNull(connection);
         string[] data = size < 0 ? null! : Enumerable.Repeat("bar", size).ToArray();
         if (valid)
         {

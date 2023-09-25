@@ -36,7 +36,6 @@ public class InterceptorTests : GeneratorTestBase
         var sb = new StringBuilder();
         var result = Execute<DapperInterceptorGenerator>(sourceText, sb, fileName: path, initializer: g =>
         {
-            g.OverrideFeatureEnabled = true;
             g.Log += message => Log(message);
         });
 

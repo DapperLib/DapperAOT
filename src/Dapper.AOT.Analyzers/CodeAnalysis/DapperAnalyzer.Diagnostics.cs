@@ -8,12 +8,17 @@ partial class DapperAnalyzer
     {
         public static readonly DiagnosticDescriptor
         // general usage
-        UnknownError = LibraryWarning("DAP999", "Unknown analyzer error", "This isn't you; this is me; please log it! '{0}', '{1}'", true),
+        // 000: InterceptorsGenerated
         UnsupportedMethod = LibraryInfo("DAP001", "Unsupported method", "The Dapper method '{0}' is not currently supported by Dapper.AOT", true),
+        // unused: DAP002
+        // 003: InterceptorsNotEnabled
+        // 004: LanguageVersionTooLow
         DapperAotNotEnabled = LibraryInfo("DAP005", "Dapper.AOT not enabled", "{0} candidate Dapper methods detected, but none have Dapper.AOT enabled", true),
         DapperLegacyTupleParameter = LibraryWarning("DAP006", "Dapper tuple-type parameter", "Dapper (original) does not work well with tuple-type parameters as name information is inaccessible", true),
         UnexpectedCommandType = LibraryInfo("DAP007", "Unexpected command type", "The command type specified is not understood", true),
+        // unused: DAP008
         UnexpectedArgument = LibraryInfo("DAP009", "Unexpected parameter", "The parameter '{0}' is not understood", true),
+        // unused: DAP010
         DapperLegacyBindNameTupleResults = LibraryWarning("DAP011", "Named-tuple results", "Dapper (original) does not support tuple results with bind-by-name semantics", true),
         DapperAotAddBindTupleByName = LibraryWarning("DAP012", "Add BindTupleByName", "Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindTupleByName({true|false})]' to clarify your intent", true),
         DapperAotTupleResults = LibraryInfo("DAP013", "Tuple-type results", "Tuple-type results are not currently supported", true),
@@ -21,16 +26,26 @@ partial class DapperAnalyzer
         UntypedParameter = LibraryInfo("DAP015", "Untyped parameter", "The parameter type could not be resolved", true),
         GenericTypeParameter = LibraryInfo("DAP016", "Generic type parameter", "Generic type parameters ({0}) are not currently supported", true),
         NonPublicType = LibraryInfo("DAP017", "Non-accessible type", "Type '{0}' is not accessible; {1} types are not currently supported", true),
-        DuplicateParameter = LibraryWarning("DAP021", "Duplicate parameter", "Members '{0}' and '{1}' both have the database name '{2}'; '{0}' will be ignored"),
-        DuplicateReturn = LibraryWarning("DAP022", "Duplicate return parameter", "Members '{0}' and '{1}' are both designated as return values; '{0}' will be ignored"),
-        DuplicateRowCount = LibraryWarning("DAP023", "Duplicate row-count member", "Members '{0}' and '{1}' are both marked [RowCount]"),
-        RowCountDbValue = LibraryWarning("DAP024", "Member is both row-count and mapped value", "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored"),
+        SqlParametersNotDetected = SqlWarning("DAP018", "SQL parameters not detected", "Parameters are being supplied, but no parameters were detected in the command", true),
+        // unused: DAP019
+        // unused: DAP020
+        DuplicateParameter = LibraryWarning("DAP021", "Duplicate parameter", "Members '{0}' and '{1}' both have the database name '{2}'; '{1}' will be ignored", true),
+        DuplicateReturn = LibraryWarning("DAP022", "Duplicate return parameter", "Members '{0}' and '{1}' are both designated as return values; '{1}' will be ignored", true),
+        DuplicateRowCount = LibraryWarning("DAP023", "Duplicate row-count member", "Members '{0}' and '{1}' are both marked [RowCount]", true),
+        RowCountDbValue = LibraryWarning("DAP024", "Member is both row-count and mapped value", "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored", true),
         ExecuteCommandWithQuery = SqlWarning("DAP025", "Execute command with query", "The command has a query that will be ignored", true),
         QueryCommandMissingQuery = SqlError("DAP026", "Query/scalar command lacks query", "The command lacks a query", true),
         UseSingleRowQuery = PerformanceWarning("DAP027", "Use single-row query", "Use {0}() instead of Query(...).{1}()", true),
         UseQueryAsList = PerformanceWarning("DAP028", "Use AsList instead of ToList", "Use Query(...).AsList() instead of Query(...).ToList()", true),
+        RowCountHintRedundant = LibraryInfo("DAP029", "Row-count hint redundant", "The method-level [RowCountHint] will be ignored due to parameter member '{0}'", true),
+        RowCountHintInvalidValue = LibraryError("DAP030", "Row-count hint invalid value", "The [RowCountHint] parameters are invalid; a positive integer must be supplied", true),
+        RowCountHintShouldNotSpecifyValue = LibraryError("DAP031", "Row-count hint should not specify value", "The [RowCountHint] parameters are invalid; no parameter should be supplied", true),
+        RowCountHintDuplicated = LibraryError("DAP032", "Row-count hint duplicated", "Only a single member or parameter should be marked [RowCountHint]; '{0} will be ignored", true),
+        // 033: CommandPropertyNotFound
+        // 034: CommandPropertyReserved
         ConstructorMultipleExplicit = LibraryError("DAP035", "Multiple explicit constructors", "Only one constructor should be marked [ExplicitConstructor] for type '{0}'", true),
         ConstructorAmbiguous = LibraryError("DAP036", "Ambiguous constructors", "Type '{0}' has more than 1 constructor; mark one constructor with [ExplicitConstructor] or reduce constructors", true),
+        // 037: UserTypeNoSettableMembersFound
         ValueTypeSingleFirstOrDefaultUsage = LibraryWarning("DAP038", "Value-type single row 'OrDefault' usage", "Type '{0}' is a value-type; it will not be trivial to identify missing rows from {1}", true),
 
         // SQL parse specific
@@ -69,6 +84,11 @@ partial class DapperAnalyzer
         NonPositiveFetch = SqlError("DAP232", "Non-positive FETCH", "FETCH literals should be positive"),
         NegativeOffset = SqlError("DAP233", "Negative OFFSET", "OFFSET literals should be non-negative"),
         SimplifyExpression = SqlInfo("DAP234", "Expression can be simplified", "Expression evaluates to a constant and can be replaced with '{0}'"),
-        TopWithOffset = SqlError("DAP235", "TOP with OFFSET clause", "TOP cannot be used in a query with OFFSET; use FETCH instead");
+        TopWithOffset = SqlError("DAP235", "TOP with OFFSET clause", "TOP cannot be used in a query with OFFSET; use FETCH instead"),
+        UnusedParameter = SqlWarning("DAP236", "Unused parameter", "Parameter '{0}' is not used, but will be included"),
+        DivideByZero = SqlWarning("DAP237", "Divide by zero", "Division by zero detected"),
+        TrivialOperand = SqlWarning("DAP238", "Trivial operand", "Operand makes this calculation trivial; it can be simplified"),
+        InvalidNullExpression = SqlWarning("DAP239", "Invalid null expression", "Operation requires a non-null operand"),
+        VariableParameterConflict = SqlError("DAP240", "Parameter/variable conflict", "The declaration of variable '{0}' conflicts with a parameter");
     }
 }

@@ -1,26 +1,19 @@
 ﻿using System;
 
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit.Abstractions;
-using Xunit.Sdk;
-
 namespace Dapper.AOT.Test;
 
 #pragma warning disable IDE0079
 
 /// <inheritdoc/>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-[XunitTestCaseDiscoverer("Dapper.AOT.Test.FactDiscoverer", "Dapper.AOT.Test")]
+//[XunitTestCaseDiscoverer("Dapper.AOT.Test.FactDiscoverer", "Dapper.AOT.Test")]
 public class SkippableFactAttribute : Xunit.FactAttribute
 {
 }
 
 /// <inheritdoc/>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-[XunitTestCaseDiscoverer("Dapper.AOT.Test.TheoryDiscoverer", "Dapper.AOT.Test")]
+//[XunitTestCaseDiscoverer("Dapper.AOT.Test.TheoryDiscoverer", "Dapper.AOT.Test")]
 public class SkippableTheoryAttribute : Xunit.TheoryAttribute
 {
 }

@@ -162,11 +162,11 @@ internal static class Inspection
     internal static bool IsDynamicParameters(ITypeSymbol? type)
     {
         if (type is null || type.SpecialType != SpecialType.None) return false;
-        if (Inspection.IsBasicDapperType(type, Types.DynamicParameters)
-            || Inspection.IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
+        if (IsBasicDapperType(type, Types.DynamicParameters)
+            || IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
         foreach (var i in type.AllInterfaces)
         {
-            if (Inspection.IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
+            if (IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
         }
         return false;
     }
@@ -360,7 +360,7 @@ internal static class Inspection
     {
         None = 0,
         RowCount = 1 << 0,
-        EstimatedRowCount = 1 << 1,
+        RowCountHint = 1 << 1,
     }
     public readonly struct ElementMember
     {
@@ -381,7 +381,7 @@ internal static class Inspection
         public ElementMemberKind Kind { get; }
 
         public bool IsRowCount => (Kind & ElementMemberKind.RowCount) != 0;
-        public bool IsEstimatedRowCount => (Kind & ElementMemberKind.EstimatedRowCount) != 0;
+        public bool IsRowCountHint => (Kind & ElementMemberKind.RowCountHint) != 0;
         public bool HasDbValueAttribute => _dbValue is not null;
 
         public T? TryGetValue<T>(string memberName) where T : struct
@@ -445,7 +445,23 @@ internal static class Inspection
         public override bool Equals(object obj) => obj is ElementMember other
             && SymbolEqualityComparer.Default.Equals(Member, other.Member);
 
-        public Location? GetLocation() => Member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()?.GetLocation();
+        public Location? GetLocation()
+        {
+            foreach (var node in Member.DeclaringSyntaxReferences)
+            {
+                if (node.GetSyntax().GetLocation() is { } loc)
+                {
+                    return loc;
+                }
+            }
+            return null;
+        }
+        public Location? GetLocation(string? attributeName = null)
+        {
+            var loc = attributeName is null ? null :
+                GetDapperAttribute(Member, attributeName)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
+            return loc ?? GetLocation();
+        }
     }
 
     public enum ConstructorResult
@@ -587,9 +603,9 @@ internal static class Inspection
                 {
                     kind |= ElementMemberKind.RowCount;
                 }
-                if (GetDapperAttribute(member, Types.EstimatedRowCountAttribute) is not null)
+                if (GetDapperAttribute(member, Types.RowCountHintAttribute) is not null)
                 {
-                    kind |= ElementMemberKind.EstimatedRowCount;
+                    kind |= ElementMemberKind.RowCountHint;
                 }
 
                 if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && kind == ElementMemberKind.None) continue;
@@ -996,10 +1012,24 @@ internal static class Inspection
     public static SqlSyntax? IdentifySqlSyntax(in ParseState ctx, IOperation op, out bool caseSensitive)
     {
         caseSensitive = false;
+
+        // get fom [SqlSyntax(...)] hint
+        var attrib = GetClosestDapperAttribute(ctx, op, Types.SqlSyntaxAttribute);
+        if (attrib is not null && attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i)
+        {
+            return (SqlSyntax)i;
+        }
+
         // get from known connection-type
         if (op is IInvocationOperation invoke)
         {
-            if (!invoke.Arguments.IsDefaultOrEmpty && invoke.Arguments[0].Value is IConversionOperation conv && conv.Operand.Type is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
+            IOperation? target = invoke.Instance;
+            if (target is null && invoke.TargetMethod.IsExtensionMethod && !invoke.Arguments.IsDefaultOrEmpty)
+            {
+                target = invoke.Arguments[0].Value;
+            }
+            var targetType = target is IConversionOperation conv ? conv.Operand.Type : target?.Type;
+            if (targetType is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
             {
                 var ns = type.ContainingNamespace;
                 foreach (var candidate in KnownConnectionTypes)
@@ -1015,12 +1045,23 @@ internal static class Inspection
                 }
             }
         }
-
-        // get fom [SqlSyntax(...)] hint
-        var attrib = GetClosestDapperAttribute(ctx, op, Types.SqlSyntaxAttribute);
-        if (attrib is not null && attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int i)
+        else if (op is ISimpleAssignmentOperation assign && assign.Target is IMemberReferenceOperation member)
         {
-            return (SqlSyntax)i;
+            if (member.Member.ContainingType is INamedTypeSymbol { Arity: 0, ContainingType: null } type)
+            {
+                var ns = type.ContainingNamespace;
+                foreach (var candidate in KnownConnectionTypes)
+                {
+                    var current = ns;
+                    if (type.Name == candidate.Command
+                        && AssertAndAscend(ref current, candidate.Namespace0)
+                        && AssertAndAscend(ref current, candidate.Namespace1)
+                        && AssertAndAscend(ref current, candidate.Namespace2))
+                    {
+                        return candidate.Syntax;
+                    }
+                }
+            }
         }
 
         return null;
@@ -1043,18 +1084,18 @@ internal static class Inspection
         }
     }
 
-    private static readonly ImmutableArray<(string? Namespace2, string? Namespace1, string Namespace0, string Connection, SqlSyntax Syntax)> KnownConnectionTypes = new[]
+    private static readonly ImmutableArray<(string? Namespace2, string? Namespace1, string Namespace0, string Connection, string Command, SqlSyntax Syntax)> KnownConnectionTypes = new[]
     {
-            ("System", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
-            ("Microsoft", "Data", "SqlClient", "SqlConnection", SqlSyntax.SqlServer),
+            ("System", "Data", "SqlClient", "SqlConnection", "SqlCommand", SqlSyntax.SqlServer),
+            ("Microsoft", "Data", "SqlClient", "SqlConnection", "SqlCommand", SqlSyntax.SqlServer),
 
-            (null, null, "Npgsql", "NpgsqlConnection", SqlSyntax.PostgreSql),
+            (null, null, "Npgsql", "NpgsqlConnection", "NpgsqlCommand", SqlSyntax.PostgreSql),
 
-            ("MySql", "Data", "MySqlClient", "MySqlConnection", SqlSyntax.MySql),
+            ("MySql", "Data", "MySqlClient", "MySqlConnection", "MySqlCommand", SqlSyntax.MySql),
 
-            ("Oracle", "DataAccess", "Client", "OracleConnection", SqlSyntax.Oracle),
+            ("Oracle", "DataAccess", "Client", "OracleConnection", "OracleCommand", SqlSyntax.Oracle),
 
-            ("Microsoft", "Data", "Sqlite", "SqliteConnection", SqlSyntax.SQLite),
+            ("Microsoft", "Data", "Sqlite", "SqliteConnection", "SqliteCommand", SqlSyntax.SQLite),
         }.ToImmutableArray();
 }
 
@@ -1090,7 +1131,7 @@ enum OperationFlags
     BindTupleParameterByName = 1 << 18,
     CacheCommand = 1 << 19,
     IncludeLocation = 1 << 20, // include -- SomeFile.cs#40 when possible
-    UnknownParameters = 1 << 21,
+    KnownParameters = 1 << 21,
     QueryMultiple = 1 << 22,
     NotAotSupported = 1 << 23,
 }
