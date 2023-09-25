@@ -14,8 +14,6 @@ public class DAP017 : Verifier<DapperAnalyzer>
 
         internal class NestedInternal
         {
-            public class InnerPublic {}
-
             [DapperAot]
             class AotEnabled
             {
@@ -59,8 +57,9 @@ public class DAP017 : Verifier<DapperAnalyzer>
                 void QueryG(DbConnection conn) => _ = conn.Query<InnerProtectedInternal>("somesql");
                 void QueryH(DbConnection conn) => _ = conn.Query<InnerPrivateProtected>("somesql");
             }
+            public class InnerPublic { public int Id {get;set;} }
             protected class InnerProtected {}
-            protected internal class InnerProtectedInternal {}
+            protected internal class InnerProtectedInternal { public int Id {get;set;} }
             private protected class InnerPrivateProtected {}
             private class InnerPrivate
             {
@@ -68,8 +67,8 @@ public class DAP017 : Verifier<DapperAnalyzer>
             }
         }
 
-        public class OuterPublic {}
-        internal class OuterInternal {}
+        public class OuterPublic { public int Id {get;set;} }
+        internal class OuterInternal { public int Id {get;set;} }
         """, DefaultConfig, [
             Diagnostic(Diagnostics.NonPublicType).WithLocation(0).WithArguments("NestedInternal.InnerPrivate", "private"),
             Diagnostic(Diagnostics.NonPublicType).WithLocation(1).WithArguments("NestedInternal.InnerPrivate", "private"),

@@ -38,8 +38,8 @@ public class DAP038 : Verifier<DapperAnalyzer>
 
             }
         }
-        class SomeClass {}
-        struct SomeStruct {}
+        class SomeClass { public int Id {get;set;} }
+        struct SomeStruct { public int Id {get;set;} }
         """, DefaultConfig, [
         Diagnostic(Diagnostics.ValueTypeSingleFirstOrDefaultUsage).WithLocation(0).WithArguments("SomeStruct", "QueryFirstOrDefault"),
         Diagnostic(Diagnostics.ValueTypeSingleFirstOrDefaultUsage).WithLocation(1).WithArguments("SomeStruct", "QuerySingleOrDefault"),

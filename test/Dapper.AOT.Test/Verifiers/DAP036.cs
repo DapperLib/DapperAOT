@@ -34,16 +34,18 @@ public class DAP036 : Verifier<DapperAnalyzer>
                 _ = conn.Query<MultipleImplicit>("storedproc");
             }
         }
-        class NoConstructors {}
+        class NoConstructors { public int Id {get;set;} }
         [System.Serializable]
         class SingleImplicit
         {
-            public SingleImplicit(string a) {}
+            public string A {get;}
+            public SingleImplicit(string a) => A = a;
             public SingleImplicit(SingleImplicit b) {}
             public SingleImplicit(SerializationInfo info, StreamingContext ctx) {}
         }
         class MultipleImplicit
         {
+            public int A {get;set;}
             public {|#0:MultipleImplicit|}(int a) {}
             public MultipleImplicit(string b) {}
             public MultipleImplicit(MultipleImplicit c) {}

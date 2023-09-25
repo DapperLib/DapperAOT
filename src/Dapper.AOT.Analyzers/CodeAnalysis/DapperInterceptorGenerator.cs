@@ -53,9 +53,19 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     }
 
     private SourceState? Parse(GeneratorSyntaxContext ctx, CancellationToken cancellationToken)
-        => Parse(new(ctx, cancellationToken));
+    {
+        try
+        {
+            return Parse(new(ctx, cancellationToken));
+        }
+        catch (Exception ex)
+        {
+            Debug.Fail(ex.Message);
+            return null;
+        }
+    }
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Chosen API")]
-    internal SourceState? Parse(in ParseState ctx)
+    internal SourceState? Parse(ParseState ctx)
     {
         if (ctx.Node is not InvocationExpressionSyntax ie
             || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op
@@ -188,7 +198,16 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     }
 
     private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
-        => Generate(new(ctx, state));
+    {
+        try
+        {
+            Generate(new(ctx, state));
+        }
+        catch (Exception ex)
+        {
+            ctx.ReportDiagnostic(Diagnostic.Create(DiagnosticsBase.UnknownError, null, ex.Message, ex.StackTrace));
+        }
+    }
 
     internal void Generate(in GenerateState ctx)
     {
@@ -628,9 +647,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         if (membersCount == 0 && !hasExplicitConstructor)
         {
-            // there are so settable members + there is no constructor to use
-            context.ReportDiagnostic(Diagnostic.Create(Diagnostics.UserTypeNoSettableMembersFound, type.Locations.First(), type.ToDisplayString()));
-
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
             WriteRowFactoryHeader();
             WriteRowFactoryFooter();

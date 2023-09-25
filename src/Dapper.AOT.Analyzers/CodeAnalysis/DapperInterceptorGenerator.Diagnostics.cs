@@ -14,9 +14,7 @@ partial class DapperInterceptorGenerator
             LanguageVersionTooLow = LibraryWarning("DAP004", "Language version too low", "Interceptors require at least C# version 11", true),
 
 
-            CommandPropertyNotFound = LibraryWarning("DAP033", "Command property not found", "Command property {0}.{1} was not found or was not valid; attribute will be ignored",true),
-            CommandPropertyReserved = LibraryWarning("DAP034", "Command property reserved", "Command property {1} is reserved for internal usage; attribute will be ignored", true),
-
-            UserTypeNoSettableMembersFound = LibraryError("DAP037", "No settable members exist for user type", "Type '{0}' has no settable members (fields or properties)");
+            CommandPropertyNotFound = LibraryWarning("DAP033", "Command property not found", "Command property {0}.{1} was not found or was not valid; attribute will be ignored", true),
+            CommandPropertyReserved = LibraryWarning("DAP034", "Command property reserved", "Command property {1} is reserved for internal usage; attribute will be ignored", true);
     }
 }

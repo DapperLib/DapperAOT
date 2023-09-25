@@ -34,7 +34,7 @@ public class DAP028 : Verifier<DapperAnalyzer>
                 _ = conn.Query<SomeType>("storedproc").AsList();
             }
         }
-        class SomeType {}
+        class SomeType { public int Id {get;set;} }
         """, DefaultConfig, [
             Diagnostic(Diagnostics.UseQueryAsList).WithLocation(0),
             Diagnostic(Diagnostics.UseQueryAsList).WithLocation(1),
