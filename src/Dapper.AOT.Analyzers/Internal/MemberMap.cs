@@ -1,9 +1,5 @@
-﻿using Dapper.SqlAnalysis;
-using Microsoft.CodeAnalysis;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
+﻿using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
-using System.Linq;
 using static Dapper.Internal.Inspection;
 
 namespace Dapper.Internal;
@@ -22,7 +18,6 @@ internal sealed class MemberMap
     public bool IsObject => (_flags & MapFlags.IsObject) != 0;
     public bool IsDapperDynamic => (_flags & MapFlags.IsDapperDynamic) != 0;
     public bool IsCollection => (_flags & MapFlags.IsCollection) != 0;
-
     public ImmutableArray<ElementMember> Members { get; }
 
     enum MapFlags
@@ -33,12 +28,22 @@ internal sealed class MemberMap
         IsCollection = 1 << 2,
     }
 
-    public static MemberMap? Create(ITypeSymbol? type, bool checkCollection)
-        => type is null ? null : new(type, checkCollection);
-    public MemberMap(ITypeSymbol declaredType, bool checkCollection)
+    public static MemberMap? Create(IOperation? parameters)
+        => parameters is null or { Type: null} ? null : new (parameters.Syntax.GetLocation(), parameters.Type, parameters);
+
+    public static MemberMap? Create(ITypeSymbol? type, Location location)
+        => type is null ? null : new(location, type, null);
+
+    public IOperation? Parameters { get; }
+    public Location Location { get; }
+
+    private MemberMap(Location location, ITypeSymbol declaredType, IOperation? parameters)
     {
+        Parameters = parameters;
+        Location = location;
         ElementType = DeclaredType = declaredType;
-        if (checkCollection && IsCollectionType(declaredType, out var elementType, out var castType)
+
+        if (parameters  is not null && IsCollectionType(declaredType, out var elementType, out var castType)
             && elementType is not null)
         {
             ElementType = elementType;

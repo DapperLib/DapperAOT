@@ -125,35 +125,6 @@ internal class TSqlProcessor
 
         }
 
-        /*
-* 
-
-if (paramNames.IsEmpty && (parseFlags & SqlParseOutputFlags.Return) == 0) // return is a parameter, sort of
-{
-if (flags.HasAny(OperationFlags.HasParameters))
-{
-Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParametersNotDetected, loc));
-}
-return "";
-}
-
-// so, we definitely detect parameters (note: don't warn just for return)
-if (!flags.HasAny(OperationFlags.HasParameters))
-{
-if (!paramNames.IsEmpty)
-{
-Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.NoParametersSupplied, loc));
-}
-return "";
-}
-
-    // we can only consider this an error if we're confident in how well we parsed the input
-// (unless we detected dynamic args, in which case: we don't know what we don't know)
-if ((parseFlags & (SqlParseOutputFlags.Reliable | SqlParseOutputFlags.KnownParameters)) == (SqlParseOutputFlags.Reliable | SqlParseOutputFlags.KnownParameters))
-{
-Diagnostics.Add(ref diagnostics, Diagnostic.Create(Diagnostics.SqlParameterNotBound, loc, sqlParamName, CodeWriter.GetTypeName(parameterType)));
-}
-*/
         return true;
     }
 

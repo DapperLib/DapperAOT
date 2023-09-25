@@ -66,7 +66,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return null;
         }
 
-        var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var paramType, reportDiagnostic: null, out var resultType, exitFirstFailure: true);
+        var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var argExpression, reportDiagnostic: null, out var resultType, exitFirstFailure: true);
         if (flags.HasAny(OperationFlags.DoNotGenerate))
         {
             return null;
@@ -77,7 +77,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         // additional result-type checks
 
         // perform SQL inspection
-        var map = MemberMap.Create(paramType, true);
+        var map = MemberMap.Create(argExpression);
         var parameterMap = BuildParameterMap(ctx, op, sql, ref flags, map, location, out var parseFlags);
 
         if (flags.HasAny(OperationFlags.CacheCommand))
@@ -95,7 +95,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         var additionalState = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), map, null);
 
         Debug.Assert(!flags.HasAny(OperationFlags.DoNotGenerate), "should have already exited");
-        return new SourceState(location, op.TargetMethod, flags, sql, resultType, paramType, parameterMap, additionalState);
+        return new SourceState(location, op.TargetMethod, flags, sql, resultType, argExpression?.Type, parameterMap, additionalState);
 
 
         static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, ref OperationFlags flags, MemberMap? map, Location loc, out SqlParseOutputFlags parseFlags)

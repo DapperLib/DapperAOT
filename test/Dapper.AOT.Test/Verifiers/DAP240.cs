@@ -20,13 +20,14 @@ public class DAP240 : Verifier<DapperAnalyzer>
                 declare {|#0:@a|} int = 42;
                 declare @c2 nvarchar(200) = 'abc';
 
-                insert SomeTable(Id, Name, Age, ShoeSize)
+                insert SomeTable(Id, Name, Age)
                 values (@a, @c2, @d);
                 """, this);
 
             public int A {get;set;}
             public int B {get;set;}
             public int C {get;set;}
+            public int D {get;set;}
         }
         """", DefaultConfig, [
         Diagnostic(Diagnostics.VariableParameterConflict).WithLocation(0).WithArguments("@a"),

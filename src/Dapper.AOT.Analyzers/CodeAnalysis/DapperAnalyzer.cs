@@ -167,7 +167,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             var parseState = new ParseState(ctx);
             bool aotEnabled = IsEnabled(in parseState, invoke, Types.DapperAotAttribute, out var aotAttribExists);
             if (!aotEnabled) flags |= OperationFlags.DoNotGenerate;
-            var location = SharedParseArgsAndFlags(parseState, invoke, ref flags, out var sql, out var paramType, onDiagnostic, out _, exitFirstFailure: false);
+            var location = SharedParseArgsAndFlags(parseState, invoke, ref flags, out var sql, out var argExpression, onDiagnostic, out _, exitFirstFailure: false);
 
             // report our AOT readiness
             if (aotEnabled)
@@ -185,7 +185,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
 
             // check the types
-            var resultMap = MemberMap.Create(invoke.GetResultType(flags), false);
+            var resultMap = MemberMap.Create(invoke.GetResultType(flags), location);
             if (resultMap is not null)
             {
                 // check for single-row value-type usage
@@ -209,13 +209,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 }
             }
 
-            var parameters = MemberMap.Create(paramType, true);
+            var parameters = MemberMap.Create(argExpression);
             if (aotEnabled)
             {
                 _ = AdditionalCommandState.Parse(GetSymbol(parseState, invoke), parameters, onDiagnostic);
             }
             var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags);
-
 
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(args), location);
 
@@ -431,13 +430,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
     }
 
     // we want a common understanding of the setup between the analyzer and generator
-    internal static Location SharedParseArgsAndFlags(in ParseState ctx, IInvocationOperation op, ref OperationFlags flags, out string? sql, out ITypeSymbol? paramType,
-        Action<Diagnostic>? reportDiagnostic, out ITypeSymbol? resultType, bool exitFirstFailure)
+    internal static Location SharedParseArgsAndFlags(in ParseState ctx, IInvocationOperation op, ref OperationFlags flags, out string? sql,
+        out IOperation? argExpression, Action<Diagnostic>? reportDiagnostic, out ITypeSymbol? resultType, bool exitFirstFailure)
     {
         var callLocation = op.GetMemberLocation();
-        Location? argLocation = null;
+        argExpression = null;
         sql = null;
-        paramType = null;
         bool? buffered = null;
         // check the args
         foreach (var arg in op.Arguments)
@@ -461,7 +459,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     if (arg.Value is not IDefaultValueOperation)
                     {
                         var expr = arg.Value;
-                        if (expr is IConversionOperation conv && expr.Type?.SpecialType == SpecialType.System_Object)
+                        while (expr is IConversionOperation conv && expr.Type?.SpecialType == SpecialType.System_Object)
                         {
                             expr = conv.Operand;
                         }
@@ -471,11 +469,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                         }
                         else
                         {
-                            paramType = expr?.Type;
+                            argExpression = expr;
                             flags |= OperationFlags.HasParameters;
                         }
                     }
-                    argLocation = arg.Syntax.GetLocation();
                     break;
                 case "cnn":
                 case "commandTimeout":
@@ -599,7 +596,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         // additional parameter checks
         if (flags.HasAny(OperationFlags.HasParameters))
         {
-            argLocation ??= callLocation;
+            var argLocation = argExpression?.Syntax.GetLocation() ?? callLocation;
+            var paramType = argExpression?.Type;
             bool paramTuple = Inspection.InvolvesTupleType(paramType, out _);
             if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
@@ -881,9 +879,14 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (byDbName is null)
         {
             // nothing found
+            if (flags.HasAll(OperationFlags.HasParameters | OperationFlags.Text))
+            {
+                // has args, and is command-text
+                reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.SqlParametersNotDetected, map?.Location));
+            }
             return ImmutableArray<ElementMember>.Empty;
         }
-        if (byDbName.Count == 0)
+        if (byDbName.Count == 1)
         {
             // so common that it is worth special-casing
             return ImmutableArray<ElementMember>.Empty.Add(byDbName.Single().Value);

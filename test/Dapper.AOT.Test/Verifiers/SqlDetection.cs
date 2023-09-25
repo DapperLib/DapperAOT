@@ -163,7 +163,8 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             """, new
         {
             name,
-            id = 42
+            id = 42,
+            age = 24,
         });
 
         using var cmd = new SqlCommand("should ' verify this too", conn);
@@ -199,7 +200,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             where Id = @id
             and Name = @name
             and Age = @age
-            and Something = {|#1:null|}", New With {name, .id = 42})
+            and Something = {|#1:null|}", New With {name, .id = 42, .age = 24 })
 
                     Using cmd As New SqlCommand("should ' verify this too", conn)
                         cmd.CommandText = "
