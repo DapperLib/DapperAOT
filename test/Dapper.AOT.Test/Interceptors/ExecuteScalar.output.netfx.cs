@@ -4,7 +4,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 13, 24)]
     internal static object? ExecuteScalar0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure, Scalar
+        // Execute, HasParameters, StoredProcedure, Scalar, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: bar Foo
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -42,7 +42,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 17, 24)]
     internal static float ExecuteScalar3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, TypedResult, HasParameters, StoredProcedure, Scalar
+        // Execute, TypedResult, HasParameters, StoredProcedure, Scalar, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: bar Foo
         // returns data: float
@@ -83,7 +83,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 21, 30)]
     internal static global::System.Threading.Tasks.Task<object?> ExecuteScalarAsync6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, Async, HasParameters, StoredProcedure, Scalar
+        // Execute, Async, HasParameters, StoredProcedure, Scalar, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: bar Foo
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -121,7 +121,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 25, 30)]
     internal static global::System.Threading.Tasks.Task<float> ExecuteScalarAsync9(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, Async, TypedResult, HasParameters, StoredProcedure, Scalar
+        // Execute, Async, TypedResult, HasParameters, StoredProcedure, Scalar, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: bar Foo
         // returns data: float

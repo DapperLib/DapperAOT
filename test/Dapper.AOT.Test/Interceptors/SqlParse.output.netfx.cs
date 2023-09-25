@@ -21,7 +21,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 82, 12)]
     internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, Text
+        // Execute, HasParameters, Text, KnownParameters
         // takes parameter: global::Foo.Customer
         // parameter map: Id Name
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -37,7 +37,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\SqlParse.input.cs", 84, 12)]
     internal static int Execute2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, Text
+        // Execute, HasParameters, Text, KnownParameters
         // takes parameter: global::Foo.Customer
         // parameter map: Id
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));

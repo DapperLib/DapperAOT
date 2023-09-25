@@ -4,7 +4,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 13, 24)]
     internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, StoredProcedure
+        // Execute, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: bar Foo
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -42,7 +42,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 17, 30)]
     internal static global::System.Threading.Tasks.Task<int> ExecuteAsync3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, Async, HasParameters, StoredProcedure
+        // Execute, Async, HasParameters, StoredProcedure, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: bar Foo
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));

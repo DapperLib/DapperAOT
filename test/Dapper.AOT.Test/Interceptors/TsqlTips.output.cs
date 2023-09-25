@@ -72,7 +72,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 61, 20)]
     internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Execute, HasParameters, Text
+        // Execute, HasParameters, Text, KnownParameters
         // takes parameter: <anonymous type: int a, string b>
         // parameter map: a b
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -86,7 +86,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 73, 24)]
     internal static dynamic QuerySingle4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName
+        // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName, KnownParameters
         // takes parameter: <anonymous type: int[] ids>
         // parameter map: ids
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -100,7 +100,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 76, 24)]
     internal static dynamic QuerySingle5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName
+        // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName, KnownParameters
         // takes parameter: <anonymous type: int a, string b>
         global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
         global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);

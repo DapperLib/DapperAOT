@@ -18,7 +18,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 14, 24)]
     internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName
+        // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: bar Foo
         // returns data: global::Foo.Customer
@@ -34,7 +34,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 15, 24)]
     internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, HasParameters, StoredProcedure, BindResultsByName
+        // Query, TypedResult, HasParameters, StoredProcedure, BindResultsByName, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: bar Foo
         // returns data: global::Foo.Customer
@@ -63,7 +63,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 17, 24)]
     internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, TypedResult, HasParameters, Buffered, Text, BindResultsByName
+        // Query, TypedResult, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: Foo
         // returns data: global::Foo.Customer
@@ -93,7 +93,7 @@ file static class DapperGeneratedInterceptors
     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 20, 30)]
     internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Customer>> QueryAsync6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
     {
-        // Query, Async, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName
+        // Query, Async, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName, KnownParameters
         // takes parameter: <anonymous type: int Foo, string bar>
         // parameter map: bar Foo
         // returns data: global::Foo.Customer
