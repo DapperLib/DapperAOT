@@ -1,18 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFrameworks>net6.0;net7.0;net48</TargetFrameworks>
+        <TargetFrameworks>net6.0;net48</TargetFrameworks>
         <NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
         <RootNamespace>Dapper.AOT.Test</RootNamespace>
+        <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
     </PropertyGroup>
     <ItemGroup>
-		<Compile Remove="Accessors/Data/**/*.*.cs" />
-		<None Include="Accessors/Data/**/*.*" />
-		<None Update="Accessors/Data/**/*.*" CopyToOutputDirectory="PreserveNewest" />
+        <Compile Remove="Accessors/Data/**/*.*.cs" />
+        <None Include="Accessors/Data/**/*.*" />
+        <None Update="Accessors/Data/**/*.*" CopyToOutputDirectory="PreserveNewest" />
 
-		<Compile Remove="Interceptors/**/*.*.cs" />
+        <Compile Remove="Interceptors/**/*.*.cs" />
         <None Include="Interceptors/**/*.*" />
+        <Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
         <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
-		
+
         <None Update="**/*.output.*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>
         </None>
@@ -35,7 +37,7 @@
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
         <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net6.0'" />
-        <PackageReference Include="Microsoft.Build" VersionOverride="17.3.2" Condition="'$(TargetFramework)'=='net6.0'" />
+        <PackageReference Include="Microsoft.Build" VersionOverride="[17.3.2]" Condition="'$(TargetFramework)'=='net6.0'" />
         <PackageReference Include="Microsoft.Build.Utilities.Core" />
         <PackageReference Include="Oracle.ManagedDataAccess" Condition="'$(TargetFramework)'=='net48'" />
         <PackageReference Include="Oracle.ManagedDataAccess.Core" Condition="'$(TargetFramework)'!='net48'" />
@@ -47,9 +49,15 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
         <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
+
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+        <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.XUnit" />
+        <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Analyzer.Testing.XUnit" />
+        <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" />
     </ItemGroup>
 </Project>

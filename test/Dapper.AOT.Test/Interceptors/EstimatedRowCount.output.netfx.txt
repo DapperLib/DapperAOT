@@ -1,7 +1,0 @@
-Generator produced 2 diagnostics:
-
-Hidden DAP000  L1 C1
-Dapper.AOT handled 3 of 3 enabled call-sites using 3 interceptors, 2 commands and 1 readers
-
-Info DAP029 Interceptors/EstimatedRowCount.input.cs L9 C17
-The [EstimatedRowCount] will be ignored due to parameter member 'Count'

@@ -4,6 +4,7 @@ using Xunit;
 using System.Linq;
 using Microsoft.CodeAnalysis.Operations;
 using Dapper.TestCommon;
+using static Dapper.Internal.Inspection;
 
 namespace Dapper.Internal.Roslyn
 {
@@ -39,9 +40,9 @@ namespace Dapper.Internal.Roslyn
             var argumentOperation = GetInvocationArgumentOperation(text);
             var typeSymbol = GetConversionTypeSymbol(argumentOperation);
 
-            var result = typeSymbol.TryGetConstructors(out var constructors);
-            Assert.True(result);
-            Assert.Single(constructors!);
+            var result = ChooseConstructor(typeSymbol, out var ctor);
+            Assert.Equal(ConstructorResult.SuccessSingleImplicit, result);
+            Assert.NotNull(ctor);
         }
 
         [Fact]
@@ -200,9 +201,9 @@ namespace Dapper.Internal.Roslyn
         {
             var conv = argumentOperation.Value as IConversionOperation;
             Assert.NotNull(conv);
-            var typeSymbol = conv.Operand.Type;
+            var typeSymbol = conv!.Operand.Type;
             Assert.NotNull(typeSymbol);
-            return typeSymbol;
+            return typeSymbol!;
         }
 
         static IArgumentOperation GetInvocationArgumentOperation(string text, int invocationIndex = 0, int argumentIndex = 2)
@@ -216,7 +217,7 @@ namespace Dapper.Internal.Roslyn
             var invocationOperation = semanticModel.GetOperation(invocationNode) as IInvocationOperation;
             Assert.NotNull(invocationOperation);
 
-            var arg = invocationOperation.Arguments[argumentIndex];
+            var arg = invocationOperation!.Arguments[argumentIndex];
             Assert.NotNull(arg);
             return arg;
         }

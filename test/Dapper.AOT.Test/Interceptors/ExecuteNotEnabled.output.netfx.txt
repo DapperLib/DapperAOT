@@ -1,4 +1,0 @@
-Generator produced 1 diagnostics:
-
-Info DAP005  L1 C1
-Candidate Dapper methods were detected, but none have Dapper.AOT enabled; [DapperAot] can be added at the method, type, module or assembly level (for example '[module:DapperAot]')

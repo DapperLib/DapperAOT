@@ -1,7 +1,9 @@
-﻿using Dapper.SqlAnalysis;
+﻿using Dapper.Internal;
+using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
 using Xunit;
@@ -16,7 +18,7 @@ public class TSqlParserTests
 
     private readonly Action<string> _log;
 
-    private TestTSqlProcessor GetProcessor() => new TestTSqlProcessor(log: _log);
+    private TestTSqlProcessor GetProcessor(SqlParseInputFlags flags = SqlParseInputFlags.None) => new(flags, log: _log);
 
     [Fact]
     public void DetectBadNullLiteralUsage()
@@ -24,7 +26,7 @@ public class TSqlParserTests
         var parser = GetProcessor();
         parser.Execute("""
             declare @s int = null;
-            select *
+            select Id
             from Customers
             where Id = null and Name != null;
 
@@ -33,12 +35,12 @@ public class TSqlParserTests
 
         var args = parser.GetParameters(out var errors);
         Assert.Empty(args);
-        Assert.Equal(2, errors.Length);
-        Assert.Equal("Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null' L4 C12", errors[0]);
-        Assert.Equal("Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null' L4 C29", errors[1]);
+        Assert.Equal(["Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null' L4 C12",
+            "Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null' L4 C29"], errors);
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments", Justification = "Clearer for test")]
     public void DetectExecParams()
     {
         var parser = GetProcessor();
@@ -62,7 +64,7 @@ public class TSqlParserTests
         var parser = GetProcessor();
         parser.Execute("""
             declare @s int = null;
-            select *
+            select Id
             from Customers
             where Id is null and Name is not null
             select @s
@@ -116,7 +118,7 @@ public class TSqlParserTests
         var parser = GetProcessor();
         parser.Execute("""
             declare @s int = 42;
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -134,7 +136,7 @@ public class TSqlParserTests
             declare @s int
             set @s = 42
 
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -152,7 +154,7 @@ public class TSqlParserTests
             declare @s int
             exec someproc @s output
 
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -170,7 +172,7 @@ public class TSqlParserTests
             declare @s int
             exec @s = someproc
 
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -191,7 +193,7 @@ public class TSqlParserTests
             output INSERTED.id into @s (id)
             values('Name')
 
-            select *
+            select Id
             from Customers
             where Id in (select id from @s)
             """);
@@ -210,7 +212,7 @@ public class TSqlParserTests
             exec someproc @s
 
             set @s = 42;
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -227,7 +229,7 @@ public class TSqlParserTests
         parser.Execute("""
             declare @s table (id int not null)
             
-            select *
+            select Id
             from Customers
             where Foo in (select id from @s) and Id=@id
             """);
@@ -244,7 +246,7 @@ public class TSqlParserTests
         parser.Execute("""
             declare @s table (id int not null)
             insert @s (id) values (42);
-            select *
+            select Id
             from Customers
             where Foo in (select id from @s) and Id=@id
             """);
@@ -262,7 +264,7 @@ public class TSqlParserTests
             declare @s int
             select @s = 42
 
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
             """);
@@ -277,7 +279,7 @@ public class TSqlParserTests
     {
         var parser = GetProcessor();
         parser.Execute("""
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s
 
@@ -297,7 +299,7 @@ public class TSqlParserTests
         parser.Execute("""
             declare @s int = 42;
 
-            select *
+            select Id
             from Customers
             where Id = @id and S = @s garbage;
             """);
@@ -321,9 +323,10 @@ public class TSqlParserTests
 
         var args = parser.GetParameters(out var errors);
         Assert.Equal("@id", Assert.Single(args));
-        Assert.Equal(2, errors.Length);
-        Assert.Equal("EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters L2 C1", errors[0]);
-        Assert.Equal("Multiple batches are not permitted L4 C1", errors[1]);
+        Assert.Equal([
+            "EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters L2 C1",
+            "Multiple batches are not permitted L4 C1",
+            ], errors);
     }
 
     [Fact]
@@ -350,17 +353,35 @@ public class TSqlParserTests
         Assert.Empty(errors); // because we just gave up
     }
 
+    [Fact]
+    public void ExecOutputTVP()
+    {
+        var parser = GetProcessor();
+        parser.Execute("""
+            declare @x table (id int not null);
+            exec SomeProc @x output;
+            select id from @x;
+            """);
+
+        var args = parser.GetParameters(out var errors);
+        Assert.Empty(args);
+        Assert.Equal(["Table variable @x cannot be used as an output parameter L2 C15"], errors);
+    }
+
     [Theory]
     [InlineData(ParameterDirection.Input)]
     [InlineData(ParameterDirection.Output)]
     [InlineData(ParameterDirection.InputOutput)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments", Justification = "Clearer for test")]
 
     public void HandleParameterAssignment(ParameterDirection direction)
     {
-        var parser = GetProcessor();
-        parser.AddParameter("@a", direction); // consumed before assign
-        parser.AddParameter("@b", direction); // assigned, consumed
-        parser.AddParameter("@c", direction); // assigned, not consumed
+        var parser = GetProcessor(SqlParseInputFlags.KnownParameters);
+        var parameters = new[] {
+            new SqlParameter("@a", direction), // consumed before assign
+            new SqlParameter("@b", direction), // assigned, consumed
+            new SqlParameter("@c", direction), // assigned, not consumed
+        };
         parser.Execute("""
             select @a;
 
@@ -368,10 +389,10 @@ public class TSqlParserTests
             print @b
 
             set @c = 42;
-            """);
+            """, parameters.ToImmutableArray());
 
         var args = parser.GetParameters(out var errors);
-        Assert.Equal(new[] { "@a", "@b", "@c" }, args);
+        Assert.Equal(new[] { "@a!", "@b!", "@c!" }, args);
         switch (direction)
         {
             case ParameterDirection.Input:
@@ -402,31 +423,21 @@ public class TSqlParserTests
 
     class TestTSqlProcessor : TSqlProcessor
     {
-        public TestTSqlProcessor(ITypeSymbol? parameterType = null, bool caseSensitive = false, Action<string>? log = null) : base(caseSensitive, log) { }
+        public TestTSqlProcessor(SqlParseInputFlags flags = SqlParseInputFlags.None, Action<string>? log = null) : base(flags, log) { }
         public string[] GetParameters(out string[] errors)
         {
             var parameters = (from p in this.Variables
-                              where p.IsParameter
+                              where p.IsParameter || !p.IsDeclared
                               orderby p.Name
-                              select p.Name).ToArray();
+                              select p.IsDeclared ? $"{p.Name}!" : p.Name).ToArray();
             errors = this.errors.ToArray();
             return parameters;
         }
-
-        private Dictionary<string, ParameterDirection>? _extraArgs;
-
-        public void AddParameter(string name, ParameterDirection direction) => (_extraArgs ??= new()).Add(name, direction);
 
         private readonly List<string> errors = new();
         protected override void OnError(string error, in Location location)
         {
             errors.Add($"{error} {location}");
-        }
-
-        protected override bool TryGetParameter(string name, out ParameterDirection direction)
-        {
-            if (_extraArgs is not null && _extraArgs.TryGetValue(name, out direction)) return true;
-            return base.TryGetParameter(name, out direction);
         }
     }
 }

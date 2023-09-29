@@ -1,166 +1,80 @@
 ﻿using Microsoft.CodeAnalysis;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 
 namespace Dapper.CodeAnalysis;
 
-internal static class Diagnostics
+internal abstract class DiagnosticsBase
 {
-    internal static readonly DiagnosticDescriptor
-        InterceptorsGenerated = new("DAP000", "Interceptors generated",
-            "Dapper.AOT handled {0} of {1} enabled call-sites using {2} interceptors, {3} commands and {4} readers", Category.Library, DiagnosticSeverity.Hidden, true),
-        UnsupportedMethod = new("DAP001", "Unsupported method",
-            "The Dapper method '{0}' is not currently supported by Dapper.AOT", Category.Library, DiagnosticSeverity.Info, true),
-        //UntypedResults = new("DAP002", "Untyped result types",
-        //    "Dapper.AOT does not currently support untyped/dynamic results", Category.Library, DiagnosticSeverity.Info, true),
-        InterceptorsNotEnabled = new("DAP003", "Interceptors not enabled",
-            "Interceptors are an experimental feature, and requires that '<Features>InterceptorsPreview</Features>' be added to the project file", Category.Library, DiagnosticSeverity.Warning, true),
-        LanguageVersionTooLow = new("DAP004", "Language version too low",
-            "Interceptors require at least C# version 11", Category.Library, DiagnosticSeverity.Warning, true),
-        DapperAotNotEnabled = new("DAP005", "Dapper.AOT not enabled",
-            "Candidate Dapper methods were detected, but none have Dapper.AOT enabled; [DapperAot] can be added at the method, type, module or assembly level (for example '[module:DapperAot]')", Category.Library, DiagnosticSeverity.Info, true),
-        DapperLegacyTupleParameter = new("DAP006", "Dapper tuple-type parameter",
-            "Dapper (original) does not work well with tuple-type parameters as name information is inaccessible", Category.Library, DiagnosticSeverity.Warning, true),
-        UnexpectedCommandType = new("DAP007", "Unexpected command type",
-            "The command type specified is not understood", Category.Library, DiagnosticSeverity.Info, true),
-        // space
-        UnexpectedArgument = new("DAP009", "Unexpected parameter",
-            "The parameter '{0}' is not understood", Category.Library, DiagnosticSeverity.Info, true),
-        // space
-        DapperLegacyBindNameTupleResults = new("DAP011", "Named-tuple results",
-            "Dapper (original) does not support tuple results with bind-by-name semantics", Category.Library, DiagnosticSeverity.Warning, true),
-        DapperAotAddBindTupleByName = new("DAP012", "Add BindTupleByName",
-            "Because of differences in how Dapper and Dapper.AOT can process tuple-types, please add '[BindTupleByName({true|false})]' to clarify your intent", Category.Library, DiagnosticSeverity.Warning, true),
-        DapperAotTupleResults = new("DAP013", "Tuple-type results",
-            "Tuple-type results are not currently supported", Category.Library, DiagnosticSeverity.Info, true),
-        DapperAotTupleParameter = new("DAP014", "Tuple-type parameter",
-            "Tuple-type parameters are not currently supported", Category.Library, DiagnosticSeverity.Info, true),
-        UntypedParameter = new("DAP015", "Untyped parameter",
-            "The parameter type could not be resolved", Category.Library, DiagnosticSeverity.Info, true),
-        GenericTypeParameter = new("DAP016", "Generic type parameter",
-            "Generic type parameters ({0}) are not currently supported", Category.Library, DiagnosticSeverity.Info, true),
-        NonPublicType = new("DAP017", "Non-accessible type",
-            "Type '{0}' is not accessible; {1} types are not currently supported", Category.Library, DiagnosticSeverity.Info, true),
-        SqlParametersNotDetected = new("DAP018", "SQL parameters not detected",
-            "Parameters are being supplied, but no parameters were detected in the command", Category.Sql, DiagnosticSeverity.Warning, true),
-        NoParametersSupplied = new("DAP019", "No parameters supplied",
-            "SQL parameters were detected, but no parameters are being supplied", Category.Sql, DiagnosticSeverity.Error, true),
-        SqlParameterNotBound = new("DAP020", "SQL parameter not bound",
-            "No member could be found for the SQL parameter '{0}' from type '{1}'", Category.Sql, DiagnosticSeverity.Error, true),
-        DuplicateParameter = new("DAP021", "Duplicate parameter",
-            "Members '{0}' and '{1}' both have the database name '{2}'; '{0}' will be ignored", Category.Sql, DiagnosticSeverity.Warning, true),
-        DuplicateReturn = new("DAP022", "Duplicate return parameter",
-            "Members '{0}' and '{1}' are both designated as return values; '{0}' will be ignored", Category.Sql, DiagnosticSeverity.Warning, true),
-        DuplicateRowCount = new("DAP023", "Duplicate row-count member",
-            "Members '{0}' and '{1}' are both marked [RowCount]", Category.Sql, DiagnosticSeverity.Warning, true),
-        RowCountDbValue = new("DAP024", "Member is both row-count and mapped value",
-            "Member '{0}' is marked both [RowCount] and [DbValue]; [DbValue] will be ignored", Category.Sql, DiagnosticSeverity.Warning, true),
-        ExecuteCommandWithQuery = new("DAP025", "Execute command with query",
-            "The command has a query that will be ignored", Category.Sql, DiagnosticSeverity.Warning, true),
-        QueryCommandMissingQuery = new("DAP026", "Query/scalar command lacks query",
-            "The command lacks a query", Category.Sql, DiagnosticSeverity.Error, true),
-        UseSingleRowQuery = new("DAP027", "Use single-row query",
-            "Use {0}() instead of Query(...).{1}()", Category.Performance, DiagnosticSeverity.Warning, true),
-        UseQueryAsList = new("DAP028", "Use AsList instead of ToList",
-            "Use Query(...).AsList() instead of Query(...).ToList()", Category.Performance, DiagnosticSeverity.Warning, true),
-        MethodRowCountHintRedundant = new("DAP029", "Method-level row-count hint redundant",
-            "The [EstimatedRowCount] will be ignored due to parameter member '{0}'", Category.Library, DiagnosticSeverity.Info, true),
-        MethodRowCountHintInvalid = new("DAP030", "Method-level row-count hint invalid",
-            "The [EstimatedRowCount] parameters are invalid; a positive integer must be supplied", Category.Library, DiagnosticSeverity.Error, true),
-        MemberRowCountHintInvalid = new("DAP031", "Member-level row-count hint invalid",
-            "The [EstimatedRowCount] parameters are invalid; no parameter should be supplied", Category.Library, DiagnosticSeverity.Error, true),
-        MemberRowCountHintDuplicated = new("DAP032", "Member-level row-count hint duplicated",
-            "Only a single member should be marked [EstimatedRowCount]", Category.Library, DiagnosticSeverity.Error, true),
-        CommandPropertyNotFound = new("DAP033", "Command property not found",
-            "Command property {0}.{1} was not found or was not valid; attribute will be ignored", Category.Library, DiagnosticSeverity.Warning, true),
-        CommandPropertyReserved = new("DAP034", "Command property reserved",
-            "Command property {1} is reserved for internal usage; attribute will be ignored", Category.Library, DiagnosticSeverity.Warning, true),
-        TooManyDapperAotEnabledConstructors = new("DAP035", "Too many Dapper.AOT enabled constructors",
-            "Only one constructor can be Dapper.AOT enabled per type '{0}'", Category.Library, DiagnosticSeverity.Error, true),
-        TooManyStandardConstructors = new("DAP036", "Type has more than 1 constructor to choose for creating an instance",
-            "Type has more than 1 constructor, please, either mark one constructor with [DapperAot] or reduce amount of constructors", Category.Library, DiagnosticSeverity.Error, true),
-        UserTypeNoSettableMembersFound = new("DAP037", "No settable members exist for user type",
-            "Type '{0}' has no settable members (fields or properties)", Category.Library, DiagnosticSeverity.Error, true),
-        TooManyDapperAotEnabledFactoryMethods = new("DAP038", "Too many Dapper.AOT enabled factory methods",
-            "Only one factory method can be Dapper.AOT enabled per type '{0}'", Category.Library, DiagnosticSeverity.Error, true),
+    public static readonly DiagnosticDescriptor UnknownError = LibraryWarning("DAP999", "Unknown analyzer error", "This isn't you; this is me; please log it! '{0}', '{1}'");
 
-    // TypeAccessor
-        TypeAccessorCollectionTypeNotAllowed = new("DAP100", "TypeAccessors does not allow collection types",
-            "TypeAccessors does not allow collection types", Category.Library, DiagnosticSeverity.Error, true),
-        TypeAccessorPrimitiveTypeNotAllowed = new("DAP101", "TypeAccessors does not allow primitive types",
-            "TypeAccessors does not allow primitive types", Category.Library, DiagnosticSeverity.Error, true),
-        TypeAccessorMembersNotParsed = new("DAP102", "TypeAccessor members can not be parsed",
-            "At least one gettable and settable member must be defined for type '{0}'", Category.Library, DiagnosticSeverity.Error, true),
+    protected const string DocsRoot = "https://aot.dapperlib.dev/", RulesRoot = DocsRoot + "rules/";
 
-    // SQL parse specific
-        SqlError = new("DAP200", "SQL error",
-            "SQL error: {0}", Category.Sql, DiagnosticSeverity.Warning, true),
-        MultipleBatches = new("DAP201", "Multiple batches",
-            "Multiple batches are not permitted (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
-        DuplicateVariableDeclaration = new("DAP202", "Duplicate variable declaration",
-            "The variable {0} is declared multiple times (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
-        GlobalIdentity = new("DAP203", "Do not use @@identity",
-            "@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid (L{0} C{1})", Category.Sql, DiagnosticSeverity.Error, true),
-        SelectScopeIdentity = new("DAP204", "Prefer OUTPUT over SELECT",
-            "Consider using OUTPUT INSERTED.yourid in the INSERT instead of SELECT SCOPE_IDENTITY() (L{0} C{1})", Category.Sql, DiagnosticSeverity.Info, true),
-        NullLiteralComparison = new("DAP205", "Null comparison",
-            "Literal null used in comparison; 'is null' or 'is not null' should be preferred (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
-        ParseError = new("DAP206", "SQL parse error",
-            "{0} (#{1} L{2} C{3})", Category.Sql, DiagnosticSeverity.Error, true),
-        ScalarVariableUsedAsTable = new("DAP207", "Scalar used like table",
-            "Scalar variable {0} is used like a table (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
-        TableVariableUsedAsScalar = new("DAP208", "Table used like scalar",
-            "Table-variable {0} is used like a scalar (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
-        TableVariableAccessedBeforePopulate = new("DAP209", "Table used before populate",
-            "Table-variable {0} is accessed before it populated (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
-        VariableAccessedBeforeAssignment = new("DAP210", "Variable used before assigned",
-            "Variable {0} is accessed before it is assigned a value (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
-        VariableAccessedBeforeDeclaration = new("DAP211", "Variable used before declared",
-            "Variable {0} is accessed before it is declared (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
-        ExecVariable = new("DAP212", "EXEC with composed SQL",
-            "EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql, taking care to fully parameterize the composed query (L{0} C{1})", Category.Sql, DiagnosticSeverity.Warning, true),
-        VariableValueNotConsumed = new("DAP213", "Variable used before declared",
-            "Variable {0} has a value that is not consumed (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true),
-        VariableNotDeclared = new("DAP214", "Variable not declared",
-            "Variable {0} is not declared and no corresponding parameter exists (L{1} C{2})", Category.Sql, DiagnosticSeverity.Error, true),
-        TableVariableOutputParameter = new("DAP215", "Variable used before declared",
-            "Table variable {0} cannot be used as an output parameter (L{1} C{2})", Category.Sql, DiagnosticSeverity.Warning, true);
+    private static DiagnosticDescriptor Create(string id, string title, string messageFormat, string category, DiagnosticSeverity severity) =>
+        new(id, title,
+            messageFormat, category, severity, true, helpLinkUri: RulesRoot + id);
+
+    protected static DiagnosticDescriptor LibraryWarning(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Warning);
+
+    protected static DiagnosticDescriptor LibraryError(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Error);
+
+    protected static DiagnosticDescriptor LibraryHidden(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Hidden);
+
+    protected static DiagnosticDescriptor LibraryInfo(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Info);
+
+    protected static DiagnosticDescriptor SqlWarning(string id, string title, string messageFormat, bool docs = true) => Create(id, title, messageFormat, Category.Sql, DiagnosticSeverity.Warning);
+
+    protected static DiagnosticDescriptor SqlError(string id, string title, string messageFormat, bool docs = true) => Create(id, title, messageFormat, Category.Sql, DiagnosticSeverity.Error);
+
+    protected static DiagnosticDescriptor SqlInfo(string id, string title, string messageFormat, bool docs = true) => Create(id, title, messageFormat, Category.Sql, DiagnosticSeverity.Info);
+
+    protected static DiagnosticDescriptor PerformanceWarning(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Performance, DiagnosticSeverity.Warning);
+
+    protected static DiagnosticDescriptor PerformanceError(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Performance, DiagnosticSeverity.Error);
+
+    protected static DiagnosticDescriptor PerformanceInfo(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Performance, DiagnosticSeverity.Info);
+
+    private static ImmutableDictionary<string, string>? _idsToFieldNames;
+    public static bool TryGetFieldName(string id, out string field)
+    {
+        return (_idsToFieldNames ??= Build()).TryGetValue(id, out field!);
+        static ImmutableDictionary<string, string> Build()
+            => GetAllFor<DapperInterceptorGenerator.Diagnostics>()
+            .Concat(GetAllFor<DapperAnalyzer.Diagnostics>())
+            .Concat(GetAllFor<TypeAccessorInterceptorGenerator.Diagnostics>())
+            .Distinct()
+            .ToImmutableDictionary(x => x.Value.Id, x => x.Key, StringComparer.Ordinal, StringComparer.Ordinal);
+    }
+    public static ImmutableArray<DiagnosticDescriptor> All<T>() where T : DiagnosticsBase
+        => Cache<T>.All;
+
+    private static IEnumerable<KeyValuePair<string, DiagnosticDescriptor>> GetAllFor<T>() where T : DiagnosticsBase
+    {
+        var fields = typeof(T).GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.FlattenHierarchy);
+        foreach (var field in fields)
+        {
+            if (field.FieldType == typeof(DiagnosticDescriptor) && field.GetValue(null) is DiagnosticDescriptor descriptor)
+            {
+                yield return new(field.Name, descriptor);
+            }
+        }
+    }
 
 
-    // be careful moving this because of static field initialization order
-    internal static readonly ImmutableArray<DiagnosticDescriptor> All = typeof(Diagnostics)
-        .GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
-        .Select(x => x.GetValue(null)).OfType<DiagnosticDescriptor>().ToImmutableArray();
+    private static class Cache<T> where T : DiagnosticsBase
+    {
+        public static readonly ImmutableArray<DiagnosticDescriptor> All
+            = GetAllFor<T>().Select(x => x.Value).ToImmutableArray();
+    }
 
-    internal static class Category
+
+    private static class Category
     {
         public const string Library = nameof(Library);
         public const string Sql = nameof(Sql);
         public const string Performance = nameof(Performance);
-    }
-
-    internal static void Add(ref object? diagnostics, Diagnostic diagnostic)
-    {
-        if (diagnostic is null) throw new ArgumentNullException(nameof(diagnostic));
-        switch (diagnostics)
-        {   // single
-            case null:
-                diagnostics = diagnostic;
-                break;
-            case Diagnostic d:
-                diagnostics = new List<Diagnostic> { d, diagnostic };
-                break;
-            case IList<Diagnostic> list when !list.IsReadOnly:
-                list.Add(diagnostic);
-                break;
-            case IEnumerable<Diagnostic> list:
-                diagnostics = new List<Diagnostic>(list) { diagnostic };
-                break;
-            default:
-                throw new ArgumentException(nameof(diagnostics));
-        }
     }
 }

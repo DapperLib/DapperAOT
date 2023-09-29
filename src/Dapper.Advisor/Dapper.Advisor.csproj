@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">true</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <WarningsAsErrors>true</WarningsAsErrors>
+        <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+        <PackageReadmeFile>readme.md</PackageReadmeFile>
+        <Deterministic>true</Deterministic>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <Description>Usage guidance for Dapper</Description>
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+    </PropertyGroup>
+    <ItemGroup>
+        <!-- this is to force build order -->
+        <ProjectReference Include="../Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="None" />
+
+        <!-- nuget package items -->
+        <None Include="readme.md" Pack="true" PackagePath="/" />
+        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Dapper.AOT.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet" Visible="true" />
+        <None Include="../Dapper.AOT.Analyzers/bin/$(Configuration)/netstandard2.0/Microsoft.SqlServer.TransactSql.ScriptDom.dll" Pack="true" PackagePath="analyzers/dotnet" Visible="true" />
+    </ItemGroup>
+
+
+</Project>

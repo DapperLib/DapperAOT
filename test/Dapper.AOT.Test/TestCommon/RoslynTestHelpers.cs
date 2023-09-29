@@ -15,8 +15,8 @@ using System.Threading.Tasks;
 namespace Dapper.TestCommon;
 
 internal static class RoslynTestHelpers
-{   
-    static readonly CSharpParseOptions ParseOptionsLatestLangVer = CSharpParseOptions.Default
+{
+    internal static readonly CSharpParseOptions ParseOptionsLatestLangVer = CSharpParseOptions.Default
         .WithLanguageVersion(LanguageVersion.Latest)
         .WithPreprocessorSymbols(new string[] {
 #if NETFRAMEWORK
@@ -40,6 +40,10 @@ internal static class RoslynTestHelpers
 #if RELEASE
         "RELEASE",
 #endif
+    })
+    .WithFeatures(new KeyValuePair<string, string>[] {
+        new ("InterceptorsPreview", "true"), // rc 1
+        new ("InterceptorsPreviewNamespaces", "Dapper.AOT") // rc2 ?
     });
 
     public static Compilation CreateCompilation(string source, string name, string fileName)
