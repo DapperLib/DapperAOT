@@ -21,18 +21,6 @@ internal static class TypeSymbolExtensions
             if (filter is null || filter(methodSymbol)) yield return methodSymbol;
         }
     }
-    
-    public static bool TryGetConstructors(this ITypeSymbol? typeSymbol, out ImmutableArray<IMethodSymbol>? constructors)
-    {
-        constructors = null;
-        if (typeSymbol is not INamedTypeSymbol namedTypeSymbol)
-        {
-            return false;
-        }
-
-        constructors = namedTypeSymbol.Constructors;
-        return true;
-    }
 
     public static string? GetTypeDisplayName(this ITypeSymbol? typeSymbol)
     {

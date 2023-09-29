@@ -331,23 +331,23 @@ internal static class Inspection
     }
 
     [DebuggerDisplay("Order: {Order}; Name: {Name}")]
-    public readonly struct ConstructorParameter
+    readonly struct MethodParameter
     {
         /// <summary>
-        /// Order of parameter in constructor.
-        /// Will be 1 for member1 in constructor(member0, member1, ...)
+        /// Order of parameter in method.
+        /// Will be 1 for member1 in method(member0, member1, ...)
         /// </summary>
         public int Order { get; }
         /// <summary>
-        /// Type of constructor parameter
+        /// Type of method parameter
         /// </summary>
         public ITypeSymbol Type { get; }
         /// <summary>
-        /// Name of constructor parameter
+        /// Name of method parameter
         /// </summary>
         public string Name { get; }
 
-        public ConstructorParameter(int order, ITypeSymbol type, string name)
+        public MethodParameter(int order, ITypeSymbol type, string name)
         {
             Order = order;
             Type = type;
@@ -412,6 +412,11 @@ internal static class Inspection
         /// Order of member in constructor parameter list (starts from 0).
         /// </summary>
         public int? ConstructorParameterOrder { get; }
+        
+        /// <summary>
+        /// Order of member in factory method parameter list (starts from 0).
+        /// </summary>
+        public int? FactoryMethodParameterOrder { get; }
 
         public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind)
         {
@@ -429,14 +434,16 @@ internal static class Inspection
             IsExpandable = 1 << 3,
         }
 
-        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind, ElementMemberFlags flags, int? constructorParameterOrder)
+        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind, ElementMemberFlags flags, int? constructorParameterOrder, int? factoryMethodParameterOrder)
         {
-            Member = member;
             _dbValue = dbValue;
-            Kind = kind;
-
             _flags = flags;
+            
+            Member = member;
+            Kind = kind;
+            
             ConstructorParameterOrder = constructorParameterOrder;
+            FactoryMethodParameterOrder = factoryMethodParameterOrder;
         }
 
         public override int GetHashCode() => SymbolEqualityComparer.Default.GetHashCode(Member);
@@ -473,6 +480,26 @@ internal static class Inspection
         FailMultipleImplicit,
     }
 
+    /// <summary>
+    /// Builds a collection of type factory methods, which are NOT:
+    /// a) parameterless
+    /// b) marked with [DapperAot(false)]
+    /// _Note:_ factory method is a 1) publicly visibly; 2) static method 3) with response type equal to containing type
+    /// </summary>
+    internal static ConstructorResult ChooseFactoryMethod(ITypeSymbol? typeSymbol, out IMethodSymbol? factoryMethod)
+    {
+        factoryMethod = null;
+        if (typeSymbol is not INamedTypeSymbol named)
+        {
+            return ConstructorResult.NoneFound;
+        }
+        
+        var staticMethods = typeSymbol.GetMethods(method =>
+            method.IsStatic && SymbolEqualityComparer.Default.Equals(method.ReturnType, typeSymbol));
+        
+        // TODO
+    }
+    
     /// <summary>
     /// Builds a collection of type constructors, which are NOT:
     /// a) parameterless
@@ -662,13 +689,13 @@ internal static class Inspection
             return builder.ToImmutable();
         }
 
-        static IReadOnlyDictionary<string, ConstructorParameter> ParseConstructorParameters(IMethodSymbol constructorSymbol)
+        static IReadOnlyDictionary<string, MethodParameter> ParseConstructorParameters(IMethodSymbol constructorSymbol)
         {
-            var parameters = new Dictionary<string, ConstructorParameter>(StringComparer.InvariantCultureIgnoreCase);
+            var parameters = new Dictionary<string, MethodParameter>(StringComparer.InvariantCultureIgnoreCase);
             int order = 0;
             foreach (var parameter in constructorSymbol.Parameters)
             {
-                parameters.Add(parameter.Name, new ConstructorParameter(order: order++, type: parameter.Type, name: parameter.Name));
+                parameters.Add(parameter.Name, new MethodParameter(order: order++, type: parameter.Type, name: parameter.Name));
             }
             return parameters;
         }
