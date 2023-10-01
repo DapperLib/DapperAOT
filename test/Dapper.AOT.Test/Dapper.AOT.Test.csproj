@@ -21,17 +21,6 @@
         <None Update="**/*.output.netfx.*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output.netfx', '.input.cs'))</DependentUpon>
         </None>
-        <None Update="Interceptors\QueryCustomConstructionWithConstructor.input.cs">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
-        <None Update="Interceptors\QueryCustomConstructionWithConstructor.output.txt">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-          <DependentUpon>QueryCustomConstructionWithConstructor.input.cs</DependentUpon>
-        </None>
-        <None Update="Interceptors\QueryCustomConstructionWithConstructor.output.cs">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-          <DependentUpon>QueryCustomConstructionWithConstructor.input.cs</DependentUpon>
-        </None>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />

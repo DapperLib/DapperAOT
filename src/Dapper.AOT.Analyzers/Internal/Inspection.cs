@@ -501,20 +501,20 @@ internal static class Inspection
     [Flags]
     public enum ConstructorResult
     {
-        NoneFound                   = 0,
-        SuccessSingleExplicit       = 1 << 0,
-        SuccessSingleImplicit       = 1 << 1,
-        FailMultipleExplicit        = 1 << 2,
-        FailMultipleImplicit        = 1 << 3,
+        NoneFound,
+        SuccessSingleExplicit,
+        SuccessSingleImplicit,
+        FailMultipleExplicit,
+        FailMultipleImplicit
     }
     
     public enum FactoryMethodResult
     {
-        NoneFound                   = 0,
-        SuccessSingleExplicit       = 1 << 0,
-        SuccessSingleImplicit       = 1 << 1,
-        FailMultipleExplicit        = 1 << 2,
-        FailMultipleImplicit        = 1 << 3,
+        NoneFound,
+        SuccessSingleExplicit,
+        SuccessSingleImplicit,
+        FailMultipleExplicit,
+        FailMultipleImplicit
     }
 
     /// <summary>
