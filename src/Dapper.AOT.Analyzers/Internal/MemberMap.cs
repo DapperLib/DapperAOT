@@ -14,6 +14,7 @@ internal sealed class MemberMap
     private readonly MapFlags _flags;
 
     public IMethodSymbol? Constructor { get; }
+    public IMethodSymbol? FactoryMethod { get; }
     public bool IsUnknownParameters => (_flags & (MapFlags.IsObject | MapFlags.IsDapperDynamic)) != 0;
 
     public bool IsObject => (_flags & MapFlags.IsObject) != 0;
@@ -71,8 +72,16 @@ internal sealed class MemberMap
                     Constructor = constructor;
                     break;
             }
+            
+            switch (ChooseFactoryMethod(ElementType, out var factoryMethod))
+            {
+                case FactoryMethodResult.SuccessSingleImplicit:
+                case FactoryMethodResult.SuccessSingleExplicit:
+                    FactoryMethod = factoryMethod;
+                    break;
+            }
         }
-        Members = GetMembers(forParameters, ElementType, Constructor);
+        Members = GetMembers(forParameters, ElementType, Constructor, FactoryMethod);
     }
 
     static bool IsDynamicParameters(ITypeSymbol? type)
