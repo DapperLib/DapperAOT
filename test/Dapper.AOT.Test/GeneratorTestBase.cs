@@ -37,7 +37,7 @@ namespace Dapper.AOT.Test
             [CallerMemberName] string? name = null,
             string? fileName = null,
             Action<T>? initializer = null
-            ) where T : class, ISourceGenerator, new() // strictly we only need IIncrementalGenerator, but: see Roslyn #69906
+            ) where T : class, IIncrementalGenerator, new()
         {
             void OutputDiagnostic(Diagnostic d)
             {
@@ -67,7 +67,7 @@ namespace Dapper.AOT.Test
             ShowDiagnostics("Input code", inputCompilation, diagnosticsTo, "CS8795", "CS1701", "CS1702");
 
             // Create the driver that will control the generation, passing in our generator
-            GeneratorDriver driver = CSharpGeneratorDriver.Create(new[] { generator }, parseOptions: RoslynTestHelpers.ParseOptionsLatestLangVer);
+            GeneratorDriver driver = CSharpGeneratorDriver.Create(new[] { generator.AsSourceGenerator() }, parseOptions: RoslynTestHelpers.ParseOptionsLatestLangVer);
 
             // Run the generation pass
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)
