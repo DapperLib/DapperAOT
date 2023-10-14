@@ -142,27 +142,6 @@ internal static class Inspection
             }
         };
 
-    /// <summary>
-    /// Returns true if either:
-    /// a) <param name="symbol"/> has implicit `[DapperAot]` attribute;
-    /// b) <param name="symbol"/> has explicit `[DapperAot(true)]` attribute;
-    /// Otherwise returns false
-    /// </summary>
-    public static bool HasDapperAotEnabledAttribute(ISymbol? symbol)
-    {
-        var dapperAotAttribute = GetDapperAttribute(symbol, Types.DapperAotAttribute);
-
-        // no attribute at all
-        if (dapperAotAttribute is null) return false;
-
-        // `[DapperAot]`
-        if (dapperAotAttribute.ConstructorArguments.Length == 0) return true;
-
-        // `[DapperAot(true)]`
-        var typedArg = dapperAotAttribute.ConstructorArguments.First();
-        return (typedArg.Value is true);
-    }
-    
     public static AttributeData? GetDapperAttribute(ISymbol? symbol, string attributeName)
     {
         if (symbol is not null)
@@ -518,9 +497,7 @@ internal static class Inspection
     }
 
     /// <summary>
-    /// Builds a collection of type factory methods, which are NOT:
-    /// a) parameterless
-    /// b) marked with [DapperAot(false)]
+    /// Tries to choose a single factory method for the type.
     /// _Note:_ factory method is a 1) publicly visibly; 2) static method 3) with response type equal to containing type
     /// </summary>
     internal static FactoryMethodResult ChooseFactoryMethod(ITypeSymbol? typeSymbol, out IMethodSymbol? factoryMethod)
@@ -547,10 +524,11 @@ internal static class Inspection
         IMethodSymbol? dapperAotEnabledFactoryMethod = null;
         foreach (var method in staticMethods!)
         {
-            if (HasDapperAotEnabledAttribute(method))
+            if (GetDapperAttribute(method, Types.ExplicitConstructorAttribute) is not null)
             {
                 if (dapperAotEnabledFactoryMethod is not null)
                 {
+                    factoryMethod = dapperAotEnabledFactoryMethod; // pointing to first found method for diagnostic
                     return FactoryMethodResult.FailMultipleExplicit;   
                 }
                 dapperAotEnabledFactoryMethod = method;
@@ -559,6 +537,7 @@ internal static class Inspection
             {
                 if (standardFactoryMethod is not null)
                 {
+                    factoryMethod = standardFactoryMethod; // pointing to first found method for diagnostic
                     return FactoryMethodResult.FailMultipleImplicit;   
                 }
                 standardFactoryMethod = method;

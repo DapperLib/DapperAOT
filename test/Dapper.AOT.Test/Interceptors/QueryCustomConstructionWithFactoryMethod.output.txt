@@ -1,4 +1,24 @@
+Input code has 3 diagnostics from 'Interceptors/QueryCustomConstructionWithFactoryMethod.input.cs':
+
+Error CS0592 Interceptors/QueryCustomConstructionWithFactoryMethod.input.cs L22 C10
+Attribute 'ExplicitConstructor' is not valid on this declaration type. It is only valid on 'constructor' declarations.
+
+Error CS0592 Interceptors/QueryCustomConstructionWithFactoryMethod.input.cs L33 C10
+Attribute 'ExplicitConstructor' is not valid on this declaration type. It is only valid on 'constructor' declarations.
+
+Error CS0592 Interceptors/QueryCustomConstructionWithFactoryMethod.input.cs L37 C10
+Attribute 'ExplicitConstructor' is not valid on this declaration type. It is only valid on 'constructor' declarations.
 Generator produced 1 diagnostics:
 
 Hidden DAP000  L1 C1
 Dapper.AOT handled 4 of 4 possible call-sites using 4 interceptors, 0 commands and 4 readers
+Output code has 3 diagnostics from 'Interceptors/QueryCustomConstructionWithFactoryMethod.input.cs':
+
+Error CS0592 Interceptors/QueryCustomConstructionWithFactoryMethod.input.cs L22 C10
+Attribute 'ExplicitConstructor' is not valid on this declaration type. It is only valid on 'constructor' declarations.
+
+Error CS0592 Interceptors/QueryCustomConstructionWithFactoryMethod.input.cs L33 C10
+Attribute 'ExplicitConstructor' is not valid on this declaration type. It is only valid on 'constructor' declarations.
+
+Error CS0592 Interceptors/QueryCustomConstructionWithFactoryMethod.input.cs L37 C10
+Attribute 'ExplicitConstructor' is not valid on this declaration type. It is only valid on 'constructor' declarations.

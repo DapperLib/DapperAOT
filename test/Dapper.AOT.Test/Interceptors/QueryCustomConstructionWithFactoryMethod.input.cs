@@ -19,7 +19,7 @@ public static class Foo
         public string Y { get; set; }
         public double? Z { get; set; }
 
-        [DapperAot(true)]
+        [ExplicitConstructor]
         public static PublicPropertiesNoConstructor Construct(int x, string y, double? z) 
             => new PublicPropertiesNoConstructor { X = x, Y = y, Z = z };
     }
@@ -30,11 +30,11 @@ public static class Foo
         public string Y { get; set; }
         public double? Z { get; set; }
 
-        [DapperAot(true)]
+        [ExplicitConstructor]
         public static MultipleDapperAotFactoryMethods Construct(int x, string y, double? z) 
             => new MultipleDapperAotFactoryMethods { X = x, Y = y, Z = z };
         
-        [DapperAot(true)]
+        [ExplicitConstructor]
         public static MultipleDapperAotFactoryMethods Construct2(int x, string y, double? z) 
             => new MultipleDapperAotFactoryMethods { X = x, Y = y, Z = z };
     }
