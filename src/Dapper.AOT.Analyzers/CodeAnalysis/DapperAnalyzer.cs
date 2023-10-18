@@ -2,6 +2,7 @@
 using Dapper.Internal.Roslyn;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using System;
@@ -371,7 +372,21 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             if (caseSensitive) flags |= SqlParseInputFlags.CaseSensitive;
 
             // can we get the SQL itself?
-            if (!TryGetConstantValueWithSyntax(sqlSource, out string? sql, out var sqlSyntax)) return;
+            if (!TryGetConstantValueWithSyntax(sqlSource, out string? sql, out var sqlSyntax, out var syntaxKind))
+            {
+                DiagnosticDescriptor? descriptor = syntaxKind switch
+                {
+                    SyntaxKind.InterpolatedStringExpression or SyntaxKind.InterpolatedStringText
+                        => Diagnostics.InterpolatedStringSqlExpression,
+                    _ => null
+                };
+
+                if (descriptor is not null)
+                {
+                    ctx.ReportDiagnostic(Diagnostic.Create(descriptor, sqlSource.Syntax.GetLocation()));
+                }
+                return;
+            }
             if (string.IsNullOrWhiteSpace(sql) || !HasWhitespace.IsMatch(sql)) return; // need non-trivial content to validate
 
             location ??= ctx.Operation.Syntax.GetLocation();
@@ -461,7 +476,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             switch (arg.Parameter?.Name)
             {
                 case "sql":
-                    if (TryGetConstantValueWithSyntax(arg, out string? s, out _))
+                    if (TryGetConstantValueWithSyntax(arg, out string? s, out _, out _))
                     {
                         sql = s;
                     }
