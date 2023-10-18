@@ -90,6 +90,6 @@ partial class DapperAnalyzer
         TrivialOperand = SqlWarning("DAP238", "Trivial operand", "Operand makes this calculation trivial; it can be simplified"),
         InvalidNullExpression = SqlWarning("DAP239", "Invalid null expression", "Operation requires a non-null operand"),
         VariableParameterConflict = SqlError("DAP240", "Parameter/variable conflict", "The declaration of variable '{0}' conflicts with a parameter"),
-        InterpolatedStringSqlExpression = SqlWarning("DAP241", "Interpolated string usage", "Data values should not be concatenated into SQL - use parameters instead");
+        InterpolatedStringSqlExpression = SqlWarning("DAP241", "Interpolated string usage", "Data values should not be interpolated into SQL string - use parameters instead");
     }
 }
