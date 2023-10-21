@@ -3,6 +3,7 @@ using Dapper.Internal.Roslyn;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using System;
 using System.Collections.Generic;
@@ -929,14 +930,6 @@ internal static class Inspection
                 val = conv.Operand;
             }
 
-            if (val is IInterpolatedStringOperation)
-            {
-                value = default!;
-                syntax = null;
-                syntaxKind = SyntaxKind.InterpolatedStringExpression;
-                return false;
-            }
-
             // type-level constants
             if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
             {
@@ -947,12 +940,35 @@ internal static class Inspection
             }
 
             // local constants
-            if (val is ILocalReferenceOperation local && local.Local.HasConstantValue)
+            if (val is ILocalReferenceOperation local)
             {
-                value = (T?)local.Local.ConstantValue;
-                syntax = local.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                syntaxKind = syntax!.GetKind();
-                return true;
+                if (local.Local.HasConstantValue)
+                {
+                    value = (T?)local.Local.ConstantValue;
+                    syntax = local.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                    syntaxKind = syntax!.GetKind();
+                    return true;
+                }
+
+                var referenceSyntax = local.Local?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                if (referenceSyntax is VariableDeclaratorSyntax varDeclSyntax)
+                {
+                    if (varDeclSyntax.Initializer?.Value is InterpolatedStringExpressionSyntax)
+                    {
+                        value = default!;
+                        syntax = null;
+                        syntaxKind = SyntaxKind.InterpolatedStringExpression;
+                        return false;
+                    }
+                }
+            }
+
+            if (val is IInterpolatedStringOperation)
+            {
+                value = default!;
+                syntax = null;
+                syntaxKind = SyntaxKind.InterpolatedStringExpression;
+                return false;
             }
 
             // other non-trivial default constant values
