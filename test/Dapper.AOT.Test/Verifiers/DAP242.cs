@@ -33,6 +33,12 @@ public class DAP242 : Verifier<DapperAnalyzer>
         _ = connection.Query<int>({|#0:sqlQuery|});
     """, Diagnostic(Diagnostics.ConcatenatedStringSqlExpression).WithLocation(0));
 
+    [Fact]
+    public Task ConcatenatedStringDetection_StringFormat() => Test("""
+        int id = 1;
+        _ = connection.Query<int>({|#0:string.Format("select Id from Customers where Id = {0}", id)|});
+    """, Diagnostic(Diagnostics.ConcatenatedStringSqlExpression).WithLocation(0));
+
     private Task Test(string methodCode, params DiagnosticResult[] expected) => CSVerifyAsync($$"""
         using Dapper;
         using System.Data;

@@ -966,6 +966,7 @@ internal static class Inspection
 
                         if (initializer is BinaryExpressionSyntax)
                         {
+                            // since we are parsing `string` here, `BinaryExpression` stands for string concatenation
                             value = default!;
                             syntax = null;
                             syntaxKind = SyntaxKind.AddExpression;
@@ -990,6 +991,21 @@ internal static class Inspection
                 syntax = null;
                 syntaxKind = SyntaxKind.AddExpression;
                 return false;
+            }
+
+            if (val is IInvocationOperation invocation)
+            {
+                if (invocation.TargetMethod is { 
+                        Name: "Format",
+                        ContainingType: { SpecialType: SpecialType.System_String },
+                        ContainingNamespace: { Name: "System" }
+                    })
+                {
+                    value = default!;
+                    syntax = null;
+                    syntaxKind = SyntaxKind.AddExpression;
+                    return false;
+                }
             }
 
             // other non-trivial default constant values
