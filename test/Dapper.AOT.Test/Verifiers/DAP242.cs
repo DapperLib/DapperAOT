@@ -1,62 +1,45 @@
 ﻿using Dapper.CodeAnalysis;
-using Microsoft.CodeAnalysis.Testing;
 using System.Threading.Tasks;
 using Xunit;
 using Diagnostics = Dapper.CodeAnalysis.DapperAnalyzer.Diagnostics;
+
 namespace Dapper.AOT.Test.Verifiers;
 
-public class DAP242 : Verifier<DapperAnalyzer>
+public partial class DAP242 : Verifier<DapperAnalyzer>
 {
     [Fact]
-    public Task ConcatenatedStringDetection_DirectUsage_PlusInt() => Test("""
+    public Task ConcatenatedStringDetection_DirectUsage_PlusInt() => VerifyCSharpConcatenatedTest("""
         int id = 1;
         _ = connection.Query<int>({|#0:"select Id from Customers where Id = " + id|});
-    """, Diagnostic(Diagnostics.ConcatenatedStringSqlExpression).WithLocation(0));
+    """);
 
     [Fact]
-    public Task ConcatenatedStringDetection_DirectUsage_PlusString() => Test("""
+    public Task ConcatenatedStringDetection_DirectUsage_PlusString() => VerifyCSharpConcatenatedTest("""
         string id = "1";
         _ = connection.Query<int>({|#0:"select Id from Customers where Id = " + id|});
-    """, Diagnostic(Diagnostics.ConcatenatedStringSqlExpression).WithLocation(0));
+    """);
 
     [Fact]
-    public Task ConcatenatedStringDetection_DirectUsage_MultiVariablesConcat() => Test("""
+    public Task ConcatenatedStringDetection_DirectUsage_MultiVariablesConcat() => VerifyCSharpConcatenatedTest("""
         int id = 1;
         string name = "dima";
         _ = connection.Query<int>({|#0:"select Id from Customers where Id = " + id + " and Name = " + name|});
-    """, Diagnostic(Diagnostics.ConcatenatedStringSqlExpression).WithLocation(0));
+    """);
 
     [Fact]
-    public Task ConcatenatedStringDetection_LocalVariableUsage() => Test("""
+    public Task ConcatenatedStringDetection_LocalVariableUsage() => VerifyCSharpConcatenatedTest("""
         int id = 1;
         var sqlQuery = "select Id from Customers where Id = " + id;
         _ = connection.Query<int>({|#0:sqlQuery|});
-    """, Diagnostic(Diagnostics.ConcatenatedStringSqlExpression).WithLocation(0));
+    """);
 
     [Fact]
-    public Task InterpolatedRawStringLiteralsDetection_DirectUsage() => Test(""""
-        int id = 1;
-        _ = connection.Query<int>({|#0:$"""
-            select Id from Customers where Id = {id}
-        """|});
-    """", Diagnostic(Diagnostics.InterpolatedStringSqlExpression).WithLocation(0));
-
-    [Fact]
-    public Task InterpolatedRawStringLiteralsDetection_LocalVariableUsage() => Test(""""
-        int id = 1;
-        var sqlQuery = $"""
-            select Id from Customers where Id = {id}
-        """;
-        _ = connection.Query<int>({|#0:sqlQuery|});
-    """", Diagnostic(Diagnostics.InterpolatedStringSqlExpression).WithLocation(0));
-
-    [Fact]
-    public Task ConcatenatedStringDetection_StringFormat() => Test("""
+    public Task ConcatenatedStringDetection_StringFormat() => VerifyCSharpConcatenatedTest("""
         int id = 1;
         _ = connection.Query<int>({|#0:string.Format("select Id from Customers where Id = {0}", id)|});
-    """, Diagnostic(Diagnostics.ConcatenatedStringSqlExpression).WithLocation(0));
+    """);
 
-    private Task Test(string methodCode, params DiagnosticResult[] expected) => CSVerifyAsync($$"""
+    private Task VerifyCSharpConcatenatedTest(string methodCode) => CSVerifyAsync($$"""
         using Dapper;
         using System.Data;
         using System.Data.Common;
@@ -69,5 +52,5 @@ public class DAP242 : Verifier<DapperAnalyzer>
                 {{methodCode}}
             }
         }
-    """, DefaultConfig, expected);
+    """, DefaultConfig, [ Diagnostic(Diagnostics.ConcatenatedStringSqlExpression).WithLocation(0) ]);
 }

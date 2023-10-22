@@ -1,8 +1,10 @@
 ﻿using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Operations;
 using Microsoft.CodeAnalysis.VisualBasic;
 using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using System;
+using System.Linq;
 
 namespace Dapper.Internal.Roslyn;
 
@@ -56,7 +58,45 @@ partial class LanguageHelper
 
         internal override StringSyntaxKind? TryDetectOperationStringSyntaxKind(IOperation operation)
         {
-            throw new NotImplementedException();
+            if (operation is not ILocalReferenceOperation localOperation)
+            {
+                return base.TryDetectOperationStringSyntaxKind(operation);
+            }
+
+            var referenceSyntax = localOperation.Local?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+            var variableDeclaratorSyntax = FindVariableDeclarator();
+            if (variableDeclaratorSyntax is not null)
+            {
+                var initializer = variableDeclaratorSyntax.Initializer?.Value;
+                if (initializer is null)
+                {
+                    return StringSyntaxKind.NotRecognized;
+                }
+                if (initializer is InterpolatedStringExpressionSyntax)
+                {
+                    return StringSyntaxKind.InterpolatedString;
+                }
+                if (initializer is BinaryExpressionSyntax)
+                {
+                    return StringSyntaxKind.ConcatenatedString;
+                }
+            }
+
+            return StringSyntaxKind.NotRecognized;
+
+            VariableDeclaratorSyntax? FindVariableDeclarator()
+            {
+                if (referenceSyntax is ModifiedIdentifierSyntax modifiedIdentifierSyntax)
+                {
+                    if (modifiedIdentifierSyntax.Parent is VariableDeclaratorSyntax)
+                    {
+                        return (VariableDeclaratorSyntax)modifiedIdentifierSyntax.Parent;
+                    }
+                }
+
+                if (referenceSyntax is VariableDeclaratorSyntax varDeclar) return varDeclar;
+                return null;
+            }
         }
     }
 }

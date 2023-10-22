@@ -83,47 +83,27 @@ partial class LanguageHelper
 
         internal override StringSyntaxKind? TryDetectOperationStringSyntaxKind(IOperation operation)
         {
-            if (operation is null) return null;
-            if (operation is IBinaryOperation && operation.Type?.SpecialType == SpecialType.System_String)
+            if (operation is not ILocalReferenceOperation localOperation)
             {
-                return StringSyntaxKind.ConcatenatedString;
+                return base.TryDetectOperationStringSyntaxKind(operation);
             }
-            if (operation is IInterpolatedStringOperation)
+
+            var referenceSyntax = localOperation.Local?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+            if (referenceSyntax is VariableDeclaratorSyntax variableDeclaratorSyntax)
             {
-                return StringSyntaxKind.InterpolatedString;
-            }
-            if (operation is IInvocationOperation invocation)
-            {
-                // `string.Format()` usage
-                if (invocation.TargetMethod is
-                    {
-                        Name: "Format",
-                        ContainingType: { SpecialType: SpecialType.System_String },
-                        ContainingNamespace: { Name: "System" }
-                    })
+                var initializer = variableDeclaratorSyntax.Initializer?.Value;
+                if (initializer is null)
                 {
-                    return StringSyntaxKind.FormatString;                    
+                    return StringSyntaxKind.NotRecognized;
                 }
-            }
-            if (operation is ILocalReferenceOperation localOperation)
-            {
-                var referenceSyntax = localOperation.Local?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                if (referenceSyntax is VariableDeclaratorSyntax variableDeclaratorSyntax)
+                if (initializer is InterpolatedStringExpressionSyntax)
                 {
-                    var initializer = variableDeclaratorSyntax.Initializer?.Value;
-                    if (initializer is null)
-                    {
-                        return StringSyntaxKind.NotRecognized;
-                    }
-                    if (initializer is InterpolatedStringExpressionSyntax)
-                    {
-                        return StringSyntaxKind.InterpolatedString;
-                    }
-                    if (initializer is BinaryExpressionSyntax)
-                    {
-                        return StringSyntaxKind.ConcatenatedString;
-                    }
-                }                
+                    return StringSyntaxKind.InterpolatedString;
+                }
+                if (initializer is BinaryExpressionSyntax)
+                {
+                    return StringSyntaxKind.ConcatenatedString;
+                }
             }
 
             return StringSyntaxKind.NotRecognized;

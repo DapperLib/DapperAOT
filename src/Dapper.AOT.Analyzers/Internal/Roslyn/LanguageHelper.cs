@@ -98,6 +98,33 @@ internal abstract partial class LanguageHelper
     internal abstract bool TryGetLiteralToken(SyntaxNode syntax, out SyntaxToken token);
     internal abstract bool TryGetStringSpan(SyntaxToken token, string text, scoped in TSqlProcessor.Location location, out int skip, out int take);
     internal abstract bool IsName(SyntaxNode syntax);
-    internal abstract StringSyntaxKind? TryDetectOperationStringSyntaxKind(IOperation operation);
     internal abstract string GetDisplayString(ISymbol method);
+
+    internal virtual StringSyntaxKind? TryDetectOperationStringSyntaxKind(IOperation operation)
+    {
+        if (operation is null) return null;
+        if (operation is IBinaryOperation)
+        {
+            return StringSyntaxKind.ConcatenatedString;
+        }
+        if (operation is IInterpolatedStringOperation)
+        {
+            return StringSyntaxKind.InterpolatedString;
+        }
+        if (operation is IInvocationOperation invocation)
+        {
+            // `string.Format()`
+            if (invocation.TargetMethod is
+                {
+                    Name: "Format",
+                    ContainingType: { SpecialType: SpecialType.System_String },
+                    ContainingNamespace: { Name: "System" }
+                })
+            {
+                return StringSyntaxKind.FormatString;
+            }
+        }
+
+        return StringSyntaxKind.NotRecognized;
+    }
 }
