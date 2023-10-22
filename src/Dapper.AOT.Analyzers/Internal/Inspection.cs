@@ -995,6 +995,7 @@ internal static class Inspection
 
             if (val is IInvocationOperation invocation)
             {
+                // `string.Format()` special case
                 if (invocation.TargetMethod is { 
                         Name: "Format",
                         ContainingType: { SpecialType: SpecialType.System_String },
