@@ -378,6 +378,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 {
                     SyntaxKind.InterpolatedStringExpression or SyntaxKind.InterpolatedStringText
                         => Diagnostics.InterpolatedStringSqlExpression,
+                    SyntaxKind.AddExpression 
+                        => Diagnostics.ConcatenatedStringSqlExpression,
                     _ => null
                 };
 

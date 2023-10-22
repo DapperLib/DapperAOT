@@ -953,12 +953,24 @@ internal static class Inspection
                 var referenceSyntax = local.Local?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
                 if (referenceSyntax is VariableDeclaratorSyntax varDeclSyntax)
                 {
-                    if (varDeclSyntax.Initializer?.Value is InterpolatedStringExpressionSyntax)
+                    var initializer = varDeclSyntax.Initializer?.Value;
+                    if (initializer is not null)
                     {
-                        value = default!;
-                        syntax = null;
-                        syntaxKind = SyntaxKind.InterpolatedStringExpression;
-                        return false;
+                        if (initializer is InterpolatedStringExpressionSyntax)
+                        {
+                            value = default!;
+                            syntax = null;
+                            syntaxKind = SyntaxKind.InterpolatedStringExpression;
+                            return false;
+                        }
+
+                        if (initializer is BinaryExpressionSyntax)
+                        {
+                            value = default!;
+                            syntax = null;
+                            syntaxKind = SyntaxKind.AddExpression;
+                            return false;
+                        }
                     }
                 }
             }
@@ -968,6 +980,15 @@ internal static class Inspection
                 value = default!;
                 syntax = null;
                 syntaxKind = SyntaxKind.InterpolatedStringExpression;
+                return false;
+            }
+
+            if (val is IBinaryOperation op)
+            {
+                // since we are parsing `string` here, `BinaryOperation` stands for string concatenation
+                value = default!;
+                syntax = null;
+                syntaxKind = SyntaxKind.AddExpression;
                 return false;
             }
 
