@@ -240,9 +240,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 var loc = op.Location.GetLineSpan();
                 var start = loc.StartLinePosition;
                 sb.Append("[global::System.Runtime.CompilerServices.InterceptsLocationAttribute(")
-                    .AppendVerbatimLiteral(loc.Path).Append(", ").Append(start.Line + 1).Append(", ").Append(start.Character + 1).Append(")]").NewLine();
+                    .AppendVerbatimLiteral(ctx.GetInterceptorFilePath(op.Location.SourceTree)).Append(", ").Append(start.Line + 1).Append(", ").Append(start.Character + 1).Append(")]").NewLine();
                 usageCount++;
             }
+
+
 
             if (usageCount == 0)
             {
