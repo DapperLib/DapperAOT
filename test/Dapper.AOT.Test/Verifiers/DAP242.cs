@@ -34,6 +34,23 @@ public class DAP242 : Verifier<DapperAnalyzer>
     """, Diagnostic(Diagnostics.ConcatenatedStringSqlExpression).WithLocation(0));
 
     [Fact]
+    public Task InterpolatedRawStringLiteralsDetection_DirectUsage() => Test(""""
+        int id = 1;
+        _ = connection.Query<int>({|#0:$"""
+            select Id from Customers where Id = {id}
+        """|});
+    """", Diagnostic(Diagnostics.InterpolatedStringSqlExpression).WithLocation(0));
+
+    [Fact]
+    public Task InterpolatedRawStringLiteralsDetection_LocalVariableUsage() => Test(""""
+        int id = 1;
+        var sqlQuery = $"""
+            select Id from Customers where Id = {id}
+        """;
+        _ = connection.Query<int>({|#0:sqlQuery|});
+    """", Diagnostic(Diagnostics.InterpolatedStringSqlExpression).WithLocation(0));
+
+    [Fact]
     public Task ConcatenatedStringDetection_StringFormat() => Test("""
         int id = 1;
         _ = connection.Query<int>({|#0:string.Format("select Id from Customers where Id = {0}", id)|});
