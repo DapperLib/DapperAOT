@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
+using System;
 using System.Collections.Immutable;
 using System.Text;
 using System.Threading;
@@ -104,6 +105,13 @@ internal readonly struct GenerateState
         {
             ctx.AddSource(hintName, SourceText.From(text, Encoding.UTF8));
         }
+    }
+
+    // see https://github.com/dotnet/roslyn/blob/main/docs/features/interceptors.md#file-paths
+    internal string GetInterceptorFilePath(SyntaxTree? tree)
+    {
+        if (tree is null) return "";
+        return Compilation.Options.SourceReferenceResolver?.NormalizePath(tree.FilePath, baseFilePath: null) ?? tree.FilePath;
     }
 }
 
