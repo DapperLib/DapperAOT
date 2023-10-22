@@ -372,13 +372,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             if (caseSensitive) flags |= SqlParseInputFlags.CaseSensitive;
 
             // can we get the SQL itself?
-            if (!TryGetConstantValueWithSyntax(sqlSource, out string? sql, out var sqlSyntax, out var syntaxKind))
+            if (!TryGetConstantValueWithSyntax(sqlSource, out string? sql, out var sqlSyntax, out var stringSyntaxKind))
             {
-                DiagnosticDescriptor? descriptor = syntaxKind switch
+                DiagnosticDescriptor? descriptor = stringSyntaxKind switch
                 {
-                    SyntaxKind.InterpolatedStringExpression or SyntaxKind.InterpolatedStringText
+                    StringSyntaxKind.InterpolatedString 
                         => Diagnostics.InterpolatedStringSqlExpression,
-                    SyntaxKind.AddExpression 
+                    StringSyntaxKind.ConcatenatedString or StringSyntaxKind.FormatString 
                         => Diagnostics.ConcatenatedStringSqlExpression,
                     _ => null
                 };

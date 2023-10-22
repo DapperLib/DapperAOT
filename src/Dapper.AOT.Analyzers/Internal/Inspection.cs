@@ -2,8 +2,6 @@
 using Dapper.Internal.Roslyn;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using System;
 using System.Collections.Generic;
@@ -909,7 +907,7 @@ internal static class Inspection
         ? symbol.NullableAnnotation == NullableAnnotation.Annotated
         : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
 
-    public static bool TryGetConstantValueWithSyntax<T>(IOperation val, out T? value, out SyntaxNode? syntax, out SyntaxKind syntaxKind)
+    public static bool TryGetConstantValueWithSyntax<T>(IOperation val, out T? value, out SyntaxNode? syntax, out StringSyntaxKind? syntaxKind)
     {
         try
         {
@@ -917,7 +915,7 @@ internal static class Inspection
             {
                 value = (T?)val.ConstantValue.Value;
                 syntax = val.Syntax;
-                syntaxKind = syntax.GetKind();
+                syntaxKind = val.TryDetectOperationStringSyntaxKind();
                 return true;
             }
             if (val is IArgumentOperation arg)
@@ -930,83 +928,39 @@ internal static class Inspection
                 val = conv.Operand;
             }
 
+            if (!val.ConstantValue.HasValue)
+            {
+                var stringSyntaxKind = val.TryDetectOperationStringSyntaxKind();
+                switch (stringSyntaxKind)
+                {
+                    case StringSyntaxKind.ConcatenatedString:
+                    case StringSyntaxKind.InterpolatedString:
+                    case StringSyntaxKind.FormatString:
+                    {
+                        value = default!;
+                        syntax = null;
+                        syntaxKind = stringSyntaxKind;
+                        return false;
+                    }
+                }
+            }
+
             // type-level constants
             if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
             {
                 value = (T?)field.Field.ConstantValue;
                 syntax = field.Field.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                syntaxKind = syntax!.GetKind();
+                syntaxKind = val.TryDetectOperationStringSyntaxKind();
                 return true;
             }
 
             // local constants
-            if (val is ILocalReferenceOperation local)
+            if (val is ILocalReferenceOperation local && local.Local.HasConstantValue)
             {
-                if (local.Local.HasConstantValue)
-                {
-                    value = (T?)local.Local.ConstantValue;
-                    syntax = local.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                    syntaxKind = syntax!.GetKind();
-                    return true;
-                }
-
-                var referenceSyntax = local.Local?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                if (referenceSyntax is VariableDeclaratorSyntax varDeclSyntax)
-                {
-                    var initializer = varDeclSyntax.Initializer?.Value;
-                    if (initializer is not null)
-                    {
-                        if (initializer is InterpolatedStringExpressionSyntax)
-                        {
-                            value = default!;
-                            syntax = null;
-                            syntaxKind = SyntaxKind.InterpolatedStringExpression;
-                            return false;
-                        }
-
-                        if (initializer is BinaryExpressionSyntax)
-                        {
-                            // since we are parsing `string` here, `BinaryExpression` stands for string concatenation
-                            value = default!;
-                            syntax = null;
-                            syntaxKind = SyntaxKind.AddExpression;
-                            return false;
-                        }
-                    }
-                }
-            }
-
-            if (val is IInterpolatedStringOperation)
-            {
-                value = default!;
-                syntax = null;
-                syntaxKind = SyntaxKind.InterpolatedStringExpression;
-                return false;
-            }
-
-            if (val is IBinaryOperation op)
-            {
-                // since we are parsing `string` here, `BinaryOperation` stands for string concatenation
-                value = default!;
-                syntax = null;
-                syntaxKind = SyntaxKind.AddExpression;
-                return false;
-            }
-
-            if (val is IInvocationOperation invocation)
-            {
-                // `string.Format()` special case
-                if (invocation.TargetMethod is { 
-                        Name: "Format",
-                        ContainingType: { SpecialType: SpecialType.System_String },
-                        ContainingNamespace: { Name: "System" }
-                    })
-                {
-                    value = default!;
-                    syntax = null;
-                    syntaxKind = SyntaxKind.AddExpression;
-                    return false;
-                }
+                value = (T?)local.Local.ConstantValue;
+                syntax = local.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                syntaxKind = val.TryDetectOperationStringSyntaxKind();
+                return true;
             }
 
             // other non-trivial default constant values
@@ -1014,7 +968,7 @@ internal static class Inspection
             {
                 value = (T?)val.ConstantValue.Value;
                 syntax = val.Syntax;
-                syntaxKind = syntax!.GetKind();
+                syntaxKind = val.TryDetectOperationStringSyntaxKind();
                 return true;
             }
 
@@ -1024,14 +978,14 @@ internal static class Inspection
                 // we already ruled out explicit constant above, so: must be default
                 value = default;
                 syntax = val.Syntax;
-                syntaxKind = syntax!.GetKind();
+                syntaxKind = val.TryDetectOperationStringSyntaxKind();
                 return true;
             }
         }
         catch { }
         value = default!;
         syntax = null;
-        syntaxKind = SyntaxKind.None;
+        syntaxKind = StringSyntaxKind.NotRecognized;
         return false;
     }
 

@@ -2,7 +2,9 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
 using System;
+using System.Linq;
 
 namespace Dapper.Internal.Roslyn;
 partial class LanguageHelper
@@ -77,6 +79,54 @@ partial class LanguageHelper
             }
             skip = take = 0;
             return false;
+        }
+
+        internal override StringSyntaxKind? TryDetectOperationStringSyntaxKind(IOperation operation)
+        {
+            if (operation is null) return null;
+            if (operation is IBinaryOperation && operation.Type?.SpecialType == SpecialType.System_String)
+            {
+                return StringSyntaxKind.ConcatenatedString;
+            }
+            if (operation is IInterpolatedStringOperation)
+            {
+                return StringSyntaxKind.InterpolatedString;
+            }
+            if (operation is IInvocationOperation invocation)
+            {
+                // `string.Format()` usage
+                if (invocation.TargetMethod is
+                    {
+                        Name: "Format",
+                        ContainingType: { SpecialType: SpecialType.System_String },
+                        ContainingNamespace: { Name: "System" }
+                    })
+                {
+                    return StringSyntaxKind.FormatString;                    
+                }
+            }
+            if (operation is ILocalReferenceOperation localOperation)
+            {
+                var referenceSyntax = localOperation.Local?.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                if (referenceSyntax is VariableDeclaratorSyntax variableDeclaratorSyntax)
+                {
+                    var initializer = variableDeclaratorSyntax.Initializer?.Value;
+                    if (initializer is null)
+                    {
+                        return StringSyntaxKind.NotRecognized;
+                    }
+                    if (initializer is InterpolatedStringExpressionSyntax)
+                    {
+                        return StringSyntaxKind.InterpolatedString;
+                    }
+                    if (initializer is BinaryExpressionSyntax)
+                    {
+                        return StringSyntaxKind.ConcatenatedString;
+                    }
+                }                
+            }
+
+            return StringSyntaxKind.NotRecognized;
         }
     }
 

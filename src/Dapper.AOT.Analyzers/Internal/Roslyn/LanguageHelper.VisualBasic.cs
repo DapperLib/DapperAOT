@@ -53,5 +53,10 @@ partial class LanguageHelper
             skip = take = 0;
             return false;
         }
+
+        internal override StringSyntaxKind? TryDetectOperationStringSyntaxKind(IOperation operation)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
