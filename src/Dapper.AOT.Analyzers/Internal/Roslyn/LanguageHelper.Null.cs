@@ -26,5 +26,8 @@ partial class LanguageHelper
 
         internal override string GetDisplayString(ISymbol symbol)
             => symbol?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)!;
+
+        internal override StringSyntaxKind? TryDetectOperationStringSyntaxKind(IOperation operation)
+            => null;
     }
 }

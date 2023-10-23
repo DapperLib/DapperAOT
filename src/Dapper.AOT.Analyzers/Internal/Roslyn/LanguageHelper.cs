@@ -26,6 +26,9 @@ internal static class SyntaxExtensions
     public static bool IsMethodDeclaration(this SyntaxNode syntax)
         => GetHelper(syntax.Language).IsMethodDeclaration(syntax);
 
+    public static StringSyntaxKind? TryDetectOperationStringSyntaxKind(this IOperation operation)
+        => GetHelper(operation.Syntax?.Language).TryDetectOperationStringSyntaxKind(operation);
+
     public static Location ComputeLocation(this SyntaxToken token, scoped in TSqlProcessor.Location location)
     {
         var origin = token.GetLocation();
@@ -96,4 +99,32 @@ internal abstract partial class LanguageHelper
     internal abstract bool TryGetStringSpan(SyntaxToken token, string text, scoped in TSqlProcessor.Location location, out int skip, out int take);
     internal abstract bool IsName(SyntaxNode syntax);
     internal abstract string GetDisplayString(ISymbol method);
+
+    internal virtual StringSyntaxKind? TryDetectOperationStringSyntaxKind(IOperation operation)
+    {
+        if (operation is null) return null;
+        if (operation is IBinaryOperation)
+        {
+            return StringSyntaxKind.ConcatenatedString;
+        }
+        if (operation is IInterpolatedStringOperation)
+        {
+            return StringSyntaxKind.InterpolatedString;
+        }
+        if (operation is IInvocationOperation invocation)
+        {
+            // `string.Format()`
+            if (invocation.TargetMethod is
+                {
+                    Name: "Format",
+                    ContainingType: { SpecialType: SpecialType.System_String },
+                    ContainingNamespace: { Name: "System" }
+                })
+            {
+                return StringSyntaxKind.FormatString;
+            }
+        }
+
+        return StringSyntaxKind.NotRecognized;
+    }
 }
