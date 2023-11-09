@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFrameworks>net6.0;net48</TargetFrameworks>
-        <NoWarn>$(NoWarn);IDE0042;CS8002</NoWarn>
+        <NoWarn>$(NoWarn);IDE0042;CS8002;CA1816</NoWarn>
         <RootNamespace>Dapper.AOT.Test</RootNamespace>
         <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
     </PropertyGroup>

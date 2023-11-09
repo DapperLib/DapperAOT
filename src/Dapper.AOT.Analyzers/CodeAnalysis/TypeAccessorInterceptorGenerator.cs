@@ -169,7 +169,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
         context.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.GetSourceText());
     }
 
-    private bool IsGenerateInputValid(ref SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+    private static bool IsGenerateInputValid(ref SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
     {
         if (state.Nodes.IsDefaultOrEmpty)
         {
@@ -526,7 +526,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
 
     private static string GetCustomTypeAccessorClassName(int num) => "DapperCustomTypeAccessor" + num;
 
-    private MemberData[] ConstructTypeMembers(ITypeSymbol typeSymbol)
+    private static MemberData[] ConstructTypeMembers(ITypeSymbol typeSymbol)
     {
         var members = new List<MemberData>();
         int memberNumber = 0;

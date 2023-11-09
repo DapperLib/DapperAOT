@@ -17,6 +17,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace Dapper.CodeAnalysis;
@@ -173,6 +174,23 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         return null;
     }
 
+    internal static class FeatureKeys
+    {
+        public const string InterceptorsPreviewNamespaces = nameof(InterceptorsPreviewNamespaces),
+            CodegenNamespace = "Dapper.AOT";
+        public static KeyValuePair<string, string> InterceptorsPreviewNamespacePair => new(InterceptorsPreviewNamespaces, CodegenNamespace);
+
+        public static bool IsEnabled(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return false;
+            value = value.Trim();
+
+            return match.IsMatch(value);
+
+        }
+        static readonly Regex match = new("(?:;|^)" + CodegenNamespace + "(?:;|$)", RegexOptions.Compiled);
+    }
+
     private static bool CheckPrerequisites(in GenerateState ctx)
     {
         if (ctx.Nodes.IsDefaultOrEmpty) return false; // nothing to do
@@ -181,7 +199,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         if (ctx.Nodes[0].Location.SourceTree?.Options is not CSharpParseOptions options) return false; // not C#
 
         bool success = true;
-        if (!options.Features.ContainsKey("InterceptorsPreview"))
+        if (!options.Features.TryGetValue(FeatureKeys.InterceptorsPreviewNamespaces, out var value)
+            || !FeatureKeys.IsEnabled(value))
         {
             ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsNotEnabled, null));
             success = false;
@@ -222,6 +241,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         bool allowUnsafe = ctx.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
+            .Append("namespace ").Append(FeatureKeys.CodegenNamespace).Append(" // interceptors must be in a known namespace").Indent().NewLine()
             .Append("file static class DapperGeneratedInterceptors").Indent().NewLine();
         int methodIndex = 0, callSiteCount = 0;
 
@@ -382,7 +402,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             WriteCommandFactory(ctx, baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount, tuple.AdditionalCommandState);
         }
 
-        sb.Outdent(); // ends our generated file-scoped class
+        sb.Outdent().Outdent(); // ends our generated file-scoped class and the namespace
 
         var interceptsLocationWriter = new InterceptorsLocationAttributeWriter(sb);
         interceptsLocationWriter.Write(ctx.Compilation);
