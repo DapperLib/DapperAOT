@@ -4,7 +4,7 @@
         <PackageVersion Include="BenchmarkDotNet" Version="0.13.8" />
         <PackageVersion Include="FastMember" Version="1.5.0" />
         <PackageVersion Include="Dapper" Version="2.1.1" />
-        <PackageVersion Include="Dapper.AOT" Version="0.5.0-beta.122.g4871abedea" />
+        <PackageVersion Include="Dapper.AOT" Version="0.5.0-beta.119" />
         <PackageVersion Include="Dapper.StrongName" Version="2.1.1" />
         <PackageVersion Include="System.Memory" Version="4.5.5" />
         <PackageVersion Include="Nerdbank.GitVersioning" Version="3.6.133" />
