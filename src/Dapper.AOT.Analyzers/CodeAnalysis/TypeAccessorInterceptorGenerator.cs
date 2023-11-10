@@ -15,6 +15,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using static Dapper.CodeAnalysis.DapperInterceptorGenerator;
 
 namespace Dapper.CodeAnalysis;
 
@@ -220,9 +221,12 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
 
         public void WriteInterceptorsClass(Action innerWriter)
         {
-            _sb.Append("file static class DapperTypeAccessorGeneratedInterceptors").Indent().NewLine();
+            _sb.Append("#nullable enable").NewLine()
+                .Append("namespace ").Append(FeatureKeys.CodegenNamespace)
+                .Append(" // interceptors must be in a known namespace").Indent().NewLine()
+                .Append("file static class DapperTypeAccessorGeneratedInterceptors").Indent().NewLine();
             innerWriter();
-            _sb.Outdent();
+            _sb.Outdent().Outdent();
         }
 
         public void WriteInterceptorsLocationAttribute(Location location)
