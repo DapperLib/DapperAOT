@@ -48,7 +48,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
     private sealed class AnalyzerState
     {
-        private readonly List<Location> _missedOpportunities = new();
+        private readonly List<Location> _missedOpportunities = [];
         private int _dapperHits; // this isn't a true count; it'll usually be 0 or 1, no matter the number of calls, because we stop tracking
         private void OnDapperAotHit()
         {
@@ -703,7 +703,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     if (rowCountHintMember is not null)
                     {
                         reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.RowCountHintDuplicated, member.GetLocation(Types.RowCountHintAttribute),
-                            additionalLocations: [rowCountHintMember.GetValueOrDefault().GetLocation(Types.RowCountHintAttribute)],
+                            additionalLocations: rowCountHintMember.GetValueOrDefault().AsAdditionalLocations(Types.RowCountHintAttribute),
                             messageArgs: [member.CodeName]));
                     }
                     rowCountHintMember = member;
@@ -834,7 +834,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     {
                         reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateRowCount,
                             location: member.GetLocation(Types.RowCountAttribute),
-                            additionalLocations: [rowCountMember.GetValueOrDefault().GetLocation(Types.RowCountAttribute)],
+                            additionalLocations: rowCountMember.GetValueOrDefault().AsAdditionalLocations(Types.RowCountAttribute),
                             messageArgs: [rowCountMember.GetValueOrDefault().CodeName, member.CodeName]));
                     }
                     else
@@ -845,7 +845,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     {
                         reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.RowCountDbValue,
                             location: member.GetLocation(Types.DbValueAttribute),
-                            additionalLocations: [member.GetLocation(Types.RowCountAttribute)],
+                            additionalLocations: member.AsAdditionalLocations(Types.RowCountAttribute),
                             messageArgs: [member.CodeName]));
                     }
                 }
@@ -881,7 +881,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 {
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateParameter,
                         location: member.GetLocation(Types.DbValueAttribute),
-                        additionalLocations: [existing.GetLocation(Types.DbValueAttribute)],
+                        additionalLocations: existing.AsAdditionalLocations(Types.DbValueAttribute),
                         messageArgs: [existing.CodeName, member.CodeName, dbName ]));
                 }
                 else
@@ -899,7 +899,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     {
                         reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateReturn,
                             location: member.GetLocation(Types.DbValueAttribute),
-                            additionalLocations: [returnCodeMember.GetValueOrDefault().GetLocation(Types.DbValueAttribute)],
+                            additionalLocations: returnCodeMember.GetValueOrDefault().AsAdditionalLocations(Types.DbValueAttribute),
                             messageArgs: [returnCodeMember.GetValueOrDefault().CodeName, member.CodeName]));
                     }
                 }

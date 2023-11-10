@@ -364,6 +364,12 @@ internal static class Inspection
     }
     public readonly struct ElementMember
     {
+        public Location[]? AsAdditionalLocations(string? attributeName = null)
+        {
+            var loc = GetLocation(attributeName);
+            return loc is null ? null : [loc];
+        }
+
         private readonly AttributeData? _dbValue;
         public string DbName => TryGetAttributeValue(_dbValue, "Name", out string? name)
             && !string.IsNullOrWhiteSpace(name) ? name!.Trim() : CodeName;

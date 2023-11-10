@@ -25,8 +25,6 @@ public abstract class Verifier
 
     protected static DiagnosticResult Diagnostic(DiagnosticDescriptor diagnostic) => new(diagnostic);
 
-    protected static readonly DiagnosticResult InterceptorsNotEnabled = Diagnostic(DapperInterceptorGenerator.Diagnostics.InterceptorsNotEnabled);
-
     protected static DiagnosticResult InterceptorsGenerated(int handled, int total,
         int interceptors, int commands, int readers)
         => new DiagnosticResult(DapperInterceptorGenerator.Diagnostics.InterceptorsGenerated)
@@ -123,8 +121,7 @@ public abstract class Verifier
     private static readonly SourceText AssumeSqlServer = CreateEditorConfig(SqlSyntax.SqlServer, SqlParseInputFlags.None);
 
     protected static readonly Func<Solution, ProjectId, Solution> InterceptorsEnabled = WithFeatures(
-        new("InterceptorsPreview", "true"), // rc 1
-        new("InterceptorsPreviewNamespaces", "Dapper.AOT") // rc2 ?
+        DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair
     );
 
     protected static readonly Func<Solution, ProjectId, Solution> CSharpPreview = WithCSharpLanguageVersion(Microsoft.CodeAnalysis.CSharp.LanguageVersion.Preview);
