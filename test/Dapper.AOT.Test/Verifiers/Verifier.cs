@@ -25,8 +25,6 @@ public abstract class Verifier
 
     protected static DiagnosticResult Diagnostic(DiagnosticDescriptor diagnostic) => new(diagnostic);
 
-    protected static readonly DiagnosticResult InterceptorsNotEnabled = Diagnostic(DapperInterceptorGenerator.Diagnostics.InterceptorsNotEnabled);
-
     protected static DiagnosticResult InterceptorsGenerated(int handled, int total,
         int interceptors, int commands, int readers)
         => new DiagnosticResult(DapperInterceptorGenerator.Diagnostics.InterceptorsGenerated)

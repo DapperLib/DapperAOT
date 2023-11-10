@@ -200,13 +200,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         bool success = true;
 
-        if (!options.Features.TryGetValue(FeatureKeys.InterceptorsPreviewNamespaces, out var value)
-            || !FeatureKeys.IsEnabled(value))
-        {
-            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsNotEnabled, null, FeatureKeys.CodegenNamespace, value));
-            success = false;
-        }
-
         var version = options.LanguageVersion;
         if (version != LanguageVersion.Default && version < LanguageVersion.CSharp11)
         {
