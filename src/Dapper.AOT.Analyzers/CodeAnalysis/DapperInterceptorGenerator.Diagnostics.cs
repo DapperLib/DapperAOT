@@ -10,7 +10,7 @@ partial class DapperInterceptorGenerator
         internal static readonly DiagnosticDescriptor
             InterceptorsGenerated = LibraryHidden("DAP000", "Interceptors generated", "Dapper.AOT handled {0} of {1} possible call-sites using {2} interceptors, {3} commands and {4} readers"),
             InterceptorsNotEnabled = LibraryWarning("DAP003", "Interceptors not enabled",
-                $"Interceptors need to be enabled by adding '<InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);{FeatureKeys.CodegenNamespace}</InterceptorsPreviewNamespaces>' to your project file"),
+                "Interceptors need to be enabled by adding '<InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);{0}</InterceptorsPreviewNamespaces>' to your project file; current value: '{1}'"),
             LanguageVersionTooLow = LibraryWarning("DAP004", "Language version too low", "Interceptors require at least C# version 11"),
 
 

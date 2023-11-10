@@ -199,10 +199,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         if (ctx.Nodes[0].Location.SourceTree?.Options is not CSharpParseOptions options) return false; // not C#
 
         bool success = true;
+
         if (!options.Features.TryGetValue(FeatureKeys.InterceptorsPreviewNamespaces, out var value)
             || !FeatureKeys.IsEnabled(value))
         {
-            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsNotEnabled, null));
+            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsNotEnabled, null, FeatureKeys.CodegenNamespace, value));
             success = false;
         }
 
