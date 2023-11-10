@@ -4,7 +4,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <SignAssembly>False</SignAssembly>
         <LangVersion>latest</LangVersion>
-        <!--<InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>-->
+        <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
     </PropertyGroup>
     <ItemGroup>
         <None Update="BatchInsertBenchmarks.txt" DependentUpon="BatchInsertBenchmarks.cs" />
