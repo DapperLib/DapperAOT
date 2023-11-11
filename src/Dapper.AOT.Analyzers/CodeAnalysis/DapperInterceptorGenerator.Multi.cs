@@ -17,7 +17,7 @@ public sealed partial class DapperInterceptorGenerator
         string? fixedSql,
         AdditionalCommandState? additionalCommandState)
     {
-        if (!HasAny(flags, OperationFlags.Execute))
+        if (!flags.HasAny(OperationFlags.Execute))
         {
             // only EXECUTE is supported for collections
             return false;
@@ -41,7 +41,7 @@ public sealed partial class DapperInterceptorGenerator
             WriteBatchCommandArguments(elementType);
 
             // return Command<type>(...).ExecuteAsync((cast)param, ...);
-            bool isAsync = HasAny(flags, OperationFlags.Async);
+            bool isAsync = flags.HasAny(OperationFlags.Async);
             sb.Append("Execute").Append(isAsync ? "Async" : "").Append("(");
             sb.Append("(").Append(castType).Append(")param!");
             if (isAsync && HasParam(methodParameters, "cancellationToken"))
@@ -89,7 +89,7 @@ public sealed partial class DapperInterceptorGenerator
               .Append(", ");
 
             // commandFactory
-            if (HasAny(flags, OperationFlags.HasParameters))
+            if (flags.HasAny(OperationFlags.HasParameters))
             {
                 var index = factories.GetIndex(elementType, map, cache, true, additionalCommandState, out var subIndex);
                 sb.Append("CommandFactory").Append(index).Append(".Instance").Append(subIndex);

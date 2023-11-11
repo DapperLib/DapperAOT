@@ -1,19 +1,10 @@
-﻿using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis;
-using System.Collections.Immutable;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Dapper.CodeAnalysis.Abstractions
 {
-    /// <summary>
-    /// Dapper interceptors' base functionality
-    /// </summary>
-    public abstract class InterceptorGeneratorBase : DiagnosticAnalyzer, IIncrementalGenerator,
-        ISourceGenerator // for CSharpGeneratorDriver - see Roslyn #69906
+    public abstract class InterceptorGeneratorBase : DiagnosticAnalyzer, IIncrementalGenerator
     {
-        /// <inheritdoc/>
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Diagnostics.All;
-
-        /// <inheritdoc/>
         public override void Initialize(AnalysisContext context)
         {
             context.EnableConcurrentExecution();
@@ -21,16 +12,7 @@ namespace Dapper.CodeAnalysis.Abstractions
             // we won't register anything; all we really want here is to report our supported diagnostics
         }
 
-        /// <summary>
-        /// Whether to emit interceptors even if the "interceptors" feature is not detected
-        /// </summary>
-        public bool OverrideFeatureEnabled { get; set; }
-
         /// <inheritdoc/>
         public abstract void Initialize(IncrementalGeneratorInitializationContext context);
-
-        void ISourceGenerator.Initialize(GeneratorInitializationContext context) { }
-
-        void ISourceGenerator.Execute(GeneratorExecutionContext context) { }
     }
 }

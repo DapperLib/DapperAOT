@@ -2,135 +2,160 @@
 using Dapper.Internal.Roslyn;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
 using System.Data;
+using System.Diagnostics;
+using static Dapper.SqlAnalysis.TSqlProcessor;
 
 namespace Dapper.Internal;
 
-internal class DiagnosticTSqlProcessor : TSqlProcessor
+internal sealed class OperationAnalysisContextTSqlProcessor : DiagnosticTSqlProcessor
 {
-    private object? _diagnostics;
-    private readonly Microsoft.CodeAnalysis.Location? _location;
-    private readonly LiteralExpressionSyntax? _literal;
-    public object? DiagnosticsObject => _diagnostics;
-    private readonly ITypeSymbol? _parameterType;
-    public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, bool caseSensitive, object? diagnostics,
-        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(caseSensitive)
+    private readonly OperationAnalysisContext _ctx;
+    public OperationAnalysisContextTSqlProcessor(in OperationAnalysisContext ctx, ITypeSymbol? parameterType, SqlParseInputFlags flags,
+        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax)
+        :base(parameterType, flags, location, sqlSyntax)
     {
-        _diagnostics = diagnostics;
-        _location = sqlSyntax?.GetLocation() ?? location;
-        _parameterType = parameterType;
+        _ctx = ctx;
+    }
+    protected override void OnDiagnostic(Diagnostic diagnostic) => _ctx.ReportDiagnostic(diagnostic);
+}
+internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
+{
+    private readonly Microsoft.CodeAnalysis.Location? _location;
+    private readonly SyntaxToken? _sourceToken;
 
-        switch (sqlSyntax)
+    public DiagnosticTSqlProcessor(ITypeSymbol? parameterType, SqlParseInputFlags flags,
+        Microsoft.CodeAnalysis.Location? location, SyntaxNode? sqlSyntax) : base(flags)
+    {
+        _location = sqlSyntax?.GetLocation() ?? location;
+        if (sqlSyntax.TryGetLiteralToken(out var token))
         {
-            case LiteralExpressionSyntax direct:
-                _literal = direct;
-                break;
-            case VariableDeclaratorSyntax decl when decl.Initializer?.Value is LiteralExpressionSyntax indirect:
-                _literal = indirect;
-                break;
-           // other interesting possibilities include InterpolatedStringExpression, AddExpression
+            _sourceToken = token;
         }
     }
 
+    protected abstract void OnDiagnostic(Diagnostic diagnostic);
+    private void OnDiagnostic(DiagnosticDescriptor descriptor, Location location, params object[] args)
+        => OnDiagnostic(Diagnostic.Create(descriptor, GetLocation(location), args));
+
     private Microsoft.CodeAnalysis.Location? GetLocation(in Location location)
     {
-        if (_literal is not null)
+        if (_sourceToken is not null && !location.IsZero)
         {
-            return LiteralLocationHelper.ComputeLocation(_literal.Token, in location);
+            return _sourceToken.GetValueOrDefault().ComputeLocation(in location);
         }
         // just point to the operation
         return _location;
     }
 
-    
-
-    private void AddDiagnostic(DiagnosticDescriptor diagnostic, in Location location, params object?[]? args)
-    {
-        Diagnostics.Add(ref _diagnostics, Diagnostic.Create(diagnostic, GetLocation(location), args));
-    }
     protected override void OnError(string error, in Location location)
-        => AddDiagnostic(Diagnostics.SqlError, location, error, location.Line, location.Column);
+    {
+        Debug.Fail("unhandled error: " + error);
+        OnDiagnostic(DapperAnalyzer.Diagnostics.GeneralSqlError, location, error);
+    }
 
     protected override void OnAdditionalBatch(Location location)
-        => AddDiagnostic(Diagnostics.MultipleBatches, location, location.Line, location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.MultipleBatches, location);
 
     protected override void OnDuplicateVariableDeclaration(Variable variable)
-        => AddDiagnostic(Diagnostics.DuplicateVariableDeclaration, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.DuplicateVariableDeclaration, variable.Location, variable.Name);
 
-    protected override void OnExecVariable(Location location)
-        => AddDiagnostic(Diagnostics.ExecVariable, location, location.Line, location.Column);
+    protected override void OnVariableParameterConflict(Variable variable)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.VariableParameterConflict, variable.Location, variable.Name);
+
+    protected override void OnExecComposedSql(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.ExecComposedSql, location);
     protected override void OnSelectScopeIdentity(Location location)
-        => AddDiagnostic(Diagnostics.SelectScopeIdentity, location, location.Line, location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectScopeIdentity, location);
     protected override void OnGlobalIdentity(Location location)
-        => AddDiagnostic(Diagnostics.GlobalIdentity, location, location.Line, location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.GlobalIdentity, location);
 
     protected override void OnNullLiteralComparison(Location location)
-        => AddDiagnostic(Diagnostics.NullLiteralComparison, location, location.Line, location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison, location);
 
     protected override void OnParseError(ParseError error, Location location)
-        => AddDiagnostic(Diagnostics.ParseError, location, error.Message, error.Number, location.Line, location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.ParseError, location, error.Number, error.Message);
 
     protected override void OnScalarVariableUsedAsTable(Variable variable)
-        => AddDiagnostic(Diagnostics.ScalarVariableUsedAsTable, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.ScalarVariableUsedAsTable, variable.Location, variable.Name);
 
     protected override void OnTableVariableUsedAsScalar(Variable variable)
-        => AddDiagnostic(Diagnostics.TableVariableUsedAsScalar, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.TableVariableUsedAsScalar, variable.Location, variable.Name);
 
     protected override void OnVariableAccessedBeforeAssignment(Variable variable)
-        => AddDiagnostic(variable.IsTable ? Diagnostics.TableVariableAccessedBeforePopulate : Diagnostics.VariableAccessedBeforeAssignment, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => OnDiagnostic(variable.IsTable
+            ? DapperAnalyzer.Diagnostics.TableVariableAccessedBeforePopulate
+            : DapperAnalyzer.Diagnostics.VariableAccessedBeforeAssignment, variable.Location, variable.Name);
 
     protected override void OnVariableNotDeclared(Variable variable)
-        => AddDiagnostic(Diagnostics.VariableNotDeclared, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.VariableNotDeclared, variable.Location, variable.Name);
 
     protected override void OnVariableAccessedBeforeDeclaration(Variable variable)
-        => AddDiagnostic(Diagnostics.VariableAccessedBeforeDeclaration, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.VariableAccessedBeforeDeclaration, variable.Location, variable.Name);
 
     protected override void OnVariableValueNotConsumed(Variable variable)
-        => AddDiagnostic(Diagnostics.VariableValueNotConsumed, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.VariableValueNotConsumed, variable.Location, variable.Name);
 
     protected override void OnTableVariableOutputParameter(Variable variable)
-        => AddDiagnostic(Diagnostics.TableVariableOutputParameter, variable.Location, variable.Name, variable.Location.Line, variable.Location.Column);
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.TableVariableOutputParameter, variable.Location, variable.Name);
 
-    protected override bool TryGetParameter(string name, out ParameterDirection direction)
-    {
-        // we have knowledge of the type system; use it
+    protected override void OnInsertColumnMismatch(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.InsertColumnsMismatch, location);
+    protected override void OnInsertColumnsNotSpecified(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.InsertColumnsNotSpecified, location);
+    protected override void OnInsertColumnsUnbalanced(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.InsertColumnsUnbalanced, location);
+    protected override void OnSelectStar(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectStar, location);
+    protected override void OnSelectEmptyColumnName(Location location, int column)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectEmptyColumnName, location, column);
+    protected override void OnSelectDuplicateColumnName(Location location, string name)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectDuplicateColumnName, location, name);
+    protected override void OnSelectAssignAndRead(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectAssignAndRead, location);
 
-        if (_parameterType is null)
-        {
-            // no parameter
-            direction = default;
-            return false;
-        }
+    protected override void OnUpdateWithoutWhere(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.UpdateWithoutWhere, location);
+    protected override void OnDeleteWithoutWhere(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.DeleteWithoutWhere, location);
 
-        if (Inspection.IsMissingOrObjectOrDynamic(_parameterType))
-        {
-            // dynamic
-            direction = ParameterDirection.Input;
-            return true;
-        }
+    protected override void OnFromMultiTableMissingAlias(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.FromMultiTableMissingAlias, location);
+    protected override void OnFromMultiTableUnqualifiedColumn(Location location, string name)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.FromMultiTableUnqualifiedColumn, location, name);
+    protected override void OnNonIntegerTop(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.NonIntegerTop, location);
+    protected override void OnNonPositiveTop(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.NonPositiveTop, location);
+    protected override void OnNonPositiveFetch(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.NonPositiveFetch, location);
+    protected override void OnNegativeOffset(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.NegativeOffset, location);
+    protected override void OnSelectFirstTopError(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectFirstTopError, location);
+    protected override void OnSelectSingleRowWithoutWhere(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectSingleRowWithoutWhere, location);
+    protected override void OnSelectSingleTopError(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectSingleTopError, location);
 
-        if (!string.IsNullOrEmpty(name) && name[0] == '@')
-        {
-            name = name.Substring(1);
-        }
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            bool caseSensitive = CaseSensitive;
-            foreach (var member in Inspection.GetMembers(_parameterType))
-            {
-                if (caseSensitive ? member.DbName == name : string.Equals(member.DbName, name, StringComparison.OrdinalIgnoreCase))
-                {
-                    direction = member.Direction;
-                    return true;
-                }
-            }
-        }
+    protected override void OnSimplifyExpression(Location location, string value)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.SimplifyExpression, location, value);
 
-        // nope
-        direction = default;
-        return false;
-    }
+    protected override void OnTopWithOffset(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.TopWithOffset, location);
+
+    protected override void OnUnusedParameter(Variable variable)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.UnusedParameter, variable.Location, variable.Name);
+
+    protected override void OnDivideByZero(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.DivideByZero, location);
+
+    protected override void OnInvalidNullExpression(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.InvalidNullExpression, location);
+
+    protected override void OnTrivialOperand(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.TrivialOperand, location);
 }

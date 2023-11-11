@@ -1,0 +1,8 @@
+Generator produced 1 diagnostics:
+
+Hidden DAP000  L1 C1
+Dapper.AOT handled 54 of 54 possible call-sites using 10 interceptors, 3 commands and 1 readers
+Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
+
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L111 C198
+Possible null reference argument for parameter 'args' in 'dynamic Command<object>.QuerySingle<dynamic>(object args, RowFactory<dynamic>? rowFactory = null)'.

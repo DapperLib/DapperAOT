@@ -25,10 +25,10 @@ namespace SomethingAwkward
             return base.GetCommand(connection, sql, commandType, args);
         }
 
-        public override void PostProcess(DbCommand command, T args)
+        public override void PostProcess(DbCommand command, T args, int rowcount)
         {
             Console.WriteLine(nameof(PostProcess));
-            base.PostProcess(command, args);
+            base.PostProcess(command, args, rowcount);
         }
     }
 }

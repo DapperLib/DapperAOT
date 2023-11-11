@@ -132,7 +132,7 @@ public abstract class CommandFactory
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Used for type inference")]
     protected static T Cast<T>(object? value, Func<T> shape) => (T)value!;
 
-    internal abstract void PostProcessObject(DbCommand command, object? args);
+    internal abstract void PostProcessObject(DbCommand command, object? args, int rowCount);
 
     /// <summary>
     /// Gets a shared command-factory with minimal command processing
@@ -206,20 +206,31 @@ public abstract class CommandFactory
             dbCommand = null;
         }
 
+        /// <summary>
+        /// Indicates whether a <see cref="DbBatch"/> is associated with this value
+        /// </summary>
+        public bool HasBatch => batch is not null;
+
+        /// <summary>
+        /// Indicates whether any <see cref="DbBatchCommand"/> instances are associated with this value
+        /// </summary>
+        public bool IsEmpty => batch is null || batch.BatchCommands.Count == 0;
+
+        internal CommandState(DbConnection connection) : this(connection.CreateBatch()) { }
+
         private readonly DbBatch? batch;
         private readonly DbBatchCommand? batchCommand;
         private readonly DbCommand? dbCommand;
 
         private DbCommand UnsafeWithCommandForParameters()
         {
-            Unsafe.AsRef(ref batchCommand)
-            return Unsafe.AsRef(in dbCommand) = batch?.Connection?.CreateCommand() ?? Throw();
+            return dbCommand ?? (Unsafe.AsRef(in dbCommand) = batch?.Connection?.CreateCommand()) ?? Throw();
             static DbCommand Throw() => throw new InvalidOperationException("It was not possible to create command parameters for this batch; the connection may be null");
         }
 
-        internal void UnsafeCreateNewCommand() => Unsafe.AsRef(in batchCommand) = batch.CreateBatchCommand();
+        internal void UnsafeCreateNewCommand() => Unsafe.AsRef(in batchCommand) = batch!.CreateBatchCommand();
 
-        internal int ExecuteNonQuery() => batch.ExecuteNonQuery();
+        internal int ExecuteNonQuery() => batch?.ExecuteNonQuery() ?? dbCommand!.ExecuteNonQuery();
 
         internal void UnsafeSetCommand(DbBatchCommand value) => Unsafe.AsRef(in batchCommand) = value;
 
@@ -260,17 +271,12 @@ public class CommandFactory<T> : CommandFactory
         return cmd;
     }
 
-    /// <summary>
-    /// Allows an implementation to process output parameters etc after an operation has completed
-    /// </summary>
-    public virtual void PostProcess(DbCommand command, T args) { }
-
-    internal override void PostProcessObject(DbCommand command, object? args) => PostProcess(command, (T)args!);
+    internal override sealed void PostProcessObject(DbCommand command, object? args, int rowCount) => PostProcess(command, (T)args!, rowCount);
 
     /// <summary>
     /// Allows an implementation to process output parameters etc after an operation has completed
     /// </summary>
-    public virtual void PostProcess(DbCommand command, T args, int rowCount) => PostProcess(command, args);
+    public virtual void PostProcess(DbCommand command, T args, int rowCount) { }
 
     /// <summary>
     /// Add parameters with values
@@ -352,7 +358,7 @@ public class CommandFactory<T> : CommandFactory
     /// </summary>
     public virtual DbBatchCommand GetCommand(ref CommandState batch, string sql, CommandType commandType, T args)
     {
-        var cmd = batch.Command;
+        var cmd = batch.BatchCommand!;
         cmd.CommandText = sql;
         cmd.CommandType = commandType != 0 ? commandType : sql.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure; // assume text if at least one space
         AddParameters(in batch, args);

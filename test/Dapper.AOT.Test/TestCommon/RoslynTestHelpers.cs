@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Dapper.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Oracle.ManagedDataAccess.Client;
 using System;
@@ -41,10 +42,7 @@ internal static class RoslynTestHelpers
         "RELEASE",
 #endif
     })
-    .WithFeatures(new KeyValuePair<string, string>[] {
-        new ("InterceptorsPreview", "true"), // rc 1
-        new ("InterceptorsPreviewNamespaces", "Dapper.AOT") // rc2 ?
-    });
+    .WithFeatures(new[] { DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair });
 
     public static Compilation CreateCompilation(string source, string name, string fileName)
        => CSharpCompilation.Create(name,

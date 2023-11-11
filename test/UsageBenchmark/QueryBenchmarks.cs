@@ -49,6 +49,7 @@ public class QueryBenchmarks : IDisposable
     }
 
     // note these are materialization tests; I know we could get the count more directly; that's *not the point*
+#pragma warning disable DAP219 // SELECT columns should be specified explicitly
     [Benchmark, BenchmarkCategory("Sync")]
     public int DapperDynamic() => connection.Query("select * from BenchmarkCustomers").AsList().Count;
 
@@ -72,6 +73,7 @@ public class QueryBenchmarks : IDisposable
 
     [Benchmark, BenchmarkCategory("Async"), DapperAot, CacheCommand]
     public async Task<int> DapperAotAsync() => (await connection.QueryAsync<Customer>("select * from BenchmarkCustomers;")).AsList().Count;
+#pragma warning restore DAP219
 
     [Benchmark, BenchmarkCategory("Sync")]
     [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Needed for test")]

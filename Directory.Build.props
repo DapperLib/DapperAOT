@@ -4,14 +4,13 @@
         <DelaySign>False</DelaySign>
         <Description>Build time (AOT) tools for Dapper</Description>
         <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Dapper.AOT.snk</AssemblyOriginatorKeyFile>
-        <LangVersion>9</LangVersion>
         <Nullable>enable</Nullable>
         <RootNamespace>Dapper</RootNamespace>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageIcon>Dapper.png</PackageIcon>
         <Authors>Marc Gravell</Authors>
         <Copyright>Marc Gravell, 2021 onwards</Copyright>
-        <PackageProjectUrl>https://github.com/DapperLib/DapperAOT/</PackageProjectUrl>
+        <PackageProjectUrl>https://aot.dapperlib.dev/</PackageProjectUrl>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>https://github.com/DapperLib/DapperAOT/</RepositoryUrl>
         <LangVersion>11</LangVersion>
@@ -26,6 +25,9 @@
         <DefaultLanguage>en-US</DefaultLanguage>
         <IncludeSymbols>false</IncludeSymbols>
         <AnalysisMode>latest-Recommended</AnalysisMode>
+        <LangVersion>preview</LangVersion>
+        <Features>($Features);strict</Features>
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
     </PropertyGroup>
     <ItemGroup>
         <None Include="$(MSBuildThisFileDirectory)Dapper.png" Visible="false">
@@ -34,5 +36,9 @@
         </None>
         <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
         <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <CompilerVisibleProperty Include="Dapper_SqlSyntax" />
     </ItemGroup>
 </Project>

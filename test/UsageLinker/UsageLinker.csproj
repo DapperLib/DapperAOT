@@ -6,7 +6,7 @@
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <PublishTrimmed>true</PublishTrimmed>
         <PublishAot>true</PublishAot>
-        <Features>InterceptorsPreview</Features>
+        <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" />

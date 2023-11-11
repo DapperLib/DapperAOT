@@ -22,7 +22,7 @@ public sealed partial class DapperInterceptorGenerator
         AdditionalCommandState? additionalCommandState)
     {
         sb.Append("return ");
-        if (HasAll(flags, OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
+        if (flags.HasAll(OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
         {
             sb.Append("global::Dapper.DapperAotExtensions.AsEnumerableAsync(").Indent(false).NewLine();
         }
@@ -52,7 +52,7 @@ public sealed partial class DapperInterceptorGenerator
             sb.Append("global::System.Data.CommandType.").Append(commandTypeMode.ToString());
         }
         sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "").Append(", ");
-        if (HasAny(flags, OperationFlags.HasParameters))
+        if (flags.HasAny(OperationFlags.HasParameters))
         {
             var index = factories.GetIndex(parameterType!, map, cache, false, additionalCommandState, out var subIndex);
             sb.Append("CommandFactory").Append(index).Append(".Instance").Append(subIndex);
@@ -63,8 +63,8 @@ public sealed partial class DapperInterceptorGenerator
         }
         sb.Append(").");
 
-        bool isAsync = HasAny(flags, OperationFlags.Async);
-        if (HasAny(flags, OperationFlags.Query))
+        bool isAsync = flags.HasAny(OperationFlags.Async);
+        if (flags.HasAny(OperationFlags.Query))
         {
             sb.Append("Query").Append((flags & (OperationFlags.SingleRow | OperationFlags.AtLeastOne | OperationFlags.AtMostOne)) switch
             {
@@ -80,7 +80,7 @@ public sealed partial class DapperInterceptorGenerator
                 _ => ""
             }).Append(isAsync ? "Async" : "").Append("(");
             WriteTypedArg(sb, parameterType).Append(", ");
-            if (!HasAny(flags, OperationFlags.SingleRow))
+            if (!flags.HasAny(OperationFlags.SingleRow))
             {
                 switch (flags & (OperationFlags.Buffered | OperationFlags.Unbuffered))
                 {
@@ -170,10 +170,10 @@ public sealed partial class DapperInterceptorGenerator
 
             }
         }
-        else if (HasAny(flags, OperationFlags.Execute))
+        else if (flags.HasAny(OperationFlags.Execute))
         {
             sb.Append("Execute");
-            if (HasAny(flags, OperationFlags.Scalar))
+            if (flags.HasAny(OperationFlags.Scalar))
             {
                 sb.Append("Scalar");
             }
@@ -189,27 +189,27 @@ public sealed partial class DapperInterceptorGenerator
         {
             sb.NewLine().Append("#error not supported: ").Append(method.Name).NewLine();
         }
-        if (HasAny(flags, OperationFlags.Query) && additionalCommandState is { HasEstimatedRowCount: true })
+        if (flags.HasAny(OperationFlags.Query) && additionalCommandState is { HasRowCountHint: true })
         {
-            if (additionalCommandState.EstimatedRowCountMemberName is null)
+            if (additionalCommandState.RowCountHintMemberName is null)
             {
-                sb.Append(", rowCountHint: ").Append(additionalCommandState.EstimatedRowCount);
+                sb.Append(", rowCountHint: ").Append(additionalCommandState.RowCountHint);
             }
             else if (parameterType is not null && !parameterType.IsAnonymousType)
             {
-                sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param!).").Append(additionalCommandState.EstimatedRowCountMemberName);
+                sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param!).").Append(additionalCommandState.RowCountHintMemberName);
             }
         }
         if (isAsync && HasParam(methodParameters, "cancellationToken"))
         {
             sb.Append(", cancellationToken: ").Append(Forward(methodParameters, "cancellationToken"));
         }
-        if (HasAll(flags, OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
+        if (flags.HasAll(OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
         {
             sb.Append(")").Outdent(false);
         }
         sb.Append(")");
-        if (HasAny(flags, OperationFlags.Scalar) || (HasAny(flags, OperationFlags.SingleRow) && !HasAny(flags, OperationFlags.AtLeastOne)))
+        if (flags.HasAny(OperationFlags.Scalar) || (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)))
         {
             // there are some NRT oddities in Dapper itself; shim over everything
             // (we know that DapperAOT has "T? {First|Single}OrDefault<T>[Async]" and "T? ExecuteScalar<T>[Async]")

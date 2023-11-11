@@ -1,20 +1,14 @@
-Generator produced 4 diagnostics:
+Generator produced 1 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 7 of 7 enabled call-sites using 5 interceptors, 2 commands and 0 readers
+Dapper.AOT handled 7 of 7 possible call-sites using 5 interceptors, 2 commands and 0 readers
+Output code has 3 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
 
-Error DAP019 Interceptors/SqlDetection.input.cs L20 C20
-SQL parameters were detected, but no parameters are being supplied
-
-Warning DAP018 Interceptors/SqlDetection.input.cs L23 C20
-Parameters are being supplied, but no parameters were detected in the command
-
-Warning DAP018 Interceptors/SqlDetection.input.cs L34 C20
-Parameters are being supplied, but no parameters were detected in the command
-Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
-
-Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L68 C190
+Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L70 C194
 Argument of type 'object?[]' cannot be used for parameter 'values' of type 'object[]' in 'int Command<object>.Execute(object[] values, int batchSize = -1)' due to differences in the nullability of reference types.
 
-Error CS1061 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L122 C41
-'CommandFactory.BatchState' does not contain a definition for 'Connection' and no accessible extension method 'Connection' accepting a first argument of type 'CommandFactory.BatchState' could be found (are you missing a using directive or an assembly reference?)
+Error CS0246 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L117 C51
+The type or namespace name 'BatchState' could not be found (are you missing a using directive or an assembly reference?)
+
+Error CS8917 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L119 C27
+The delegate type could not be inferred.
