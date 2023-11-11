@@ -15,6 +15,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using static Dapper.CodeAnalysis.DapperInterceptorGenerator;
 
 namespace Dapper.CodeAnalysis;
 
@@ -169,7 +170,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
         context.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.GetSourceText());
     }
 
-    private bool IsGenerateInputValid(ref SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+    private static bool IsGenerateInputValid(ref SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
     {
         if (state.Nodes.IsDefaultOrEmpty)
         {
@@ -220,9 +221,12 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
 
         public void WriteInterceptorsClass(Action innerWriter)
         {
-            _sb.Append("file static class DapperTypeAccessorGeneratedInterceptors").Indent().NewLine();
+            _sb.Append("#nullable enable").NewLine()
+                .Append("namespace ").Append(FeatureKeys.CodegenNamespace)
+                .Append(" // interceptors must be in a known namespace").Indent().NewLine()
+                .Append("file static class DapperTypeAccessorGeneratedInterceptors").Indent().NewLine();
             innerWriter();
-            _sb.Outdent();
+            _sb.Outdent().Outdent();
         }
 
         public void WriteInterceptorsLocationAttribute(Location location)
@@ -526,7 +530,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
 
     private static string GetCustomTypeAccessorClassName(int num) => "DapperCustomTypeAccessor" + num;
 
-    private MemberData[] ConstructTypeMembers(ITypeSymbol typeSymbol)
+    private static MemberData[] ConstructTypeMembers(ITypeSymbol typeSymbol)
     {
         var members = new List<MemberData>();
         int memberNumber = 0;

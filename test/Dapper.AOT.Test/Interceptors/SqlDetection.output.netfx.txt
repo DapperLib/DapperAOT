@@ -4,8 +4,8 @@ Hidden DAP000  L1 C1
 Dapper.AOT handled 7 of 7 possible call-sites using 5 interceptors, 2 commands and 0 readers
 Output code has 2 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
 
-Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L55 C190
+Warning CS8604 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L57 C194
 Possible null reference argument for parameter 'args' in 'int Command<object>.Execute(object args)'.
 
-Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L68 C190
+Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L70 C194
 Argument of type 'object?[]' cannot be used for parameter 'values' of type 'object[]' in 'int Command<object>.Execute(object[] values)' due to differences in the nullability of reference types.

@@ -364,6 +364,12 @@ internal static class Inspection
     }
     public readonly struct ElementMember
     {
+        public Location[]? AsAdditionalLocations(string? attributeName = null)
+        {
+            var loc = GetLocation(attributeName);
+            return loc is null ? null : [loc];
+        }
+
         private readonly AttributeData? _dbValue;
         public string DbName => TryGetAttributeValue(_dbValue, "Name", out string? name)
             && !string.IsNullOrWhiteSpace(name) ? name!.Trim() : CodeName;
@@ -980,7 +986,7 @@ internal static class Inspection
     public static bool HasAll(this OperationFlags value, OperationFlags testFor) => (value & testFor) == testFor;
 
     public static bool TryGetConstantValue<T>(IOperation op, out T? value)
-            => TryGetConstantValueWithSyntax(op, out value, out _);
+            => TryGetConstantValueWithSyntax(op, out value, out _, out _);
 
     public static ITypeSymbol? GetResultType(this IInvocationOperation invocation, OperationFlags flags)
     {
@@ -999,7 +1005,7 @@ internal static class Inspection
         ? symbol.NullableAnnotation == NullableAnnotation.Annotated
         : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
 
-    public static bool TryGetConstantValueWithSyntax<T>(IOperation val, out T? value, out SyntaxNode? syntax)
+    public static bool TryGetConstantValueWithSyntax<T>(IOperation val, out T? value, out SyntaxNode? syntax, out StringSyntaxKind? syntaxKind)
     {
         try
         {
@@ -1007,6 +1013,7 @@ internal static class Inspection
             {
                 value = (T?)val.ConstantValue.Value;
                 syntax = val.Syntax;
+                syntaxKind = val.TryDetectOperationStringSyntaxKind();
                 return true;
             }
             if (val is IArgumentOperation arg)
@@ -1019,11 +1026,29 @@ internal static class Inspection
                 val = conv.Operand;
             }
 
+            if (!val.ConstantValue.HasValue)
+            {
+                var stringSyntaxKind = val.TryDetectOperationStringSyntaxKind();
+                switch (stringSyntaxKind)
+                {
+                    case StringSyntaxKind.ConcatenatedString:
+                    case StringSyntaxKind.InterpolatedString:
+                    case StringSyntaxKind.FormatString:
+                    {
+                        value = default!;
+                        syntax = null;
+                        syntaxKind = stringSyntaxKind;
+                        return false;
+                    }
+                }
+            }
+
             // type-level constants
             if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
             {
                 value = (T?)field.Field.ConstantValue;
                 syntax = field.Field.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                syntaxKind = val.TryDetectOperationStringSyntaxKind();
                 return true;
             }
 
@@ -1032,6 +1057,7 @@ internal static class Inspection
             {
                 value = (T?)local.Local.ConstantValue;
                 syntax = local.Local.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                syntaxKind = val.TryDetectOperationStringSyntaxKind();
                 return true;
             }
 
@@ -1040,6 +1066,7 @@ internal static class Inspection
             {
                 value = (T?)val.ConstantValue.Value;
                 syntax = val.Syntax;
+                syntaxKind = val.TryDetectOperationStringSyntaxKind();
                 return true;
             }
 
@@ -1049,12 +1076,14 @@ internal static class Inspection
                 // we already ruled out explicit constant above, so: must be default
                 value = default;
                 syntax = val.Syntax;
+                syntaxKind = val.TryDetectOperationStringSyntaxKind();
                 return true;
             }
         }
         catch { }
         value = default!;
         syntax = null;
+        syntaxKind = StringSyntaxKind.NotRecognized;
         return false;
     }
 
