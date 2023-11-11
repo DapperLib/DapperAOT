@@ -59,7 +59,7 @@ public abstract class CommandFactory
         }
     }
 
-    private static readonly object[] s_BoxedInt32 = new object[] { -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    private static readonly object[] s_BoxedInt32 = [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     private static readonly object s_BoxedTrue = true, s_BoxedFalse = false;
 
     /// <summary>
@@ -132,7 +132,7 @@ public abstract class CommandFactory
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0060:Remove unused parameter", Justification = "Used for type inference")]
     protected static T Cast<T>(object? value, Func<T> shape) => (T)value!;
 
-    internal abstract void PostProcessObject(DbCommand command, object? args, int rowCount);
+    internal abstract void PostProcessObject(in UnifiedCommand command, object? args, int rowCount);
 
     /// <summary>
     /// Gets a shared command-factory with minimal command processing
@@ -159,88 +159,6 @@ public abstract class CommandFactory
         command.Transaction = null;
         return Interlocked.CompareExchange(ref storage, command, null) is null;
     }
-
-#if NET6_0_OR_GREATER
-    /// <summary>
-    /// Represents the state associated with a <see cref="DbBatchCommand"/> as part of a <see cref="DbBatch"/>.
-    /// </summary>
-    /// <remarks>Only the current command is available to the caller.</remarks>
-    public readonly struct CommandState
-    {
-        /// <summary>
-        /// The <see cref="DbBatchCommand"/> associated with the current operation.
-        /// </summary>
-        public DbBatchCommand? BatchCommand => batchCommand;
-
-        /// <summary>
-        /// The <see cref="DbCommand"/> associated with the current operation.
-        /// </summary>
-        public DbCommand? Command => batchCommand is null ? dbCommand : null;
-
-        internal DbBatchCommandCollection? BatchCommands => batch?.BatchCommands;
-
-        /// <summary>
-        /// Create a <see cref="DbParameter"/> for the current command
-        /// </summary>
-        public DbParameter CreateParameter()
-        {
-#if NET8_0_OR_GREATER // https://github.com/dotnet/runtime/issues/82326
-            if (batchCommand is { CanCreateParameter: true })
-            {
-                return batchCommand.CreateParameter();
-            }
-#endif
-            return (dbCommand ?? UnsafeWithCommandForParameters()).CreateParameter();
-        }
-        internal CommandState(DbCommand command)
-        {
-            dbCommand = command;
-            batchCommand = null;
-            batch = null;
-        }
-
-        internal CommandState(DbBatch batch)
-        {
-            this.batch = batch;
-            batchCommand = null;
-            dbCommand = null;
-        }
-
-        /// <summary>
-        /// Indicates whether a <see cref="DbBatch"/> is associated with this value
-        /// </summary>
-        public bool HasBatch => batch is not null;
-
-        /// <summary>
-        /// Indicates whether any <see cref="DbBatchCommand"/> instances are associated with this value
-        /// </summary>
-        public bool IsEmpty => batch is null || batch.BatchCommands.Count == 0;
-
-        internal CommandState(DbConnection connection) : this(connection.CreateBatch()) { }
-
-        private readonly DbBatch? batch;
-        private readonly DbBatchCommand? batchCommand;
-        private readonly DbCommand? dbCommand;
-
-        private DbCommand UnsafeWithCommandForParameters()
-        {
-            return dbCommand ?? (Unsafe.AsRef(in dbCommand) = batch?.Connection?.CreateCommand()) ?? Throw();
-            static DbCommand Throw() => throw new InvalidOperationException("It was not possible to create command parameters for this batch; the connection may be null");
-        }
-
-        internal void UnsafeCreateNewCommand() => Unsafe.AsRef(in batchCommand) = batch!.CreateBatchCommand();
-
-        internal int ExecuteNonQuery() => batch?.ExecuteNonQuery() ?? dbCommand!.ExecuteNonQuery();
-
-        internal void UnsafeSetCommand(DbBatchCommand value) => Unsafe.AsRef(in batchCommand) = value;
-
-        internal void Cleanup()
-        {
-            dbCommand?.Dispose();
-            batch?.Dispose();
-        }
-    }
-#endif
 }
 
 /// <summary>
@@ -265,36 +183,42 @@ public class CommandFactory<T> : CommandFactory
     {
         // default behavior assumes no args, no special logic
         var cmd = connection.CreateCommand();
-        cmd.CommandText = sql;
-        cmd.CommandType = commandType != 0 ? commandType : sql.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure; // assume text if at least one space
-        AddParameters(cmd, args);
+        Initialize(new(cmd), sql, commandType, args);
         return cmd;
     }
 
-    internal override sealed void PostProcessObject(DbCommand command, object? args, int rowCount) => PostProcess(command, (T)args!, rowCount);
+    internal void Initialize(in UnifiedCommand cmd,
+        string sql, CommandType commandType, T args)
+    {
+        cmd.CommandText = sql;
+        cmd.CommandType = commandType != 0 ? commandType : sql.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure; // assume text if at least one space
+        AddParameters(in cmd, args);
+    }
+
+    internal override sealed void PostProcessObject(in UnifiedCommand command, object? args, int rowCount) => PostProcess(in command, (T)args!, rowCount);
 
     /// <summary>
     /// Allows an implementation to process output parameters etc after an operation has completed
     /// </summary>
-    public virtual void PostProcess(DbCommand command, T args, int rowCount) { }
+    public virtual void PostProcess(in UnifiedCommand command, T args, int rowCount) { }
 
     /// <summary>
     /// Add parameters with values
     /// </summary>
-    public virtual void AddParameters(DbCommand command, T args)
+    public virtual void AddParameters(in UnifiedCommand command, T args)
     {
     }
 
     /// <summary>
     /// Update parameter values
     /// </summary>
-    public virtual void UpdateParameters(DbCommand command, T args)
+    public virtual void UpdateParameters(in UnifiedCommand command, T args)
     {
         if (command.Parameters.Count != 0) // try to avoid rogue "dirty" checks
         {
             command.Parameters.Clear();
         }
-        AddParameters(command, args);
+        AddParameters(in command, args);
     }
 
     /// <summary>
@@ -308,7 +232,7 @@ public class CommandFactory<T> : CommandFactory
             // try to avoid any dirty detection in the setters
             if (cmd.CommandText != sql) cmd.CommandText = sql;
             if (cmd.CommandType != commandType) cmd.CommandType = commandType;
-            UpdateParameters(cmd, args);
+            UpdateParameters(new(cmd), args);
         }
         return cmd;
     }
@@ -324,45 +248,5 @@ public class CommandFactory<T> : CommandFactory
     /// Indicates whether this instance supports the <see cref="DbBatch"/> API.
     /// </summary>
     public virtual bool SupportBatch => false;
-
-    /// <summary>
-    /// Add parameters with values.
-    /// </summary>
-    public virtual void AddParameters(in CommandState batch, T args) { }
-
-    /// <summary>
-    /// Update parameter values
-    /// </summary>
-    public virtual void UpdateParameters(in CommandState batch, T args)
-    {
-        var command = batch.Command;
-        if (command.Parameters.Count != 0) // try to avoid rogue "dirty" checks
-        {
-            command.Parameters.Clear();
-        }
-        AddParameters(in batch, args);
-    }
-
-    /// <summary>
-    /// Allows an implementation to process output parameters etc after an operation has completed.
-    /// </summary>
-    public virtual void PostProcess(in CommandState batch, T args, int rowCount) => PostProcess(in batch, args);
-
-    /// <summary>
-    /// Allows an implementation to process output parameters etc after an operation has completed.
-    /// </summary>
-    public virtual void PostProcess(in CommandState batch, T args) { }
-
-    /// <summary>
-    /// Provide and configure an ADO.NET command that can perform the requested operation.
-    /// </summary>
-    public virtual DbBatchCommand GetCommand(ref CommandState batch, string sql, CommandType commandType, T args)
-    {
-        var cmd = batch.BatchCommand!;
-        cmd.CommandText = sql;
-        cmd.CommandType = commandType != 0 ? commandType : sql.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure; // assume text if at least one space
-        AddParameters(in batch, args);
-        return cmd;
-    }
 #endif
 }

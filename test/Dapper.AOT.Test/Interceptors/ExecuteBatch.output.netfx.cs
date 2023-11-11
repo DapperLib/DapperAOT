@@ -151,7 +151,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory0 : CommonCommandFactory<global::Foo.Customer>
         {
             internal static readonly CommandFactory0 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Customer args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -178,7 +178,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Customer args)
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.X);
@@ -193,7 +193,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
         {
             internal static readonly CommandFactory1 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
                 var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
                 var ps = cmd.Parameters;
@@ -214,7 +214,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
                 var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
                 var ps = cmd.Parameters;
@@ -229,7 +229,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory2 : CommonCommandFactory<global::Foo.Customer>
         {
             internal static readonly CommandFactory2 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Customer args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -241,7 +241,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Customer args)
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.X);

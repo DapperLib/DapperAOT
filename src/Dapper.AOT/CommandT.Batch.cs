@@ -178,15 +178,16 @@ partial struct Command<TArgs>
             var current = source[0];
 
             var local = state.ExecuteNonQuery(GetCommand(current));
-            commandFactory.PostProcess(state.Command, current, local);
+            UnifiedCommand cmdState = new(state.Command);
+            commandFactory.PostProcess(in cmdState, current, local);
             total += local;
 
             for (int i = 1; i < source.Length; i++)
             {
                 current = source[i];
-                commandFactory.UpdateParameters(state.Command, current);
+                commandFactory.UpdateParameters(cmdState, current);
                 local = state.Command.ExecuteNonQuery();
-                commandFactory.PostProcess(state.Command, current, local);
+                commandFactory.PostProcess(cmdState, current, local);
                 total += local;
             }
 
@@ -201,38 +202,32 @@ partial struct Command<TArgs>
 
 #if NET6_0_OR_GREATER
     private bool UseBatch => connection is { CanCreateBatch: true } && commandFactory is { SupportBatch: true };
-    private DbBatchCommand AddCommand(ref CommandFactory.CommandState batch, TArgs args)
+    private DbBatchCommand AddCommand(ref UnifiedCommand state, TArgs args)
     {
-        batch.UnsafeCreateNewCommand();
-        var cmd = commandFactory.GetCommand(ref batch, sql, commandType, args);
-        batch.BatchCommands.Add(cmd);
+        var cmd = state.UnsafeCreateNewCommand();
+        commandFactory.Initialize(state, sql, commandType, args);
+        state.AssertBatchCommands.Add(cmd);
         return cmd;
     }
 
-    private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize)
+    private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize) // TODO: sub-batching
     {
         Debug.Assert(source.Length > 1);
-        CommandFactory.CommandState batch = default;
+        UnifiedCommand batch = default;
         try
         {
             foreach (var arg in source)
             {
-                if (batch.HasBatch) batch = new(connection);
+                if (!batch.HasBatch) batch = new(connection.CreateBatch());
                 AddCommand(ref batch, arg);
             }
-            if (batch.IsEmpty) return 0;
+            if (!batch.HasBatch) return 0;
 
-            var result = batch.ExecuteNonQuery();
+            var result = batch.AssertBatch.ExecuteNonQuery();
 
             if (commandFactory.RequirePostProcess)
             {
-                int i = 0;
-                foreach (var arg in source)
-                {
-                    var cmd = batch.BatchCommands[i++];
-                    batch.UnsafeSetCommand(cmd);
-                    commandFactory.PostProcess(in batch, arg, cmd.RecordsAffected);
-                }
+                batch.PostProcess(source, commandFactory);
             }
             return result;
         }
@@ -241,7 +236,7 @@ partial struct Command<TArgs>
             batch.Cleanup();
         }
     }
-    private int ExecuteMultiBatch(IEnumerable<TArgs> source, int batchSize)
+    private int ExecuteMultiBatch(IEnumerable<TArgs> source, int batchSize) // TODO: sub-batching
     {
         if (commandFactory.RequirePostProcess)
         {
@@ -249,26 +244,20 @@ partial struct Command<TArgs>
             source = (source as IReadOnlyCollection<TArgs>) ?? source.ToList();
         }
 
-        CommandFactory.CommandState batch = default;
+        UnifiedCommand batch = default;
         try
         {
             foreach (var arg in source)
             {
-                if (batch.HasBatch) batch = new(connection);
+                if (!batch.HasBatch) batch = new(connection.CreateBatch());
                 AddCommand(ref batch, arg);
             }
-            if (batch.IsEmpty) return 0;
+            if (!batch.HasBatch) return 0;
 
-            var result = batch.ExecuteNonQuery();
+            var result = batch.AssertBatch.ExecuteNonQuery();
             if (commandFactory.RequirePostProcess)
             {
-                int i = 0;
-                foreach (var arg in source)
-                {
-                    var cmd = batch.BatchCommands[i++];
-                    batch.UnsafeSetCommand(cmd);
-                    commandFactory.PostProcess(in batch, arg, cmd.RecordsAffected);
-                }
+                batch.PostProcess(source, commandFactory);
             }
             return result;
         }
@@ -300,15 +289,16 @@ partial struct Command<TArgs>
                 bool haveMore = iterator.MoveNext();
                 if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
                 var local = state.ExecuteNonQuery(GetCommand(current));
-                commandFactory.PostProcess(state.Command, current, local);
+                UnifiedCommand cmdState = new(state.Command);
+                commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
 
                 while (haveMore)
                 {
                     current = iterator.Current;
-                    commandFactory.UpdateParameters(state.Command, current);
+                    commandFactory.UpdateParameters(in cmdState, current);
                     local = state.Command.ExecuteNonQuery();
-                    commandFactory.PostProcess(state.Command, current, local);
+                    commandFactory.PostProcess(in cmdState, current, local);
                     total += local;
 
                     haveMore = iterator.MoveNext();
@@ -398,15 +388,16 @@ partial struct Command<TArgs>
             var current = source.Span[0];
 
             var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
-            commandFactory.PostProcess(state.Command, current, local);
+            UnifiedCommand cmdState = new(state.Command);
+            commandFactory.PostProcess(in cmdState, current, local);
             total += local;
 
             for (int i = 1; i < source.Length; i++)
             {
                 current = source.Span[i];
-                commandFactory.UpdateParameters(state.Command, current);
+                commandFactory.UpdateParameters(in cmdState, current);
                 local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
-                commandFactory.PostProcess(state.Command, current, local);
+                commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
             }
 
@@ -432,15 +423,16 @@ partial struct Command<TArgs>
                 bool haveMore = await iterator.MoveNextAsync();
                 if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
                 var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
-                commandFactory.PostProcess(state.Command, current, local);
+                UnifiedCommand cmdState = new(state.Command);
+                commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
 
                 while (haveMore)
                 {
                     current = iterator.Current;
-                    commandFactory.UpdateParameters(state.Command, current);
+                    commandFactory.UpdateParameters(in cmdState, current);
                     local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
-                    commandFactory.PostProcess(state.Command, current, local);
+                    commandFactory.PostProcess(in cmdState, current, local);
                     total += local;
 
                     haveMore = await iterator.MoveNextAsync();
@@ -470,15 +462,16 @@ partial struct Command<TArgs>
                 bool haveMore = iterator.MoveNext();
                 if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
                 var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
-                commandFactory.PostProcess(state.Command, current, local);
+                UnifiedCommand cmdState = new(state.Command);
+                commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
 
                 while (haveMore)
                 {
                     current = iterator.Current;
-                    commandFactory.UpdateParameters(state.Command, current);
+                    commandFactory.UpdateParameters(in cmdState, current);
                     local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
-                    commandFactory.PostProcess(state.Command, current, local);
+                    commandFactory.PostProcess(in cmdState, current, local);
                     total += local;
 
                     haveMore = iterator.MoveNext();
@@ -508,15 +501,16 @@ partial struct Command<TArgs>
             var current = source[offset++];
 
             var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
-            commandFactory.PostProcess(state.Command, current, local);
+            UnifiedCommand cmdState = new(state.Command);
+            commandFactory.PostProcess(in cmdState, current, local);
             total += local;
 
             while (offset < count) // actually "offset < end"
             {
                 current = source[offset++];
-                commandFactory.UpdateParameters(state.Command, current);
+                commandFactory.UpdateParameters(in cmdState, current);
                 local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
-                commandFactory.PostProcess(state.Command, current, local);
+                commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
             }
 

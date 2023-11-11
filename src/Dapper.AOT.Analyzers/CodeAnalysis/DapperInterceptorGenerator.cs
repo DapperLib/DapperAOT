@@ -447,12 +447,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
         else
         {
-            sb.Append("public override void AddParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-            WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags, false);
+            sb.Append("public override void AddParameters(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+            WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags);
             sb.Outdent().NewLine();
 
-            sb.Append("public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-            WriteArgs(type, sb, WriteArgsMode.Update, map, ref flags, false);
+            sb.Append("public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
+            WriteArgs(type, sb, WriteArgsMode.Update, map, ref flags);
             sb.Outdent().NewLine();
 
             if ((flags & (WriteArgsFlags.NeedsRowCount | WriteArgsFlags.NeedsPostProcess)) != 0)
@@ -462,47 +462,25 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             if ((flags & (WriteArgsFlags.NeedsPostProcess | WriteArgsFlags.NeedsRowCount)) != 0)
             {
-                sb.Append("public override void PostProcess(global::System.Data.Common.DbCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
+                sb.Append("public override void PostProcess(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
                 if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
                 {
-                    WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags, false);
+                    WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
                 }
                 if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
                 {
-                    WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags, false);
+                    WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
                 }
                 if (baseFactory != DapperBaseCommandFactory)
                 {
-                    sb.Append("base.PostProcess(cmd, args, rowCount);").NewLine();
+                    sb.Append("base.PostProcess(in cmd, args, rowCount);").NewLine();
                 }
                 sb.Outdent().NewLine();
             }
 
             if (supportBatch)
             {
-                
                 sb.Append("public override bool SupportBatch => true;").NewLine();
-
-                sb.Append("public override void AddParameters(in BatchState batch, ").Append(declaredType).Append(" args)").Indent().NewLine()
-                    .Append("var cmd = batch.Command;").NewLine();
-                WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags, true);
-                sb.Outdent().NewLine();
-
-                if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
-                {
-                    sb.Append("public override void PostProcess(in BatchState batch, ").Append(declaredType).Append(" args)").Indent().NewLine()
-                        .Append("var cmd = batch.Command;").NewLine();
-                    WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags, true);
-                    sb.Outdent().NewLine();
-                }
-
-                if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
-                {
-                    sb.Append("public override void PostProcess(in BatchState batch, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
-                    WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags, true);
-                    sb.Append("PostProcess(in batch, args);");
-                    sb.Outdent().NewLine();
-                }
             }
         }
 
@@ -896,7 +874,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         SetRowCount
     }
 
-    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags, bool batch)
+    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags)
     {
         if (parameterType is null)
         {
@@ -966,10 +944,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 {
                     case WriteArgsMode.Add:
                         sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
-                        if (batch)
-                        {
-                            sb.Append("global::System.Data.Common.DbCommand? paramFactory = null;").NewLine();
-                        }
                         break;
                 }
                 first = false;
@@ -994,7 +968,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             switch (mode)
             {
                 case WriteArgsMode.Add:
-                    sb.Append(batch ? "p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();" : "p = cmd.CreateParameter();").NewLine()
+                    sb.Append("p = cmd.CreateParameter();").NewLine()
                         .Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
 
                     var dbType = member.GetDbType(out _);

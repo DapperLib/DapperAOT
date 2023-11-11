@@ -51,7 +51,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int A, int B, int C>
         {
             internal static readonly CommandFactory0 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
                 var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
                 var ps = cmd.Parameters;
@@ -92,7 +92,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 }
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
                 var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
                 var ps = cmd.Parameters;
@@ -116,49 +116,6 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
             }
             public override bool SupportBatch => true;
-            public override void AddParameters(in BatchState batch, object? args)
-            {
-                var cmd = batch.Command;
-                var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
-                var ps = cmd.Parameters;
-                global::System.Data.Common.DbParameter p;
-                global::System.Data.Common.DbCommand? paramFactory = null;
-                var sql = cmd.CommandText;
-                var commandType = cmd.CommandType;
-                if (Include(sql, commandType, "A"))
-                {
-                    p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
-                    p.ParameterName = "A";
-                    p.DbType = global::System.Data.DbType.Int32;
-                    p.Direction = global::System.Data.ParameterDirection.Input;
-                    p.Value = AsValue(typed.A);
-                    ps.Add(p);
-
-                }
-
-                if (Include(sql, commandType, "B"))
-                {
-                    p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
-                    p.ParameterName = "B";
-                    p.DbType = global::System.Data.DbType.Int32;
-                    p.Direction = global::System.Data.ParameterDirection.Input;
-                    p.Value = AsValue(typed.B);
-                    ps.Add(p);
-
-                }
-
-                if (Include(sql, commandType, "C"))
-                {
-                    p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
-                    p.ParameterName = "C";
-                    p.DbType = global::System.Data.DbType.Int32;
-                    p.Direction = global::System.Data.ParameterDirection.Input;
-                    p.Value = AsValue(typed.C);
-                    ps.Add(p);
-
-                }
-
-            }
             public override bool CanPrepare => true;
 
         }

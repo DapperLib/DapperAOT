@@ -25,7 +25,7 @@ namespace SomethingAwkward
             return base.GetCommand(connection, sql, commandType, args);
         }
 
-        public override void PostProcess(DbCommand command, T args, int rowcount)
+        public override void PostProcess(in UnifiedCommand command, T args, int rowcount)
         {
             Console.WriteLine(nameof(PostProcess));
             base.PostProcess(command, args, rowcount);

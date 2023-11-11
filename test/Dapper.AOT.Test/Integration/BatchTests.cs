@@ -134,7 +134,7 @@ public class BatchTests : IDisposable
         public static readonly CustomHandler Instance = new();
         private CustomHandler() { }
 
-        public override void AddParameters(DbCommand command, string name)
+        public override void AddParameters(in UnifiedCommand command, string name)
         {
             var p = command.CreateParameter();
             p.ParameterName = "name";
@@ -144,7 +144,7 @@ public class BatchTests : IDisposable
             command.Parameters.Add(p);
         }
 
-        public override void UpdateParameters(DbCommand command, string name)
+        public override void UpdateParameters(in UnifiedCommand command, string name)
         {
             command.Parameters[0].Value = AsValue(name);
         }

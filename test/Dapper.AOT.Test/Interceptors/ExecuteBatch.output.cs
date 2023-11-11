@@ -151,7 +151,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory0 : CommonCommandFactory<global::Foo.Customer>
         {
             internal static readonly CommandFactory0 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Customer args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -178,7 +178,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Customer args)
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.X);
@@ -187,35 +187,6 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
             }
             public override bool SupportBatch => true;
-            public override void AddParameters(in BatchState batch, global::Foo.Customer args)
-            {
-                var cmd = batch.Command;
-                var ps = cmd.Parameters;
-                global::System.Data.Common.DbParameter p;
-                global::System.Data.Common.DbCommand? paramFactory = null;
-                p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
-                p.ParameterName = "X";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(args.X);
-                ps.Add(p);
-
-                p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
-                p.ParameterName = "Y";
-                p.DbType = global::System.Data.DbType.String;
-                p.Size = -1;
-                p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(args.Y);
-                ps.Add(p);
-
-                p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
-                p.ParameterName = "Z";
-                p.DbType = global::System.Data.DbType.Double;
-                p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(args.Z);
-                ps.Add(p);
-
-            }
             public override bool CanPrepare => true;
 
         }
@@ -223,7 +194,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int Foo, string bar>
         {
             internal static readonly CommandFactory1 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
                 var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
                 var ps = cmd.Parameters;
@@ -244,7 +215,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
                 var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
                 var ps = cmd.Parameters;
@@ -253,29 +224,6 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
             }
             public override bool SupportBatch => true;
-            public override void AddParameters(in BatchState batch, object? args)
-            {
-                var cmd = batch.Command;
-                var typed = Cast(args, static () => new { Foo = default(int), bar = default(string)! }); // expected shape
-                var ps = cmd.Parameters;
-                global::System.Data.Common.DbParameter p;
-                global::System.Data.Common.DbCommand? paramFactory = null;
-                p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
-                p.ParameterName = "Foo";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(typed.Foo);
-                ps.Add(p);
-
-                p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
-                p.ParameterName = "bar";
-                p.DbType = global::System.Data.DbType.String;
-                p.Size = -1;
-                p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(typed.bar);
-                ps.Add(p);
-
-            }
             public override bool CanPrepare => true;
 
         }
@@ -283,7 +231,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory2 : CommonCommandFactory<global::Foo.Customer>
         {
             internal static readonly CommandFactory2 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Customer args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -295,27 +243,13 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.Customer args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Customer args)
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.X);
 
             }
             public override bool SupportBatch => true;
-            public override void AddParameters(in BatchState batch, global::Foo.Customer args)
-            {
-                var cmd = batch.Command;
-                var ps = cmd.Parameters;
-                global::System.Data.Common.DbParameter p;
-                global::System.Data.Common.DbCommand? paramFactory = null;
-                p = (paramFactory ??= batch.Connection!.CreateCommand()).CreateParameter();
-                p.ParameterName = "X";
-                p.DbType = global::System.Data.DbType.Int32;
-                p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(args.X);
-                ps.Add(p);
-
-            }
             public override bool CanPrepare => true;
 
         }
