@@ -24,7 +24,7 @@ public class DAP041 : Verifier<DapperAnalyzer>
         {
             public int A {get; private set;}
             [ExplicitConstructor] public MultipleConstructionVariants(int a) { A = a; }
-            [ExplicitConstructor] public static MultipleConstructionVariants {|#0:Create|}(int a) => new MultipleConstructionVariants { A = a };
+            [ExplicitConstructor] public static MultipleConstructionVariants {|#0:Create|}(int a) => new MultipleConstructionVariants(a);
         }
         """,
         DefaultConfig,

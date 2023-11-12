@@ -1,0 +1,4 @@
+Generator produced 1 diagnostics:
+
+Hidden DAP000  L1 C1
+Dapper.AOT handled 12 of 12 possible call-sites using 12 interceptors, 0 commands and 12 readers
