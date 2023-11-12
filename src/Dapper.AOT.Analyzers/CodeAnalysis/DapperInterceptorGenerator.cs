@@ -654,7 +654,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         var members = map.Members;
 
-        if (members.IsDefaultOrEmpty && map.Constructor is null)
+        if (members.IsDefaultOrEmpty && map.Constructor is null && map.FactoryMethod is null)
         {
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
             WriteRowFactoryHeader();
@@ -664,8 +664,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
 
         var hasInitOnlyMembers = members.Any(member => member.IsInitOnly);
-        var hasGetOnlyMembers = members.Any(member => member.IsGettable && !member.IsSettable && !member.IsInitOnly);
-        var useDeferredConstruction = map.Constructor is not null || hasInitOnlyMembers || hasGetOnlyMembers;
+        var hasGetOnlyMembers = members.Any(member => member is { IsGettable: true, IsSettable: false, IsInitOnly: false });
+        var useConstructorDeferred = map.Constructor is not null;
+        var useFactoryMethodDeferred = map.FactoryMethod is not null;
+        
+        // Implementation detail: 
+        // constructor takes advantage over factory method.
+        var useDeferredConstruction = useConstructorDeferred || useFactoryMethodDeferred || hasInitOnlyMembers || hasGetOnlyMembers;
 
         WriteRowFactoryHeader();
 
@@ -720,7 +725,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
 
             int token = 0;
-            var constructorArgumentsOrdered = new SortedList<int, string>();
+            var deferredMethodArgumentsOrdered = new SortedList<int, string>();
+
             if (useDeferredConstruction)
             {
                 // don't create an instance now, but define the variables to create an instance later like 
@@ -736,12 +742,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     if (Inspection.CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
                     else sb.Append(CodeWriter.GetTypeName(member.CodeType));
                     sb.Append(' ').Append(variableName).Append(" = default;").NewLine();
-
-                    // filling in the constructor arguments in first iteration through members
-                    // will be used afterwards to create the instance
-                    if (member.ConstructorParameterOrder is not null)
+                    
+                    if (useConstructorDeferred && member.ConstructorParameterOrder is not null)
                     {
-                        constructorArgumentsOrdered.Add(member.ConstructorParameterOrder.Value, variableName);
+                        deferredMethodArgumentsOrdered.Add(member.ConstructorParameterOrder.Value, variableName);
+                    }
+                    else if (useFactoryMethodDeferred && member.FactoryMethodParameterOrder is not null)
+                    {
+                        deferredMethodArgumentsOrdered.Add(member.FactoryMethodParameterOrder.Value, variableName);
                     }
 
                     token++;
@@ -802,7 +810,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             if (useDeferredConstruction)
             {
-                // create instance using constructor. like
+                // create instance using constructor or factory method. like
                 // ```
                 // return new Type(member0, member1, member2, ...)
                 // {
@@ -810,23 +818,45 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 //     SettableMember2 = member4,
                 // }
                 // ```
-
-                sb.Append("return new ").Append(type);
-                if (map.Constructor is not null && constructorArgumentsOrdered.Count != 0)
+                // or in case of factory method:
+                // return Type.Create(member0, member1, member2, ...)
+                // ```
+                
+                if (useConstructorDeferred)
                 {
-                    // write `(member0, member1, member2, ...)` part of constructor
-                    sb.Append('(');
-                    foreach (var constructorArg in constructorArgumentsOrdered)
-                    {
-                        sb.Append(constructorArg.Value).Append(", ");
-                    }
-                    sb.RemoveLast(2); // remove last ', ' generated in the loop
+                    // `return new Type(member0, member1, member2, ...);`
+                    sb.Append("return new ").Append(type).Append('('); 
+                    WriteDeferredMethodArgs();
                     sb.Append(')');
+                    WriteDeferredInitialization();
+                    sb.Append(";").Outdent();
+                }
+                else if (useFactoryMethodDeferred)
+                {
+                    // `return Type.FactoryCreate(member0, member1, member2, ...);`
+                    sb.Append("return ").Append(type)
+                      .Append('.').Append(map.FactoryMethod!.Name).Append('(');
+                    WriteDeferredMethodArgs();
+                    sb.Append(')').Append(";").Outdent();
+                }
+                else
+                {
+                    // left case is GetOnly or InitOnly - we can use only init syntax like:
+                    // return new Type
+                    // {
+                    //      Member1 = value1,
+                    //      Member2 = value2
+                    // }
+                    sb.Append("return new ").Append(type);
+                    WriteDeferredInitialization();
+                    sb.Append(";").Outdent();
                 }
 
-                // if all members are constructor arguments, no need to set them again
-                if (constructorArgumentsOrdered.Count != members.Length)
-                {
+                void WriteDeferredInitialization()
+                {   
+                    // if all members are constructor arguments, no need to set them again
+                    if (deferredMethodArgumentsOrdered!.Count == members.Length) return;
+                    
                     sb.Indent().NewLine();
                     token = -1;
                     foreach (var member in members)
@@ -837,8 +867,18 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                     sb.Outdent(withScope: false).Append("}");
                 }
-
-                sb.Append(";").Outdent();
+                
+                void WriteDeferredMethodArgs()
+                {
+                    if (deferredMethodArgumentsOrdered!.Count == 0) return;
+                    
+                    // write `member0, member1, member2, ...` part of method
+                    foreach (var constructorArg in deferredMethodArgumentsOrdered!)
+                    {
+                        sb.Append(constructorArg.Value).Append(", ");
+                    }
+                    sb.RemoveLast(2); // remove last ', ' generated in the loop
+                }
             }
             else
             {

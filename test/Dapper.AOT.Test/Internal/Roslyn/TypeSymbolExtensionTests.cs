@@ -11,12 +11,31 @@ namespace Dapper.Internal.Roslyn
     public class TypeSymbolExtensionsTests
     {
         [Fact]
+        public void GetMethods_ProperlyPassesTypeMethods()
+        {
+            var text = BuildDapperCodeText(
+                """
+                    _ = connection.Execute("def", new Customer());
+                """,
+                withFactoryMethod: true
+            );
+
+            var argumentOperation = GetInvocationArgumentOperation(text);
+            var typeSymbol = GetConversionTypeSymbol(argumentOperation);
+
+            var result = typeSymbol.GetMethods()!.ToArray();
+            Assert.Single(result);
+        }
+        
+        [Fact]
         public void CheckTypeUsage_WithCustomConstructor()
         {
-            var text = BuildDapperCodeTextWithConstructor(
-            """
-            _ = connection.Execute("def", new Customer());
-            """);
+            var text = BuildDapperCodeText(
+                """
+                    _ = connection.Execute("def", new Customer());
+                """,
+                withConstructor: true
+            );
 
             var argumentOperation = GetInvocationArgumentOperation(text);
             var typeSymbol = GetConversionTypeSymbol(argumentOperation);
@@ -203,41 +222,28 @@ namespace Dapper.Internal.Roslyn
             return arg;
         }
 
-        static string BuildDapperCodeTextWithConstructor(string implementation) => $$"""
-            using Dapper;
-            using System.Collections.Generic;
-            using System.Collections.Immutable;
-            using System.Data;
-            using System.Data.Common;
-
-            public static class Foo
+        private const string ConstructorSnippet = 
+        """
+            public Customer(int x, string y, double? z)
             {
-                static void SomeCode(DbConnection connection, string bar)
-                {
-                    {{implementation}}
-                }
-                public class Customer
-                {
-                    public int X { get; set; }
-                    public string Y;
-                    public double? Z { get; set; }
-
-                    public Customer(int x, string y, double? z)
-                    {
-                        X = x;
-                        Y = y;
-                        Z = z;
-                    }
-                }
-                public enum State
-                {
-                    Active,
-                    Disabled
-                }
+                X = x;
+                Y = y;
+                Z = z;
+            }
+        """;
+        private const string FactoryMethodSnippet =
+        """
+            public static Customer Create(int x, string y, double? z)
+            {
+                return new Customer { X = x, Y = y, Z = z };
             }
         """;
 
-        static string BuildDapperCodeText(string implementation) => $$"""
+        static string BuildDapperCodeText(
+            string implementation, 
+            bool withConstructor = false,
+            bool withFactoryMethod = false) 
+        => $$"""
             using Dapper;
             using System.Collections.Generic;
             using System.Collections.Immutable;
@@ -255,6 +261,9 @@ namespace Dapper.Internal.Roslyn
                     public int X { get; set; }
                     public string Y;
                     public double? Z { get; set; }
+
+                    {{(withConstructor ? ConstructorSnippet : string.Empty)}}
+                    {{(withFactoryMethod ? FactoryMethodSnippet : string.Empty)}}
                 }
                 public enum State
                 {

@@ -331,23 +331,23 @@ internal static class Inspection
     }
 
     [DebuggerDisplay("Order: {Order}; Name: {Name}")]
-    public readonly struct ConstructorParameter
+    readonly struct MethodParameter
     {
         /// <summary>
-        /// Order of parameter in constructor.
-        /// Will be 1 for member1 in constructor(member0, member1, ...)
+        /// Order of parameter in method.
+        /// Will be 1 for member1 in method(member0, member1, ...)
         /// </summary>
         public int Order { get; }
         /// <summary>
-        /// Type of constructor parameter
+        /// Type of method parameter
         /// </summary>
         public ITypeSymbol Type { get; }
         /// <summary>
-        /// Name of constructor parameter
+        /// Name of method parameter
         /// </summary>
         public string Name { get; }
 
-        public ConstructorParameter(int order, ITypeSymbol type, string name)
+        public MethodParameter(int order, ITypeSymbol type, string name)
         {
             Order = order;
             Type = type;
@@ -418,6 +418,11 @@ internal static class Inspection
         /// Order of member in constructor parameter list (starts from 0).
         /// </summary>
         public int? ConstructorParameterOrder { get; }
+        
+        /// <summary>
+        /// Order of member in factory method parameter list (starts from 0).
+        /// </summary>
+        public int? FactoryMethodParameterOrder { get; }
 
         public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind)
         {
@@ -435,14 +440,22 @@ internal static class Inspection
             IsExpandable = 1 << 3,
         }
 
-        public ElementMember(ISymbol member, AttributeData? dbValue, ElementMemberKind kind, ElementMemberFlags flags, int? constructorParameterOrder)
+        public ElementMember(
+            ISymbol member,
+            AttributeData? dbValue,
+            ElementMemberKind kind,
+            ElementMemberFlags flags,
+            int? constructorParameterOrder,
+            int? factoryMethodParameterOrder)
         {
-            Member = member;
             _dbValue = dbValue;
-            Kind = kind;
-
             _flags = flags;
+            
+            Member = member;
+            Kind = kind;
+            
             ConstructorParameterOrder = constructorParameterOrder;
+            FactoryMethodParameterOrder = factoryMethodParameterOrder;
         }
 
         public override int GetHashCode() => SymbolEqualityComparer.Default.GetHashCode(Member);
@@ -470,15 +483,87 @@ internal static class Inspection
         }
     }
 
+    [Flags]
     public enum ConstructorResult
     {
         NoneFound,
         SuccessSingleExplicit,
         SuccessSingleImplicit,
         FailMultipleExplicit,
-        FailMultipleImplicit,
+        FailMultipleImplicit
+    }
+    
+    public enum FactoryMethodResult
+    {
+        NoneFound,
+        SuccessSingleExplicit,
+        SuccessSingleImplicit,
+        FailMultipleExplicit,
+        FailMultipleImplicit
     }
 
+    /// <summary>
+    /// Tries to choose a single factory method for the type.
+    /// _Note:_ factory method is a 1) publicly visibly; 2) static method 3) with response type equal to containing type
+    /// </summary>
+    internal static FactoryMethodResult ChooseFactoryMethod(ITypeSymbol? typeSymbol, out IMethodSymbol? factoryMethod)
+    {
+        factoryMethod = null;
+        if (typeSymbol is null)
+        {
+            return FactoryMethodResult.NoneFound;
+        }
+        
+        var staticMethods = typeSymbol
+            .GetMethods(method => 
+                method.IsStatic &&
+                SymbolEqualityComparer.Default.Equals(method.ReturnType, typeSymbol) &&
+                method.DeclaredAccessibility == Accessibility.Public 
+            )
+            ?.ToArray();
+        if (staticMethods?.Length == 0)
+        {
+            return FactoryMethodResult.NoneFound;
+        }
+
+        IMethodSymbol? standardFactoryMethod = null;
+        IMethodSymbol? dapperAotEnabledFactoryMethod = null;
+        foreach (var method in staticMethods!)
+        {
+            if (GetDapperAttribute(method, Types.ExplicitConstructorAttribute) is not null)
+            {
+                if (dapperAotEnabledFactoryMethod is not null)
+                {
+                    factoryMethod = dapperAotEnabledFactoryMethod; // pointing to first found method for diagnostic
+                    return FactoryMethodResult.FailMultipleExplicit;   
+                }
+                dapperAotEnabledFactoryMethod = method;
+            }
+            else
+            {
+                if (standardFactoryMethod is not null)
+                {
+                    factoryMethod = standardFactoryMethod; // pointing to first found method for diagnostic
+                    return FactoryMethodResult.FailMultipleImplicit;   
+                }
+                standardFactoryMethod = method;
+            }
+        }
+
+        if (dapperAotEnabledFactoryMethod is not null)
+        {
+            factoryMethod = dapperAotEnabledFactoryMethod;
+            return FactoryMethodResult.SuccessSingleExplicit;
+        }
+        else if (standardFactoryMethod is not null)
+        {
+            factoryMethod = standardFactoryMethod;
+            return FactoryMethodResult.SuccessSingleImplicit;
+        }
+
+        return FactoryMethodResult.NoneFound;
+    }
+    
     /// <summary>
     /// Builds a collection of type constructors, which are NOT:
     /// a) parameterless
@@ -582,7 +667,9 @@ internal static class Inspection
     /// If <param name="constructor"/> is passed, will be used to associate element member with the constructor parameter by name (case-insensitive).
     /// </summary>
     /// <param name="elementType">type, which elements to parse</param>
-    internal static ImmutableArray<ElementMember> GetMembers(bool forParameters, ITypeSymbol? elementType, IMethodSymbol? constructor)
+    /// <param name="constructor">pointer to single constructor available for AOT scenario</param>
+    /// <param name="factoryMethod">pointer to single factoryMethod available for AOT scenario</param>
+    internal static ImmutableArray<ElementMember> GetMembers(bool forParameters, ITypeSymbol? elementType, IMethodSymbol? constructor, IMethodSymbol? factoryMethod)
     {
         if (elementType is null)
         {
@@ -596,7 +683,8 @@ internal static class Inspection
         {
             var elMembers = elementType.GetMembers();
             var builder = ImmutableArray.CreateBuilder<ElementMember>(elMembers.Length);
-            var constructorParameters = (constructor is not null) ? ParseConstructorParameters(constructor) : null;
+            var constructorParameters = (constructor is not null) ? ParseMethodParameters(constructor) : null;
+            var factoryMethodParameters = (factoryMethod is not null) ? ParseMethodParameters(factoryMethod) : null;
             foreach (var member in elMembers)
             {
                 // instance only, must be able to access by name
@@ -638,6 +726,10 @@ internal static class Inspection
                 int? constructorParameterOrder = constructorParameters?.TryGetValue(member.Name, out var constructorParameter) == true
                     ? constructorParameter.Order
                     : null;
+                
+                int? factoryMethodParamOrder = factoryMethodParameters?.TryGetValue(member.Name, out var factoryMethodParam) == true
+                    ? factoryMethodParam.Order
+                    : null;
 
                 ElementMember.ElementMemberFlags flags = ElementMember.ElementMemberFlags.None;
                 if (CodeWriter.IsGettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsGettable;
@@ -652,7 +744,7 @@ internal static class Inspection
                 else
                 {
                     // needs to be writable
-                    if (constructorParameterOrder is null &&
+                    if (constructorParameterOrder is null && factoryMethodParamOrder is null &&
                         (flags & (ElementMember.ElementMemberFlags.IsSettable | ElementMember.ElementMemberFlags.IsInitOnly)) == 0) continue;
                 }
 
@@ -663,18 +755,18 @@ internal static class Inspection
                 }
 
                 // all good, then!
-                builder.Add(new(member, dbValue, kind, flags, constructorParameterOrder));
+                builder.Add(new(member, dbValue, kind, flags, constructorParameterOrder, factoryMethodParamOrder));
             }
             return builder.ToImmutable();
         }
 
-        static IReadOnlyDictionary<string, ConstructorParameter> ParseConstructorParameters(IMethodSymbol constructorSymbol)
+        static IReadOnlyDictionary<string, MethodParameter> ParseMethodParameters(IMethodSymbol constructorSymbol)
         {
-            var parameters = new Dictionary<string, ConstructorParameter>(StringComparer.InvariantCultureIgnoreCase);
+            var parameters = new Dictionary<string, MethodParameter>(StringComparer.InvariantCultureIgnoreCase);
             int order = 0;
             foreach (var parameter in constructorSymbol.Parameters)
             {
-                parameters.Add(parameter.Name, new ConstructorParameter(order: order++, type: parameter.Type, name: parameter.Name));
+                parameters.Add(parameter.Name, new MethodParameter(order: order++, type: parameter.Type, name: parameter.Name));
             }
             return parameters;
         }

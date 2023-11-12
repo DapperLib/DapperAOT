@@ -1,11 +1,27 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System;
+using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace Dapper.Internal.Roslyn;
 
 internal static class TypeSymbolExtensions
 {
+    public static IEnumerable<IMethodSymbol>? GetMethods(
+        this ITypeSymbol? typeSymbol,
+        Func<IMethodSymbol, bool>? filter = null)
+    {
+        if (typeSymbol is null) yield break;
+        
+        foreach (var methodSymbol in typeSymbol.GetMembers()
+                     .OfType<IMethodSymbol>()
+                     .Where(m => m.MethodKind is MethodKind.Ordinary or MethodKind.DeclareMethod))
+        {
+            if (filter is null || filter(methodSymbol)) yield return methodSymbol;
+        }
+    }
+
     public static string? GetTypeDisplayName(this ITypeSymbol? typeSymbol)
     {
         if (typeSymbol is null) return null;

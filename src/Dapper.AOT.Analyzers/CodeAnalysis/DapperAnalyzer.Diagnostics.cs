@@ -47,6 +47,9 @@ partial class DapperAnalyzer
         ConstructorAmbiguous = LibraryError("DAP036", "Ambiguous constructors", "Type '{0}' has more than 1 constructor; mark one constructor with [ExplicitConstructor] or reduce constructors"),
         UserTypeNoSettableMembersFound = LibraryError("DAP037", "No settable members exist for user type", "Type '{0}' has no settable fields or properties"),
         ValueTypeSingleFirstOrDefaultUsage = LibraryWarning("DAP038", "Value-type single row 'OrDefault' usage", "Type '{0}' is a value-type; it will not be trivial to identify missing rows from {1}"),
+        FactoryMethodMultipleExplicit = LibraryError("DAP039", "Multiple explicit factory methods", "Only one factory method should be marked [ExplicitConstructor] for type '{0}'"),
+        FactoryMethodAmbiguous = LibraryError("DAP040", "Ambiguous factory methods", "Type '{0}' has more than 1 factory method; mark one factory method with [ExplicitConstructor] or reduce factory methods"),
+        ConstructorOverridesFactoryMethod = LibraryWarning("DAP041", "Constructor overrides factory method", "Type '{0}' has both constructor and factory method; Constructor will be used instead of a factory method"),
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),

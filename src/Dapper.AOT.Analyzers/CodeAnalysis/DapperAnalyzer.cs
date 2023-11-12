@@ -206,17 +206,36 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ValueTypeSingleFirstOrDefaultUsage, location, resultMap.ElementType.Name, invoke.TargetMethod.Name));
                     }
 
-                    // check for constructors on the materialized type
-                    DiagnosticDescriptor? ctorFault = ChooseConstructor(resultMap.ElementType, out var ctor) switch
+                    // check for constructors and factoryMethods on the materialized type
+                    var ctorFault = ChooseConstructor(resultMap.ElementType, out var ctor) switch
                     {
                         ConstructorResult.FailMultipleExplicit => Diagnostics.ConstructorMultipleExplicit,
                         ConstructorResult.FailMultipleImplicit when aotEnabled => Diagnostics.ConstructorAmbiguous,
                         _ => null,
                     };
+                    var factoryMethodFault = ChooseFactoryMethod(resultMap.ElementType, out var factoryMethod) switch
+                    {
+                        FactoryMethodResult.FailMultipleExplicit => Diagnostics.FactoryMethodMultipleExplicit,
+                        FactoryMethodResult.FailMultipleImplicit when aotEnabled => Diagnostics.FactoryMethodAmbiguous,
+                        _ => null,
+                    };
+
+                    // we cant use both ctor and factoryMethod, so reporting a warning that ctor is prioritized
+                    if (ctor is not null && factoryMethod is not null)
+                    {
+                        var loc = factoryMethod?.Locations.FirstOrDefault() ?? resultMap.ElementType.Locations.FirstOrDefault();
+                        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ConstructorOverridesFactoryMethod, loc, resultMap.ElementType.GetDisplayString()));
+                    }
+                    
                     if (ctorFault is not null)
                     {
                         var loc = ctor?.Locations.FirstOrDefault() ?? resultMap.ElementType.Locations.FirstOrDefault();
                         ctx.ReportDiagnostic(Diagnostic.Create(ctorFault, loc, resultMap.ElementType.GetDisplayString()));
+                    }
+                    else if (factoryMethodFault is not null)
+                    {
+                        var loc = factoryMethod?.Locations.FirstOrDefault() ?? resultMap.ElementType.Locations.FirstOrDefault();
+                        ctx.ReportDiagnostic(Diagnostic.Create(factoryMethodFault, loc, resultMap.ElementType.GetDisplayString()));
                     }
                     else if (resultMap.Members.IsDefaultOrEmpty && IsPublicOrAssemblyLocal(resultType, parseState, out _))
                     {
