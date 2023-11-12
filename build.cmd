@@ -9,8 +9,10 @@
 
 @dotnet build src/Dapper.AOT.Analyzers -c Release
 @dotnet build src/Dapper.AOT -c Release
+@dotnet build src/Dapper.Advisor -c Release
 
 @dotnet pack src/Dapper.AOT -c Release
+@dotnet pack src/Dapper.Advisor -c Release
 
 @dotnet test test/Dapper.AOT.Test -c Release
 
