@@ -216,7 +216,6 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     var factoryMethodFault = ChooseFactoryMethod(resultMap.ElementType, out var factoryMethod) switch
                     {
                         FactoryMethodResult.FailMultipleExplicit => Diagnostics.FactoryMethodMultipleExplicit,
-                        FactoryMethodResult.FailMultipleImplicit when aotEnabled => Diagnostics.FactoryMethodAmbiguous,
                         _ => null,
                     };
 

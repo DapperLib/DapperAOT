@@ -75,7 +75,6 @@ internal sealed class MemberMap
             
             switch (ChooseFactoryMethod(ElementType, out var factoryMethod))
             {
-                case FactoryMethodResult.SuccessSingleImplicit:
                 case FactoryMethodResult.SuccessSingleExplicit:
                     FactoryMethod = factoryMethod;
                     break;

@@ -751,7 +751,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
                     if (Inspection.CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
                     else sb.Append(CodeWriter.GetTypeName(member.CodeType));
-                    sb.Append(' ').Append(variableName).Append(" = default;").NewLine();
+
+                    sb.Append(' ').Append(variableName).Append(" = default")
+                        // if "default" will violate NRT: add a !
+                        .Append(member.CodeType.IsReferenceType && member.CodeType.NullableAnnotation == NullableAnnotation.NotAnnotated ? "!" : "")
+                        .Append(";").NewLine();
                     
                     if (useConstructorDeferred && member.ConstructorParameterOrder is not null)
                     {

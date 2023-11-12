@@ -483,7 +483,6 @@ internal static class Inspection
         }
     }
 
-    [Flags]
     public enum ConstructorResult
     {
         NoneFound,
@@ -495,11 +494,10 @@ internal static class Inspection
     
     public enum FactoryMethodResult
     {
+        // note that implicit isn't a thing here
         NoneFound,
         SuccessSingleExplicit,
-        SuccessSingleImplicit,
-        FailMultipleExplicit,
-        FailMultipleImplicit
+        FailMultipleExplicit
     }
 
     /// <summary>
@@ -526,42 +524,20 @@ internal static class Inspection
             return FactoryMethodResult.NoneFound;
         }
 
-        IMethodSymbol? standardFactoryMethod = null;
-        IMethodSymbol? dapperAotEnabledFactoryMethod = null;
         foreach (var method in staticMethods!)
         {
             if (GetDapperAttribute(method, Types.ExplicitConstructorAttribute) is not null)
             {
-                if (dapperAotEnabledFactoryMethod is not null)
+                if (factoryMethod is not null)
                 {
-                    factoryMethod = dapperAotEnabledFactoryMethod; // pointing to first found method for diagnostic
-                    return FactoryMethodResult.FailMultipleExplicit;   
+                    // note pointing to first found method for diagnostic
+                    return FactoryMethodResult.FailMultipleExplicit;
                 }
-                dapperAotEnabledFactoryMethod = method;
-            }
-            else
-            {
-                if (standardFactoryMethod is not null)
-                {
-                    factoryMethod = standardFactoryMethod; // pointing to first found method for diagnostic
-                    return FactoryMethodResult.FailMultipleImplicit;   
-                }
-                standardFactoryMethod = method;
+                factoryMethod = method;
             }
         }
 
-        if (dapperAotEnabledFactoryMethod is not null)
-        {
-            factoryMethod = dapperAotEnabledFactoryMethod;
-            return FactoryMethodResult.SuccessSingleExplicit;
-        }
-        else if (standardFactoryMethod is not null)
-        {
-            factoryMethod = standardFactoryMethod;
-            return FactoryMethodResult.SuccessSingleImplicit;
-        }
-
-        return FactoryMethodResult.NoneFound;
+        return factoryMethod is null ? FactoryMethodResult.NoneFound : FactoryMethodResult.SuccessSingleExplicit;
     }
     
     /// <summary>
