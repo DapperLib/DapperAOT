@@ -3,15 +3,13 @@
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
         <SignAssembly>False</SignAssembly>
-        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <PublishTrimmed>true</PublishTrimmed>
-        <PublishAot>true</PublishAot>
-        <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
-        <DefineConstants>$(DefineConstants);AOT</DefineConstants>
     </PropertyGroup>
     <ItemGroup>
+      <Compile Include="..\UsageLinker\*.cs" />
+    </ItemGroup>
+    <ItemGroup>
         <PackageReference Include="Dapper" />
-        <PackageReference Include="Dapper.AOT" />
         <PackageReference Include="Microsoft.Data.SqlClient" />
         <!--<PackageReference Include="Oracle.ManagedDataAccess.Core"/>-->
     </ItemGroup>
