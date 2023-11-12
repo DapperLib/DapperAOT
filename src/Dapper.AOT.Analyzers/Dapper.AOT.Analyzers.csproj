@@ -32,6 +32,7 @@
         <Compile Update="CodeAnalysis/TypeAccessorInterceptorGenerator.*.cs">
             <DependentUpon>TypeAccessorInterceptorGenerator.cs</DependentUpon>
         </Compile>
+        <Compile Include="..\Dapper.AOT\Internal\CompiledRegex.cs" Link="Internal\CompiledRegex.cs" />
 
         <Compile Include="..\Dapper.AOT\Internal\StringHashing.cs" Link="Internal\StringHashing.cs" />
         <!--<Compile Include="..\Dapper.AOT\SqlSyntax.cs" Link="SqlSyntax.cs" />-->

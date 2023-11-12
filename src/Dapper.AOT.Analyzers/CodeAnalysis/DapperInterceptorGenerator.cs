@@ -179,16 +179,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public const string InterceptorsPreviewNamespaces = nameof(InterceptorsPreviewNamespaces),
             CodegenNamespace = "Dapper.AOT";
         public static KeyValuePair<string, string> InterceptorsPreviewNamespacePair => new(InterceptorsPreviewNamespaces, CodegenNamespace);
-
-        public static bool IsEnabled(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return false;
-            value = value.Trim();
-
-            return match.IsMatch(value);
-
-        }
-        static readonly Regex match = new("(?:;|^)" + CodegenNamespace + "(?:;|$)", RegexOptions.Compiled);
     }
 
     private static bool CheckPrerequisites(in GenerateState ctx)

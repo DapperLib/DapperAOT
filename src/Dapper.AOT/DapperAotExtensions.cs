@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Dapper.Internal;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
@@ -55,6 +56,6 @@ public static class DapperAotExtensions
     /// Suggest an appropriate command-type for the provided SQL
     /// </summary>
     public static CommandType GetCommandType(string sql)
-        => sql.IndexOf(' ') < 0 ? CommandType.StoredProcedure : CommandType.Text;
+        => CompiledRegex.WhitespaceOrReserved.IsMatch(sql) ? CommandType.Text : CommandType.StoredProcedure;
 }
 
