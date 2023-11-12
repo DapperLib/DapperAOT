@@ -298,7 +298,7 @@ public class BatchInsertBenchmarks : IDisposable
 
         public override bool TryRecycle(DbCommand command) => TryRecycle(ref Spare, command);
 
-        public override void AddParameters(DbCommand command, Customer obj)
+        public override void AddParameters(in UnifiedCommand command, Customer obj)
         {
             var p = command.CreateParameter();
             p.ParameterName = "name";
@@ -308,7 +308,7 @@ public class BatchInsertBenchmarks : IDisposable
             command.Parameters.Add(p);
         }
 
-        public override void UpdateParameters(DbCommand command, Customer obj)
+        public override void UpdateParameters(in UnifiedCommand command, Customer obj)
         {
             command.Parameters[0].Value = AsValue(obj.Name);
         }

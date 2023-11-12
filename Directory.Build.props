@@ -13,7 +13,6 @@
         <PackageProjectUrl>https://aot.dapperlib.dev/</PackageProjectUrl>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>https://github.com/DapperLib/DapperAOT/</RepositoryUrl>
-        <LangVersion>11</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <CheckEolTargetFramework>false</CheckEolTargetFramework>
         <WarningsAsErrors>true</WarningsAsErrors>
