@@ -2,7 +2,6 @@
 using Dapper.Internal.Roslyn;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using System;
@@ -10,7 +9,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
 using static Dapper.Internal.Inspection;
 
@@ -225,7 +223,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                         var loc = factoryMethod?.Locations.FirstOrDefault() ?? resultMap.ElementType.Locations.FirstOrDefault();
                         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.ConstructorOverridesFactoryMethod, loc, resultMap.ElementType.GetDisplayString()));
                     }
-                    
+
                     if (ctorFault is not null)
                     {
                         var loc = ctor?.Locations.FirstOrDefault() ?? resultMap.ElementType.Locations.FirstOrDefault();
@@ -341,9 +339,6 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             ValidateSql(ctx, sqlSource, flags, SqlParameters.None);
         }
 
-        private static readonly Regex HasWhitespace = new(@"\s", RegexOptions.Compiled | RegexOptions.Multiline);
-
-
         private readonly SqlSyntax? DefaultSqlSyntax;
         private readonly SqlParseInputFlags? DebugSqlFlags;
         private readonly Compilation _compilation;
@@ -394,9 +389,9 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             {
                 DiagnosticDescriptor? descriptor = stringSyntaxKind switch
                 {
-                    StringSyntaxKind.InterpolatedString 
+                    StringSyntaxKind.InterpolatedString
                         => Diagnostics.InterpolatedStringSqlExpression,
-                    StringSyntaxKind.ConcatenatedString or StringSyntaxKind.FormatString 
+                    StringSyntaxKind.ConcatenatedString or StringSyntaxKind.FormatString
                         => Diagnostics.ConcatenatedStringSqlExpression,
                     _ => null
                 };
@@ -407,7 +402,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 }
                 return;
             }
-            if (string.IsNullOrWhiteSpace(sql) || !HasWhitespace.IsMatch(sql)) return; // need non-trivial content to validate
+            if (string.IsNullOrWhiteSpace(sql) || !CompiledRegex.WhitespaceOrReserved.IsMatch(sql)) return; // need non-trivial content to validate
 
             location ??= ctx.Operation.Syntax.GetLocation();
 
@@ -538,7 +533,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                         {
                             case null when !string.IsNullOrWhiteSpace(sql):
                                 // if no spaces: interpret as stored proc, else: text
-                                flags |= sql!.Trim().IndexOf(' ') < 0 ? OperationFlags.StoredProcedure : OperationFlags.Text;
+                                flags |= CompiledRegex.WhitespaceOrReserved.IsMatch(sql) ? OperationFlags.Text : OperationFlags.StoredProcedure;
                                 break;
                             case null:
                                 break; // flexible
@@ -900,7 +895,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DuplicateParameter,
                         location: member.GetLocation(Types.DbValueAttribute),
                         additionalLocations: existing.AsAdditionalLocations(Types.DbValueAttribute),
-                        messageArgs: [existing.CodeName, member.CodeName, dbName ]));
+                        messageArgs: [existing.CodeName, member.CodeName, dbName]));
                 }
                 else
                 {

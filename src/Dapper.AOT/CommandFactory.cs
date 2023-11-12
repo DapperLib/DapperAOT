@@ -191,7 +191,7 @@ public class CommandFactory<T> : CommandFactory
         string sql, CommandType commandType, T args)
     {
         cmd.CommandText = sql;
-        cmd.CommandType = commandType != 0 ? commandType : sql.IndexOf(' ') >= 0 ? CommandType.Text : CommandType.StoredProcedure; // assume text if at least one space
+        cmd.CommandType = commandType != 0 ? commandType : DapperAotExtensions.GetCommandType(sql);
         AddParameters(in cmd, args);
     }
 
