@@ -16,6 +16,18 @@ public class BatchInsertBenchmarks : IDisposable
     private readonly SqlConnection connection = new(Program.ConnectionString);
     private Customer[] customers = Array.Empty<Customer>();
 
+    public void DebugState()
+    {
+        // waiting on binaries from https://github.com/dotnet/SqlClient/pull/1825
+        Console.WriteLine($"{nameof(connection.CanCreateBatch)}: {connection.CanCreateBatch}");
+        if (connection.CanCreateBatch)
+        {
+            using var batch = connection.CreateBatch();
+            var cmd = batch.CreateBatchCommand();
+            Console.WriteLine($"{nameof(cmd.CanCreateParameter)}: {cmd.CanCreateParameter}");
+        }
+    }
+
     public BatchInsertBenchmarks()
     {
         try { connection.Execute("drop table BenchmarkCustomers;"); } catch { }
