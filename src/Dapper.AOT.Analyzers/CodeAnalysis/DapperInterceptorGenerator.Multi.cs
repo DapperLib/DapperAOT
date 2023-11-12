@@ -91,7 +91,7 @@ public sealed partial class DapperInterceptorGenerator
             // commandFactory
             if (flags.HasAny(OperationFlags.HasParameters))
             {
-                var index = factories.GetIndex(elementType, map, cache, additionalCommandState, out var subIndex);
+                var index = factories.GetIndex(elementType, map, cache, true, additionalCommandState, out var subIndex);
                 sb.Append("CommandFactory").Append(index).Append(".Instance").Append(subIndex);
             }
             else

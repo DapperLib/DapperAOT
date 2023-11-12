@@ -16,6 +16,18 @@ public class BatchInsertBenchmarks : IDisposable
     private readonly SqlConnection connection = new(Program.ConnectionString);
     private Customer[] customers = Array.Empty<Customer>();
 
+    public void DebugState()
+    {
+        // waiting on binaries from https://github.com/dotnet/SqlClient/pull/1825
+        Console.WriteLine($"{nameof(connection.CanCreateBatch)}: {connection.CanCreateBatch}");
+        if (connection.CanCreateBatch)
+        {
+            using var batch = connection.CreateBatch();
+            var cmd = batch.CreateBatchCommand();
+            Console.WriteLine($"{nameof(cmd.CanCreateParameter)}: {cmd.CanCreateParameter}");
+        }
+    }
+
     public BatchInsertBenchmarks()
     {
         try { connection.Execute("drop table BenchmarkCustomers;"); } catch { }
@@ -298,7 +310,7 @@ public class BatchInsertBenchmarks : IDisposable
 
         public override bool TryRecycle(DbCommand command) => TryRecycle(ref Spare, command);
 
-        public override void AddParameters(DbCommand command, Customer obj)
+        public override void AddParameters(in UnifiedCommand command, Customer obj)
         {
             var p = command.CreateParameter();
             p.ParameterName = "name";
@@ -308,7 +320,7 @@ public class BatchInsertBenchmarks : IDisposable
             command.Parameters.Add(p);
         }
 
-        public override void UpdateParameters(DbCommand command, Customer obj)
+        public override void UpdateParameters(in UnifiedCommand command, Customer obj)
         {
             command.Parameters[0].Value = AsValue(obj.Name);
         }

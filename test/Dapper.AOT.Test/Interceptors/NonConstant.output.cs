@@ -51,7 +51,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: int A, int B, int C>
         {
             internal static readonly CommandFactory0 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, object? args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
                 var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
                 var ps = cmd.Parameters;
@@ -92,7 +92,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 }
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, object? args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
                 var typed = Cast(args, static () => new { A = default(int), B = default(int), C = default(int) }); // expected shape
                 var ps = cmd.Parameters;
@@ -115,6 +115,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 }
 
             }
+            public override bool SupportBatch => true;
             public override bool CanPrepare => true;
 
         }

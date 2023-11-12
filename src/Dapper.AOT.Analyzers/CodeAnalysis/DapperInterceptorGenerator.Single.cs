@@ -54,7 +54,7 @@ public sealed partial class DapperInterceptorGenerator
         sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "").Append(", ");
         if (flags.HasAny(OperationFlags.HasParameters))
         {
-            var index = factories.GetIndex(parameterType!, map, cache, additionalCommandState, out var subIndex);
+            var index = factories.GetIndex(parameterType!, map, cache, false, additionalCommandState, out var subIndex);
             sb.Append("CommandFactory").Append(index).Append(".Instance").Append(subIndex);
         }
         else

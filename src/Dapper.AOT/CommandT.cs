@@ -89,7 +89,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     internal void PostProcessAndRecycle(ref SyncQueryState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(state.Command!, args, rowCount);
+        commandFactory.PostProcess(new(state.Command!), args, rowCount);
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;
@@ -99,7 +99,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     internal void PostProcessAndRecycle(AsyncQueryState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(state.Command!, args, rowCount);
+        commandFactory.PostProcess(new(state.Command!), args, rowCount);
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;
@@ -109,7 +109,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     internal void PostProcessAndRecycle(ref SyncCommandState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(state.Command!, args, rowCount);
+        commandFactory.PostProcess(new(state.Command!), args, rowCount);
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;
@@ -119,7 +119,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     internal void PostProcessAndRecycle(AsyncCommandState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(state.Command!, args, rowCount);
+        commandFactory.PostProcess(new(state.Command!), args, rowCount);
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;

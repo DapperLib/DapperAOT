@@ -300,6 +300,7 @@ internal sealed class CodeWriter
         _sb.Append("#pragma warning restore ").AppendLine(warning);
         return this;
     }
+
     public CodeWriter DisableObsolete()
         => DisableWarning("CS0612, CS0618 // obsolete");
     public CodeWriter RestoreObsolete()

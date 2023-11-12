@@ -31,11 +31,16 @@ static class Program
             obj.IsOpen = isOpen;
             obj.Setup();
 
+            obj.DebugState();
+
             Console.WriteLine(obj.Manual());
             Console.WriteLine(await obj.ManualAsync());
 
             Console.WriteLine(obj.Dapper());
             Console.WriteLine(await obj.DapperAsync());
+
+            Console.WriteLine(obj.DapperAot());
+            Console.WriteLine(await obj.DapperAotAsync());
 
             Console.WriteLine(obj.DapperAotManual());
             Console.WriteLine(await obj.DapperAotAsync());

@@ -6,12 +6,12 @@ using System.Linq;
 
 namespace Dapper.Internal;
 
-internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, string Map, int Index, int CacheCount, AdditionalCommandState? AdditionalCommandState)>
+internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, string Map, int Index, int CacheCount, bool SupportBatch, AdditionalCommandState? AdditionalCommandState)>
 {
 
     public CommandFactoryState(Compilation compilation) => systemObject = compilation.GetSpecialType(SpecialType.System_Object);
     private readonly ITypeSymbol systemObject;
-    private readonly Dictionary<(ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState), (int Index, int CacheCount)> parameterTypes = new(ParameterTypeMapComparer.Instance);
+    private readonly Dictionary<(ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState), (int Index, int CacheCount, bool SupportBatch)> parameterTypes = new(ParameterTypeMapComparer.Instance);
 
     public int Count()
     {
@@ -24,15 +24,15 @@ internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, st
         return total;
     }
 
-    public IEnumerator<(ITypeSymbol Type, string Map, int Index, int CacheCount, AdditionalCommandState? AdditionalCommandState)> GetEnumerator()
+    public IEnumerator<(ITypeSymbol Type, string Map, int Index, int CacheCount, bool SupportBatch, AdditionalCommandState? AdditionalCommandState)> GetEnumerator()
     {
         // retain discovery order
-        return parameterTypes.OrderBy(x => x.Value.Index).Select(x => (x.Key.Type, x.Key.Map, x.Value.Index, x.Value.CacheCount, x.Key.AdditionalCommandState)).GetEnumerator();
+        return parameterTypes.OrderBy(x => x.Value.Index).Select(x => (x.Key.Type, x.Key.Map, x.Value.Index, x.Value.CacheCount, x.Value.SupportBatch, x.Key.AdditionalCommandState)).GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public int GetIndex(ITypeSymbol type, string map, bool cache, AdditionalCommandState? additionalCommandState, out int? subIndex)
+    public int GetIndex(ITypeSymbol type, string map, bool cache, bool supportBatch, AdditionalCommandState? additionalCommandState, out int? subIndex)
     {
         if (string.IsNullOrWhiteSpace(map) && type.IsReferenceType)
         {
@@ -47,10 +47,14 @@ internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, st
             if (cache)
             {
                 subIndex = value.CacheCount;
-                parameterTypes[key] = new(index, value.CacheCount + 1);
+                parameterTypes[key] = new(index, value.CacheCount + 1, value.SupportBatch || supportBatch);
             }
             else
             {
+                if (supportBatch && !value.SupportBatch)
+                {   // trigger batch mode on
+                    parameterTypes[key] = new(index, value.CacheCount, true);
+                }
                 subIndex = null;
             }
         }
@@ -58,7 +62,7 @@ internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, st
         {
             index = parameterTypes.Count;
             subIndex = cache ? 0 : null;
-            parameterTypes.Add(key, (index, cache ? 1 : 0));
+            parameterTypes.Add(key, (index, cache ? 1 : 0, supportBatch));
         }
         return index;
     }

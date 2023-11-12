@@ -83,7 +83,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory0 : CommonCommandFactory<global::Foo.SomeArg>
         {
             internal static readonly CommandFactory0 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.SomeArg args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -95,7 +95,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.SomeArg args)
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.A);
@@ -115,7 +115,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory2 : CommonCommandFactory<global::Foo.SomeArg>
         {
             internal static readonly CommandFactory2 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.SomeArg args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -128,7 +128,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeArg args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.SomeArg args)
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.B);
@@ -141,7 +141,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory3 : CommonCommandFactory<global::Foo.SomeOtherArg>
         {
             internal static readonly CommandFactory3 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeOtherArg args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.SomeOtherArg args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -153,17 +153,19 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::Foo.SomeOtherArg args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.SomeOtherArg args)
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.X);
 
             }
-            public override void PostProcess(global::System.Data.Common.DbCommand cmd, global::Foo.SomeOtherArg args, int rowCount)
+            public override bool RequirePostProcess => true;
+
+            public override void PostProcess(in global::Dapper.UnifiedCommand cmd, global::Foo.SomeOtherArg args, int rowCount)
             {
                 args.RowCount = rowCount;
                 args.DuplicateToCauseProblems = rowCount;
-                base.PostProcess(cmd, args, rowCount);
+                base.PostProcess(in cmd, args, rowCount);
 
             }
             public override bool CanPrepare => true;

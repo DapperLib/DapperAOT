@@ -274,7 +274,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory0 : CommonCommandFactory<global::SomeCode.InternalNesting.SomePublicType>
         {
             internal static readonly CommandFactory0 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomePublicType args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::SomeCode.InternalNesting.SomePublicType args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -286,7 +286,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomePublicType args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::SomeCode.InternalNesting.SomePublicType args)
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.Id);
@@ -299,7 +299,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory1 : CommonCommandFactory<global::SomeCode.InternalNesting.SomeInternalType>
         {
             internal static readonly CommandFactory1 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeInternalType args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::SomeCode.InternalNesting.SomeInternalType args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -311,7 +311,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeInternalType args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::SomeCode.InternalNesting.SomeInternalType args)
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.Id);
@@ -324,7 +324,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         private sealed class CommandFactory2 : CommonCommandFactory<global::SomeCode.InternalNesting.SomeProtectedInternalType>
         {
             internal static readonly CommandFactory2 Instance = new();
-            public override void AddParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeProtectedInternalType args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::SomeCode.InternalNesting.SomeProtectedInternalType args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -336,7 +336,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(global::System.Data.Common.DbCommand cmd, global::SomeCode.InternalNesting.SomeProtectedInternalType args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::SomeCode.InternalNesting.SomeProtectedInternalType args)
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.Id);
