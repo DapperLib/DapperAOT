@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -109,7 +110,7 @@ partial struct Command<TArgs>
         {
             0 => TaskZero,
             1 => ExecuteAsync(values[0], cancellationToken),
-            _ => ExecuteMultiAsync(values, 0, values.Length, cancellationToken),
+            _ => ExecuteMultiAsync(values, 0, values.Length, batchSize, cancellationToken),
         };
     }
 
@@ -123,7 +124,7 @@ partial struct Command<TArgs>
         {
             0 => TaskZero,
             1 => ExecuteAsync(values[0], cancellationToken),
-            _ => ExecuteMultiAsync(values, cancellationToken),
+            _ => ExecuteMultiAsync(values, batchSize, cancellationToken),
         };
     }
 
@@ -137,7 +138,7 @@ partial struct Command<TArgs>
         {
             0 => TaskZero,
             1 => ExecuteAsync(values[offset], cancellationToken),
-            _ => ExecuteMultiAsync(values, offset, count, cancellationToken),
+            _ => ExecuteMultiAsync(values, offset, count, batchSize, cancellationToken),
         };
     }
 
@@ -159,10 +160,11 @@ partial struct Command<TArgs>
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int ExecuteMulti(ReadOnlySpan<TArgs> source, int batchSize)
     {
 #if NET6_0_OR_GREATER
-        if (UseBatch) return ExecuteMultiBatch(source, batchSize);
+        if (UseBatch(batchSize)) return ExecuteMultiBatch(source, batchSize);
 #endif
         return ExecuteMultiSequential(source);
     }
@@ -201,7 +203,9 @@ partial struct Command<TArgs>
     }
 
 #if NET6_0_OR_GREATER
-    private bool UseBatch => connection is { CanCreateBatch: true } && commandFactory is { SupportBatch: true };
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool UseBatch(int batchSize) => batchSize != 0 && connection is { CanCreateBatch: true } && commandFactory is { SupportBatch: true };
+
     private DbBatchCommand AddCommand(ref UnifiedCommand state, TArgs args)
     {
         var cmd = state.UnsafeCreateNewCommand();
@@ -268,10 +272,11 @@ partial struct Command<TArgs>
     }
 #endif
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int ExecuteMulti(IEnumerable<TArgs> source, int batchSize)
     {
 #if NET6_0_OR_GREATER
-        if (UseBatch) return ExecuteMultiBatch(source, batchSize);
+        if (UseBatch(batchSize)) return ExecuteMultiBatch(source, batchSize);
 #endif
         return ExecuteMultiSequential(source);
     }
@@ -324,7 +329,7 @@ partial struct Command<TArgs>
     {
         0 => TaskZero,
         1 => ExecuteAsync(values.Span[0], cancellationToken),
-        _ => MemoryMarshal.TryGetArray(values, out var segment) ? ExecuteMultiAsync(segment.Array!, segment.Offset, segment.Count, cancellationToken) : ExecuteMultiAsync(values, cancellationToken),
+        _ => MemoryMarshal.TryGetArray(values, out var segment) ? ExecuteMultiAsync(segment.Array!, segment.Offset, segment.Count, batchSize, cancellationToken) : ExecuteMultiAsync(values, batchSize, cancellationToken),
     };
 
     /// <summary>
@@ -335,20 +340,20 @@ partial struct Command<TArgs>
         null => TaskZero,
         List<TArgs> list => ExecuteAsync(list, batchSize, cancellationToken),
         TArgs[] arr => ExecuteAsync(arr, batchSize, cancellationToken),
-        ArraySegment<TArgs> segment => ExecuteMultiAsync(segment.Array!, segment.Offset, segment.Count, cancellationToken),
-        ImmutableArray<TArgs> arr => ExecuteAsync(arr, cancellationToken),
+        ArraySegment<TArgs> segment => ExecuteMultiAsync(segment.Array!, segment.Offset, segment.Count, batchSize, cancellationToken),
+        ImmutableArray<TArgs> arr => ExecuteAsync(arr, batchSize, cancellationToken),
         ICollection<TArgs> collection when collection.Count is 0 => TaskZero, // note that IList<T> : ICollection<T>
         IList<TArgs> collection when collection.Count is 1 => ExecuteAsync(collection[0], cancellationToken),
         IReadOnlyCollection<TArgs> collection when collection.Count is 0 => TaskZero, // note that IReadOnlyList<T> : IReadOnlyCollection<T>
         IReadOnlyList<TArgs> collection when collection.Count is 1 => ExecuteAsync(collection[0], cancellationToken),
-        _ => ExecuteMultiAsync(values, cancellationToken),
+        _ => ExecuteMultiAsync(values, batchSize, cancellationToken),
     };
 
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
     /// </summary>
     public Task<int> ExecuteAsync(IAsyncEnumerable<TArgs> values, int batchSize = -1, CancellationToken cancellationToken = default)
-        => values is null ? TaskZero : ExecuteMultiAsync(values, cancellationToken);
+        => values is null ? TaskZero : ExecuteMultiAsync(values, batchSize, cancellationToken);
 
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
@@ -366,18 +371,27 @@ partial struct Command<TArgs>
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
     /// </summary>
-    public Task<int> ExecuteAsync(ImmutableArray<TArgs> values, CancellationToken cancellationToken = default)
+    public Task<int> ExecuteAsync(ImmutableArray<TArgs> values, int batchSize = -1, CancellationToken cancellationToken = default)
     {
         if (values.IsDefaultOrEmpty) return TaskZero;
 
         return values.Length switch
         {
             1 => ExecuteAsync(values[0], cancellationToken),
-            _ => ExecuteMultiAsync(values.AsMemory(), cancellationToken),
+            _ => ExecuteMultiAsync(values.AsMemory(), batchSize, cancellationToken),
         };
     }
 
-    private async Task<int> ExecuteMultiAsync(ReadOnlyMemory<TArgs> source, CancellationToken cancellationToken)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task<int> ExecuteMultiAsync(ReadOnlyMemory<TArgs> source, int batchSize, CancellationToken cancellationToken)
+    {
+//#if NET6_0_OR_GREATER
+//        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
+//#endif
+        return ExecuteMultiSequentialAsync(source, cancellationToken);
+    }
+
+    private async Task<int> ExecuteMultiSequentialAsync(ReadOnlyMemory<TArgs> source, CancellationToken cancellationToken)
     {
         Debug.Assert(source.Length > 1);
         AsyncCommandState state = new();
@@ -410,7 +424,15 @@ partial struct Command<TArgs>
         }
     }
 
-    private async Task<int> ExecuteMultiAsync(IAsyncEnumerable<TArgs> source, CancellationToken cancellationToken)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task<int> ExecuteMultiAsync(IAsyncEnumerable<TArgs> source, int batchSize, CancellationToken cancellationToken)
+    {
+//#if NET6_0_OR_GREATER
+//        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
+//#endif
+        return ExecuteMultiSequentialAsync(source, cancellationToken);
+    }
+    private async Task<int> ExecuteMultiSequentialAsync(IAsyncEnumerable<TArgs> source, CancellationToken cancellationToken)
     {
         AsyncCommandState state = new();
         var iterator = source.GetAsyncEnumerator(cancellationToken);
@@ -449,7 +471,16 @@ partial struct Command<TArgs>
         }
     }
 
-    private async Task<int> ExecuteMultiAsync(IEnumerable<TArgs> source, CancellationToken cancellationToken)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task<int> ExecuteMultiAsync(IEnumerable<TArgs> source, int batchSize, CancellationToken cancellationToken)
+    {
+//#if NET6_0_OR_GREATER
+//        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
+//#endif
+        return ExecuteMultiSequentialAsync(source, cancellationToken);
+    }
+
+    private async Task<int> ExecuteMultiSequentialAsync(IEnumerable<TArgs> source, CancellationToken cancellationToken)
     {
         AsyncCommandState state = new();
         var iterator = source.GetEnumerator();
@@ -488,7 +519,15 @@ partial struct Command<TArgs>
         }
     }
 
-    private async Task<int> ExecuteMultiAsync(TArgs[] source, int offset, int count, CancellationToken cancellationToken)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task<int> ExecuteMultiAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken)
+    {
+#if NET6_0_OR_GREATER
+        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, offset, count, batchSize, cancellationToken);
+#endif
+        return ExecuteMultiSequentialAsync(source, offset, count, cancellationToken);
+    }
+    private async Task<int> ExecuteMultiSequentialAsync(TArgs[] source, int offset, int count, CancellationToken cancellationToken)
     {
         AsyncCommandState state = new();
         try
@@ -522,4 +561,34 @@ partial struct Command<TArgs>
             await state.DisposeAsync();
         }
     }
+
+#if NET6_0_OR_GREATER
+    private async Task<int> ExecuteMultiBatchAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken) // TODO: sub-batching
+    {
+        Debug.Assert(source.Length > 1);
+        UnifiedCommand batch = default;
+        var end = offset + count;
+        try
+        {
+            for (int i = offset ; i < end; i++)
+            {
+                if (!batch.HasBatch) batch = new(connection.CreateBatch());
+                AddCommand(ref batch, source[i]);
+            }
+            if (!batch.HasBatch) return 0;
+
+            var result = await batch.AssertBatch.ExecuteNonQueryAsync(cancellationToken);
+
+            if (commandFactory.RequirePostProcess)
+            {
+                batch.PostProcess(new ReadOnlySpan<TArgs>(source, offset, count), commandFactory);
+            }
+            return result;
+        }
+        finally
+        {
+            batch.Cleanup();
+        }
+    }
+#endif
 }
