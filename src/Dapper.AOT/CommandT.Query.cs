@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,7 +46,7 @@ partial struct Command<TArgs>
             }
             else
             {
-                results = new();
+                results = [];
             }
 
             // consume entire results (avoid unobserved TDS error messages)
@@ -86,7 +85,7 @@ partial struct Command<TArgs>
             }
             else
             {
-                results = new();
+                results = [];
             }
 
             // consume entire results (avoid unobserved TDS error messages)

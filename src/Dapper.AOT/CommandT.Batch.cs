@@ -204,7 +204,7 @@ partial struct Command<TArgs>
 
 #if NET6_0_OR_GREATER
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool UseBatch(int batchSize) => batchSize != 0 && connection is { CanCreateBatch: true } && commandFactory is { SupportBatch: true };
+    private bool UseBatch(int batchSize) => batchSize != 0 && connection is { CanCreateBatch: true };
 
     private DbBatchCommand AddCommand(ref UnifiedCommand state, TArgs args)
     {

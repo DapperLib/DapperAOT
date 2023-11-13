@@ -15,7 +15,7 @@ public class DynamicTests : IDisposable
     [SkippableFact]
     public void CanAccessDynamicData()
     {
-        var wilma = connection.Command("select * from AotIntegrationDynamicTests where Name = 'Wilma';", handler: CommandFactory.Simple)
+        var wilma = connection.Command("select * from " + SqlClientFixture.AotIntegrationDynamicTests + " where Name = 'Wilma';", handler: CommandFactory.Simple)
             .QuerySingle(null, RowFactory.Inbuilt.Dynamic);
         Assert.NotNull(wilma);
         Assert.Equal("Wilma", (string)wilma.Name);

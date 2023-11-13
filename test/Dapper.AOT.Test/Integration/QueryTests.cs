@@ -25,7 +25,7 @@ public class QueryTests : IDisposable
 
     private void AssertClosed() => Assert.Equal(System.Data.ConnectionState.Closed, connection.State);
 
-    private void AssertExpectedTypedRow(Foo? row, int expected)
+    private static void AssertExpectedTypedRow(Foo? row, int expected)
     {
         if (expected == 0)
         {
@@ -38,7 +38,7 @@ public class QueryTests : IDisposable
             Assert.Equal("abc", row.Name);
         }
     }
-    private void AssertExpectedDynamicRow(dynamic? row, int expected)
+    private static void AssertExpectedDynamicRow(dynamic? row, int expected)
     {
         if (expected == 0)
         {
@@ -52,7 +52,7 @@ public class QueryTests : IDisposable
         }
     }
 
-    private void AssertExpectedTypedRows(List<Foo> rows, int expected)
+    private static void AssertExpectedTypedRows(List<Foo> rows, int expected)
     {
         Assert.Equal(expected, rows.Count);
         if (expected > 0)
@@ -71,7 +71,7 @@ public class QueryTests : IDisposable
         }
     }
 
-    private void AssertExpectedDynamicRows(List<dynamic> rows, int expected)
+    private static void AssertExpectedDynamicRows(List<dynamic> rows, int expected)
     {
         Assert.Equal(expected, rows.Count);
         if (expected > 0)
@@ -107,6 +107,7 @@ public class QueryTests : IDisposable
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0028:Simplify collection initialization", Justification = "Confidence in what is happening")]
     public void QueryNonBufferedTypedSync(int count)
     {
         AssertClosed();
@@ -135,6 +136,7 @@ public class QueryTests : IDisposable
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0028:Simplify collection initialization", Justification = "Confidence in what is happening")]
     public async Task QueryNonBufferedTypedAsync(int count)
     {
         AssertClosed();
@@ -163,6 +165,7 @@ public class QueryTests : IDisposable
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0028:Simplify collection initialization", Justification = "Confidence in what is happening")]
     public void QueryNonBufferedDynamicSync(int count)
     {
         AssertClosed();
@@ -191,6 +194,7 @@ public class QueryTests : IDisposable
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0028:Simplify collection initialization", Justification = "Confidence in what is happening")]
     public async Task QueryNonBufferedDynamicAsync(int count)
     {
         AssertClosed();

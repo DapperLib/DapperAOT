@@ -115,7 +115,6 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 }
 
             }
-            public override bool SupportBatch => true;
             public override bool CanPrepare => true;
 
         }

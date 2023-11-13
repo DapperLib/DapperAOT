@@ -41,7 +41,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     }
 
     // very fast and light-weight; we'll worry about the rest later from the semantic tree
-    internal static bool IsCandidate(string methodName) => methodName.StartsWith("Execute") || methodName.StartsWith("Query");
+    internal static bool IsCandidate(string methodName) =>
+        methodName.StartsWith("Execute")
+        || methodName.StartsWith("Query")
+        || methodName.StartsWith("GetRowParser");
 
     internal bool PreFilter(SyntaxNode node, CancellationToken cancellationToken)
     {
@@ -213,6 +216,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     }
 
     const string DapperBaseCommandFactory = "global::Dapper.CommandFactory";
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Allow expectation of state")]
     internal void Generate(in GenerateState ctx)
     {
         if (!CheckPrerequisites(ctx)) // also reports per-item diagnostics
@@ -221,7 +226,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return;
         }
 
-        var dbCommandTypes = IdentifyDbCommandTypes(ctx.Compilation, out var needsCommandPrep, out bool frameworkHasBatchAPI);
+        var dbCommandTypes = IdentifyDbCommandTypes(ctx.Compilation, out var needsCommandPrep);
 
         bool allowUnsafe = ctx.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
@@ -293,18 +298,22 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             var commandTypeMode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
             var methodParameters = grp.Key.Method.Parameters;
             string? fixedSql = null;
-            if (flags.HasAny(OperationFlags.IncludeLocation))
+
+            if (HasParam(methodParameters, "sql"))
             {
-                var origin = grp.Single();
-                fixedSql = origin.Sql; // expect exactly one SQL
-                sb.Append("global::System.Diagnostics.Debug.Assert(sql == ")
-                    .AppendVerbatimLiteral(fixedSql).Append(");").NewLine();
-                var path = origin.Location.GetMappedLineSpan();
-                fixedSql = $"-- {path.Path}#{path.StartLinePosition.Line + 1}\r\n{fixedSql}";
-            }
-            else
-            {
-                sb.Append("global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));").NewLine();
+                if (flags.HasAny(OperationFlags.IncludeLocation))
+                {
+                    var origin = grp.Single();
+                    fixedSql = origin.Sql; // expect exactly one SQL
+                    sb.Append("global::System.Diagnostics.Debug.Assert(sql == ")
+                        .AppendVerbatimLiteral(fixedSql).Append(");").NewLine();
+                    var path = origin.Location.GetMappedLineSpan();
+                    fixedSql = $"-- {path.Path}#{path.StartLinePosition.Line + 1}\r\n{fixedSql}";
+                }
+                else
+                {
+                    sb.Append("global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));").NewLine();
+                }
             }
             if (HasParam(methodParameters, "commandType"))
             {
@@ -320,12 +329,28 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb.Append("global::System.Diagnostics.Debug.Assert(buffered is ").Append((flags & OperationFlags.Buffered) != 0).Append(");").NewLine();
             }
 
-            sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(flags.HasAny(OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine().NewLine();
+            if (HasParam(methodParameters, "param"))
+            {
+                sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(flags.HasAny(OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine();
+            }
 
-            if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
+            if (HasParam(methodParameters, "concreteType"))
+            {
+                sb.Append("global::System.Diagnostics.Debug.Assert(concreteType is null);").NewLine();
+            }
+
+            sb.NewLine();
+
+            if (flags.HasAny(OperationFlags.GetRowParser))
+            {
+                WriteGetRowParser(sb, resultType, readers);
+            }
+            else if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
             {
                 WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql, additionalCommandState);
             }
+
+            sb.Outdent().NewLine().NewLine();
         }
 
         var baseCommandFactory = GetCommandFactory(ctx.Compilation, out var canConstruct) ?? DapperBaseCommandFactory;
@@ -384,7 +409,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var tuple in factories)
         {
-            WriteCommandFactory(ctx, baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount, tuple.AdditionalCommandState, tuple.SupportBatch && frameworkHasBatchAPI);
+            WriteCommandFactory(ctx, baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount, tuple.AdditionalCommandState);
         }
 
         sb.Outdent().Outdent(); // ends our generated file-scoped class and the namespace
@@ -396,7 +421,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, ctx.Nodes.Length, methodIndex, factories.Count(), readers.Count()));
     }
 
-    private static void WriteCommandFactory(in GenerateState ctx, string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount, AdditionalCommandState? additionalCommandState, bool supportBatch)
+    private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers)
+    {
+        sb.Append("return ").AppendReader(resultType, readers)
+            .Append(".GetRowParser(reader, startIndex, length, returnNullIfFirstMissing);").NewLine();
+    }
+
+    private static void WriteCommandFactory(in GenerateState ctx, string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount, AdditionalCommandState? additionalCommandState)
     {
         var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
         sb.Append("private ").Append(cacheCount <= 1 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
@@ -466,11 +497,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     sb.Append("base.PostProcess(in cmd, args, rowCount);").NewLine();
                 }
                 sb.Outdent().NewLine();
-            }
-
-            if (supportBatch)
-            {
-                sb.Append("public override bool SupportBatch => true;").NewLine();
             }
         }
 
@@ -1174,17 +1200,15 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         InitialLONGFetchSize = 1 << 1,
     }
 
-    private static ImmutableArray<ITypeSymbol> IdentifyDbCommandTypes(Compilation compilation, out bool needsPrepare, out bool hasBatchAPI)
+    private static ImmutableArray<ITypeSymbol> IdentifyDbCommandTypes(Compilation compilation, out bool needsPrepare)
     {
         needsPrepare = false;
         var dbCommand = compilation.GetTypeByMetadataName("System.Data.Common.DbCommand");
         if (dbCommand is null)
         {
             // if we can't find DbCommand, we're out of luck
-            hasBatchAPI = false;
             return ImmutableArray<ITypeSymbol>.Empty;
         }
-        hasBatchAPI = compilation.GetTypeByMetadataName("System.Data.Common.DbBatch") is not null;
 
         var pending = new Queue<INamespaceOrTypeSymbol>();
         foreach (var assemblyName in compilation.References)

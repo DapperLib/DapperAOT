@@ -918,7 +918,7 @@ internal static class Inspection
             case "Query":
                 flags |= OperationFlags.Query;
                 if (method.Arity > 1) flags |= OperationFlags.NotAotSupported;
-                return true;
+                break;
             case "QueryAsync":
             case "QueryUnbufferedAsync":
                 flags |= method.Name.Contains("Unbuffered") ? OperationFlags.Unbuffered : OperationFlags.Buffered;
@@ -942,21 +942,26 @@ internal static class Inspection
             case "QueryMultiple":
             case "QueryMultipleAsync":
                 flags |= OperationFlags.Query | OperationFlags.QueryMultiple | OperationFlags.NotAotSupported;
-                return true;
+                break;
             case "Execute":
             case "ExecuteAsync":
                 flags |= OperationFlags.Execute;
                 if (method.Arity != 0) flags |= OperationFlags.NotAotSupported;
-                return true;
+                break;
             case "ExecuteScalar":
             case "ExecuteScalarAsync":
                 flags |= OperationFlags.Execute | OperationFlags.Scalar;
                 if (method.Arity >= 2) flags |= OperationFlags.NotAotSupported;
-                return true;
+                break;
+            case "GetRowParser":
+                flags |= OperationFlags.GetRowParser;
+                if (method.Arity != 1) flags |= OperationFlags.NotAotSupported;
+                break;
             default:
                 flags = OperationFlags.NotAotSupported;
-                return true;
+                break;
         }
+        return true;
     }
     public static bool HasAny(this OperationFlags value, OperationFlags testFor) => (value & testFor) != 0;
     public static bool HasAll(this OperationFlags value, OperationFlags testFor) => (value & testFor) == testFor;
@@ -1243,5 +1248,7 @@ enum OperationFlags
     IncludeLocation = 1 << 20, // include -- SomeFile.cs#40 when possible
     KnownParameters = 1 << 21,
     QueryMultiple = 1 << 22,
-    NotAotSupported = 1 << 23,
+    GetRowParser = 1 << 23,
+
+    NotAotSupported = 1 << 31,
 }
