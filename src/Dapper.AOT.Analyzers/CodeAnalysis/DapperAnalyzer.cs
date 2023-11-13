@@ -484,6 +484,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         argExpression = null;
         sql = null;
         bool? buffered = null;
+
         // check the args
         foreach (var arg in op.Arguments)
         {
@@ -524,6 +525,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 case "cnn":
                 case "commandTimeout":
                 case "transaction":
+                case "reader":
+                case "startIndex":
+                case "length":
+                case "returnNullIfFirstMissing":
+                case "concreteType" when arg.Value is IDefaultValueOperation || (arg.ConstantValue.HasValue && arg.ConstantValue.Value is null):
                     // nothing to do
                     break;
                 case "commandType":

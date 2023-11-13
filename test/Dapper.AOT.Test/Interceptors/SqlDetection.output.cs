@@ -113,7 +113,6 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps[0].Value = AsValue(typed.B);
 
             }
-            public override bool SupportBatch => true;
             public override bool CanPrepare => true;
 
         }

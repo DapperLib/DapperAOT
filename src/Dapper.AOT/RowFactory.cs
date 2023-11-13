@@ -1,13 +1,13 @@
 ﻿using Dapper.Internal;
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using System.Threading;
 using System.Runtime.InteropServices;
-using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Dapper;
 
@@ -118,6 +118,34 @@ public abstract class RowFactory
         return new Span<int>(lease, 0, fieldCount);
 #endif
     }
+
+
+    [StructLayout(LayoutKind.Explicit, Size = 4 * sizeof(int))]
+    private protected struct TokenBuffer4
+    {
+        [FieldOffset(0)]
+        public int PayloadStart;
+        [FieldOffset(0)]
+        private unsafe fixed int tokens[4];
+    }
+
+    [StructLayout(LayoutKind.Explicit, Size = 8 * sizeof(int))]
+    private protected struct TokenBuffer8
+    {
+        [FieldOffset(0)]
+        public int PayloadStart;
+        [FieldOffset(0)]
+        private unsafe fixed int tokens[8];
+    }
+
+    [StructLayout(LayoutKind.Explicit, Size = 16 * sizeof(int))]
+    private protected struct TokenBuffer16
+    {
+        [FieldOffset(0)]
+        public int PayloadStart;
+        [FieldOffset(0)]
+        private unsafe fixed int tokens[16];
+    }
 }
 
 /// <summary>
@@ -217,6 +245,150 @@ public class RowFactory<T> : RowFactory
             CommandUtils.ThrowNone();
         }
         return result;
+    }
+
+    /// <summary>
+    /// Gets the row parser for a specific row on a data reader. This allows for type switching every row based on, for example, a TypeId column.
+    /// You could return a collection of the base type but have each more specific.
+    /// </summary>
+    /// <param name="reader">The data reader to get the parser for the current row from.</param>
+    /// <param name="startIndex">The start column index of the object (default: 0).</param>
+    /// <param name="length">The length of columns to read (default: -1 = all fields following startIndex).</param>
+    /// <param name="returnNullIfFirstMissing">Return null if the value of the first column is <c>null</c>.</param>
+    /// <returns>A parser for this specific object from this row.</returns>
+    public Func<DbDataReader, T> GetRowParser(DbDataReader reader,
+            int startIndex = 0, int length = -1, bool returnNullIfFirstMissing = false)
+    {
+        if (length < 0) // use everything remaining
+        {
+            length = reader.FieldCount - startIndex;
+        }
+        if (length == 0)
+        {
+            returnNullIfFirstMissing = false; // no "first" to ask about!
+        }
+        RowParserState state = length switch
+        {
+            0 => new EmptyRowParserState(this, startIndex, length, returnNullIfFirstMissing),
+#if NETCOREAPP3_1_OR_GREATER
+            <= 4 => new FixedSizeRowParserState4(this, startIndex, length, returnNullIfFirstMissing),
+            <= 8 => new FixedSizeRowParserState8(this, startIndex, length, returnNullIfFirstMissing),
+            <= 16 => new FixedSizeRowParserState16(this, startIndex, length, returnNullIfFirstMissing),
+#endif
+            _ => new LargeRowParserState(this, startIndex, length, returnNullIfFirstMissing),
+        };
+        state.Tokenize(reader);
+        return state.Parse;
+    }
+
+    private abstract class RowParserState
+    {
+        // manual capture state for row reader; initialized with tokenized column metadata, then
+        // reused between different rows
+        protected RowParserState(RowFactory<T> rowFactory, int columnOffset, bool returnNullIfFirstMissing)
+        {
+            this.rowFactory = rowFactory;
+            if (columnOffset < 0) Throw();
+            columnOffsetAndReturnNullIfFirstMissing = columnOffset | (returnNullIfFirstMissing ? MSB : 0);
+
+            static void Throw() => throw new ArgumentOutOfRangeException(nameof(columnOffset));
+        }
+
+        const int MSB = 1 << 31;
+
+        private int ColumnOffset => columnOffsetAndReturnNullIfFirstMissing & ~MSB;
+        private bool ReturnNullIfFirstMissing => (columnOffsetAndReturnNullIfFirstMissing & MSB) != 0;
+
+        private readonly RowFactory<T> rowFactory;
+        private readonly int columnOffsetAndReturnNullIfFirstMissing;
+        private object? state;
+        protected abstract Span<int> Tokens { get; }
+
+        protected abstract ReadOnlySpan<int> ReadOnlyTokens { get; }
+        public void Tokenize(DbDataReader reader)
+            => state = rowFactory.Tokenize(reader, Tokens, ColumnOffset);
+
+        protected static void ValidateLength(int length, int max)
+        {
+            if (length < 0 || length > max) Throw();
+            static void Throw() => throw new ArgumentOutOfRangeException(nameof(length));
+        }
+
+        public T Parse(DbDataReader reader)
+        {
+            if (ReturnNullIfFirstMissing && reader.IsDBNull(ColumnOffset))
+            {
+                return default!;
+            }
+            return rowFactory.Read(reader, ReadOnlyTokens, ColumnOffset, state);
+        }
+    }
+
+    private sealed class EmptyRowParserState : RowParserState
+    {
+        public EmptyRowParserState(RowFactory<T> rowFactory, int columnOffset, int length, bool returnNullIfFirstMissing)
+            : base(rowFactory, columnOffset, returnNullIfFirstMissing)
+        {
+            ValidateLength(length, 0);
+        }
+
+        protected override Span<int> Tokens => default;
+        protected override ReadOnlySpan<int> ReadOnlyTokens => default;
+    }
+
+#if NETCOREAPP3_1_OR_GREATER // can optimize using spans over a payload struct
+    private sealed class FixedSizeRowParserState4 : RowParserState
+    {
+        private readonly int length;
+        private TokenBuffer4 tokenBuffer;
+        public FixedSizeRowParserState4(RowFactory<T> rowFactory, int columnOffset, int length, bool returnNullIfFirstMissing)
+            : base(rowFactory, columnOffset, returnNullIfFirstMissing)
+        {
+            ValidateLength(length, 4);
+            this.length = length;
+        }
+        protected override Span<int> Tokens => MemoryMarshal.CreateSpan(ref tokenBuffer.PayloadStart, length);
+        protected override ReadOnlySpan<int> ReadOnlyTokens => MemoryMarshal.CreateReadOnlySpan(ref tokenBuffer.PayloadStart, length);
+    }
+    private sealed class FixedSizeRowParserState8 : RowParserState
+    {
+        private readonly int length;
+        private TokenBuffer8 tokenBuffer;
+        public FixedSizeRowParserState8(RowFactory<T> rowFactory, int columnOffset, int length, bool returnNullIfFirstMissing)
+            : base(rowFactory, columnOffset, returnNullIfFirstMissing)
+        {
+            ValidateLength(length, 8);
+            this.length = length;
+        }
+        protected override Span<int> Tokens => MemoryMarshal.CreateSpan(ref tokenBuffer.PayloadStart, length);
+        protected override ReadOnlySpan<int> ReadOnlyTokens => MemoryMarshal.CreateReadOnlySpan(ref tokenBuffer.PayloadStart, length);
+    }
+    private sealed class FixedSizeRowParserState16 : RowParserState
+    {
+        private readonly int length;
+        private TokenBuffer16 tokenBuffer;
+        public FixedSizeRowParserState16(RowFactory<T> rowFactory, int columnOffset, int length, bool returnNullIfFirstMissing)
+            : base(rowFactory, columnOffset, returnNullIfFirstMissing)
+        {
+            ValidateLength(length, 16);
+            this.length = length;
+        }
+        protected override Span<int> Tokens => MemoryMarshal.CreateSpan(ref tokenBuffer.PayloadStart, length);
+        protected override ReadOnlySpan<int> ReadOnlyTokens => MemoryMarshal.CreateReadOnlySpan(ref tokenBuffer.PayloadStart, length);
+    }
+#endif
+
+    private sealed class LargeRowParserState : RowParserState // fallback to arrays if nothing else possible
+    {
+        private readonly int[] tokens;
+        public LargeRowParserState(RowFactory<T> rowFactory, int columnOffset, int length, bool returnNullIfFirstMissing)
+            : base(rowFactory, columnOffset, returnNullIfFirstMissing)
+        {
+            ValidateLength(length, 0X7FEFFFFF);
+            tokens = new int[length];
+        }
+        protected override Span<int> Tokens => new(tokens);
+        protected override ReadOnlySpan<int> ReadOnlyTokens => new(tokens);
     }
 }
 

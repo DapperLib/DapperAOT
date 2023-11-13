@@ -7,7 +7,6 @@ using Xunit;
 namespace Dapper.AOT.Test.Integration;
 
 [Collection(SharedSqlClient.Collection)]
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1861:Avoid constant arrays as arguments", Justification = "Clearer for test")]
 public class ManualGridReaderTests : IDisposable
 {
     private readonly SqlConnection connection;
@@ -31,7 +30,7 @@ public class ManualGridReaderTests : IDisposable
         Assert.Equal(123, reader.ReadSingle<int>());
         Assert.Equal("abc", reader.ReadSingle<string>());
         Assert.Equal(new[] { null, "def", "ghi" }, reader.Read<string?>(buffered: true).ToArray());
-        Assert.Equal(new[] { 456, 789 }, reader.Read<int>(buffered: false).ToArray());
+        Assert.Equal([456, 789], reader.Read<int>(buffered: false).ToArray());
         Assert.True(reader.IsConsumed);
         AssertClosed();
     }
@@ -48,7 +47,7 @@ public class ManualGridReaderTests : IDisposable
         Assert.Equal(123, await reader.ReadSingleAsync<int>());
         Assert.Equal("abc", await reader.ReadSingleAsync<string>());
         Assert.Equal(new[] { null, "def", "ghi" }, (await reader.ReadAsync<string?>(buffered: true)).ToArray());
-        Assert.Equal(new[] { 456, 789 }, (await reader.ReadAsync<int>(buffered: false)).ToArray());
+        Assert.Equal([456, 789], (await reader.ReadAsync<int>(buffered: false)).ToArray());
         Assert.True(reader.IsConsumed);
         AssertClosed();
     }
@@ -62,7 +61,7 @@ public class ManualGridReaderTests : IDisposable
         Assert.Equal(123, ((AotGridReader)reader).ReadSingle(RowFactory.Inbuilt.Value<int>()));
         Assert.Equal("abc", ((AotGridReader)reader).ReadSingle(RowFactory.Inbuilt.Value<string>()));
         Assert.Equal(new[] { null, "def", "ghi" }, ((AotGridReader)reader).Read(buffered: true, RowFactory.Inbuilt.Value<string>()).ToArray());
-        Assert.Equal(new[] { 456, 789 }, ((AotGridReader)reader).Read(buffered: false, RowFactory.Inbuilt.Value<int>()).ToArray());
+        Assert.Equal([456, 789], ((AotGridReader)reader).Read(buffered: false, RowFactory.Inbuilt.Value<int>()).ToArray());
         Assert.True(reader.IsConsumed);
         AssertClosed();
     }
@@ -79,7 +78,7 @@ public class ManualGridReaderTests : IDisposable
         Assert.Equal(123, await ((AotGridReader)reader).ReadSingleAsync(RowFactory.Inbuilt.Value<int>()));
         Assert.Equal("abc", await ((AotGridReader)reader).ReadSingleAsync(RowFactory.Inbuilt.Value<string>()));
         Assert.Equal(new[] { null, "def", "ghi" }, (await ((AotGridReader)reader).ReadAsync(buffered: true, RowFactory.Inbuilt.Value<string>())).ToArray());
-        Assert.Equal(new[] { 456, 789 }, (await ((AotGridReader)reader).ReadAsync(buffered: false, RowFactory.Inbuilt.Value<int>())).ToArray());
+        Assert.Equal([456, 789], (await ((AotGridReader)reader).ReadAsync(buffered: false, RowFactory.Inbuilt.Value<int>())).ToArray());
         Assert.True(reader.IsConsumed);
         AssertClosed();
     }
@@ -93,7 +92,7 @@ public class ManualGridReaderTests : IDisposable
         Assert.Equal(123, reader.ReadSingle<int>());
         Assert.Equal("abc", reader.ReadSingle<string>());
         Assert.Equal(new[] { null, "def", "ghi" }, reader.Read<string>(buffered: true).ToArray());
-        Assert.Equal(new[] { 456, 789 }, reader.Read<int>(buffered: false).ToArray());
+        Assert.Equal([456, 789], reader.Read<int>(buffered: false).ToArray());
         Assert.True(reader.IsConsumed);
         AssertClosed();
     }
@@ -110,7 +109,7 @@ public class ManualGridReaderTests : IDisposable
         Assert.Equal(123, await reader.ReadSingleAsync<int>());
         Assert.Equal("abc", await reader.ReadSingleAsync<string>());
         Assert.Equal(new[] { null, "def", "ghi" }, (await reader.ReadAsync<string>(buffered: true)).ToArray());
-        Assert.Equal(new[] { 456, 789 }, (await reader.ReadAsync<int>(buffered: false)).ToArray());
+        Assert.Equal([456, 789], (await reader.ReadAsync<int>(buffered: false)).ToArray());
         Assert.True(reader.IsConsumed);
         AssertClosed();
     }

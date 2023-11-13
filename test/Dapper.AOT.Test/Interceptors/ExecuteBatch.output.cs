@@ -186,7 +186,6 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps[2].Value = AsValue(args.Z);
 
             }
-            public override bool SupportBatch => true;
             public override bool CanPrepare => true;
 
         }
@@ -223,7 +222,6 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps[1].Value = AsValue(typed.bar);
 
             }
-            public override bool SupportBatch => true;
             public override bool CanPrepare => true;
 
         }
@@ -249,7 +247,6 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps[0].Value = AsValue(args.X);
 
             }
-            public override bool SupportBatch => true;
             public override bool CanPrepare => true;
 
         }

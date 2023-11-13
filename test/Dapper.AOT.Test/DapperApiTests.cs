@@ -31,6 +31,6 @@ public class DapperApiTests
 
         var candidates = string.Join(",", methods.Where(DapperInterceptorGenerator.IsCandidate));
         Log.WriteLine(candidates);
-        Assert.Equal("Execute,ExecuteAsync,ExecuteReader,ExecuteReaderAsync,ExecuteScalar,ExecuteScalar<,ExecuteScalarAsync,ExecuteScalarAsync<,Query,Query<,QueryAsync,QueryAsync<,QueryFirst,QueryFirst<,QueryFirstAsync,QueryFirstAsync<,QueryFirstOrDefault,QueryFirstOrDefault<,QueryFirstOrDefaultAsync,QueryFirstOrDefaultAsync<,QueryMultiple,QueryMultipleAsync,QuerySingle,QuerySingle<,QuerySingleAsync,QuerySingleAsync<,QuerySingleOrDefault,QuerySingleOrDefault<,QuerySingleOrDefaultAsync,QuerySingleOrDefaultAsync<" + (IsNetFx ? "" : ",QueryUnbufferedAsync,QueryUnbufferedAsync<"), candidates);
+        Assert.Equal("Execute,ExecuteAsync,ExecuteReader,ExecuteReaderAsync,ExecuteScalar,ExecuteScalar<,ExecuteScalarAsync,ExecuteScalarAsync<,GetRowParser,GetRowParser<,Query,Query<,QueryAsync,QueryAsync<,QueryFirst,QueryFirst<,QueryFirstAsync,QueryFirstAsync<,QueryFirstOrDefault,QueryFirstOrDefault<,QueryFirstOrDefaultAsync,QueryFirstOrDefaultAsync<,QueryMultiple,QueryMultipleAsync,QuerySingle,QuerySingle<,QuerySingleAsync,QuerySingleAsync<,QuerySingleOrDefault,QuerySingleOrDefault<,QuerySingleOrDefaultAsync,QuerySingleOrDefaultAsync<" + (IsNetFx ? "" : ",QueryUnbufferedAsync,QueryUnbufferedAsync<"), candidates);
     }
 }
