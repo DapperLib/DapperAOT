@@ -8,6 +8,7 @@ Index:
 - [Getting Started](/gettingstarted)
 - [SQL Syntax](/sqlsyntax)
 - [Generated Code](/generatedcode)
+- [Bulk Copy](/bulkcopy)
 - [Frequently Asked Questions](/faq)
 
 Packages:
