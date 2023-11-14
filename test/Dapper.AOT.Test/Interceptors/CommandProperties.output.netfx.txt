@@ -1,6 +1,6 @@
 Generator produced 3 diagnostics:
 
-Info DAP000  L1 C1
+Hidden DAP000  L1 C1
 Dapper.AOT handled 6 of 6 possible call-sites using 5 interceptors, 7 commands and 1 readers
 
 Warning DAP033 Interceptors/CommandProperties.input.cs L12 C17

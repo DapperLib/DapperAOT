@@ -142,4 +142,15 @@ Build succeeded.
     0 Error(s)
 ```
 
-That's.. underwhelming, but: a lot is going on under the covers. The fact that you didn't need to change your code is intentional. If we 
+That's.. underwhelming, but: a lot is going on under the covers. The fact that you didn't need to change your code is intentional. Your data-access code is now
+working build build-time support, and should work with AOT deployment.
+
+## Limitations and caveats
+
+`Dapper.AOT` does not support all `Dapper` features; not all APIs are supported, and when an API is supported it might have limitations - for example, the *generic* APIs
+like `Query<Foo>` should work, but the *non-generic* API passing `typeof(Foo)` *is not* supported. The underlying implementation is completely separate to `Dapper` (and *usually*
+your code doesn't even need `Dapper` once compiled); there may be subtle differences in how some things behave.
+
+**PLEASE TEST YOUR CODE CAREFULLY**
+
+If something looks wrong, missing, or would benefit from more usage guidance [let us know!](https://github.com/DapperLib/DapperAOT/issues/new/choose)
