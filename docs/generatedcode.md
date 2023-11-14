@@ -164,6 +164,9 @@ The generated code *isn't scary*. It might be lengthy for large projects, but ea
 is clear, since we always need to check the *actual* column name (because of the risk of hash collisions). Depending on your exact usage, there may be some
 additional pieces that we haven't explored here, but the intent is usually fairly clear (and the generated code contains explanatory comments, as shown).
 
+The code looks a little *unusual* because it eschews `using` directives, instead preferring to fully-qualify types (`global::System.Data.IDbConnection` etc). This is because *when dealing with arbitrary user code*
+it is impossible to rule out the chance of conflicts and ambiguities with user types. When generating code, using fully qualified syntax simply makes a lot of sense.
+
 Using this approach:
 
 1. you don't need to change your code; your existing `Dapper` code works, but now with AOT
