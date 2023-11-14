@@ -14,6 +14,7 @@ Index:
 
 - [Getting Started](/gettingstarted)
 - [SQL Syntax](/sqlsyntax)
+- [Frequently Asked Questions](/faq)
 
 
 Not all Dapper methods are supported, and there may be some kinks - this is all *very early*; as such, it is "opt-in"; to enable Dapper.AOT

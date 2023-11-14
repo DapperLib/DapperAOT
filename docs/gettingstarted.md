@@ -63,7 +63,7 @@ any framework (including .NET Framework, .NET Standard, .NET Core, or modern .NE
 
 If needed, [update your SDK from here](https://dotnet.microsoft.com/download).
 
-Next, we simply add the `Dapper.AOT` nuget package - via the IDE, command-line, or by editing the project file directly:
+Next, we simply add the `Dapper.AOT` nuget package (or `Dapper.Advisor` if you don't want the AOT bits - perhaps if you're using VB) - via the IDE, command-line, or by editing the project file directly:
 
 ``` txt
 > dotnet add package Dapper.AOT --prerelease
@@ -95,7 +95,8 @@ public static Product GetProduct(SqlConnection connection, int productId) => con
     "select ProductID, Name, ProductNumber from Production.Product where ProductId=@productId", new { productId });
 ```
 
-The warning goes away, but: nothing AOT-related has happened yet. We don't like to surprise people, so installing `Dapper.AOT` *by itself* doesn't *change* anything - we need to *turn it on*. We do that using `[DapperAot]` at any level. If
+The warning goes away, but: nothing AOT-related has happened yet. If you're using `Dapper.Advisor`, this is as far as you go, sorry. Otherwise: we don't like
+to surprise people, so installing `Dapper.AOT` *by itself* doesn't *change* anything - we need to *turn it on*. We do that using `[DapperAot]` at any level. If
 we want AOT to apply *everywhere* in our project, we can use:
 
 ``` csharp
