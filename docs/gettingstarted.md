@@ -51,14 +51,14 @@ public class Product
     // etc
 ```
 
-This is using vanilla `Dapper`, and we want to enable `Dapper.AOT`. To do that, the first thing we need is the .NET 8 build SDK (.NET 8 RC2 or later). We *do not* need to target .NET 8 - we can still target
+This is using vanilla `Dapper`, and we want to enable `Dapper.AOT`. To do that, the first thing we need is the .NET 8 build SDK (or later). We *do not* need to target .NET 8 - we can still target
 any framework (including .NET Framework, .NET Standard, .NET Core, or modern .NET), but the magic requires new build features. You can check what build SDK version you are using at the console:
 
 ``` txt
 > dotnet --info
 .NET SDK:
- Version:           8.0.100-rc2.2.23502.2
- (snip)
+ Version:           8.0.100
+ (snip lots more here)
 ```
 
 If needed, [update your SDK from here](https://dotnet.microsoft.com/download).
