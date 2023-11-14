@@ -63,7 +63,7 @@ any framework (including .NET Framework, .NET Standard, .NET Core, or modern .NE
 
 If needed, [update your SDK from here](https://dotnet.microsoft.com/download).
 
-Next, we simply add the `Dapper.AOT` nuget package (or `Dapper.Advisor` if you don't want the AOT bits - perhaps if you're using VB) - via the IDE, command-line, or by editing the project file directly:
+Next, we simply add the `Dapper.AOT` nuget package - via the IDE, command-line, or by editing the project file directly:
 
 ``` txt
 > dotnet add package Dapper.AOT --prerelease
@@ -78,26 +78,21 @@ or
 </ItemGroup>
 ```
 
-This installs `Dapper.AOT`. To check this, if we build: it starts offering us feedback:
+This installs `Dapper.AOT`. To check this, if we build, we see:
 
 ``` txt
 > dotnet build
 MSBuild version 17.8.0+6cdef4241 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
-C:\Code\DapperAOT\test\UsageLinker\Product.cs(16,17): warning DAP219: SELECT columns should be specified explicitly (https://aot.dapperlib.dev/rules/DAP219) [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
+C:\Code\DapperAOT\test\UsageLinker\Product.cs(11,99): warning DAP005: 2 candidate Dapper methods detected, but none have Dapper.AOT enabled (https://aot.dapperlib.d
+ev/rules/DAP005) [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
+  UsageLinker -> C:\Code\DapperAOT\test\UsageLinker\bin\Debug\net8.0\win-x64\UsageLinker.dll
 ```
 
-It is telling us off using `select *`! This is because it can see that we're using `SqlConnection`, so it knows we're using TSQL (for more info, see [SQL Syntax](/sqlsyntax)). We can fix that (or suppress it if we prefer):
+We don't want to surprise people by changing how their code works *just* by installing an additional package, so AOT isn't enabled by default. As [described in the link](https://aot.dapperlib.dev/rules/DAP005),
+we do this by using `[DapperAot]`. Since we're happy to enable AOT everywhere in our project, we can use (in any C# file):
 
-``` csharp
-public static Product GetProduct(SqlConnection connection, int productId) => connection.QueryFirst<Product>(
-    "select ProductID, Name, ProductNumber from Production.Product where ProductId=@productId", new { productId });
-```
-
-The warning goes away, but: nothing AOT-related has happened yet. If you're using `Dapper.Advisor`, this is as far as you go, sorry. Otherwise: we don't like
-to surprise people, so installing `Dapper.AOT` *by itself* doesn't *change* anything - we need to *turn it on*. We do that using `[DapperAot]` at any level. If
-we want AOT to apply *everywhere* in our project, we can use:
 
 ``` csharp
 [module:DapperAot]
@@ -119,8 +114,8 @@ C:\Code\DapperAOT\test\UsageLinker\Dapper.AOT.Analyzers\Dapper.CodeAnalysis.Dapp
 '<InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>' to your project. [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
 ```
 
-This error message is coming from the build SDK (not `Dapper.AOT`). The compiler folks *also* don't like surprises, so you need to *opt in* to "interceptors", the feature that `Dapper.AOT` is using. As the message says,
-we do this by adding:
+These messages are coming from the build SDK (not `Dapper.AOT`). The compiler folks *also* don't like surprises, so you need to *opt in* to the "interceptors" feature that `Dapper.AOT` is using. As the message says,
+we do this by tweaking our project file:
 
 ``` xml
 <PropertyGroup>
@@ -145,6 +140,36 @@ Build succeeded.
 
 That's.. underwhelming, but: a lot is going on under the covers. The fact that you didn't need to change your code is intentional. Your data-access code is now
 working build build-time support, and should work with AOT deployment.
+
+## SQL Analysis
+
+To get the full benefit of the analyzer tools, make sure that it knows which SQL variant you're using. There are [multiple ways of doing this](/sqlsyntax). For example, if we
+change our example to use `SqlConnection`:
+
+``` csharp
+public static Product GetProduct(DbConnection connection, int productId) => connection.QueryFirst<Product>(
+    "select * from Production.Product where ProductId=@productId", new { productId });
+```
+
+and build:
+
+``` txt
+> dotnet build
+MSBuild version 17.8.0+6cdef4241 for .NET
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+C:\Code\DapperAOT\test\UsageLinker\Product.cs(16,17): warning DAP219: SELECT columns should be specified explicitly (https://aot.dapperlib.dev/rules/DAP219) [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
+```
+
+It is telling us off [for using `select *`](https://aot.dapperlib.dev/rules/DAP219)! Since it knows we're using SQL Server and TSQL (for more info, see [SQL Syntax](/sqlsyntax)).
+We can fix that (or suppress it if we prefer):
+
+``` csharp
+public static Product GetProduct(SqlConnection connection, int productId) => connection.QueryFirst<Product>(
+    "select ProductID, Name, ProductNumber from Production.Product where ProductId=@productId", new { productId });
+```
+
+SQL analysis is available in both `Dapper.AOT` and `Dapper.Advisor`, and works for both C# and VB.
 
 ## Limitations and caveats
 
