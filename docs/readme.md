@@ -8,6 +8,14 @@ code that bypasses all the reflection and ref-emit code with ahead-of-time (AOT)
 - easier to see what is happening - you can view the generated code
 - [easier to maintain the library](https://github.com/DapperLib/Dapper/issues/1909)
 
+In addition, since it requires build-time analysis that understands your Dapper usage, we can also offer *usage guidance* on your Dapper usage.
+
+Index:
+
+- [Getting Started](/gettingstarted)
+- [SQL Syntax](/sqlsyntax)
+
+
 Not all Dapper methods are supported, and there may be some kinks - this is all *very early*; as such, it is "opt-in"; to enable Dapper.AOT
 
 1. add the `Dapper.AOT` package, [see nuget.org](https://www.nuget.org/packages/Dapper.AOT#package-reference)

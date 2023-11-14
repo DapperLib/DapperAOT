@@ -21,8 +21,6 @@ internal abstract class DiagnosticsBase
 
     protected static DiagnosticDescriptor LibraryError(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Error);
 
-    protected static DiagnosticDescriptor LibraryHidden(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Hidden);
-
     protected static DiagnosticDescriptor LibraryInfo(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Info);
 
     protected static DiagnosticDescriptor SqlWarning(string id, string title, string messageFormat, bool docs = true) => Create(id, title, messageFormat, Category.Sql, DiagnosticSeverity.Warning);
