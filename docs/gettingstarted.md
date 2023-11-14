@@ -66,7 +66,7 @@ If needed, [update your SDK from here](https://dotnet.microsoft.com/download).
 Next, we simply add the `Dapper.AOT` nuget package - via the IDE, command-line, or by editing the project file directly:
 
 ``` txt
-> dotnet add package Dapper.AOT --prerelease
+> dotnet add package Dapper.AOT
 ```
 
 or
