@@ -14,7 +14,7 @@ namespace Dapper;
 public class BatchInsertBenchmarks : IDisposable
 {
     private readonly SqlConnection connection = new(Program.ConnectionString);
-    private Customer[] customers = Array.Empty<Customer>();
+    private Customer[] customers = [];
 
     public void DebugState()
     {
@@ -246,12 +246,12 @@ public class BatchInsertBenchmarks : IDisposable
             {
                 DestinationTableName = "BenchmarkCustomers",
                 ColumnMappings =
-            {
-                { nameof(Customer.Name), nameof(Customer.Name) }
-            }
+                {
+                    { nameof(Customer.Name), nameof(Customer.Name) }
+                }
             };
             table.EnableStreaming = true;
-            table.WriteToServer(TypeAccessor.CreateDataReader(customers, new[] { nameof(Customer.Name) }));
+            table.WriteToServer(TypeAccessor.CreateDataReader(customers, [nameof(Customer.Name)]));
             return table.RowsCopied;
         }
         finally
