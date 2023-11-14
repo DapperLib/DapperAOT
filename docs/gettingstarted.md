@@ -82,7 +82,7 @@ This installs `Dapper.AOT`. To check this, if we build, we see:
 
 ``` txt
 > dotnet build
-MSBuild version 17.8.0+6cdef4241 for .NET
+MSBuild version 17.8.3+195e7f5a3 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
 C:\Code\DapperAOT\test\UsageLinker\Product.cs(11,99): warning DAP005: 2 candidate Dapper methods detected, but none have Dapper.AOT enabled (https://aot.dapperlib.d
@@ -105,7 +105,7 @@ Now if we build, we get a new error:
 
 ``` txt
 > dotnet build
-MSBuild version 17.8.0+6cdef4241 for .NET
+MSBuild version 17.8.3+195e7f5a3 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
 C:\Code\DapperAOT\test\UsageLinker\Dapper.AOT.Analyzers\Dapper.CodeAnalysis.DapperInterceptorGenerator\UsageLinker.generated.cs(6,10): error CS9137: The 'interceptors' experimental feature is not enabled in this namespace. Add '
@@ -128,7 +128,7 @@ This grants permission for tools to generating "interceptors" in the `Dapper.AOT
 
 ``` txt
 > dotnet build
-MSBuild version 17.8.0+6cdef4241 for .NET
+MSBuild version 17.8.3+195e7f5a3 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
   UsageLinker -> C:\Code\DapperAOT\test\UsageLinker\bin\Debug\net8.0\win-x64\UsageLinker.dll
@@ -155,7 +155,7 @@ and build:
 
 ``` txt
 > dotnet build
-MSBuild version 17.8.0+6cdef4241 for .NET
+MSBuild version 17.8.3+195e7f5a3 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
 C:\Code\DapperAOT\test\UsageLinker\Product.cs(16,17): warning DAP219: SELECT columns should be specified explicitly (https://aot.dapperlib.dev/rules/DAP219) [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
