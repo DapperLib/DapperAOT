@@ -138,8 +138,8 @@ Build succeeded.
     0 Error(s)
 ```
 
-That's.. underwhelming, but: a lot is going on under the covers. The fact that you didn't need to change your code is intentional. Your data-access code is now
-working build build-time support, and should work with AOT deployment.
+That's.. underwhelming, but: [a lot is going on behind the scenes](/generatedcode). The fact that you didn't need to change your code is intentional. Your data-access code is now
+working with build-time code generation, and should work with AOT deployment.
 
 ## SQL Analysis
 
