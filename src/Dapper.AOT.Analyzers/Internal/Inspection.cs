@@ -159,14 +159,41 @@ internal static class Inspection
 
     public static bool IsMissingOrObjectOrDynamic(ITypeSymbol? type) => type is null || type.SpecialType == SpecialType.System_Object || type.TypeKind == TypeKind.Dynamic;
 
-    internal static bool IsDynamicParameters(ITypeSymbol? type)
+    internal static bool IsDynamicParameters(ITypeSymbol? type, out bool needsConstruction)
     {
+        needsConstruction = false;
         if (type is null || type.SpecialType != SpecialType.None) return false;
         if (IsBasicDapperType(type, Types.DynamicParameters)
             || IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
         foreach (var i in type.AllInterfaces)
         {
             if (IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
+        }
+
+        // Dapper also treats anything IEnumerable<string,object[?]> as dynamic parameters
+        if (type.ImplementsIEnumerable(out var found) && found is INamedTypeSymbol { Arity: 1 } iet
+            && iet.TypeArguments[0] is INamedTypeSymbol
+            {
+                Name: "KeyValuePair", Arity: 2, ContainingType: null,
+                ContainingNamespace:
+                {
+                    Name: "Generic",
+                    ContainingNamespace:
+                    {
+                        Name: "Collections",
+                        ContainingNamespace:
+                        {
+                            Name: "System",
+                            ContainingNamespace.IsGlobalNamespace: true
+                        }
+                    }
+                }
+            } kvp
+            && kvp.TypeArguments[0].SpecialType == SpecialType.System_String
+            && kvp.TypeArguments[1].SpecialType == SpecialType.System_Object)
+        {
+            needsConstruction = true;
+            return true;
         }
         return false;
     }
@@ -419,7 +446,7 @@ internal static class Inspection
         /// Order of member in constructor parameter list (starts from 0).
         /// </summary>
         public int? ConstructorParameterOrder { get; }
-        
+
         /// <summary>
         /// Order of member in factory method parameter list (starts from 0).
         /// </summary>
@@ -452,10 +479,10 @@ internal static class Inspection
         {
             _dbValue = dbValue;
             _flags = flags;
-            
+
             Member = member;
             Kind = kind;
-            
+
             ConstructorParameterOrder = constructorParameterOrder;
             FactoryMethodParameterOrder = factoryMethodParameterOrder;
         }
@@ -493,7 +520,7 @@ internal static class Inspection
         FailMultipleExplicit,
         FailMultipleImplicit
     }
-    
+
     public enum FactoryMethodResult
     {
         // note that implicit isn't a thing here
@@ -513,12 +540,12 @@ internal static class Inspection
         {
             return FactoryMethodResult.NoneFound;
         }
-        
+
         var staticMethods = typeSymbol
-            .GetMethods(method => 
+            .GetMethods(method =>
                 method.IsStatic &&
                 SymbolEqualityComparer.Default.Equals(method.ReturnType, typeSymbol) &&
-                method.DeclaredAccessibility == Accessibility.Public 
+                method.DeclaredAccessibility == Accessibility.Public
             )
             ?.ToArray();
         if (staticMethods?.Length == 0)
@@ -541,7 +568,7 @@ internal static class Inspection
 
         return factoryMethod is null ? FactoryMethodResult.NoneFound : FactoryMethodResult.SuccessSingleExplicit;
     }
-    
+
     /// <summary>
     /// Builds a collection of type constructors, which are NOT:
     /// a) parameterless
@@ -613,7 +640,8 @@ internal static class Inspection
                             ContainingNamespace:
                             {
                                 Name: "Runtime",
-                                ContainingNamespace: {
+                                ContainingNamespace:
+                                {
                                     Name: "System",
                                     ContainingNamespace.IsGlobalNamespace: true
                                 }
@@ -630,7 +658,7 @@ internal static class Inspection
                 // ruled out by signature
                 continue;
             }
-            
+
             if (constructor is not null)
             {
                 return ConstructorResult.FailMultipleImplicit;
@@ -704,7 +732,7 @@ internal static class Inspection
                 int? constructorParameterOrder = constructorParameters?.TryGetValue(member.Name, out var constructorParameter) == true
                     ? constructorParameter.Order
                     : null;
-                
+
                 int? factoryMethodParamOrder = factoryMethodParameters?.TryGetValue(member.Name, out var factoryMethodParam) == true
                     ? factoryMethodParam.Order
                     : null;
@@ -1018,12 +1046,12 @@ internal static class Inspection
                     case StringSyntaxKind.ConcatenatedString:
                     case StringSyntaxKind.InterpolatedString:
                     case StringSyntaxKind.FormatString:
-                    {
-                        value = default!;
-                        syntax = null;
-                        syntaxKind = stringSyntaxKind;
-                        return false;
-                    }
+                        {
+                            value = default!;
+                            syntax = null;
+                            syntaxKind = stringSyntaxKind;
+                            return false;
+                        }
                 }
             }
 
@@ -1096,25 +1124,25 @@ internal static class Inspection
                 while (type.SpecialType != SpecialType.System_Object)
                 {
                     if (type is
-                    {
-                        Name: nameof(DbCommand),
-                        ContainingType: null,
-                        Arity: 0,
-                        IsGenericType: false,
-                        ContainingNamespace:
                         {
-                            Name: "Common",
+                            Name: nameof(DbCommand),
+                            ContainingType: null,
+                            Arity: 0,
+                            IsGenericType: false,
                             ContainingNamespace:
                             {
-                                Name: "Data",
+                                Name: "Common",
                                 ContainingNamespace:
                                 {
-                                    Name: "System",
-                                    ContainingNamespace.IsGlobalNamespace: true,
+                                    Name: "Data",
+                                    ContainingNamespace:
+                                    {
+                                        Name: "System",
+                                        ContainingNamespace.IsGlobalNamespace: true,
+                                    }
                                 }
                             }
-                        }
-                    })
+                        })
                     {
                         return true;
                     }

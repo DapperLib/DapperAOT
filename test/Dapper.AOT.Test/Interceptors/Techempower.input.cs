@@ -8,7 +8,7 @@ using System;
 using System.Threading.Tasks;
 using System.Linq;
 
-[module: DapperAot]
+[module:DapperAot]
 
 var connectionString = new SqlConnectionStringBuilder
 {
@@ -32,7 +32,6 @@ class BenchRunner
         _connectionString = connectionString;
     }
 
-    [DapperAot]
     public void Create()
     {
         using var conn = _dbProviderFactory.CreateConnection();
@@ -50,7 +49,6 @@ class BenchRunner
         }
     }
 
-    [DapperAot(false)] // dictionary usage isn't going to work today
     public async Task<World[]> LoadMultipleUpdatesRows(int count)
     {
         count = Clamp(count, 1, 500);
