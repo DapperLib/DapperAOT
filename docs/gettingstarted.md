@@ -177,6 +177,9 @@ SQL analysis is available in both `Dapper.AOT` and `Dapper.Advisor`, and works f
 like `Query<Foo>` should work, but the *non-generic* API passing `typeof(Foo)` *is not* supported. The underlying implementation is completely separate to `Dapper` (and *usually*
 your code doesn't even need `Dapper` once compiled); there may be subtle differences in how some things behave.
 
+In particular, any Dapper configuration (including `SqlMapper.Settings`, `ITypeHandler`, etc) are *not used*; in many cases
+similar configuration is available via new `Dapper.AOT` markers. Please ask if you get stuck!
+
 **PLEASE TEST YOUR CODE CAREFULLY**
 
 If something looks wrong, missing, or would benefit from more usage guidance [let us know!](https://github.com/DapperLib/DapperAOT/issues/new/choose)
