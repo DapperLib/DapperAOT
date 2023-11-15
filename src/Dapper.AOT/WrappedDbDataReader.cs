@@ -49,7 +49,7 @@ namespace Dapper
             var state = this.state; // snapshot
             if (state is not null)
             {
-                commandFactory.PostProcessObject(new(state.Command!), args, state.Reader?.RecordsAffected ?? -1);
+                commandFactory.PostProcessObject(new(state.Command!), args, state.Reader.CloseAndCapture());
                 if (commandFactory.TryRecycle(state.Command!))
                 {
                     state.Command = null;
@@ -229,7 +229,7 @@ namespace Dapper
             var state = this.state; // snapshot
             if (state is not null)
             {
-                commandFactory.PostProcessObject(new(state.Command!), args, state.Reader?.RecordsAffected ?? -1);
+                commandFactory.PostProcessObject(new(state.Command!), args, await state.Reader.CloseAndCaptureAsync());
                 if (commandFactory.TryRecycle(state.Command!))
                 {
                     state.Command = null;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -51,6 +52,33 @@ internal static class CommandUtils
         return task.IsCompletedSuccessfully;
 #else
         return task.Status == TaskStatus.RanToCompletion;
+#endif
+    }
+
+    [MethodImpl(AggressiveOptions)]
+    internal static int CloseAndCapture(this DbDataReader? reader)
+    {
+        if (reader is null) return -1;
+        var count = reader.RecordsAffected;
+        reader.Close();
+        return count;
+    }
+
+    [MethodImpl(AggressiveOptions)]
+    internal static ValueTask<int> CloseAndCaptureAsync(this DbDataReader? reader)
+    {
+#if NETCOREAPP3_1_OR_GREATER
+        if (reader is null) return new(-1);
+        var count = reader.RecordsAffected;
+        var pending = reader.CloseAsync();
+        return pending.IsCompletedSuccessfully ? new(count) : Deferred(pending, count);
+        static async ValueTask<int> Deferred(Task pending, int count)
+        {
+            await pending;
+            return count;
+        }
+#else
+        return new(CloseAndCapture(reader));
 #endif
     }
 
