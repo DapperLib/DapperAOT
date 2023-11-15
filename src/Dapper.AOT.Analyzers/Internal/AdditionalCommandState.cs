@@ -35,6 +35,7 @@ internal readonly struct CommandProperty : IEquatable<CommandProperty>
 internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState>
 {
     public readonly int RowCountHint;
+    public readonly int? BatchSize;
     public readonly string? RowCountHintMemberName;
     public readonly ImmutableArray<CommandProperty> CommandProperties;
 
@@ -72,7 +73,8 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
             countMember = null;
         }
 
-        return new(count, countMember, Concat(inherited.CommandProperties, overrides.CommandProperties));
+        return new(count, countMember, inherited.BatchSize ?? overrides.BatchSize,
+            Concat(inherited.CommandProperties, overrides.CommandProperties));
     }
 
     static ImmutableArray<CommandProperty> Concat(ImmutableArray<CommandProperty> x, ImmutableArray<CommandProperty> y)
@@ -85,10 +87,13 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
         return builder.ToImmutable();
     }
 
-    internal AdditionalCommandState(int rowCountHint, string? rowCountHintMemberName, ImmutableArray<CommandProperty> commandProperties)
+    internal AdditionalCommandState(
+        int rowCountHint, string? rowCountHintMemberName, int? batchSize,
+        ImmutableArray<CommandProperty> commandProperties)
     {
         RowCountHint = rowCountHint;
         RowCountHintMemberName = rowCountHintMemberName;
+        BatchSize = batchSize;
         CommandProperties = commandProperties;
     }
 
@@ -98,7 +103,9 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
     bool IEquatable<AdditionalCommandState>.Equals(AdditionalCommandState other) => Equals(in other);
 
     public bool Equals(in AdditionalCommandState other)
-        => RowCountHint == other.RowCountHint && RowCountHintMemberName == other.RowCountHintMemberName
+        => RowCountHint == other.RowCountHint
+        && BatchSize == other.BatchSize
+        && RowCountHintMemberName == other.RowCountHintMemberName
         && ((CommandProperties.IsDefaultOrEmpty && other.CommandProperties.IsDefaultOrEmpty) || Equals(CommandProperties, other.CommandProperties));
 
     private static bool Equals(in ImmutableArray<CommandProperty> x, in ImmutableArray<CommandProperty> y)
@@ -136,6 +143,7 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
     }
 
     public override int GetHashCode()
-        => (RowCountHint + (RowCountHintMemberName is null ? 0 : RowCountHintMemberName.GetHashCode()))
+        => (RowCountHint + BatchSize.GetValueOrDefault()
+        + (RowCountHintMemberName is null ? 0 : RowCountHintMemberName.GetHashCode()))
         ^ (CommandProperties.IsDefaultOrEmpty ? 0 : GetHashCode(in CommandProperties));
 }

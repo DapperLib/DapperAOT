@@ -747,6 +747,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
+        int? batchSize = null;
         foreach (var attrib in methodAttribs)
         {
             if (IsDapperAttribute(attrib))
@@ -778,6 +779,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     case Types.CommandPropertyAttribute:
                         cmdPropsCount++;
                         break;
+                    case Types.BatchSizeAttribute:
+                        if (attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int batchTmp)
+                        {
+                            batchSize = batchTmp;
+                        }
+                        break;
                 }
             }
         }
@@ -806,8 +813,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
 
 
-        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null
-            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, cmdProps);
+        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null
+            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps);
     }
 
     internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, ref OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)
