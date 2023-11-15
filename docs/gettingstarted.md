@@ -147,7 +147,7 @@ To get the full benefit of the analyzer tools, make sure that it knows which SQL
 change our example to use `SqlConnection`:
 
 ``` csharp
-public static Product GetProduct(DbConnection connection, int productId) => connection.QueryFirst<Product>(
+public static Product GetProduct(SqlConnection connection, int productId) => connection.QueryFirst<Product>(
     "select * from Production.Product where ProductId=@productId", new { productId });
 ```
 
