@@ -690,13 +690,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
 
         var hasInitOnlyMembers = members.Any(member => member.IsInitOnly);
+        var hasRequiredMembers = members.Any(member => member.IsRequired);
         var hasGetOnlyMembers = members.Any(member => member is { IsGettable: true, IsSettable: false, IsInitOnly: false });
         var useConstructorDeferred = map.Constructor is not null;
         var useFactoryMethodDeferred = map.FactoryMethod is not null;
         
         // Implementation detail: 
         // constructor takes advantage over factory method.
-        var useDeferredConstruction = useConstructorDeferred || useFactoryMethodDeferred || hasInitOnlyMembers || hasGetOnlyMembers;
+        var useDeferredConstruction = useConstructorDeferred || useFactoryMethodDeferred || hasInitOnlyMembers || hasGetOnlyMembers || hasRequiredMembers;
 
         WriteRowFactoryHeader();
 
