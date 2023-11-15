@@ -412,6 +412,7 @@ internal static class Inspection
         public bool IsGettable => (_flags & ElementMemberFlags.IsGettable) != 0;
         public bool IsSettable => (_flags & ElementMemberFlags.IsSettable) != 0;
         public bool IsInitOnly => (_flags & ElementMemberFlags.IsInitOnly) != 0;
+        public bool IsRequired => (_flags & ElementMemberFlags.IsRequired) != 0;
         public bool IsExpandable => (_flags & ElementMemberFlags.IsExpandable) != 0;
 
         /// <summary>
@@ -438,6 +439,7 @@ internal static class Inspection
             IsSettable = 1 << 1,
             IsInitOnly = 1 << 2,
             IsExpandable = 1 << 3,
+            IsRequired = 1 << 4,
         }
 
         public ElementMember(
@@ -711,6 +713,7 @@ internal static class Inspection
                 if (CodeWriter.IsGettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsGettable;
                 if (CodeWriter.IsSettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsSettable;
                 if (CodeWriter.IsInitOnlyInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsInitOnly;
+                if (CodeWriter.IsRequired(member)) flags |= ElementMember.ElementMemberFlags.IsRequired;
 
                 if (forParameters)
                 {

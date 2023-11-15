@@ -201,6 +201,14 @@ internal sealed class CodeWriter
         return false;
     }
 
+    public static bool IsRequired(ISymbol symbol)
+        => symbol switch
+        {
+            IPropertySymbol prop => prop.IsRequired,
+            IFieldSymbol field => field.IsRequired,
+            _ => false,
+        };
+
     public static bool IsInitOnlyInstanceMember(ISymbol symbol, out ITypeSymbol type)
     {
         if (symbol.DeclaredAccessibility == Accessibility.Public && !symbol.IsStatic)
