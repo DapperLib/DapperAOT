@@ -216,6 +216,11 @@ internal static class TypeSymbolExtensions
             searchedInterface = null;
             return false;
         }
+        if (typeSymbol.SpecialType == interfaceType || typeSymbol.OriginalDefinition?.SpecialType == interfaceType)
+        {
+            searchedInterface = typeSymbol;
+            return true;
+        }
 
         if (searchFromStart)
         {
