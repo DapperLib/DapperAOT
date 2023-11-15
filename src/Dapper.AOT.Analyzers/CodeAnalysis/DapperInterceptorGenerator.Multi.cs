@@ -44,6 +44,10 @@ public sealed partial class DapperInterceptorGenerator
             bool isAsync = flags.HasAny(OperationFlags.Async);
             sb.Append("Execute").Append(isAsync ? "Async" : "").Append("(");
             sb.Append("(").Append(castType).Append(")param!");
+            if (additionalCommandState?.BatchSize is { } batchSize)
+            {
+                sb.Append(", batchSize: ").Append(batchSize);
+            }
             if (isAsync && HasParam(methodParameters, "cancellationToken"))
             {
                 sb.Append(", cancellationToken: ").Append(Forward(methodParameters, "cancellationToken"));
