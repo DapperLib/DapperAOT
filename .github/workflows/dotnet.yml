@@ -36,7 +36,7 @@ jobs:
       run: dotnet build Build.csproj --no-restore -c Release
 
     - name: Test
-      run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net7.0
+      run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net6.0
 
     - name: Pack
       if: ${{ success() && !github.base_ref }}
