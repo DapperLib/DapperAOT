@@ -13,7 +13,7 @@ static class Program
 #else
     static async Task Main()
     {
-        using (var obj = new BatchInsertBenchmarks())
+        await using (var obj = new BatchInsertBenchmarks())
         {
             await RunAllInserts(obj, 10, false);
             await RunAllInserts(obj, 10, true);
@@ -54,6 +54,9 @@ static class Program
             Console.WriteLine(obj.SqlBulkCopyFastMember());
             Console.WriteLine(obj.SqlBulkCopyDapper());
             Console.WriteLine(await obj.SqlBulkCopyFastMemberAsync());
+
+            Console.WriteLine(obj.NpgsqlDapperAotNoBatch());
+            Console.WriteLine(obj.NpgsqlDapperAotFullBatch());
         }
 
         static async Task RunAllQueries(QueryBenchmarks obj, int count, bool isOpen)
