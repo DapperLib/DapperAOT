@@ -14,25 +14,22 @@ static class Program
 #else
     static async Task Main()
     {
-        var cmd = new SqlBatchCommand();
-        var cnn = new SqlConnection();
-
+        await using (var obj = new BatchInsertBenchmarks(false))
+        {
+            obj.Count = 1000;
+            obj.IsOpen = true;
+            obj.Setup();
+            for (int i = 0; i < 100; i++)
+            {
+                Console.WriteLine($"{i}: {obj.DapperAot_Batch32()}");
+            }
+        }
         //await using (var obj = new BatchInsertBenchmarks())
         //{
-        //    obj.Count = 1000;
-        //    obj.IsOpen = true;
-        //    obj.Setup();
-        //    for (int i = 0; i < 100; i++)
-        //    {
-        //        Console.WriteLine($"{i}: {obj.NpgsqlDapperAotBatch32()}");
-        //    }
+        //    await RunAllInserts(obj, 10, false);
+        //    await RunAllInserts(obj, 10, true);
+        //    await RunAllInserts(obj, 1000, true);
         //}
-        await using (var obj = new BatchInsertBenchmarks())
-        {
-            await RunAllInserts(obj, 10, false);
-            await RunAllInserts(obj, 10, true);
-            await RunAllInserts(obj, 1000, true);
-        }
 
         //using (var obj = new QueryBenchmarks())
         //{

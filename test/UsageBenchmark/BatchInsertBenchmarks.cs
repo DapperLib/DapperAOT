@@ -18,9 +18,9 @@ public class BatchInsertBenchmarks : IAsyncDisposable
     private readonly SqlConnection sqlClient = new(Program.ConnectionString);
     private readonly NpgsqlConnection npgsql = new();
 
-    private readonly PostgreSqlContainer _postgresContainer = new PostgreSqlBuilder()
-        .WithImage("postgres:15-alpine")
-        .Build();
+    private readonly PostgreSqlContainer? _postgresContainer;
+
+    public BatchInsertBenchmarks() : this(true) { }
 
     private Customer[] customers = [];
 
@@ -36,20 +36,26 @@ public class BatchInsertBenchmarks : IAsyncDisposable
         }
     }
 
-    public BatchInsertBenchmarks()
+    public BatchInsertBenchmarks(bool startPostgresql)
     {
         try { sqlClient.Execute("drop table BenchmarkCustomers;"); } catch { }
         sqlClient.Execute("create table BenchmarkCustomers(Id int not null identity(1,1), Name nvarchar(200) not null);");
 
-        _postgresContainer.StartAsync().GetAwaiter().GetResult(); // yes, I know
-        npgsql.ConnectionString = _postgresContainer.GetConnectionString();
+        if (startPostgresql)
+        {
+            _postgresContainer = new PostgreSqlBuilder()
+                .WithImage("postgres:15-alpine")
+                .Build();
+            _postgresContainer.StartAsync().GetAwaiter().GetResult(); // yes, I know
+            npgsql.ConnectionString = _postgresContainer.GetConnectionString();
 
-        npgsql.Execute("""
+            npgsql.Execute("""
             CREATE TABLE IF NOT EXISTS BenchmarkCustomers(
                  Id     integer GENERATED ALWAYS AS IDENTITY,
                  Name   varchar(40) NOT NULL
             );
             """);
+        }
     }
 
     [Params(/*0, 1, 10, 100, */1000)]
@@ -66,19 +72,23 @@ public class BatchInsertBenchmarks : IAsyncDisposable
         {
             arr[i - 1] = new Customer { Id = i, Name = "Name " + i };
         }
+        bool initPostgresql = _postgresContainer is not null;
         customers = arr;
         if (IsOpen)
         {
             if (sqlClient.State != ConnectionState.Open) sqlClient.Open();
-            if (npgsql.State != ConnectionState.Open) npgsql.Open();
+            if (npgsql.State != ConnectionState.Open && initPostgresql) npgsql.Open();
         }
         else
         {
             if (sqlClient.State == ConnectionState.Open) sqlClient.Close();
-            if (npgsql.State == ConnectionState.Open) npgsql.Close();
+            if (npgsql.State == ConnectionState.Open && initPostgresql) npgsql.Close();
         }
         sqlClient.Execute("truncate table BenchmarkCustomers;");
-        npgsql.Execute("TRUNCATE BenchmarkCustomers RESTART IDENTITY;");
+        if (initPostgresql)
+        {
+            npgsql.Execute("TRUNCATE BenchmarkCustomers RESTART IDENTITY;");
+        }
     }
 
     [Benchmark, BenchmarkCategory("Sync", "SqlClient")]
@@ -191,7 +201,7 @@ public class BatchInsertBenchmarks : IAsyncDisposable
     [Benchmark, BenchmarkCategory("Async", "SqlClient")]
     public Task<int> DapperAsync() => sqlClient.ExecuteAsync("insert BenchmarkCustomers (Name) values (@name)", customers);
 
-    [Benchmark, BenchmarkCategory("Async", "SqlClient"), DapperAot, CacheCommand, BatchSize(0)]
+    [Benchmark, BenchmarkCategory("Async", "SqlClient"), CacheCommand, BatchSize(0)]
     public Task<int> DapperAotAsync_BatchNone() => sqlClient.ExecuteAsync("insert BenchmarkCustomers (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Async", "SqlClient"), DapperAot, CacheCommand, BatchSize(-1)]
@@ -359,7 +369,10 @@ public class BatchInsertBenchmarks : IAsyncDisposable
     {
         await sqlClient.DisposeAsync();
         await npgsql.DisposeAsync();
-        await _postgresContainer.DisposeAsync();
+        if (_postgresContainer is not null)
+        {
+            await _postgresContainer.DisposeAsync();
+        }
         GC.SuppressFinalize(this);
     }
 
