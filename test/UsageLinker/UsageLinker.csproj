@@ -12,8 +12,9 @@
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" />
-        <PackageReference Include="Dapper.AOT" />
+        <PackageReference Include="Dapper.Advisor" />
         <PackageReference Include="Microsoft.Data.SqlClient" />
+        <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
         <!--<PackageReference Include="Oracle.ManagedDataAccess.Core"/>-->
     </ItemGroup>
 </Project>

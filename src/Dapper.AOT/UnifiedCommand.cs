@@ -91,6 +91,19 @@ public readonly struct UnifiedCommand
         }
     }
 
+    /// <see cref="DbCommand.Connection"/>
+    public DbConnection? Connection
+    {
+        get
+        {
+            return
+#if NET6_0_OR_GREATER
+                batch?.Connection ??
+#endif
+                dbCommand?.Connection;
+        }
+    }
+
     /// <inheritdoc cref="DbCommand.CommandTimeout"/>
     public int TimeoutSeconds
     {
@@ -198,7 +211,7 @@ public readonly struct UnifiedCommand
         UnsafeSetBatchCommand(null);
     }
 
-    internal bool HasBatch => batch is not null;
+    internal bool NoBatch => batch is null;
 
     internal DbBatchCommand UnsafeCreateNewCommand() => Unsafe.AsRef(in batchCommand) = AssertBatch.CreateBatchCommand();
 

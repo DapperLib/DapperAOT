@@ -206,40 +206,46 @@ partial struct Command<TArgs>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool UseBatch(int batchSize) => batchSize != 0 && connection is { CanCreateBatch: true };
 
-    private DbBatchCommand AddCommand(ref UnifiedCommand state, TArgs args)
-    {
-        var cmd = state.UnsafeCreateNewCommand();
-        commandFactory.Initialize(state, sql, commandType, args);
-        state.AssertBatchCommands.Add(cmd);
-        return cmd;
-    }
-
-    private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize) // TODO: sub-batching
+    private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize)
     {
         Debug.Assert(source.Length > 1);
-        UnifiedCommand batch = default;
+        BatchState batch = BatchState.Create(connection);
         try
         {
             foreach (var arg in source)
             {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
                 AddCommand(ref batch, arg);
+                if (batch.Pending == batchSize)
+                {
+                    batch.Execute();
+                }
             }
-            if (!batch.HasBatch) return 0;
 
-            var result = batch.AssertBatch.ExecuteNonQuery();
+            // flush any trailing data
+            batch.Execute();
 
-            if (commandFactory.RequirePostProcess)
-            {
-                batch.PostProcess(source, commandFactory);
-            }
-            return result;
+            return batch.TotalRowsAffected;
         }
         finally
         {
             batch.Cleanup();
         }
     }
+
+    private void AddCommand(ref BatchState state, TArgs args)
+    {
+        if (state.NextCommand())
+        {
+            // new; needs full init
+            commandFactory.Initialize(in state.Command, sql, commandType, args);
+        }
+        else
+        {
+            // just update parameters
+            commandFactory.UpdateParameters(in state.Command, args);
+        }
+    }
+
     private int ExecuteMultiBatch(IEnumerable<TArgs> source, int batchSize) // TODO: sub-batching
     {
         if (commandFactory.RequirePostProcess)
@@ -248,22 +254,22 @@ partial struct Command<TArgs>
             source = (source as IReadOnlyCollection<TArgs>) ?? source.ToList();
         }
 
-        UnifiedCommand batch = default;
+        BatchState batch = default;
         try
         {
             foreach (var arg in source)
             {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
-                AddCommand(ref batch, arg);
+                if (batch.NoBatch) batch = BatchState.Create(connection);
+                if (batch.Pending == batchSize)
+                {
+                    batch.Execute();
+                }
             }
-            if (!batch.HasBatch) return 0;
 
-            var result = batch.AssertBatch.ExecuteNonQuery();
-            if (commandFactory.RequirePostProcess)
-            {
-                batch.PostProcess(source, commandFactory);
-            }
-            return result;
+            // flush any trailing data
+            batch.Execute();
+
+            return batch.TotalRowsAffected;
         }
         finally
         {
@@ -566,24 +572,24 @@ partial struct Command<TArgs>
     private async Task<int> ExecuteMultiBatchAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken) // TODO: sub-batching
     {
         Debug.Assert(source.Length > 1);
-        UnifiedCommand batch = default;
+        BatchState batch = await BatchState.CreateAsync(connection, cancellationToken);
         var end = offset + count;
         try
         {
             for (int i = offset ; i < end; i++)
             {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
                 AddCommand(ref batch, source[i]);
-            }
-            if (!batch.HasBatch) return 0;
 
-            var result = await batch.AssertBatch.ExecuteNonQueryAsync(cancellationToken);
-
-            if (commandFactory.RequirePostProcess)
-            {
-                batch.PostProcess(new ReadOnlySpan<TArgs>(source, offset, count), commandFactory);
+                if (batch.Pending == batchSize)
+                {
+                    await batch.ExecuteAsync(cancellationToken);
+                }
             }
-            return result;
+
+            // flush any trailing data
+            await batch.ExecuteAsync(cancellationToken);
+
+            return batch.TotalRowsAffected;
         }
         finally
         {

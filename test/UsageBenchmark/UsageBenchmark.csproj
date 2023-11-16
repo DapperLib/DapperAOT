@@ -10,7 +10,7 @@
         <None Update="ListIterationBenchmarks.txt" DependentUpon="ListIterationBenchmarks.cs" />
         <None Update="QueryBenchmarks.txt" DependentUpon="QueryBenchmarks.cs" />
 
-        <PackageReference Include="Dapper.AOT" />
+        <PackageReference Include="Dapper.Advisor" />
         <PackageReference Include="Dapper" />
         <PackageReference Include="FastMember" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" />
@@ -20,5 +20,6 @@
         <PackageReference Include="BenchmarkDotNet" />
         <PackageReference Include="Testcontainers.PostgreSql" />
         <PackageReference Include="Npgsql" />
+        <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
     </ItemGroup>
 </Project>

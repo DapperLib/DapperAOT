@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "UsageBenchmark": {
+      "commandName": "Project",
+      "commandLineArgs": "--anyCategories Npgsql"
+    }
+  }
+}

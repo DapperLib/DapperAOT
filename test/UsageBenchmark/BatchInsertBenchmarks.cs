@@ -52,10 +52,10 @@ public class BatchInsertBenchmarks : IAsyncDisposable
             """);
     }
 
-    [Params(0, 1, 10, 100, 1000)]
+    [Params(/*0, 1, 10, 100, */1000)]
     public int Count { get; set; }
 
-    [Params(false, true)]
+    [Params(/*false,*/ true)]
     public bool IsOpen { get; set; } = true;
 
     [GlobalSetup]
@@ -69,13 +69,13 @@ public class BatchInsertBenchmarks : IAsyncDisposable
         customers = arr;
         if (IsOpen)
         {
-            sqlClient.Open();
-            npgsql.Open();
+            if (sqlClient.State != ConnectionState.Open) sqlClient.Open();
+            if (npgsql.State != ConnectionState.Open) npgsql.Open();
         }
         else
         {
-            sqlClient.Close();
-            npgsql.Close();
+            if (sqlClient.State == ConnectionState.Open) sqlClient.Close();
+            if (npgsql.State == ConnectionState.Open) npgsql.Close();
         }
         sqlClient.Execute("truncate table BenchmarkCustomers;");
         npgsql.Execute("TRUNCATE BenchmarkCustomers RESTART IDENTITY;");
@@ -127,6 +127,18 @@ public class BatchInsertBenchmarks : IAsyncDisposable
 
     [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(0)]
     public int NpgsqlDapperAotNoBatch() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(16)]
+    public int NpgsqlDapperAotBatch16() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(32)]
+    public int NpgsqlDapperAotBatch32() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(64)]
+    public int NpgsqlDapperAotBatch64() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(128)]
+    public int NpgsqlDapperAotBatch128() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(-1)]
     public int NpgsqlDapperAotFullBatch() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
