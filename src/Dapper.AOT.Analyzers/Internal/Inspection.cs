@@ -398,6 +398,7 @@ internal static class Inspection
         }
 
         private readonly AttributeData? _dbValue;
+        public readonly ColumnAttributeData ColumnAttributeData { get; } = ColumnAttributeData.Default;
         public string DbName => TryGetAttributeValue(_dbValue, "Name", out string? name)
             && !string.IsNullOrWhiteSpace(name) ? name!.Trim() : CodeName;
         public string CodeName => Member.Name;
@@ -472,6 +473,7 @@ internal static class Inspection
         public ElementMember(
             ISymbol member,
             AttributeData? dbValue,
+            ColumnAttributeData columnAttributeData,
             ElementMemberKind kind,
             ElementMemberFlags flags,
             int? constructorParameterOrder,
@@ -479,6 +481,7 @@ internal static class Inspection
         {
             _dbValue = dbValue;
             _flags = flags;
+            ColumnAttributeData = columnAttributeData;
 
             Member = member;
             Kind = kind;
@@ -509,6 +512,35 @@ internal static class Inspection
             var loc = attributeName is null ? null :
                 GetDapperAttribute(Member, attributeName)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
             return loc ?? GetLocation();
+        }
+    }
+
+    internal struct ColumnAttributeData
+    {
+        public UseColumnAttributeState UseColumnAttribute { get; }
+        public ColumnAttributeState ColumnAttribute { get; }
+        public string? Name { get; }
+
+        public ColumnAttributeData(UseColumnAttributeState useColumnAttribute, ColumnAttributeState columnAttribute, string? name)
+        {
+            UseColumnAttribute = useColumnAttribute;
+            ColumnAttribute = columnAttribute;
+            Name = name;
+        }
+
+        public static ColumnAttributeData Default => new(UseColumnAttributeState.NotSpecified, ColumnAttributeState.NotSpecified, null);
+
+        public enum UseColumnAttributeState
+        {
+            NotSpecified,
+            Disabled,
+            Enabled
+        }
+
+        public enum ColumnAttributeState
+        {
+            NotSpecified,
+            Specified
         }
     }
 
@@ -761,10 +793,53 @@ internal static class Inspection
                     flags |= ElementMember.ElementMemberFlags.IsExpandable;
                 }
 
+                var columnAttributeData = ParseColumnAttributeData(member);
+
                 // all good, then!
-                builder.Add(new(member, dbValue, kind, flags, constructorParameterOrder, factoryMethodParamOrder));
+                builder.Add(new(member, dbValue, columnAttributeData, kind, flags, constructorParameterOrder, factoryMethodParamOrder));
             }
             return builder.ToImmutable();
+        }
+
+        static ColumnAttributeData ParseColumnAttributeData(ISymbol? member)
+        {
+            if (member is null) return ColumnAttributeData.Default;
+            var useColumnAttributeState = ParseUseColumnAttributeState();
+            var (columnAttributeState, columnName) = ParseColumnAttributeState();
+
+            return new ColumnAttributeData(useColumnAttributeState, columnAttributeState, columnName);
+
+            (ColumnAttributeData.ColumnAttributeState state, string? columnName) ParseColumnAttributeState()
+            {
+                var columnAttribute = GetDapperAttribute(member, Types.ColumnAttribute);
+                if (columnAttribute is null) return (ColumnAttributeData.ColumnAttributeState.NotSpecified, null);
+
+                if (TryGetAttributeValue(columnAttribute, "name", out string? name) && !string.IsNullOrWhiteSpace(name))
+                {
+                    return (ColumnAttributeData.ColumnAttributeState.Specified, name);
+                }
+                else
+                {
+                    // [Column] is specified, but value is null. Can happen for ctor overload: 
+                    // https://learn.microsoft.com/en-us/dotnet/api/system.componentmodel.dataannotations.schema.columnattribute.-ctor?view=net-7.0#system-componentmodel-dataannotations-schema-columnattribute-ctor
+                    return (ColumnAttributeData.ColumnAttributeState.Specified, null);
+                }
+            }
+            ColumnAttributeData.UseColumnAttributeState ParseUseColumnAttributeState()
+            {
+                var useColumnAttribute = GetDapperAttribute(member, Types.UseColumnAttributeAttribute);
+                if (useColumnAttribute is null) return ColumnAttributeData.UseColumnAttributeState.NotSpecified;
+
+                if (TryGetAttributeValue(useColumnAttribute, "enable", out bool useColumnAttributeState))
+                {
+                    return useColumnAttributeState ? ColumnAttributeData.UseColumnAttributeState.Enabled : ColumnAttributeData.UseColumnAttributeState.Disabled;
+                }
+                else
+                {
+                    // default
+                    return ColumnAttributeData.UseColumnAttributeState.Enabled;
+                }
+            }
         }
 
         static IReadOnlyDictionary<string, MethodParameter> ParseMethodParameters(IMethodSymbol constructorSymbol)
