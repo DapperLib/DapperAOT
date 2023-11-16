@@ -76,7 +76,11 @@ internal struct BatchState
         Unsafe.AsRef(in Command) = default;
     }
 
-    public int TotalRowsAffected => _totalRowsAffected;
+    public int Finalize(CommandFactory commandFactory)
+    {
+        TrimExcessCommands(commandFactory);
+        return _totalRowsAffected;
+    }
     public int Pending => _count;
 
     private int _count, _totalRowsAffected;
@@ -108,14 +112,25 @@ internal struct BatchState
     private void TrimExcessCommands(CommandFactory commandFactory)
     {
         var commands = Command.AssertBatch.BatchCommands;
-        var count = _count;
         // remove right-to-left to avoid juggling the collection
-        for (int i = commands.Count - 1; i >= _count; i--)
+        // note that unlike DbCommand, DbBatchCommand is not disposable
+        var count = _count;
+        if (count == 0) // common in Finalize
         {
-            var cmd = commands[i];
-            commands.RemoveAt(i);
-            // note that unlike DbCommand, DbBatchCommand is not disposable
-            commandFactory.TryRecycle(cmd);
+            foreach (var cmd in commands)
+            {
+                commandFactory.TryRecycle(cmd);
+            }
+            commands.Clear();
+        }
+        else
+        {
+            for (int i = commands.Count - 1; i >= count; i--)
+            {
+                var cmd = commands[i];
+                commands.RemoveAt(i);
+                commandFactory.TryRecycle(cmd);
+            }
         }
         Debug.Assert(_count == commands.Count, "command trim failure");
     }

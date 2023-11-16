@@ -129,9 +129,6 @@ public class BatchInsertBenchmarks : IAsyncDisposable
     [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(0)]
     public int NpgsqlDapperAotNoBatch() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
 
-    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(16)]
-    public int NpgsqlDapperAotBatch16() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
-
     [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(32)]
     public int NpgsqlDapperAotBatch32() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
 
@@ -143,6 +140,21 @@ public class BatchInsertBenchmarks : IAsyncDisposable
 
     [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(-1)]
     public int NpgsqlDapperAotFullBatch() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, BatchSize(0)]
+    public int NpgsqlDapperAotNoBatch_NC() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, BatchSize(32)]
+    public int NpgsqlDapperAotBatch32_NC() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, BatchSize(64)]
+    public int NpgsqlDapperAotBatch64_NC() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, BatchSize(128)]
+    public int NpgsqlDapperAotBatch128_NC() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, BatchSize(-1)]
+    public int NpgsqlDapperAotFullBatch_NC() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
 
     private static DbCommand? _spare;
     private static DbCommand GetManualCommand(DbConnection connection, out DbParameter name)
@@ -352,11 +364,12 @@ public class BatchInsertBenchmarks : IAsyncDisposable
 
 #if NET6_0_OR_GREATER
 
-        public override void TryRecycle(DbBatchCommand command) => TryRecycle(ref BatchStorage, command);
-        private static ConcurrentBag<DbBatchCommand>? BatchStorage;
+        public override void TryRecycle(DbBatchCommand command) => TryRecycle(ref SpareB, command);
+        private static Pool<DbBatchCommand>? _spareBP, _spareBU;
+        private ref Pool<DbBatchCommand>? SpareB => ref (_canPrepare ? ref _spareBP : ref _spareBU);
 
         public override DbBatchCommand GetBatchCommand(in UnifiedCommand batch, string sql, CommandType commandType, Customer args)
-            => TryReuse(in batch, ref BatchStorage, sql, commandType, args) ?? base.GetBatchCommand(in batch, sql, commandType, args);
+            => TryReuse(in batch, ref SpareB, sql, commandType, args) ?? base.GetBatchCommand(in batch, sql, commandType, args);
 #endif // NET6_0_OR_GREATER
 
         public override bool TryRecycle(DbCommand command) => TryRecycle(ref Spare, command);

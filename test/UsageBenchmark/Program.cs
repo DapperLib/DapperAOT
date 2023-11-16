@@ -57,11 +57,18 @@ static class Program
             Console.WriteLine(await obj.SqlBulkCopyFastMemberAsync());
 
             Console.WriteLine(obj.NpgsqlDapperAotNoBatch());
-            Console.WriteLine(obj.NpgsqlDapperAotBatch16());
             Console.WriteLine(obj.NpgsqlDapperAotBatch32());
             Console.WriteLine(obj.NpgsqlDapperAotBatch64());
             Console.WriteLine(obj.NpgsqlDapperAotBatch128());
             Console.WriteLine(obj.NpgsqlDapperAotFullBatch());
+
+            Console.WriteLine(obj.NpgsqlDapperAotNoBatch_NC());
+            Console.WriteLine(obj.NpgsqlDapperAotBatch32_NC());
+            Console.WriteLine(obj.NpgsqlDapperAotBatch64_NC());
+            Console.WriteLine(obj.NpgsqlDapperAotBatch128_NC());
+            Console.WriteLine(obj.NpgsqlDapperAotFullBatch_NC());
+
+            await Task.Yield();
         }
 
         static async Task RunAllQueries(QueryBenchmarks obj, int count, bool isOpen)

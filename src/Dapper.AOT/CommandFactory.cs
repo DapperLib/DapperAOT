@@ -170,21 +170,69 @@ public abstract class CommandFactory
     /// <summary>
     /// Provides an opportunity to recycle and reuse command instances
     /// </summary>
-    protected static void TryRecycle<T>(ref ConcurrentBag<T>? pool, T value, int limit = 64) where T : class
+    protected static void TryRecycle<T>(ref Pool<T>? pool, T value, int limit = 64) where T : class
+        => Pool<T>.TryPut(ref pool, value, limit);
+#endif
+
+    /// <summary>
+    /// Basic pool type
+    /// </summary>
+    protected sealed class Pool<T> where T : class
     {
-        var actual = Volatile.Read(ref pool) ?? LazyPool(ref pool);
-        if (actual.Count < limit) // note that this is a race, but we don't need to be exact
+        /// <inheritdoc/>
+        public override string ToString() => $"{Count} items";
+
+        internal readonly T Value;
+        internal int Count;
+        internal Pool<T>? Next;
+        internal Pool(T value) => Value=value;
+
+        internal static void TryPut(ref Pool<T>? pool, T value, int limit = 64)
         {
-            actual.Add(value);
+            if (value is not null)
+            {
+                Pool<T>? node = Volatile.Read(ref pool);
+                Pool<T>? newNode = null;
+                int i = 10;
+                do
+                {
+                    var newCount = node is null ? 1 : node.Count + 1;
+                    if (newCount > limit) break;
+
+                    newNode ??= new(value);
+                    newNode.Count = newCount;
+                    newNode.Next = node;
+
+                    var updatedNode = Interlocked.CompareExchange(ref pool, newNode, node);
+                    if (ReferenceEquals(updatedNode, node))
+                    {
+                        return; // success
+                    }
+                    node = updatedNode;
+                }
+                while (--i != 0);
+            }
+
+        }
+
+        internal static T? Get(ref Pool<T>? pool)
+        {
+            Pool<T>? node = Volatile.Read(ref pool);
+            int i = 10;
+            do
+            {
+                if (node is null) break;
+                var updatedNode = Interlocked.CompareExchange(ref pool, node.Next, node);
+                if (ReferenceEquals(updatedNode, node)) // success
+                {
+                    return node.Value;
+                }
+                node = updatedNode;
+            }
+            while (--i != 0);
+            return null;
         }
     }
-
-    private static ConcurrentBag<T> LazyPool<T>(ref ConcurrentBag<T>? pool) where T : class
-    {
-        var newObj = new ConcurrentBag<T>();
-        return Interlocked.CompareExchange(ref pool, newObj, null) ?? newObj;
-    }
-#endif
 }
 
 /// <summary>
@@ -277,10 +325,10 @@ public class CommandFactory<T> : CommandFactory
     /// <summary>
     /// Provides an opportunity to recycle and reuse command instances
     /// </summary>
-    protected DbBatchCommand? TryReuse(in UnifiedCommand batch, ref ConcurrentBag<DbBatchCommand>? pool, string sql, CommandType commandType, T args)
+    protected DbBatchCommand? TryReuse(in UnifiedCommand batch, ref Pool<DbBatchCommand>? pool, string sql, CommandType commandType, T args)
     {
-        var actual = Volatile.Read(ref pool);
-        if (actual is not null && actual.TryTake(out var cmd) && cmd is not null)
+        var cmd = Pool<DbBatchCommand>.Get(ref pool);
+        if (cmd is not null)
         {
             // try to avoid any dirty detection in the setters
             if (cmd.CommandText != sql) cmd.CommandText = sql;

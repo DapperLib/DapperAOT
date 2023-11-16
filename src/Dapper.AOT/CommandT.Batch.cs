@@ -224,7 +224,7 @@ partial struct Command<TArgs>
             // flush any trailing data
             batch.Execute(commandFactory);
 
-            return batch.TotalRowsAffected;
+            return batch.Finalize(commandFactory);
         }
         finally
         {
@@ -255,7 +255,7 @@ partial struct Command<TArgs>
             // flush any trailing data
             batch.Execute(commandFactory);
 
-            return batch.TotalRowsAffected;
+            return batch.Finalize(commandFactory);
         }
         finally
         {
@@ -574,7 +574,7 @@ partial struct Command<TArgs>
             // flush any trailing data
             await batch.ExecuteAsync(commandFactory, cancellationToken);
 
-            return batch.TotalRowsAffected;
+            return batch.Finalize(commandFactory);
         }
         finally
         {

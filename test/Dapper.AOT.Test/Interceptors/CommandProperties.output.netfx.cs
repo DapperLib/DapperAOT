@@ -209,29 +209,9 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 }
                 return cmd;
             }
-#if NET6_0_OR_GREATER
-
-
-            public override global::System.Data.Common.DbBatchCommand GetBatchCommand(in global::Dapper.UnifiedCommand batch,
-                string sql, global::System.Data.CommandType commandType, object? args)
-                 => TryReuse(in batch, ref BatchStorage, sql, commandType, args) ?? base.GetBatchCommand(in batch, sql, commandType, args);
-#endif // NET6_0_OR_GREATER
-
 
             public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);
-
-#if NET6_0_OR_GREATER
-
-            public override void TryRecycle(global::System.Data.Common.DbBatchCommand command) => TryRecycle(ref BatchStorage, command);
-
-#endif // NET6_0_OR_GREATER
             private static global::System.Data.Common.DbCommand? Storage;
-
-#if NET6_0_OR_GREATER
-
-            private static global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? BatchStorage;
-
-#endif // NET6_0_OR_GREATER
 
         }
 
@@ -287,54 +267,20 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 }
                 return cmd;
             }
-#if NET6_0_OR_GREATER
-
-
-            public override global::System.Data.Common.DbBatchCommand GetBatchCommand(in global::Dapper.UnifiedCommand batch,
-                string sql, global::System.Data.CommandType commandType, object? args)
-                 => TryReuse(in batch, ref BatchStorage, sql, commandType, args) ?? base.GetBatchCommand(in batch, sql, commandType, args);
-#endif // NET6_0_OR_GREATER
-
 
             public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);
-
-#if NET6_0_OR_GREATER
-
-            public override void TryRecycle(global::System.Data.Common.DbBatchCommand command) => TryRecycle(ref BatchStorage, command);
-
-#endif // NET6_0_OR_GREATER
             protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}
-
-#if NET6_0_OR_GREATER
-
-            protected abstract ref global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? BatchStorage {get;}
-
-#endif // NET6_0_OR_GREATER
 
             internal sealed class Cached0 : CommandFactory1
             {
                 protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;
                 private static global::System.Data.Common.DbCommand? s_Storage;
 
-#if NET6_0_OR_GREATER
-
-                protected override ref global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? BatchStorage => ref s_BatchStorage;
-                private static global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? s_BatchStorage;
-
-#endif // NET6_0_OR_GREATER
-
             }
             internal sealed class Cached1 : CommandFactory1
             {
                 protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;
                 private static global::System.Data.Common.DbCommand? s_Storage;
-
-#if NET6_0_OR_GREATER
-
-                protected override ref global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? BatchStorage => ref s_BatchStorage;
-                private static global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? s_BatchStorage;
-
-#endif // NET6_0_OR_GREATER
 
             }
 

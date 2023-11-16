@@ -226,7 +226,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return;
         }
 
-        var dbCommandTypes = IdentifyDbCommandTypes(ctx.Compilation, out var needsCommandPrep);
+        var dbCommandTypes = IdentifyDbCommandTypes(ctx.Compilation, out var needsCommandPrep, out var haveBatch);
 
         bool allowUnsafe = ctx.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
@@ -409,7 +409,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var tuple in factories)
         {
-            WriteCommandFactory(ctx, baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount, tuple.AdditionalCommandState);
+            WriteCommandFactory(ctx, baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount, tuple.AdditionalCommandState, haveBatch);
         }
 
         sb.Outdent().Outdent(); // ends our generated file-scoped class and the namespace
@@ -427,7 +427,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             .Append(".GetRowParser(reader, startIndex, length, returnNullIfFirstMissing);").NewLine();
     }
 
-    private static void WriteCommandFactory(in GenerateState ctx, string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount, AdditionalCommandState? additionalCommandState)
+    private static void WriteCommandFactory(in GenerateState ctx, string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount, AdditionalCommandState? additionalCommandState, bool haveBatch)
     {
         var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
         sb.Append("private ").Append(cacheCount <= 1 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
@@ -529,31 +529,33 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb.Indent(false).NewLine().Append(" => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false);
             }
 
-            const string DbBatchSymbol = "NET6_0_OR_GREATER";
-
-            sb.IfDefined(DbBatchSymbol);
-            WriteGetBatchCommandHeader(sb, declaredType);
-            sb.Indent(false).NewLine().Append(" => TryReuse(in batch, ref BatchStorage, sql, commandType, args) ?? base.GetBatchCommand(in batch, sql, commandType, args);").Outdent(false);
-            sb.EndIfDefined(DbBatchSymbol);
+            if (haveBatch)
+            {
+                WriteGetBatchCommandHeader(sb, declaredType);
+                sb.Indent(false).NewLine().Append(" => TryReuse(in batch, ref BatchStorage, sql, commandType, args) ?? base.GetBatchCommand(in batch, sql, commandType, args);").Outdent(false).NewLine();
+            }
 
             sb.NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine();
-            sb.IfDefined(DbBatchSymbol);
-            sb.Append("public override void TryRecycle(global::System.Data.Common.DbBatchCommand command) => TryRecycle(ref BatchStorage, command);").NewLine();
-            sb.EndIfDefined(DbBatchSymbol);
+            if (haveBatch)
+            {
+                sb.Append("public override void TryRecycle(global::System.Data.Common.DbBatchCommand command) => TryRecycle(ref BatchStorage, command);").NewLine();
+            }
 
             if (cacheCount == 1)
             {
                 sb.Append("private static global::System.Data.Common.DbCommand? Storage;").NewLine();
-                sb.IfDefined(DbBatchSymbol);
-                sb.Append("private static global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? BatchStorage;").NewLine();
-                sb.EndIfDefined(DbBatchSymbol);
+                if (haveBatch)
+                {
+                    sb.Append("private static Pool<global::System.Data.Common.DbBatchCommand>? BatchStorage;").NewLine();
+                }
             }
             else
             {
                 sb.Append("protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}").NewLine();
-                sb.IfDefined(DbBatchSymbol);
-                sb.Append("protected abstract ref global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? BatchStorage {get;}").NewLine();
-                sb.EndIfDefined(DbBatchSymbol);
+                if (haveBatch)
+                {
+                    sb.Append("protected abstract ref Pool<global::System.Data.Common.DbBatchCommand>? BatchStorage {get;}").NewLine();
+                }
 
                 sb.NewLine();
                 for (int i = 0; i < cacheCount; i++)
@@ -561,10 +563,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     sb.Append("internal sealed class Cached").Append(i).Append(" : CommandFactory").Append(index).Indent().NewLine()
                         .Append("protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;").NewLine()
                         .Append("private static global::System.Data.Common.DbCommand? s_Storage;").NewLine();
-                    sb.IfDefined(DbBatchSymbol)
-                        .Append("protected override ref global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? BatchStorage => ref s_BatchStorage;").NewLine()
-                        .Append("private static global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? s_BatchStorage;").NewLine()
-                        .EndIfDefined(DbBatchSymbol);
+                    if (haveBatch)
+                    {
+                        sb.Append("protected override ref Pool<global::System.Data.Common.DbBatchCommand>? BatchStorage => ref s_BatchStorage;").NewLine()
+                        .Append("private static Pool<global::System.Data.Common.DbBatchCommand>? s_BatchStorage;").NewLine();
+                    }
                     sb.Outdent().NewLine();
                 }
             }
@@ -1229,15 +1232,17 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         InitialLONGFetchSize = 1 << 1,
     }
 
-    private static ImmutableArray<ITypeSymbol> IdentifyDbCommandTypes(Compilation compilation, out bool needsPrepare)
+    private static ImmutableArray<ITypeSymbol> IdentifyDbCommandTypes(Compilation compilation, out bool needsPrepare, out bool haveBatch)
     {
-        needsPrepare = false;
+        needsPrepare = haveBatch = false;
         var dbCommand = compilation.GetTypeByMetadataName("System.Data.Common.DbCommand");
         if (dbCommand is null)
         {
             // if we can't find DbCommand, we're out of luck
             return ImmutableArray<ITypeSymbol>.Empty;
         }
+
+        haveBatch = compilation.GetTypeByMetadataName("System.Data.Common.DbBatch") is not null;
 
         var pending = new Queue<INamespaceOrTypeSymbol>();
         foreach (var assemblyName in compilation.References)
