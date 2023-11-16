@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Oracle.ManagedDataAccess.Client;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
@@ -72,6 +73,7 @@ internal static class RoslynTestHelpers
                    MetadataReference.CreateFromFile(typeof(IgnoreDataMemberAttribute).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(DynamicAttribute).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(ConcurrentBag<int>).Assembly.Location),
            },
            options: new CSharpCompilationOptions(OutputKind.ConsoleApplication, allowUnsafe: true));
 }

@@ -5,6 +5,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -73,6 +74,14 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         static void ThrowWrongTransactionConnection() => throw new ArgumentException("The transaction provided is not associated with the specified connection", nameof(transaction));
         static void ThrowNoConnection() => throw new ArgumentNullException(nameof(connection));
     }
+
+#if NET6_0_OR_GREATER
+    internal DbBatchCommand GetBatchCommand(in UnifiedCommand batch, TArgs args)
+        => commandFactory.GetBatchCommand(in batch, sql, commandType, args);
+#endif
+
+    internal void UpdateParameters(in UnifiedCommand command, TArgs args)
+        => commandFactory.UpdateParameters(in command, args);
 
     private DbCommand GetCommand(TArgs args)
     {

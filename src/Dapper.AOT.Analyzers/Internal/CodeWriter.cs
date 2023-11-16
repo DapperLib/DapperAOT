@@ -302,6 +302,22 @@ internal sealed class CodeWriter
         return this;
     }
 
+    public CodeWriter IfDefined(string symbol)
+    {
+        NewLine();
+        _sb.Append("#if ").AppendLine(symbol);
+        NewLine();
+        return this;
+    }
+
+    public CodeWriter EndIfDefined(string symbol)
+    {
+        NewLine();
+        _sb.Append("#endif // ").Append(symbol);
+        NewLine();
+        return this;
+    }
+
     public CodeWriter RestoreWarning(string warning)
     {
         NewLine();

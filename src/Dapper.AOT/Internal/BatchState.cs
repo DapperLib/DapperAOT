@@ -81,61 +81,64 @@ internal struct BatchState
 
     private int _count, _totalRowsAffected;
 
-    public void Execute()
+    public void Execute(CommandFactory commandFactory)
     {
         // TODO: all post-processing
         if (_count == 0) return;
 
         var batch = Command.AssertBatch;
-        if (_count < batch.BatchCommands.Count) TrimExcessCommands();
+        if (_count < batch.BatchCommands.Count) TrimExcessCommands(commandFactory);
 
         _totalRowsAffected += batch.ExecuteNonQuery();
         _count = 0; // reset virtual batch
     }
 
-    public async ValueTask ExecuteAsync(CancellationToken cancellationToken)
+    public async ValueTask ExecuteAsync(CommandFactory commandFactory, CancellationToken cancellationToken)
     {
-        // TODO: all post-processing; probabaly need async state type to avoid async locals problem
+        // TODO: all post-processing; probably need async state type to avoid async locals problem
         if (_count == 0) return;
 
         var batch = Command.AssertBatch;
-        if (_count < batch.BatchCommands.Count) TrimExcessCommands();
+        if (_count < batch.BatchCommands.Count) TrimExcessCommands(commandFactory);
 
         _totalRowsAffected += await batch.ExecuteNonQueryAsync(cancellationToken);
         _count = 0; // reset virtual batch
     }
 
-    private void TrimExcessCommands()
+    private void TrimExcessCommands(CommandFactory commandFactory)
     {
         var commands = Command.AssertBatch.BatchCommands;
         var count = _count;
         // remove right-to-left to avoid juggling the collection
         for (int i = commands.Count - 1; i >= _count; i--)
         {
+            var cmd = commands[i];
             commands.RemoveAt(i);
             // note that unlike DbCommand, DbBatchCommand is not disposable
+            commandFactory.TryRecycle(cmd);
         }
         Debug.Assert(_count == commands.Count, "command trim failure");
     }
 
     // moves to the next command; returns true if this is a new uninitialized command, else false for reusing a command
-    public bool NextCommand()
+    public void AddCommand<T>(in Command<T> command, T args)
     {
         var commands = Command.AssertBatch.BatchCommands;
         DbBatchCommand cmd;
-        bool result;
-        if (result = (_count == commands.Count))
+        if (_count == commands.Count)
         {
-            cmd =  Command.UnsafeCreateNewCommand();
+            Command.UnsafeSetBatchCommand(null); // no need to expose old value to public API
+            cmd = command.GetBatchCommand(in Command, args);
             commands.Add(cmd);
         }
         else
         {
             cmd = commands[_count];
+            Command.UnsafeSetBatchCommand(cmd);
+            command.UpdateParameters(in Command, args);
         }
         _count++;
         Command.UnsafeSetBatchCommand(cmd);
-        return result;
     }
 }
 #endif

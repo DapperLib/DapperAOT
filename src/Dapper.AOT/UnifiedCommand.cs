@@ -213,6 +213,9 @@ public readonly struct UnifiedCommand
 
     internal bool NoBatch => batch is null;
 
+    /// <inheritdoc cref="DbBatch.CreateBatchCommand"/>
+    public DbBatchCommand CreateBatchCommand() => UnsafeCreateNewCommand();
+
     internal DbBatchCommand UnsafeCreateNewCommand() => Unsafe.AsRef(in batchCommand) = AssertBatch.CreateBatchCommand();
 
     internal void UnsafeSetBatchCommand(DbBatchCommand? value) => Unsafe.AsRef(in batchCommand) = value;

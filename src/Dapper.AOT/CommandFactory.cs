@@ -1,5 +1,6 @@
 ﻿using Dapper.Internal;
 using System;
+using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
@@ -159,6 +160,31 @@ public abstract class CommandFactory
         command.Transaction = null;
         return Interlocked.CompareExchange(ref storage, command, null) is null;
     }
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse command instances
+    /// </summary>
+    public virtual void TryRecycle(DbBatchCommand command) { }
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse command instances
+    /// </summary>
+    protected static void TryRecycle<T>(ref ConcurrentBag<T>? pool, T value, int limit = 64) where T : class
+    {
+        var actual = Volatile.Read(ref pool) ?? LazyPool(ref pool);
+        if (actual.Count < limit) // note that this is a race, but we don't need to be exact
+        {
+            actual.Add(value);
+        }
+    }
+
+    private static ConcurrentBag<T> LazyPool<T>(ref ConcurrentBag<T>? pool) where T : class
+    {
+        var newObj = new ConcurrentBag<T>();
+        return Interlocked.CompareExchange(ref pool, newObj, null) ?? newObj;
+    }
+#endif
 }
 
 /// <summary>
@@ -174,11 +200,8 @@ public class CommandFactory<T> : CommandFactory
     protected CommandFactory() { }
 
     /// <summary>
-    /// Provide and configure an ADO.NET command that can perform the requested operation
+    /// Provide and configure a <see cref="DbCommand"/> that can perform the requested operation
     /// </summary>
-#pragma warning disable IDE0079 // unnecessary suppression; it is necessary on some TFMs
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2249:Consider using 'string.Contains' instead of 'string.IndexOf'", Justification = "Not available in all target frameworks; readability is fine")]
-#pragma warning restore IDE0079
     public virtual DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, T args)
     {
         // default behavior assumes no args, no special logic
@@ -186,6 +209,19 @@ public class CommandFactory<T> : CommandFactory
         Initialize(new(cmd), sql, commandType, args);
         return cmd;
     }
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Provide and configure a <see cref="DbBatchCommand"/> that can perform the requested operation
+    /// </summary>
+    public virtual DbBatchCommand GetBatchCommand(in UnifiedCommand batch, string sql, CommandType commandType, T args)
+    {
+        // default behavior assumes no args, no special logic
+        var cmd = batch.UnsafeCreateNewCommand();
+        Initialize(in batch, sql, commandType, args);
+        return cmd;
+    }
+#endif
 
     internal void Initialize(in UnifiedCommand cmd,
         string sql, CommandType commandType, T args)
@@ -236,6 +272,27 @@ public class CommandFactory<T> : CommandFactory
         }
         return cmd;
     }
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse command instances
+    /// </summary>
+    protected DbBatchCommand? TryReuse(in UnifiedCommand batch, ref ConcurrentBag<DbBatchCommand>? pool, string sql, CommandType commandType, T args)
+    {
+        var actual = Volatile.Read(ref pool);
+        if (actual is not null && actual.TryTake(out var cmd) && cmd is not null)
+        {
+            // try to avoid any dirty detection in the setters
+            if (cmd.CommandText != sql) cmd.CommandText = sql;
+            if (cmd.CommandType != commandType) cmd.CommandType = commandType;
+
+            batch.UnsafeSetBatchCommand(cmd);
+            UpdateParameters(in batch, args);
+            return cmd;
+        }
+        return null;
+    }
+#endif
 
     /// <summary>
     /// Indicates where it is <em>required</em> to invoke post-operation logic to update parameter values.

@@ -528,22 +528,44 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             {
                 sb.Indent(false).NewLine().Append(" => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false);
             }
+
+            const string DbBatchSymbol = "NET6_0_OR_GREATER";
+
+            sb.IfDefined(DbBatchSymbol);
+            WriteGetBatchCommandHeader(sb, declaredType);
+            sb.Indent(false).NewLine().Append(" => TryReuse(in batch, ref BatchStorage, sql, commandType, args) ?? base.GetBatchCommand(in batch, sql, commandType, args);").Outdent(false);
+            sb.EndIfDefined(DbBatchSymbol);
+
             sb.NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine();
+            sb.IfDefined(DbBatchSymbol);
+            sb.Append("public override void TryRecycle(global::System.Data.Common.DbBatchCommand command) => TryRecycle(ref BatchStorage, command);").NewLine();
+            sb.EndIfDefined(DbBatchSymbol);
 
             if (cacheCount == 1)
             {
                 sb.Append("private static global::System.Data.Common.DbCommand? Storage;").NewLine();
+                sb.IfDefined(DbBatchSymbol);
+                sb.Append("private static global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? BatchStorage;").NewLine();
+                sb.EndIfDefined(DbBatchSymbol);
             }
             else
             {
-                sb.Append("protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}").NewLine().NewLine();
+                sb.Append("protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}").NewLine();
+                sb.IfDefined(DbBatchSymbol);
+                sb.Append("protected abstract ref global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? BatchStorage {get;}").NewLine();
+                sb.EndIfDefined(DbBatchSymbol);
 
+                sb.NewLine();
                 for (int i = 0; i < cacheCount; i++)
                 {
                     sb.Append("internal sealed class Cached").Append(i).Append(" : CommandFactory").Append(index).Indent().NewLine()
                         .Append("protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;").NewLine()
-                        .Append("private static global::System.Data.Common.DbCommand? s_Storage;").NewLine()
-                        .Outdent().NewLine();
+                        .Append("private static global::System.Data.Common.DbCommand? s_Storage;").NewLine();
+                    sb.IfDefined(DbBatchSymbol)
+                        .Append("protected override ref global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? BatchStorage => ref s_BatchStorage;").NewLine()
+                        .Append("private static global::System.Collections.Concurrent.ConcurrentBag<global::System.Data.Common.DbBatchCommand>? s_BatchStorage;").NewLine()
+                        .EndIfDefined(DbBatchSymbol);
+                    sb.Outdent().NewLine();
                 }
             }
         }
@@ -558,6 +580,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         static CodeWriter WriteGetCommandHeader(CodeWriter sb, string declaredType) => sb.NewLine()
             .Append("public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,").Indent(false).NewLine()
+            .Append("string sql, global::System.Data.CommandType commandType, ")
+            .Append(declaredType).Append(" args)").Outdent(false);
+
+
+        static CodeWriter WriteGetBatchCommandHeader(CodeWriter sb, string declaredType) => sb.NewLine()
+            .Append("public override global::System.Data.Common.DbBatchCommand GetBatchCommand(in global::Dapper.UnifiedCommand batch,").Indent(false).NewLine()
             .Append("string sql, global::System.Data.CommandType commandType, ")
             .Append(declaredType).Append(" args)").Outdent(false);
     }

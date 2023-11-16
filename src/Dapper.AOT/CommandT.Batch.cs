@@ -214,35 +214,21 @@ partial struct Command<TArgs>
         {
             foreach (var arg in source)
             {
-                AddCommand(ref batch, arg);
+                batch.AddCommand(in this, arg);
                 if (batch.Pending == batchSize)
                 {
-                    batch.Execute();
+                    batch.Execute(commandFactory);
                 }
             }
 
             // flush any trailing data
-            batch.Execute();
+            batch.Execute(commandFactory);
 
             return batch.TotalRowsAffected;
         }
         finally
         {
             batch.Cleanup();
-        }
-    }
-
-    private void AddCommand(ref BatchState state, TArgs args)
-    {
-        if (state.NextCommand())
-        {
-            // new; needs full init
-            commandFactory.Initialize(in state.Command, sql, commandType, args);
-        }
-        else
-        {
-            // just update parameters
-            commandFactory.UpdateParameters(in state.Command, args);
         }
     }
 
@@ -262,12 +248,12 @@ partial struct Command<TArgs>
                 if (batch.NoBatch) batch = BatchState.Create(connection);
                 if (batch.Pending == batchSize)
                 {
-                    batch.Execute();
+                    batch.Execute(commandFactory);
                 }
             }
 
             // flush any trailing data
-            batch.Execute();
+            batch.Execute(commandFactory);
 
             return batch.TotalRowsAffected;
         }
@@ -578,16 +564,15 @@ partial struct Command<TArgs>
         {
             for (int i = offset ; i < end; i++)
             {
-                AddCommand(ref batch, source[i]);
-
+                batch.AddCommand(in this, source[i]);
                 if (batch.Pending == batchSize)
                 {
-                    await batch.ExecuteAsync(cancellationToken);
+                    await batch.ExecuteAsync(commandFactory, cancellationToken);
                 }
             }
 
             // flush any trailing data
-            await batch.ExecuteAsync(cancellationToken);
+            await batch.ExecuteAsync(commandFactory, cancellationToken);
 
             return batch.TotalRowsAffected;
         }

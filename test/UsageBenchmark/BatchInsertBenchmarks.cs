@@ -3,6 +3,7 @@ using BenchmarkDotNet.Configs;
 using Microsoft.Data.SqlClient;
 using Npgsql;
 using System;
+using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Common;
 using System.Threading;
@@ -348,6 +349,15 @@ public class BatchInsertBenchmarks : IAsyncDisposable
 
         public override DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, Customer args)
             => TryReuse(ref Spare, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);
+
+#if NET6_0_OR_GREATER
+
+        public override void TryRecycle(DbBatchCommand command) => TryRecycle(ref BatchStorage, command);
+        private static ConcurrentBag<DbBatchCommand>? BatchStorage;
+
+        public override DbBatchCommand GetBatchCommand(in UnifiedCommand batch, string sql, CommandType commandType, Customer args)
+            => TryReuse(in batch, ref BatchStorage, sql, commandType, args) ?? base.GetBatchCommand(in batch, sql, commandType, args);
+#endif // NET6_0_OR_GREATER
 
         public override bool TryRecycle(DbCommand command) => TryRecycle(ref Spare, command);
 
