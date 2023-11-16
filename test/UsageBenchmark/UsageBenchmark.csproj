@@ -18,5 +18,7 @@
         <PackageReference Include="Microsoft.Data.SqlClient" />
         <PackageReference Include="System.Data.SqlClient" />
         <PackageReference Include="BenchmarkDotNet" />
+        <PackageReference Include="Testcontainers.PostgreSql" />
+        <PackageReference Include="Npgsql" />
     </ItemGroup>
 </Project>
