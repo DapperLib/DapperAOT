@@ -3,7 +3,6 @@ using BenchmarkDotNet.Configs;
 using Microsoft.Data.SqlClient;
 using Npgsql;
 using System;
-using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Common;
 using System.Threading;
@@ -85,8 +84,14 @@ public class BatchInsertBenchmarks : IAsyncDisposable
     [Benchmark, BenchmarkCategory("Sync", "SqlClient")]
     public int Dapper() => sqlClient.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
 
-    [Benchmark, BenchmarkCategory("Sync", "SqlClient"), DapperAot, CacheCommand]
-    public int DapperAot() => sqlClient.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
+    [Benchmark, BenchmarkCategory("Sync", "SqlClient"), DapperAot, CacheCommand, BatchSize(0)]
+    public int DapperAot_BatchNone() => sqlClient.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "SqlClient"), DapperAot, CacheCommand, BatchSize(-1)]
+    public int DapperAot_BatchAll () => sqlClient.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "SqlClient"), DapperAot, CacheCommand, BatchSize(32)]
+    public int DapperAot_Batch32() => sqlClient.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
 
     [Benchmark, BenchmarkCategory("Sync", "SqlClient")]
     public int DapperAotManual() => sqlClient.Command("insert BenchmarkCustomers (Name) values (@name)",
@@ -186,12 +191,21 @@ public class BatchInsertBenchmarks : IAsyncDisposable
     [Benchmark, BenchmarkCategory("Async", "SqlClient")]
     public Task<int> DapperAsync() => sqlClient.ExecuteAsync("insert BenchmarkCustomers (Name) values (@name)", customers);
 
+    [Benchmark, BenchmarkCategory("Async", "SqlClient"), DapperAot, CacheCommand, BatchSize(0)]
+    public Task<int> DapperAotAsync_BatchNone() => sqlClient.ExecuteAsync("insert BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Async", "SqlClient"), DapperAot, CacheCommand, BatchSize(-1)]
+    public Task<int> DapperAotAsync_BatchAll () => sqlClient.ExecuteAsync("insert BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Async", "SqlClient"), DapperAot, CacheCommand, BatchSize(32)]
+    public Task<int> DapperAotAsync_Batch32() => sqlClient.ExecuteAsync("insert BenchmarkCustomers (Name) values (@name)", customers);
+
     [Benchmark, BenchmarkCategory("Async", "SqlClient")]
-    public Task<int> DapperAotAsync() => sqlClient.Command("insert BenchmarkCustomers (Name) values (@name)",
+    public Task<int> DapperAot_ManualAsync() => sqlClient.Command("insert BenchmarkCustomers (Name) values (@name)",
         handler: CustomHandler.Unprepared).ExecuteAsync(customers);
 
     [Benchmark, BenchmarkCategory("Async", "SqlClient")]
-    public Task<int> DapperAot_PreparedAsync() => sqlClient.Command("insert BenchmarkCustomers (Name) values (@name)",
+    public Task<int> DapperAot_ManualPreparedAsync() => sqlClient.Command("insert BenchmarkCustomers (Name) values (@name)",
         handler: CustomHandler.Prepared).ExecuteAsync(customers);
 
     [Benchmark(Baseline = true), BenchmarkCategory("Async", "SqlClient")]

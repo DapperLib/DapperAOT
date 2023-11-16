@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -209,7 +208,7 @@ partial struct Command<TArgs>
     private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize)
     {
         Debug.Assert(source.Length > 1);
-        BatchState batch = BatchState.Create(connection);
+        BatchState batch = BatchState.Create(connection, transaction);
         try
         {
             foreach (var arg in source)
@@ -245,7 +244,7 @@ partial struct Command<TArgs>
         {
             foreach (var arg in source)
             {
-                if (batch.NoBatch) batch = BatchState.Create(connection);
+                if (batch.NoBatch) batch = BatchState.Create(connection, transaction);
                 if (batch.Pending == batchSize)
                 {
                     batch.Execute(commandFactory);
@@ -558,7 +557,7 @@ partial struct Command<TArgs>
     private async Task<int> ExecuteMultiBatchAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken) // TODO: sub-batching
     {
         Debug.Assert(source.Length > 1);
-        BatchState batch = await BatchState.CreateAsync(connection, cancellationToken);
+        BatchState batch = await BatchState.CreateAsync(connection, transaction, cancellationToken);
         var end = offset + count;
         try
         {

@@ -19,7 +19,7 @@
         <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" Version="1.1.1" />
         <!-- 4.8 would be nice, but: let's try to offer down-level compiler support -->
         <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="[4.4.0]" />
-        <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.1.2" />
+        <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.0-dev" />
         <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
         <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
         <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />

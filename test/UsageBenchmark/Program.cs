@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using Microsoft.Data.SqlClient;
 using System;
 using System.Threading.Tasks;
 
@@ -13,30 +14,33 @@ static class Program
 #else
     static async Task Main()
     {
+        var cmd = new SqlBatchCommand();
+        var cnn = new SqlConnection();
+
+        //await using (var obj = new BatchInsertBenchmarks())
+        //{
+        //    obj.Count = 1000;
+        //    obj.IsOpen = true;
+        //    obj.Setup();
+        //    for (int i = 0; i < 100; i++)
+        //    {
+        //        Console.WriteLine($"{i}: {obj.NpgsqlDapperAotBatch32()}");
+        //    }
+        //}
         await using (var obj = new BatchInsertBenchmarks())
         {
-            obj.Count = 1000;
-            obj.IsOpen = true;
-            obj.Setup();
-            for (int i = 0; i < 100; i++)
-            {
-                Console.WriteLine($"{i}: {obj.NpgsqlDapperAotBatch32()}");
-            }
+            await RunAllInserts(obj, 10, false);
+            await RunAllInserts(obj, 10, true);
+            await RunAllInserts(obj, 1000, true);
         }
-            //await using (var obj = new BatchInsertBenchmarks())
-            //{
-            //    await RunAllInserts(obj, 10, false);
-            //    await RunAllInserts(obj, 10, true);
-            //    await RunAllInserts(obj, 1000, true);
-            //}
 
-            //using (var obj = new QueryBenchmarks())
-            //{
-            //    await RunAllQueries(obj, 10, false);
-            //    await RunAllQueries(obj, 10, true);
-            //}
+        //using (var obj = new QueryBenchmarks())
+        //{
+        //    await RunAllQueries(obj, 10, false);
+        //    await RunAllQueries(obj, 10, true);
+        //}
 
-            static async Task RunAllInserts(BatchInsertBenchmarks obj, int count, bool isOpen)
+        static async Task RunAllInserts(BatchInsertBenchmarks obj, int count, bool isOpen)
         {
             obj.Count = count;
             obj.IsOpen = isOpen;
@@ -44,39 +48,41 @@ static class Program
 
             obj.DebugState();
 
-            Console.WriteLine(obj.Manual());
-            Console.WriteLine(await obj.ManualAsync());
+            //Console.WriteLine(obj.Manual());
+            //Console.WriteLine(await obj.ManualAsync());
 
-            Console.WriteLine(obj.Dapper());
-            Console.WriteLine(await obj.DapperAsync());
+            //Console.WriteLine(obj.Dapper());
+            //Console.WriteLine(await obj.DapperAsync());
 
-            Console.WriteLine(obj.DapperAot());
-            Console.WriteLine(await obj.DapperAotAsync());
+            //Console.WriteLine(obj.DapperAot_BatchNone());
+            //Console.WriteLine(obj.DapperAot_BatchAll());
+            //Console.WriteLine(obj.DapperAot_Batch32());
+            //Console.WriteLine(await obj.DapperAotAsync_BatchNone());
+            //Console.WriteLine(await obj.DapperAotAsync_BatchAll());
+            Console.WriteLine(await obj.DapperAotAsync_Batch32());
 
-            Console.WriteLine(obj.DapperAotManual());
-            Console.WriteLine(await obj.DapperAotAsync());
+            //Console.WriteLine(obj.DapperAotManual());
+            //Console.WriteLine(obj.DapperAot_PreparedManual());
+            //Console.WriteLine(await obj.DapperAot_ManualPreparedAsync());
 
-            Console.WriteLine(obj.DapperAot_PreparedManual());
-            Console.WriteLine(await obj.DapperAot_PreparedAsync());
+            //Console.WriteLine(obj.EntityFramework());
+            //Console.WriteLine(await obj.EntityFrameworkAsync());
 
-            Console.WriteLine(obj.EntityFramework());
-            Console.WriteLine(await obj.EntityFrameworkAsync());
+            //Console.WriteLine(obj.SqlBulkCopyFastMember());
+            //Console.WriteLine(obj.SqlBulkCopyDapper());
+            //Console.WriteLine(await obj.SqlBulkCopyFastMemberAsync());
 
-            Console.WriteLine(obj.SqlBulkCopyFastMember());
-            Console.WriteLine(obj.SqlBulkCopyDapper());
-            Console.WriteLine(await obj.SqlBulkCopyFastMemberAsync());
+            //Console.WriteLine(obj.NpgsqlDapperAotNoBatch());
+            //Console.WriteLine(obj.NpgsqlDapperAotBatch32());
+            //Console.WriteLine(obj.NpgsqlDapperAotBatch64());
+            //Console.WriteLine(obj.NpgsqlDapperAotBatch128());
+            //Console.WriteLine(obj.NpgsqlDapperAotFullBatch());
 
-            Console.WriteLine(obj.NpgsqlDapperAotNoBatch());
-            Console.WriteLine(obj.NpgsqlDapperAotBatch32());
-            Console.WriteLine(obj.NpgsqlDapperAotBatch64());
-            Console.WriteLine(obj.NpgsqlDapperAotBatch128());
-            Console.WriteLine(obj.NpgsqlDapperAotFullBatch());
-
-            Console.WriteLine(obj.NpgsqlDapperAotNoBatch_NC());
-            Console.WriteLine(obj.NpgsqlDapperAotBatch32_NC());
-            Console.WriteLine(obj.NpgsqlDapperAotBatch64_NC());
-            Console.WriteLine(obj.NpgsqlDapperAotBatch128_NC());
-            Console.WriteLine(obj.NpgsqlDapperAotFullBatch_NC());
+            //Console.WriteLine(obj.NpgsqlDapperAotNoBatch_NC());
+            //Console.WriteLine(obj.NpgsqlDapperAotBatch32_NC());
+            //Console.WriteLine(obj.NpgsqlDapperAotBatch64_NC());
+            //Console.WriteLine(obj.NpgsqlDapperAotBatch128_NC());
+            //Console.WriteLine(obj.NpgsqlDapperAotFullBatch_NC());
 
             await Task.Yield();
         }

@@ -21,13 +21,14 @@ internal struct BatchState
 
     public bool NoBatch => Command.NoBatch;
 
-    public BatchState(DbBatch batch, int flags) : this()
+    public BatchState(DbBatch batch, DbTransaction? transaction, int flags) : this()
     {
         _flags = flags;
+        batch.Transaction = transaction;
         Command = new(batch);
     }
 
-    public static BatchState Create(DbConnection connection)
+    public static BatchState Create(DbConnection connection, DbTransaction? transaction)
     {
         Debug.Assert(connection.CanCreateBatch);
         Debug.Assert(connection is not null);
@@ -37,10 +38,10 @@ internal struct BatchState
             connection.Open();
             flags |= FLAG_CLOSE_CONNECTION;
         }
-        return new(connection.CreateBatch(), flags);
+        return new(connection.CreateBatch(), transaction, flags);
     }
 
-    internal static async ValueTask<BatchState> CreateAsync(DbConnection connection, CancellationToken cancellationToken)
+    internal static async ValueTask<BatchState> CreateAsync(DbConnection connection, DbTransaction? transaction, CancellationToken cancellationToken)
     {
         Debug.Assert(connection.CanCreateBatch);
         Debug.Assert(connection is not null);
@@ -50,7 +51,7 @@ internal struct BatchState
             await connection.OpenAsync(cancellationToken);
             flags |= FLAG_CLOSE_CONNECTION;
         }
-        return new(connection.CreateBatch(), flags);
+        return new(connection.CreateBatch(), transaction, flags);
     }
 
     public void Cleanup()
@@ -74,6 +75,7 @@ internal struct BatchState
         }
         Command.Cleanup();
         Unsafe.AsRef(in Command) = default;
+
     }
 
     public int Finalize(CommandFactory commandFactory)
