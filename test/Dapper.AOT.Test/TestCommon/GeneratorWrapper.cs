@@ -36,6 +36,7 @@ public sealed class WrappedDapperInterceptorAnalyzer : DiagnosticAnalyzer
         }
         private readonly DapperInterceptorGenerator inner;
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0028:Simplify collection initialization", Justification = "This is fine")]
         private readonly ConcurrentBag<SourceState> _bag = new();
         public void OnCompilationEnd(CompilationAnalysisContext context)
         => inner.Generate(new GenerateState(GenerateContextProxy.Create(context, _bag.ToImmutableArray())));

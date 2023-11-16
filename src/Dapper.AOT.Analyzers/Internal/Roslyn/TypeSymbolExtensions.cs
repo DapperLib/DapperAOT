@@ -208,13 +208,18 @@ internal static class TypeSymbolExtensions
     private static bool ImplementsInterface(
         this ITypeSymbol? typeSymbol,
         SpecialType interfaceType,
-        out ITypeSymbol? searchedInterface,
+        out ITypeSymbol? found,
         bool searchFromStart = true)
     {
         if (typeSymbol is null)
         {
-            searchedInterface = null;
+            found = null;
             return false;
+        }
+        if (typeSymbol.SpecialType == interfaceType || typeSymbol.OriginalDefinition?.SpecialType == interfaceType)
+        {
+            found = typeSymbol;
+            return true;
         }
 
         if (searchFromStart)
@@ -226,7 +231,7 @@ internal static class TypeSymbolExtensions
                 if (currentSymbol.SpecialType == interfaceType 
                     || currentSymbol.OriginalDefinition?.SpecialType == interfaceType)
                 {
-                    searchedInterface = currentSymbol;
+                    found = currentSymbol;
                     return true;
                 }
             }
@@ -240,13 +245,13 @@ internal static class TypeSymbolExtensions
                 if (currentSymbol.SpecialType == interfaceType
                     || currentSymbol.OriginalDefinition?.SpecialType == interfaceType)
                 {
-                    searchedInterface = currentSymbol;
+                    found = currentSymbol;
                     return true;
                 }
             }
         }
 
-        searchedInterface = null;
+        found = null;
         return false;
     }
 }

@@ -44,12 +44,15 @@ public sealed partial class DapperInterceptorGenerator
             bool isAsync = flags.HasAny(OperationFlags.Async);
             sb.Append("Execute").Append(isAsync ? "Async" : "").Append("(");
             sb.Append("(").Append(castType).Append(")param!");
+            if (additionalCommandState?.BatchSize is { } batchSize)
+            {
+                sb.Append(", batchSize: ").Append(batchSize);
+            }
             if (isAsync && HasParam(methodParameters, "cancellationToken"))
             {
                 sb.Append(", cancellationToken: ").Append(Forward(methodParameters, "cancellationToken"));
             }
-            sb.Append(");");
-            sb.NewLine().Outdent().NewLine().NewLine();
+            sb.Append(");").NewLine();
         }
 
         void WriteBatchCommandArguments(ITypeSymbol elementType)
@@ -91,7 +94,7 @@ public sealed partial class DapperInterceptorGenerator
             // commandFactory
             if (flags.HasAny(OperationFlags.HasParameters))
             {
-                var index = factories.GetIndex(elementType, map, cache, true, additionalCommandState, out var subIndex);
+                var index = factories.GetIndex(elementType, map, cache, additionalCommandState, out var subIndex);
                 sb.Append("CommandFactory").Append(index).Append(".Instance").Append(subIndex);
             }
             else

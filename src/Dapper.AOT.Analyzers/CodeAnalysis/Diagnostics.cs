@@ -17,11 +17,11 @@ internal abstract class DiagnosticsBase
         new(id, title,
             messageFormat, category, severity, true, helpLinkUri: RulesRoot + id);
 
+    protected static DiagnosticDescriptor LibraryHidden(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Hidden);
+
     protected static DiagnosticDescriptor LibraryWarning(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Warning);
 
     protected static DiagnosticDescriptor LibraryError(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Error);
-
-    protected static DiagnosticDescriptor LibraryHidden(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Hidden);
 
     protected static DiagnosticDescriptor LibraryInfo(string id, string title, string messageFormat) => Create(id, title, messageFormat, Category.Library, DiagnosticSeverity.Info);
 

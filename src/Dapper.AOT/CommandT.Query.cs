@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,12 +46,12 @@ partial struct Command<TArgs>
             }
             else
             {
-                results = new();
+                results = [];
             }
 
             // consume entire results (avoid unobserved TDS error messages)
             while (state.Reader.NextResult()) { }
-            PostProcessAndRecycle(ref state, args, state.Reader.RecordsAffected);
+            PostProcessAndRecycle(ref state, args, state.Reader.CloseAndCapture());
             return results;
         }
         finally
@@ -86,12 +85,12 @@ partial struct Command<TArgs>
             }
             else
             {
-                results = new();
+                results = [];
             }
 
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(state, args, state.Reader.RecordsAffected);
+            PostProcessAndRecycle(state, args, await state.Reader.CloseAndCaptureAsync());
             return results;
         }
         finally
@@ -123,7 +122,7 @@ partial struct Command<TArgs>
             }
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(state, args, state.Reader.RecordsAffected);
+            PostProcessAndRecycle(state, args, await state.Reader.CloseAndCaptureAsync());
         }
         finally
         {
@@ -153,7 +152,7 @@ partial struct Command<TArgs>
             }
             // consume entire results (avoid unobserved TDS error messages)
             while (state.Reader.NextResult()) { }
-            PostProcessAndRecycle(ref state, args, state.Reader.RecordsAffected);
+            PostProcessAndRecycle(ref state, args, state.Reader.CloseAndCapture());
         }
         finally
         {
@@ -199,7 +198,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (state.Reader.NextResult()) { }
-            PostProcessAndRecycle(ref state, args, state.Reader.RecordsAffected);
+            PostProcessAndRecycle(ref state, args, state.Reader.CloseAndCapture());
             return result;
         }
         finally
@@ -242,7 +241,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (await state.Reader.NextResultAsync(cancellationToken)) { }
-            PostProcessAndRecycle(state, args, state.Reader.RecordsAffected);
+            PostProcessAndRecycle(state, args, await state.Reader.CloseAndCaptureAsync());
             return result;
         }
         finally

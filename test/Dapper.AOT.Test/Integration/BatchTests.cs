@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Data;
-using System.Data.Common;
 using System.Linq;
 using Xunit;
 
@@ -18,7 +17,7 @@ public class BatchTests : IDisposable
 
     public BatchTests(SqlClientFixture database) => connection = database.CreateConnection();
 
-    private Command<string> Batch => connection.Command("insert AotIntegrationBatchTests (Name) values (@name)", handler: CustomHandler.Instance);
+    private Command<string> Batch => connection.Command("insert " + SqlClientFixture.AotIntegrationBatchTests + "(Name) values (@name)", handler: CustomHandler.Instance);
 
     [SkippableTheory]
     [InlineData(-1)]

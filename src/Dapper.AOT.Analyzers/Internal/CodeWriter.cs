@@ -201,6 +201,14 @@ internal sealed class CodeWriter
         return false;
     }
 
+    public static bool IsRequired(ISymbol symbol)
+        => symbol switch
+        {
+            IPropertySymbol prop => prop.IsRequired,
+            IFieldSymbol field => field.IsRequired,
+            _ => false,
+        };
+
     public static bool IsInitOnlyInstanceMember(ISymbol symbol, out ITypeSymbol type)
     {
         if (symbol.DeclaredAccessibility == Accessibility.Public && !symbol.IsStatic)
@@ -318,5 +326,86 @@ internal sealed class CodeWriter
         Clear();
         Interlocked.Exchange(ref s_Spare, this);
         return s;
+    }
+
+    internal CodeWriter AppendReader(ITypeSymbol? resultType, RowReaderState readers)
+    {
+        if (IsInbuilt(resultType, out var helper))
+        {
+            return Append("global::Dapper.RowFactory.Inbuilt.").Append(helper);
+        }
+        else
+        {
+            return Append("RowFactory").Append(readers.GetIndex(resultType!)).Append(".Instance");
+        }
+
+        static bool IsInbuilt(ITypeSymbol? type, out string? helper)
+        {
+            if (type is null || type.TypeKind == TypeKind.Dynamic)
+            {
+                helper = "Dynamic";
+                return true;
+            }
+            if (type.SpecialType == SpecialType.System_Object)
+            {
+                helper = "Object";
+                return true;
+            }
+            if (Inspection.IdentifyDbType(type, out _) is not null)
+            {
+                bool nullable = type.IsValueType && type.NullableAnnotation == NullableAnnotation.Annotated;
+                helper = (nullable ? "NullableValue<" : "Value<") + CodeWriter.GetTypeName(
+                    nullable ? Inspection.MakeNonNullable(type) : type) + ">()";
+                return true;
+            }
+            if (type is INamedTypeSymbol { Arity: 0 })
+            {
+                if (type is
+                    {
+                        TypeKind: TypeKind.Interface,
+                        Name: "IDataRecord",
+                        ContainingType: null,
+                        ContainingNamespace:
+                        {
+                            Name: "Data",
+                            ContainingNamespace:
+                            {
+                                Name: "System",
+                                ContainingNamespace.IsGlobalNamespace: true
+                            }
+                        }
+                    })
+                {
+                    helper = "IDataRecord";
+                    return true;
+                }
+                if (type is
+                    {
+                        TypeKind: TypeKind.Class,
+                        Name: "DbDataRecord",
+                        ContainingType: null,
+                        ContainingNamespace:
+                        {
+                            Name: "Common",
+                            ContainingNamespace:
+                            {
+                                Name: "Data",
+                                ContainingNamespace:
+                                {
+                                    Name: "System",
+                                    ContainingNamespace.IsGlobalNamespace: true
+                                }
+                            }
+                        }
+                    })
+                {
+                    helper = "DbDataRecord";
+                    return true;
+                }
+            }
+            helper = null;
+            return false;
+
+        }
     }
 }

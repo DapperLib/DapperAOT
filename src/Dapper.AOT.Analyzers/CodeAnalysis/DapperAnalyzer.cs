@@ -484,6 +484,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         argExpression = null;
         sql = null;
         bool? buffered = null;
+
         // check the args
         foreach (var arg in op.Arguments)
         {
@@ -524,6 +525,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 case "cnn":
                 case "commandTimeout":
                 case "transaction":
+                case "reader":
+                case "startIndex":
+                case "length":
+                case "returnNullIfFirstMissing":
+                case "concreteType" when arg.Value is IDefaultValueOperation || (arg.ConstantValue.HasValue && arg.ConstantValue.Value is null):
                     // nothing to do
                     break;
                 case "commandType":
@@ -677,7 +683,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, argLocation, paramType!.ToDisplayString()));
                 }
-                else if (IsMissingOrObjectOrDynamic(paramType) || IsDynamicParameters(paramType))
+                else if (IsMissingOrObjectOrDynamic(paramType) || IsDynamicParameters(paramType, out _))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UntypedParameter, argLocation));
@@ -741,6 +747,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
+        int? batchSize = null;
         foreach (var attrib in methodAttribs)
         {
             if (IsDapperAttribute(attrib))
@@ -772,6 +779,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     case Types.CommandPropertyAttribute:
                         cmdPropsCount++;
                         break;
+                    case Types.BatchSizeAttribute:
+                        if (attrib.ConstructorArguments.Length == 1 && attrib.ConstructorArguments[0].Value is int batchTmp)
+                        {
+                            batchSize = batchTmp;
+                        }
+                        break;
                 }
             }
         }
@@ -800,8 +813,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
 
 
-        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null
-            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, cmdProps);
+        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null
+            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps);
     }
 
     internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, ref OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)

@@ -242,11 +242,4 @@ public class CommandFactory<T> : CommandFactory
     /// </summary>
     public virtual bool RequirePostProcess => false;
 
-
-#if NET6_0_OR_GREATER
-    /// <summary>
-    /// Indicates whether this instance supports the <see cref="DbBatch"/> API.
-    /// </summary>
-    public virtual bool SupportBatch => false;
-#endif
 }

@@ -7,7 +7,7 @@ namespace Dapper.CodeAnalysis;
 
 public sealed partial class DapperInterceptorGenerator
 {
-    void WriteSingleImplementation(
+    static void WriteSingleImplementation(
         CodeWriter sb,
         IMethodSymbol method,
         ITypeSymbol? resultType,
@@ -54,7 +54,7 @@ public sealed partial class DapperInterceptorGenerator
         sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "").Append(", ");
         if (flags.HasAny(OperationFlags.HasParameters))
         {
-            var index = factories.GetIndex(parameterType!, map, cache, false, additionalCommandState, out var subIndex);
+            var index = factories.GetIndex(parameterType!, map, cache, additionalCommandState, out var subIndex);
             sb.Append("CommandFactory").Append(index).Append(".Instance").Append(subIndex);
         }
         else
@@ -92,83 +92,7 @@ public sealed partial class DapperInterceptorGenerator
                         break;
                 }
             }
-            if (IsInbuilt(resultType, out var helper))
-            {
-                sb.Append("global::Dapper.RowFactory.Inbuilt.").Append(helper);
-            }
-            else
-            {
-                sb.Append("RowFactory").Append(readers.GetIndex(resultType!)).Append(".Instance");
-            }
-
-            static bool IsInbuilt(ITypeSymbol? type, out string? helper)
-            {
-                if (type is null || type.TypeKind == TypeKind.Dynamic)
-                {
-                    helper = "Dynamic";
-                    return true;
-                }
-                if (type.SpecialType == SpecialType.System_Object)
-                {
-                    helper = "Object";
-                    return true;
-                }
-                if (Inspection.IdentifyDbType(type, out _) is not null)
-                {
-                    bool nullable = type.IsValueType && type.NullableAnnotation == NullableAnnotation.Annotated;
-                    helper = (nullable ? "NullableValue<" : "Value<") + CodeWriter.GetTypeName(
-                        nullable ? Inspection.MakeNonNullable(type) : type) + ">()";
-                    return true;
-                }
-                if (type is INamedTypeSymbol { Arity: 0 })
-                {
-                    if (type is
-                        {
-                            TypeKind: TypeKind.Interface,
-                            Name: "IDataRecord",
-                            ContainingType: null,
-                            ContainingNamespace:
-                            {
-                                Name: "Data",
-                                ContainingNamespace:
-                                {
-                                    Name: "System",
-                                    ContainingNamespace.IsGlobalNamespace: true
-                                }
-                            }
-                        })
-                    {
-                        helper = "IDataRecord";
-                        return true;
-                    }
-                    if (type is
-                        {
-                            TypeKind: TypeKind.Class,
-                            Name: "DbDataRecord",
-                            ContainingType: null,
-                            ContainingNamespace:
-                            {
-                                Name: "Common",
-                                ContainingNamespace:
-                                {
-                                    Name: "Data",
-                                    ContainingNamespace:
-                                    {
-                                        Name: "System",
-                                        ContainingNamespace.IsGlobalNamespace: true
-                                    }
-                                }
-                            }
-                        })
-                    {
-                        helper = "DbDataRecord";
-                        return true;
-                    }
-                }
-                helper = null;
-                return false;
-
-            }
+            sb.AppendReader(resultType, readers);
         }
         else if (flags.HasAny(OperationFlags.Execute))
         {
@@ -227,7 +151,7 @@ public sealed partial class DapperInterceptorGenerator
                 sb.Append("!");
             }
         }
-        sb.Append(";").NewLine().Outdent().NewLine().NewLine();
+        sb.Append(";").NewLine();
 
         static CodeWriter WriteTypedArg(CodeWriter sb, ITypeSymbol? parameterType)
         {

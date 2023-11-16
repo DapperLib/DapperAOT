@@ -32,6 +32,7 @@
         <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net6.0'" />
         <PackageReference Include="Microsoft.Build" VersionOverride="[17.3.2]" Condition="'$(TargetFramework)'=='net6.0'" />
         <PackageReference Include="Microsoft.Build.Utilities.Core" />
+        <PackageReference Include="Npgsql" />
         <PackageReference Include="Oracle.ManagedDataAccess" Condition="'$(TargetFramework)'=='net48'" />
         <PackageReference Include="Oracle.ManagedDataAccess.Core" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="System.Data.Common" />
@@ -52,5 +53,6 @@
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.XUnit" />
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Analyzer.Testing.XUnit" />
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" />
+        <PackageReference Include="Testcontainers.PostgreSql" />
     </ItemGroup>
 </Project>

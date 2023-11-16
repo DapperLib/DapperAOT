@@ -159,14 +159,41 @@ internal static class Inspection
 
     public static bool IsMissingOrObjectOrDynamic(ITypeSymbol? type) => type is null || type.SpecialType == SpecialType.System_Object || type.TypeKind == TypeKind.Dynamic;
 
-    internal static bool IsDynamicParameters(ITypeSymbol? type)
+    internal static bool IsDynamicParameters(ITypeSymbol? type, out bool needsConstruction)
     {
+        needsConstruction = false;
         if (type is null || type.SpecialType != SpecialType.None) return false;
         if (IsBasicDapperType(type, Types.DynamicParameters)
             || IsNestedSqlMapperType(type, Types.IDynamicParameters, TypeKind.Interface)) return true;
         foreach (var i in type.AllInterfaces)
         {
             if (IsNestedSqlMapperType(i, Types.IDynamicParameters, TypeKind.Interface)) return true;
+        }
+
+        // Dapper also treats anything IEnumerable<string,object[?]> as dynamic parameters
+        if (type.ImplementsIEnumerable(out var found) && found is INamedTypeSymbol { Arity: 1 } iet
+            && iet.TypeArguments[0] is INamedTypeSymbol
+            {
+                Name: "KeyValuePair", Arity: 2, ContainingType: null,
+                ContainingNamespace:
+                {
+                    Name: "Generic",
+                    ContainingNamespace:
+                    {
+                        Name: "Collections",
+                        ContainingNamespace:
+                        {
+                            Name: "System",
+                            ContainingNamespace.IsGlobalNamespace: true
+                        }
+                    }
+                }
+            } kvp
+            && kvp.TypeArguments[0].SpecialType == SpecialType.System_String
+            && kvp.TypeArguments[1].SpecialType == SpecialType.System_Object)
+        {
+            needsConstruction = true;
+            return true;
         }
         return false;
     }
@@ -369,9 +396,8 @@ internal static class Inspection
             var loc = GetLocation(attributeName);
             return loc is null ? null : [loc];
         }
-      
+
         private readonly AttributeData? _dbValue;
-        public readonly ColumnAttributeData ColumnAttributeData { get; } = ColumnAttributeData.Default;
         public string DbName => TryGetAttributeValue(_dbValue, "Name", out string? name)
             && !string.IsNullOrWhiteSpace(name) ? name!.Trim() : CodeName;
         public string CodeName => Member.Name;
@@ -413,13 +439,14 @@ internal static class Inspection
         public bool IsGettable => (_flags & ElementMemberFlags.IsGettable) != 0;
         public bool IsSettable => (_flags & ElementMemberFlags.IsSettable) != 0;
         public bool IsInitOnly => (_flags & ElementMemberFlags.IsInitOnly) != 0;
+        public bool IsRequired => (_flags & ElementMemberFlags.IsRequired) != 0;
         public bool IsExpandable => (_flags & ElementMemberFlags.IsExpandable) != 0;
 
         /// <summary>
         /// Order of member in constructor parameter list (starts from 0).
         /// </summary>
         public int? ConstructorParameterOrder { get; }
-        
+
         /// <summary>
         /// Order of member in factory method parameter list (starts from 0).
         /// </summary>
@@ -439,12 +466,12 @@ internal static class Inspection
             IsSettable = 1 << 1,
             IsInitOnly = 1 << 2,
             IsExpandable = 1 << 3,
+            IsRequired = 1 << 4,
         }
 
         public ElementMember(
             ISymbol member,
             AttributeData? dbValue,
-            ColumnAttributeData columnAttributeData,
             ElementMemberKind kind,
             ElementMemberFlags flags,
             int? constructorParameterOrder,
@@ -452,11 +479,10 @@ internal static class Inspection
         {
             _dbValue = dbValue;
             _flags = flags;
-            ColumnAttributeData = columnAttributeData;
-            
+
             Member = member;
             Kind = kind;
-            
+
             ConstructorParameterOrder = constructorParameterOrder;
             FactoryMethodParameterOrder = factoryMethodParameterOrder;
         }
@@ -486,35 +512,6 @@ internal static class Inspection
         }
     }
 
-    internal struct ColumnAttributeData
-    {
-        public UseColumnAttributeState UseColumnAttribute { get; }
-        public ColumnAttributeState ColumnAttribute { get; }
-        public string? Name { get; }
-
-        public ColumnAttributeData(UseColumnAttributeState useColumnAttribute, ColumnAttributeState columnAttribute, string? name)
-        {
-            UseColumnAttribute = useColumnAttribute;
-            ColumnAttribute = columnAttribute;
-            Name = name;
-        }
-
-        public static ColumnAttributeData Default => new(UseColumnAttributeState.NotSpecified, ColumnAttributeState.NotSpecified, null);
-
-        public enum UseColumnAttributeState
-        {
-            NotSpecified,
-            Disabled,
-            Enabled
-        }
-
-        public enum ColumnAttributeState
-        {
-            NotSpecified,
-            Specified
-        }
-    }
-
     public enum ConstructorResult
     {
         NoneFound,
@@ -523,7 +520,7 @@ internal static class Inspection
         FailMultipleExplicit,
         FailMultipleImplicit
     }
-    
+
     public enum FactoryMethodResult
     {
         // note that implicit isn't a thing here
@@ -543,12 +540,12 @@ internal static class Inspection
         {
             return FactoryMethodResult.NoneFound;
         }
-        
+
         var staticMethods = typeSymbol
-            .GetMethods(method => 
+            .GetMethods(method =>
                 method.IsStatic &&
                 SymbolEqualityComparer.Default.Equals(method.ReturnType, typeSymbol) &&
-                method.DeclaredAccessibility == Accessibility.Public 
+                method.DeclaredAccessibility == Accessibility.Public
             )
             ?.ToArray();
         if (staticMethods?.Length == 0)
@@ -571,7 +568,7 @@ internal static class Inspection
 
         return factoryMethod is null ? FactoryMethodResult.NoneFound : FactoryMethodResult.SuccessSingleExplicit;
     }
-    
+
     /// <summary>
     /// Builds a collection of type constructors, which are NOT:
     /// a) parameterless
@@ -643,7 +640,8 @@ internal static class Inspection
                             ContainingNamespace:
                             {
                                 Name: "Runtime",
-                                ContainingNamespace: {
+                                ContainingNamespace:
+                                {
                                     Name: "System",
                                     ContainingNamespace.IsGlobalNamespace: true
                                 }
@@ -660,7 +658,7 @@ internal static class Inspection
                 // ruled out by signature
                 continue;
             }
-            
+
             if (constructor is not null)
             {
                 return ConstructorResult.FailMultipleImplicit;
@@ -734,7 +732,7 @@ internal static class Inspection
                 int? constructorParameterOrder = constructorParameters?.TryGetValue(member.Name, out var constructorParameter) == true
                     ? constructorParameter.Order
                     : null;
-                
+
                 int? factoryMethodParamOrder = factoryMethodParameters?.TryGetValue(member.Name, out var factoryMethodParam) == true
                     ? factoryMethodParam.Order
                     : null;
@@ -743,6 +741,7 @@ internal static class Inspection
                 if (CodeWriter.IsGettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsGettable;
                 if (CodeWriter.IsSettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsSettable;
                 if (CodeWriter.IsInitOnlyInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsInitOnly;
+                if (CodeWriter.IsRequired(member)) flags |= ElementMember.ElementMemberFlags.IsRequired;
 
                 if (forParameters)
                 {
@@ -762,53 +761,10 @@ internal static class Inspection
                     flags |= ElementMember.ElementMemberFlags.IsExpandable;
                 }
 
-                var columnAttributeData = ParseColumnAttributeData(member);
-
                 // all good, then!
-                builder.Add(new(member, dbValue, columnAttributeData, kind, flags, constructorParameterOrder, factoryMethodParamOrder));
+                builder.Add(new(member, dbValue, kind, flags, constructorParameterOrder, factoryMethodParamOrder));
             }
             return builder.ToImmutable();
-        }
-
-        static ColumnAttributeData ParseColumnAttributeData(ISymbol? member)
-        {
-            if (member is null) return ColumnAttributeData.Default;
-            var useColumnAttributeState = ParseUseColumnAttributeState();
-            var (columnAttributeState, columnName) = ParseColumnAttributeState();
-
-            return new ColumnAttributeData(useColumnAttributeState, columnAttributeState, columnName);
-
-            (ColumnAttributeData.ColumnAttributeState state, string? columnName) ParseColumnAttributeState()
-            {
-                var columnAttribute = GetDapperAttribute(member, Types.ColumnAttribute);
-                if (columnAttribute is null) return (ColumnAttributeData.ColumnAttributeState.NotSpecified, null);
-
-                if (TryGetAttributeValue(columnAttribute, "name", out string? name) && !string.IsNullOrWhiteSpace(name))
-                {
-                    return (ColumnAttributeData.ColumnAttributeState.Specified, name);
-                }
-                else
-                {
-                    // [Column] is specified, but value is null. Can happen for ctor overload: 
-                    // https://learn.microsoft.com/en-us/dotnet/api/system.componentmodel.dataannotations.schema.columnattribute.-ctor?view=net-7.0#system-componentmodel-dataannotations-schema-columnattribute-ctor
-                    return (ColumnAttributeData.ColumnAttributeState.Specified, null);
-                }
-            }
-            ColumnAttributeData.UseColumnAttributeState ParseUseColumnAttributeState()
-            {
-                var useColumnAttribute = GetDapperAttribute(member, Types.UseColumnAttributeAttribute);
-                if (useColumnAttribute is null) return ColumnAttributeData.UseColumnAttributeState.NotSpecified;
-
-                if (TryGetAttributeValue(useColumnAttribute, "enable", out bool useColumnAttributeState))
-                {
-                    return useColumnAttributeState ? ColumnAttributeData.UseColumnAttributeState.Enabled : ColumnAttributeData.UseColumnAttributeState.Disabled;
-                }
-                else
-                {
-                    // default
-                    return ColumnAttributeData.UseColumnAttributeState.Enabled;
-                }
-            }
         }
 
         static IReadOnlyDictionary<string, MethodParameter> ParseMethodParameters(IMethodSymbol constructorSymbol)
@@ -993,7 +949,7 @@ internal static class Inspection
             case "Query":
                 flags |= OperationFlags.Query;
                 if (method.Arity > 1) flags |= OperationFlags.NotAotSupported;
-                return true;
+                break;
             case "QueryAsync":
             case "QueryUnbufferedAsync":
                 flags |= method.Name.Contains("Unbuffered") ? OperationFlags.Unbuffered : OperationFlags.Buffered;
@@ -1017,21 +973,26 @@ internal static class Inspection
             case "QueryMultiple":
             case "QueryMultipleAsync":
                 flags |= OperationFlags.Query | OperationFlags.QueryMultiple | OperationFlags.NotAotSupported;
-                return true;
+                break;
             case "Execute":
             case "ExecuteAsync":
                 flags |= OperationFlags.Execute;
                 if (method.Arity != 0) flags |= OperationFlags.NotAotSupported;
-                return true;
+                break;
             case "ExecuteScalar":
             case "ExecuteScalarAsync":
                 flags |= OperationFlags.Execute | OperationFlags.Scalar;
                 if (method.Arity >= 2) flags |= OperationFlags.NotAotSupported;
-                return true;
+                break;
+            case "GetRowParser":
+                flags |= OperationFlags.GetRowParser;
+                if (method.Arity != 1) flags |= OperationFlags.NotAotSupported;
+                break;
             default:
                 flags = OperationFlags.NotAotSupported;
-                return true;
+                break;
         }
+        return true;
     }
     public static bool HasAny(this OperationFlags value, OperationFlags testFor) => (value & testFor) != 0;
     public static bool HasAll(this OperationFlags value, OperationFlags testFor) => (value & testFor) == testFor;
@@ -1085,12 +1046,12 @@ internal static class Inspection
                     case StringSyntaxKind.ConcatenatedString:
                     case StringSyntaxKind.InterpolatedString:
                     case StringSyntaxKind.FormatString:
-                    {
-                        value = default!;
-                        syntax = null;
-                        syntaxKind = stringSyntaxKind;
-                        return false;
-                    }
+                        {
+                            value = default!;
+                            syntax = null;
+                            syntaxKind = stringSyntaxKind;
+                            return false;
+                        }
                 }
             }
 
@@ -1163,25 +1124,25 @@ internal static class Inspection
                 while (type.SpecialType != SpecialType.System_Object)
                 {
                     if (type is
-                    {
-                        Name: nameof(DbCommand),
-                        ContainingType: null,
-                        Arity: 0,
-                        IsGenericType: false,
-                        ContainingNamespace:
                         {
-                            Name: "Common",
+                            Name: nameof(DbCommand),
+                            ContainingType: null,
+                            Arity: 0,
+                            IsGenericType: false,
                             ContainingNamespace:
                             {
-                                Name: "Data",
+                                Name: "Common",
                                 ContainingNamespace:
                                 {
-                                    Name: "System",
-                                    ContainingNamespace.IsGlobalNamespace: true,
+                                    Name: "Data",
+                                    ContainingNamespace:
+                                    {
+                                        Name: "System",
+                                        ContainingNamespace.IsGlobalNamespace: true,
+                                    }
                                 }
                             }
-                        }
-                    })
+                        })
                     {
                         return true;
                     }
@@ -1318,5 +1279,7 @@ enum OperationFlags
     IncludeLocation = 1 << 20, // include -- SomeFile.cs#40 when possible
     KnownParameters = 1 << 21,
     QueryMultiple = 1 << 22,
-    NotAotSupported = 1 << 23,
+    GetRowParser = 1 << 23,
+
+    NotAotSupported = 1 << 31,
 }

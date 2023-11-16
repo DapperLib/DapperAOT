@@ -13,7 +13,7 @@ partial class DapperAnalyzer
         // unused: DAP002
         // 003: InterceptorsNotEnabled
         // 004: LanguageVersionTooLow
-        DapperAotNotEnabled = LibraryInfo("DAP005", "Dapper.AOT not enabled", "{0} candidate Dapper methods detected, but none have Dapper.AOT enabled"),
+        DapperAotNotEnabled = LibraryWarning("DAP005", "Dapper.AOT not enabled", "{0} candidate Dapper methods detected, but none have Dapper.AOT enabled"),
         DapperLegacyTupleParameter = LibraryWarning("DAP006", "Dapper tuple-type parameter", "Dapper (original) does not work well with tuple-type parameters as name information is inaccessible"),
         UnexpectedCommandType = LibraryInfo("DAP007", "Unexpected command type", "The command type specified is not understood"),
         // unused: DAP008

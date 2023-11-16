@@ -3,8 +3,9 @@ using System;
 using System.Data.Common;
 
 namespace UsageLinker;
-
+#if AOT
 [DapperAot(true)]
+#endif
 public class Product
 {
     public static dynamic GetProductDynamic(DbConnection connection, int productId) => connection.QueryFirst(

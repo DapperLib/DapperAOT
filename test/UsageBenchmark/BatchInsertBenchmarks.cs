@@ -1,28 +1,36 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using Microsoft.Data.SqlClient;
+using Npgsql;
 using System;
 using System.Data;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
+using Testcontainers.PostgreSql;
 using UsageBenchmark;
 
 namespace Dapper;
 
 [ShortRunJob, MemoryDiagnoser, GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory), CategoriesColumn]
-public class BatchInsertBenchmarks : IDisposable
+public class BatchInsertBenchmarks : IAsyncDisposable
 {
-    private readonly SqlConnection connection = new(Program.ConnectionString);
-    private Customer[] customers = Array.Empty<Customer>();
+    private readonly SqlConnection sqlClient = new(Program.ConnectionString);
+    private readonly NpgsqlConnection npgsql = new();
+
+    private readonly PostgreSqlContainer _postgresContainer = new PostgreSqlBuilder()
+        .WithImage("postgres:15-alpine")
+        .Build();
+
+    private Customer[] customers = [];
 
     public void DebugState()
     {
         // waiting on binaries from https://github.com/dotnet/SqlClient/pull/1825
-        Console.WriteLine($"{nameof(connection.CanCreateBatch)}: {connection.CanCreateBatch}");
-        if (connection.CanCreateBatch)
+        Console.WriteLine($"{nameof(sqlClient.CanCreateBatch)}: {sqlClient.CanCreateBatch}");
+        if (sqlClient.CanCreateBatch)
         {
-            using var batch = connection.CreateBatch();
+            using var batch = sqlClient.CreateBatch();
             var cmd = batch.CreateBatchCommand();
             Console.WriteLine($"{nameof(cmd.CanCreateParameter)}: {cmd.CanCreateParameter}");
         }
@@ -30,15 +38,25 @@ public class BatchInsertBenchmarks : IDisposable
 
     public BatchInsertBenchmarks()
     {
-        try { connection.Execute("drop table BenchmarkCustomers;"); } catch { }
-        connection.Execute("create table BenchmarkCustomers(Id int not null identity(1,1), Name nvarchar(200) not null);");
+        try { sqlClient.Execute("drop table BenchmarkCustomers;"); } catch { }
+        sqlClient.Execute("create table BenchmarkCustomers(Id int not null identity(1,1), Name nvarchar(200) not null);");
+
+        _postgresContainer.StartAsync().GetAwaiter().GetResult(); // yes, I know
+        npgsql.ConnectionString = _postgresContainer.GetConnectionString();
+
+        npgsql.Execute("""
+            CREATE TABLE IF NOT EXISTS BenchmarkCustomers(
+                 Id     integer GENERATED ALWAYS AS IDENTITY,
+                 Name   varchar(40) NOT NULL
+            );
+            """);
     }
 
     [Params(0, 1, 10, 100, 1000)]
     public int Count { get; set; }
 
     [Params(false, true)]
-    public bool IsOpen { get; set; }
+    public bool IsOpen { get; set; } = true;
 
     [GlobalSetup]
     public void Setup()
@@ -51,42 +69,45 @@ public class BatchInsertBenchmarks : IDisposable
         customers = arr;
         if (IsOpen)
         {
-            connection.Open();
+            sqlClient.Open();
+            npgsql.Open();
         }
         else
         {
-            connection.Close();
+            sqlClient.Close();
+            npgsql.Close();
         }
-        connection.Execute("truncate table BenchmarkCustomers;");
+        sqlClient.Execute("truncate table BenchmarkCustomers;");
+        npgsql.Execute("TRUNCATE BenchmarkCustomers RESTART IDENTITY;");
     }
 
-    [Benchmark, BenchmarkCategory("Sync")]
-    public int Dapper() => connection.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
+    [Benchmark, BenchmarkCategory("Sync", "SqlClient")]
+    public int Dapper() => sqlClient.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
 
-    [Benchmark, BenchmarkCategory("Sync"), DapperAot, CacheCommand]
-    public int DapperAot() => connection.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
+    [Benchmark, BenchmarkCategory("Sync", "SqlClient"), DapperAot, CacheCommand]
+    public int DapperAot() => sqlClient.Execute("insert BenchmarkCustomers (Name) values (@name)", customers);
 
-    [Benchmark, BenchmarkCategory("Sync")]
-    public int DapperAotManual() => connection.Command("insert BenchmarkCustomers (Name) values (@name)",
+    [Benchmark, BenchmarkCategory("Sync", "SqlClient")]
+    public int DapperAotManual() => sqlClient.Command("insert BenchmarkCustomers (Name) values (@name)",
         handler: CustomHandler.Unprepared).Execute(customers);
 
-    [Benchmark, BenchmarkCategory("Sync")]
-    public int DapperAot_PreparedManual() => connection.Command("insert BenchmarkCustomers (Name) values (@name)",
+    [Benchmark, BenchmarkCategory("Sync", "SqlClient")]
+    public int DapperAot_PreparedManual() => sqlClient.Command("insert BenchmarkCustomers (Name) values (@name)",
         handler: CustomHandler.Prepared).Execute(customers);
 
-    [Benchmark(Baseline = true), BenchmarkCategory("Sync")]
+    [Benchmark(Baseline = true), BenchmarkCategory("Sync", "SqlClient")]
     public int Manual()
     {
         if (customers.Length == 0) return 0;
         bool close = false;
         try
         {
-            if (connection.State != ConnectionState.Open)
+            if (sqlClient.State != ConnectionState.Open)
             {
-                connection.Open();
+                sqlClient.Open();
                 close = true;
             }
-            var cmd = GetManualCommand(connection, out var name);
+            var cmd = GetManualCommand(sqlClient, out var name);
             if (customers.Length != 1) cmd.Prepare();
 
             int total = 0;
@@ -100,9 +121,15 @@ public class BatchInsertBenchmarks : IDisposable
         }
         finally
         {
-            if (close) connection.Close();
+            if (close) sqlClient.Close();
         }
     }
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(0)]
+    public int NpgsqlDapperAotNoBatch() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
+
+    [Benchmark, BenchmarkCategory("Sync", "Npgsql"), DapperAot, CacheCommand, BatchSize(-1)]
+    public int NpgsqlDapperAotFullBatch() => npgsql.Execute("insert into BenchmarkCustomers (Name) values (@name)", customers);
 
     private static DbCommand? _spare;
     private static DbCommand GetManualCommand(DbConnection connection, out DbParameter name)
@@ -131,30 +158,30 @@ public class BatchInsertBenchmarks : IDisposable
     private static bool RecycleManual(DbCommand cmd)
         => Interlocked.CompareExchange(ref _spare, cmd, null) is null;
 
-    [Benchmark, BenchmarkCategory("Async")]
-    public Task<int> DapperAsync() => connection.ExecuteAsync("insert BenchmarkCustomers (Name) values (@name)", customers);
+    [Benchmark, BenchmarkCategory("Async", "SqlClient")]
+    public Task<int> DapperAsync() => sqlClient.ExecuteAsync("insert BenchmarkCustomers (Name) values (@name)", customers);
 
-    [Benchmark, BenchmarkCategory("Async")]
-    public Task<int> DapperAotAsync() => connection.Command("insert BenchmarkCustomers (Name) values (@name)",
+    [Benchmark, BenchmarkCategory("Async", "SqlClient")]
+    public Task<int> DapperAotAsync() => sqlClient.Command("insert BenchmarkCustomers (Name) values (@name)",
         handler: CustomHandler.Unprepared).ExecuteAsync(customers);
 
-    [Benchmark, BenchmarkCategory("Async")]
-    public Task<int> DapperAot_PreparedAsync() => connection.Command("insert BenchmarkCustomers (Name) values (@name)",
+    [Benchmark, BenchmarkCategory("Async", "SqlClient")]
+    public Task<int> DapperAot_PreparedAsync() => sqlClient.Command("insert BenchmarkCustomers (Name) values (@name)",
         handler: CustomHandler.Prepared).ExecuteAsync(customers);
 
-    [Benchmark(Baseline = true), BenchmarkCategory("Async")]
+    [Benchmark(Baseline = true), BenchmarkCategory("Async", "SqlClient")]
     public async Task<int> ManualAsync()
     {
         if (customers.Length == 0) return 0;
         bool close = false;
         try
         {
-            if (connection.State != ConnectionState.Open)
+            if (sqlClient.State != ConnectionState.Open)
             {
-                await connection.OpenAsync();
+                await sqlClient.OpenAsync();
                 close = true;
             }
-            var cmd = GetManualCommand(connection, out var name);
+            var cmd = GetManualCommand(sqlClient, out var name);
             if (customers.Length != 1)
             {
                 await cmd.PrepareAsync();
@@ -177,12 +204,12 @@ public class BatchInsertBenchmarks : IDisposable
         {
             if (close)
             {
-                await connection.CloseAsync();
+                await sqlClient.CloseAsync();
             }
         }
     }
 
-    [Benchmark, BenchmarkCategory("Sync")]
+    [Benchmark, BenchmarkCategory("Sync", "SqlClient")]
     public int EntityFramework()
     {
         using var ctx = new MyContext();
@@ -192,7 +219,7 @@ public class BatchInsertBenchmarks : IDisposable
         return result;
     }
 
-    [Benchmark, BenchmarkCategory("Async")]
+    [Benchmark, BenchmarkCategory("Async", "SqlClient")]
     public async Task<int> EntityFrameworkAsync()
     {
         using var ctx = new MyContext();
@@ -202,18 +229,18 @@ public class BatchInsertBenchmarks : IDisposable
         return result;
     }
 
-    [Benchmark, BenchmarkCategory("Sync")]
+    [Benchmark, BenchmarkCategory("Sync", "SqlClient")]
     public int SqlBulkCopyFastMember()
     {
         bool close = false;
         try
         {
-            if (connection.State != ConnectionState.Open)
+            if (sqlClient.State != ConnectionState.Open)
             {
-                connection.Open();
+                sqlClient.Open();
                 close = true;
             }
-            using var table = new SqlBulkCopy(connection)
+            using var table = new SqlBulkCopy(sqlClient)
             {
                 DestinationTableName = "BenchmarkCustomers",
                 ColumnMappings =
@@ -227,51 +254,51 @@ public class BatchInsertBenchmarks : IDisposable
         }
         finally
         {
-            if (close) connection.Close();
+            if (close) sqlClient.Close();
         }
     }
 
-    [Benchmark, BenchmarkCategory("Sync")]
+    [Benchmark, BenchmarkCategory("Sync", "SqlClient")]
     public int SqlBulkCopyDapper()
     {
         bool close = false;
         try
         {
-            if (connection.State != ConnectionState.Open)
+            if (sqlClient.State != ConnectionState.Open)
             {
-                connection.Open();
+                sqlClient.Open();
                 close = true;
             }
-            using var table = new SqlBulkCopy(connection)
+            using var table = new SqlBulkCopy(sqlClient)
             {
                 DestinationTableName = "BenchmarkCustomers",
                 ColumnMappings =
-            {
-                { nameof(Customer.Name), nameof(Customer.Name) }
-            }
+                {
+                    { nameof(Customer.Name), nameof(Customer.Name) }
+                }
             };
             table.EnableStreaming = true;
-            table.WriteToServer(TypeAccessor.CreateDataReader(customers, new[] { nameof(Customer.Name) }));
+            table.WriteToServer(TypeAccessor.CreateDataReader(customers, [nameof(Customer.Name)]));
             return table.RowsCopied;
         }
         finally
         {
-            if (close) connection.Close();
+            if (close) sqlClient.Close();
         }
     }
 
-    [Benchmark, BenchmarkCategory("Async")]
+    [Benchmark, BenchmarkCategory("Async", "SqlClient")]
     public async Task<int> SqlBulkCopyFastMemberAsync()
     {
         bool close = false;
         try
         {
-            if (connection.State != ConnectionState.Open)
+            if (sqlClient.State != ConnectionState.Open)
             {
-                await connection.OpenAsync();
+                await sqlClient.OpenAsync();
                 close = true;
             }
-            using var table = new SqlBulkCopy(connection)
+            using var table = new SqlBulkCopy(sqlClient)
             {
                 DestinationTableName = "BenchmarkCustomers",
                 ColumnMappings =
@@ -285,13 +312,15 @@ public class BatchInsertBenchmarks : IDisposable
         }
         finally
         {
-            if (close) await connection.CloseAsync();
+            if (close) await sqlClient.CloseAsync();
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        connection.Dispose();
+        await sqlClient.DisposeAsync();
+        await npgsql.DisposeAsync();
+        await _postgresContainer.DisposeAsync();
         GC.SuppressFinalize(this);
     }
 
