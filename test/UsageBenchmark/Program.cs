@@ -15,18 +15,28 @@ static class Program
     {
         await using (var obj = new BatchInsertBenchmarks())
         {
-            await RunAllInserts(obj, 10, false);
-            await RunAllInserts(obj, 10, true);
-            await RunAllInserts(obj, 1000, true);
+            obj.Count = 1000;
+            obj.IsOpen = true;
+            obj.Setup();
+            for (int i = 0; i < 100; i++)
+            {
+                Console.WriteLine($"{i}: {obj.NpgsqlDapperAotBatch32()}");
+            }
         }
+            //await using (var obj = new BatchInsertBenchmarks())
+            //{
+            //    await RunAllInserts(obj, 10, false);
+            //    await RunAllInserts(obj, 10, true);
+            //    await RunAllInserts(obj, 1000, true);
+            //}
 
-        using (var obj = new QueryBenchmarks())
-        {
-            await RunAllQueries(obj, 10, false);
-            await RunAllQueries(obj, 10, true);
-        }
+            //using (var obj = new QueryBenchmarks())
+            //{
+            //    await RunAllQueries(obj, 10, false);
+            //    await RunAllQueries(obj, 10, true);
+            //}
 
-        static async Task RunAllInserts(BatchInsertBenchmarks obj, int count, bool isOpen)
+            static async Task RunAllInserts(BatchInsertBenchmarks obj, int count, bool isOpen)
         {
             obj.Count = count;
             obj.IsOpen = isOpen;
