@@ -238,6 +238,8 @@ internal class TSqlProcessor
         => OnError($"SELECT for First* should use TOP 1", location);
     protected virtual void OnSelectSingleRowWithoutWhere(Location location)
         => OnError($"SELECT for single row without WHERE or (TOP and ORDER BY)", location);
+    protected virtual void OnSelectAggregateAndNonAggregate(Location location)
+        => OnError($"SELECT has mixture of aggregate and non-aggregate expressions", location);
     protected virtual void OnNonPositiveTop(Location location)
         => OnError($"TOP literals should be positive", location);
     protected virtual void OnNonPositiveFetch(Location location)
@@ -780,6 +782,7 @@ internal class TSqlProcessor
                 var checkNames = ValidateSelectNames;
                 HashSet<string> names = checkNames ? new HashSet<string>(StringComparer.InvariantCultureIgnoreCase) : null!;
 
+                var aggregate = AggregateFlags.None;
                 int index = 0;
                 foreach (var el in spec.SelectElements)
                 {
@@ -787,6 +790,7 @@ internal class TSqlProcessor
                     {
                         case SelectStarExpression:
                             parser.OnSelectStar(el);
+                            aggregate |= AggregateFlags.HaveNonAggregate;
                             reads++;
                             break;
                         case SelectScalarExpression scalar:
@@ -810,6 +814,7 @@ internal class TSqlProcessor
                                     parser.OnSelectDuplicateColumnName(scalar, name!);
                                 }
                             }
+                            aggregate |= IsAggregate(scalar.Expression);
                             reads++;
                             break;
                         case SelectSetVariable:
@@ -817,6 +822,11 @@ internal class TSqlProcessor
                             break;
                     }
                     index++;
+                }
+
+                if (aggregate == (AggregateFlags.HaveAggregate | AggregateFlags.HaveNonAggregate))
+                {
+                    parser.OnSelectAggregateAndNonAggregate(spec);
                 }
 
                 if (reads != 0)
@@ -845,6 +855,7 @@ internal class TSqlProcessor
                             // or a TOP + ORDER BY
                             if (!IsUnfiltered(spec.FromClause, spec.WhereClause)) { } // fine
                             else if (haveTopOrFetch && spec.OrderByClause is not null) { } // fine
+                            else if ((aggregate & (AggregateFlags.HaveAggregate | AggregateFlags.Uncertain)) != 0) { } // fine
                             else
                             {
                                 parser.OnSelectSingleRowWithoutWhere(node);
@@ -855,6 +866,22 @@ internal class TSqlProcessor
             }
 
             base.Visit(node);
+        }
+
+        enum AggregateFlags
+        {
+            None = 0,
+            HaveAggregate = 1 << 0,
+            HaveNonAggregate = 1 << 1,
+            Uncertain = 1 <<  2,
+        }
+        private AggregateFlags IsAggregate(ScalarExpression expression)
+        {
+            // any use of an aggregate function contributes HaveAggregate
+            // - there could be unary/binary operations on that aggregate function
+            // - column references inside the aggregate expression or a sub-query are fine,
+            //   otherwise they contribute HaveNonAggregate
+            return AggregateFlags.Uncertain;
         }
 
         private bool EnforceTop(ScalarExpression expr)

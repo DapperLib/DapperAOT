@@ -139,6 +139,8 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
         => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectFirstTopError, location);
     protected override void OnSelectSingleRowWithoutWhere(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectSingleRowWithoutWhere, location);
+    protected override void OnSelectAggregateAndNonAggregate(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.OnSelectAggregateAndNonAggregate, location);
     protected override void OnSelectSingleTopError(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.SelectSingleTopError, location);
 
