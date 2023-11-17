@@ -281,7 +281,7 @@ public readonly struct UnifiedCommand
     /// Creates a new <see cref="DbBatchCommand"/> and switch context into the <see cref="BatchCommand"/> property.
     /// </summary>
     [MemberNotNull(nameof(BatchCommand))]
-    public DbParameterCollection AddBatchCommand(string commandText)
+    public DbBatchCommand AddBatchCommand(string commandText)
     {
         var batch = AssertBatch;
         var cmd = batch.CreateBatchCommand();
@@ -290,7 +290,7 @@ public readonly struct UnifiedCommand
         batch.BatchCommands.Add(cmd);
         UnsafeSetBatchCommand(cmd);
 #pragma warning disable CS8774 // "Member must have a non-null value when exiting." - we just did that; we just can't prove it to the compiler
-        return cmd.Parameters;
+        return cmd;
 #pragma warning restore CS8774
     }
 #endif

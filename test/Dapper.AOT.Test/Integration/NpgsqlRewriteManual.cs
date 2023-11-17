@@ -137,7 +137,8 @@ public class NpgsqlRewriteManual
             var ps = command.AddBatchCommand("""
                 INSERT INTO rewrite_test(name)
                 VALUES ($1)
-                """);
+                """).Parameters;
+
             var p = command.CreateParameter();
             p.DbType = DbType.String;
             p.Size = -1;
@@ -147,7 +148,7 @@ public class NpgsqlRewriteManual
             ps = command.AddBatchCommand("""
                 INSERT INTO rewrite_test(name)
                 VALUES ($1 || $2)
-                """);
+                """).Parameters;
 
             p = command.CreateParameter();
             p.DbType = DbType.String;
@@ -164,7 +165,8 @@ public class NpgsqlRewriteManual
             ps = command.AddBatchCommand("""
                 INSERT INTO rewrite_test(name)
                 VALUES ($1)
-                """);
+                """).Parameters;
+
             p = command.CreateParameter();
             p.DbType = DbType.String;
             p.Size = -1;

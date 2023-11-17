@@ -67,13 +67,12 @@ namespace Dapper.Internal
             }
         }
 
-        [MemberNotNull(nameof(Command))]
         private void OnBeforeExecuteUnified()
         {
-            Debug.Assert(UnifiedCommand.Connection is not null);
             connection = UnifiedCommand.Connection;
+            Debug.Assert(connection is not null);
 
-            if (connection.State != ConnectionState.Open)
+            if (connection!.State != ConnectionState.Open)
             {
                 connection.Open();
                 _flags |= FLAG_CLOSE_CONNECTION;
