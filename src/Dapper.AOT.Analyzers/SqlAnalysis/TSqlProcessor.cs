@@ -755,33 +755,37 @@ internal class TSqlProcessor
                     }
                     index++;
                 }
+                
                 if (reads != 0)
                 {
                     if (sets != 0)
                     {
                         parser.OnSelectAssignAndRead(spec);
                     }
-                    bool firstQuery = AddQuery();
-                    if (firstQuery && SingleRow // optionally enforce single-row validation
-                        && spec.FromClause is not null) // no "from" is things like 'select @id, @name' - always one row
+                    if (node.Into is null) // otherwise not actually a query
                     {
-                        bool haveTopOrFetch = false;
-                        if (spec.TopRowFilter is { Percent: false, Expression: ScalarExpression top })
+                        bool firstQuery = AddQuery();
+                        if (firstQuery && SingleRow // optionally enforce single-row validation
+                            && spec.FromClause is not null) // no "from" is things like 'select @id, @name' - always one row
                         {
-                            haveTopOrFetch = EnforceTop(top);
-                        }
-                        else if (spec.OffsetClause is { FetchExpression: ScalarExpression fetch })
-                        {
-                            haveTopOrFetch = EnforceTop(fetch);
-                        }
+                            bool haveTopOrFetch = false;
+                            if (spec.TopRowFilter is { Percent: false, Expression: ScalarExpression top })
+                            {
+                                haveTopOrFetch = EnforceTop(top);
+                            }
+                            else if (spec.OffsetClause is { FetchExpression: ScalarExpression fetch })
+                            {
+                                haveTopOrFetch = EnforceTop(fetch);
+                            }
 
-                        // we want *either* a WHERE (which we will allow with/without a TOP),
-                        // or a TOP + ORDER BY
-                        if (!IsUnfiltered(spec.FromClause, spec.WhereClause)) { } // fine
-                        else if (haveTopOrFetch && spec.OrderByClause is not null) { } // fine
-                        else
-                        {
-                            parser.OnSelectSingleRowWithoutWhere(node);
+                            // we want *either* a WHERE (which we will allow with/without a TOP),
+                            // or a TOP + ORDER BY
+                            if (!IsUnfiltered(spec.FromClause, spec.WhereClause)) { } // fine
+                            else if (haveTopOrFetch && spec.OrderByClause is not null) { } // fine
+                            else
+                            {
+                                parser.OnSelectSingleRowWithoutWhere(node);
+                            }
                         }
                     }
                 }
@@ -1340,6 +1344,9 @@ internal class TSqlProcessor
 
         public override void Visit(OutputClause node)
         {
+            // note that this doesn't handle OUTPUT INTO,
+            // which is via OutputIntoClause
+
             AddQuery(); // works like a query
             base.Visit(node);
         }
