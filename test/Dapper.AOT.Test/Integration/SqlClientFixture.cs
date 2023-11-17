@@ -1,6 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
 using System;
-using System.Linq.Expressions;
 using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
