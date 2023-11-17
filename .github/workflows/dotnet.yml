@@ -44,6 +44,6 @@ jobs:
 
     - name: Push to MyGet
       if: ${{ success() && !github.base_ref }}
-      run: dotnet nuget push src/Dapper.AOT/bin/Release/Dapper.AOT.${NBGV_NuGetPackageVersion}.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key ${MYGETAPIKEY}
+      run: dotnet nuget push src/Dapper.AOT/bin/Release/Dapper.AOT.${NBGV_NuGetPackageVersion}.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key "$env:MYGETAPIKEY"
       env:
         MYGETAPIKEY: ${{ secrets.MYGETAPIKEY }}
