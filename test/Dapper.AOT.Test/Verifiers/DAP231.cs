@@ -37,4 +37,14 @@ public class DAP231 : Verifier<DapperAnalyzer>
         select HasRecords = case when exists (select top 1 1 from MyTable) then 1 else 0 end
         """, SqlParseInputFlags.SingleRow);
 
+    [Fact] // false positive https://github.com/DapperLib/DapperAOT/issues/81
+    public Task DoNotReportForAggregate() => SqlVerifyAsync("""
+        SELECT MAX(SomeColumn) FROM MyTable
+        """, SqlParseInputFlags.SingleRow);
+
+    [Fact]
+    public Task DoNotReportForMultipleAggregatesAndExpressions() => SqlVerifyAsync("""
+        SELECT -MAX(SomeColumn), COUNT(1) + 32 FROM MyTable
+        """, SqlParseInputFlags.SingleRow);
+
 }

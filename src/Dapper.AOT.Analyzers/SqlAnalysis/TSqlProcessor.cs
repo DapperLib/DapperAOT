@@ -760,7 +760,7 @@ internal class TSqlProcessor
         {
             if (!(value is ColumnReferenceExpression col
                 && col.MultiPartIdentifier.Count == 1 && IsAnyCaseInsensitive(
-                    col.MultiPartIdentifier[0].Value, DateTokens )))
+                    col.MultiPartIdentifier[0].Value, DateTokens)))
             {
                 parser.OnInvalidDatepartToken(value);
             }
@@ -873,16 +873,44 @@ internal class TSqlProcessor
             None = 0,
             HaveAggregate = 1 << 0,
             HaveNonAggregate = 1 << 1,
-            Uncertain = 1 <<  2,
+            Uncertain = 1 << 2,
         }
+
         private AggregateFlags IsAggregate(ScalarExpression expression)
         {
             // any use of an aggregate function contributes HaveAggregate
             // - there could be unary/binary operations on that aggregate function
-            // - column references inside the aggregate expression or a sub-query are fine,
+            // - column references etc inside an aggregate expression,
             //   otherwise they contribute HaveNonAggregate
-            return AggregateFlags.Uncertain;
+            switch (expression)
+            {
+                case Literal:
+                    return AggregateFlags.None;
+                case UnaryExpression ue:
+                    return IsAggregate(ue.Expression);
+                case BinaryExpression be:
+                    return IsAggregate(be.FirstExpression)
+                        | IsAggregate(be.SecondExpression);
+                case FunctionCall func when IsAggregateFunction(func.FunctionName.Value):
+                    return AggregateFlags.HaveAggregate; // don't need to look inside
+                case ScalarSubquery sq:
+                    throw new NotSupportedException();
+                case IdentityFunctionCall:
+                case PrimaryExpression:
+                    return AggregateFlags.HaveNonAggregate;
+                default:
+                    return AggregateFlags.Uncertain;
+            }
+
+            static bool IsAggregateFunction(string name)
+                => IsAnyCaseInsensitive(name, AggregateFunctions);
         }
+
+        static readonly string[] AggregateFunctions = [
+            "APPROX_COUNT_DISTINCT", "AVG","CHECKSUM_AGG", "COUNT", "COUNT_BIG",
+            "GROUPING", "GROUPING_ID", "MAX", "MIN", "STDEV",
+            "STDEVP", "STRING_AGG", "SUM", "VAR", "VARP",
+            ];
 
         private bool EnforceTop(ScalarExpression expr)
         {
