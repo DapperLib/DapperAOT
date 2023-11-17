@@ -86,6 +86,29 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         return cmd;
     }
 
+    private void GetUnifiedCommand(out UnifiedCommand command, TArgs args)
+    {
+#if NET6_0_OR_GREATER
+        if (connection.CanCreateBatch && commandFactory.CanExpandIntoBatch(sql))
+        {
+            var batch = connection.CreateBatch();
+            batch.Connection = connection;
+            batch.Transaction = transaction;
+            if (timeout >= 0)
+            {
+                batch.Timeout = timeout;
+            }
+            command = new UnifiedCommand(batch);
+            commandFactory.ExpandIntoBatch(in command, sql, args);
+        }
+        else
+#endif
+        {
+            var cmd = GetCommand(args);
+            command = new UnifiedCommand(cmd);
+        }
+    }
+
     internal void PostProcessAndRecycle(ref SyncQueryState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
@@ -93,6 +116,27 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;
+        }
+    }
+
+    internal void PostProcessAndRecycleUnified(ref SyncQueryState state, TArgs args, int rowCount)
+    {
+        Debug.Assert(state.Command is null); // all on unified command now
+#if NET6_0_OR_GREATER
+        var batch = state.CommandState.UnifiedCommand.Batch;
+        if (batch is not null)
+        {
+            // deliberately do not expose the outer batch to the caller
+            commandFactory.PostProcessBatch(batch.BatchCommands, args, rowCount, 0);
+        }
+        else
+#endif
+        {
+            commandFactory.PostProcess(in state.CommandState.UnifiedCommand, args, rowCount);
+        }
+        if (state.CommandState.UnifiedCommand.Command is { } cmd && commandFactory.TryRecycle(cmd))
+        {
+            state.CommandState.UnifiedCommand.UnsafeSetCommand(null);
         }
     }
 

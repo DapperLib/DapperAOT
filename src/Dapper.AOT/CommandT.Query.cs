@@ -25,7 +25,8 @@ partial struct Command<TArgs>
         SyncQueryState state = default;
         try
         {
-            state.ExecuteReader(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
+            GetUnifiedCommand(out state.CommandState.UnifiedCommand, args);
+            state.ExecuteReaderUnified(CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
 
             List<TRow> results;
             if (state.Reader.Read())
@@ -51,7 +52,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (state.Reader.NextResult()) { }
-            PostProcessAndRecycle(ref state, args, state.Reader.CloseAndCapture());
+            PostProcessAndRecycleUnified(ref state, args, state.Reader.CloseAndCapture());
             return results;
         }
         finally

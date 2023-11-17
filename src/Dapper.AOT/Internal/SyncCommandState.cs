@@ -10,6 +10,9 @@ namespace Dapper.Internal
     {
         private DbConnection? connection;
         public DbCommand? Command;
+
+        public UnifiedCommand UnifiedCommand; // the idea is that this would completely replace Command; just doing minimal to explore
+
         private int _flags;
 
         const int
@@ -32,6 +35,19 @@ namespace Dapper.Internal
             return command.ExecuteReader(flags);
         }
 
+        public DbDataReader ExecuteReaderUnified(CommandBehavior flags)
+        {
+            OnBeforeExecuteUnified();
+#if NET6_0_OR_GREATER
+            if (UnifiedCommand.HasBatch)
+            {
+                return UnifiedCommand.Batch.ExecuteReader(flags);
+            }
+            else
+#endif
+            return UnifiedCommand.AssertCommand.ExecuteReader(flags);
+        }
+
         [MemberNotNull(nameof(Command))]
         private void OnBeforeExecute(DbCommand command)
         {
@@ -52,6 +68,24 @@ namespace Dapper.Internal
         }
 
         [MemberNotNull(nameof(Command))]
+        private void OnBeforeExecuteUnified()
+        {
+            Debug.Assert(UnifiedCommand.Connection is not null);
+            connection = UnifiedCommand.Connection;
+
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+                _flags |= FLAG_CLOSE_CONNECTION;
+            }
+            if ((_flags & FLAG_PREPARE_COMMMAND) != 0)
+            {
+                _flags &= ~FLAG_PREPARE_COMMMAND;
+                UnifiedCommand.Prepare();
+            }
+        }
+
+        [MemberNotNull(nameof(Command))]
         public int ExecuteNonQuery(DbCommand command)
         {
             OnBeforeExecute(command);
@@ -60,9 +94,11 @@ namespace Dapper.Internal
 
         public void Dispose()
         {
-            var cmd = Command;
+            var tmp = Command;
             Command = null;
-            cmd?.Dispose();
+            tmp?.Dispose();
+
+            UnifiedCommand.Cleanup();
 
             var conn = connection;
             connection = null;

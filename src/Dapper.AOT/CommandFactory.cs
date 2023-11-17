@@ -235,11 +235,32 @@ public class CommandFactory<T> : CommandFactory
             UpdateParameters(new(cmd), args);
         }
         return cmd;
+
     }
 
     /// <summary>
     /// Indicates where it is <em>required</em> to invoke post-operation logic to update parameter values.
     /// </summary>
     public virtual bool RequirePostProcess => false;
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Indicates whether the factory wishes to split this command into a multi-command batch.
+    /// </summary>
+    /// <remarks>This will only be used for <see cref="CommandType.Text"/> scenarios where <see cref="DbConnection.CanCreateBatch"/> is <c>true</c></remarks>
+    public virtual bool CanExpandIntoBatch(string sql) => false;
+
+    /// <summary>
+    /// Allows the caller to rewrite a composite command using the <see cref="DbBatch"/> API.
+    /// </summary>
+    public virtual void ExpandIntoBatch(in UnifiedCommand command, string sql, T args) => throw new NotSupportedException();
+
+    /// <summary>
+    /// Allows an implementation to process output parameters etc after an operation has completed
+    /// </summary>
+    /// <remarks>This API is only invoked when <see cref="CanExpandIntoBatch(string)"/> reported <c>true</c>, and
+    /// corresponds to <see cref="ExpandIntoBatch(in UnifiedCommand, string, T)"/></remarks>
+    public virtual void PostProcessBatch(DbBatchCommandCollection commands, T args, int rowCount, int commandIndex) { }
+#endif
 
 }

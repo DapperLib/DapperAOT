@@ -18,7 +18,7 @@ namespace Dapper.Internal
             set => Command = value;
         }
 
-        private SyncCommandState commandState;
+        public SyncCommandState CommandState;
         public DbDataReader? Reader;
         public int[]? Leased;
         private int fieldCount;
@@ -32,19 +32,23 @@ namespace Dapper.Internal
         {
             Return();
             Reader?.Dispose();
-            commandState.Dispose();
+            CommandState.Dispose();
         }
 
         public DbCommand? Command
         {
-            readonly get => commandState.Command;
-            set => commandState.Command = value;
+            readonly get => CommandState.Command;
+            set => CommandState.Command = value;
         }
 
 #pragma warning disable CS8774 // Member must have a non-null value when exiting. - validated
         [MemberNotNull(nameof(Reader), nameof(Command))]
         public void ExecuteReader(DbCommand command, CommandBehavior flags)
-            => Reader = commandState.ExecuteReader(command, flags);
+            => Reader = CommandState.ExecuteReader(command, flags);
+
+        [MemberNotNull(nameof(Reader), nameof(Command))]
+        public void ExecuteReaderUnified(CommandBehavior flags)
+            => Reader = CommandState.ExecuteReaderUnified(flags);
 
         public Span<int> Lease()
         {

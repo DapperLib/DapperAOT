@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace Dapper;
@@ -18,6 +19,41 @@ namespace Dapper;
 public readonly struct UnifiedCommand
 
 {
+    /// <inheritdoc/>
+    public override string ToString()
+    {
+#if NET6_0_OR_GREATER
+        if (batch is not null)
+        {
+            return $"Batch with {batch.BatchCommands.Count} commands";
+        }
+#endif
+        return dbCommand?.ToString() ?? "";
+    }
+    /// <see cref="DbCommand.Connection"/>
+    internal DbConnection? Connection
+    {
+        get
+        {
+#if NET6_0_OR_GREATER
+            if (batch is not null) return batch.Connection;
+#endif
+            return dbCommand?.Connection;
+        }
+    }
+
+    /// <see cref="DbCommand.Transaction"/>
+    internal DbTransaction? Transaction
+    {
+        get
+        {
+#if NET6_0_OR_GREATER
+            if (batch is not null) return batch.Transaction;
+#endif
+            return dbCommand?.Transaction;
+        }
+    }
+
     /// <summary>
     /// The <see cref="System.Data.Common.DbCommand"/> associated with the current operation; this may be <c>null</c> for batch commands.
     /// </summary>
@@ -114,7 +150,7 @@ public readonly struct UnifiedCommand
         }
     }
 
-    private DbCommand AssertCommand
+    internal DbCommand AssertCommand
     {
         get
         {
@@ -123,7 +159,10 @@ public readonly struct UnifiedCommand
         }
     }
 
+    // this *might* be our effective command, but in the case of batches: it might also
+    // be a throwaway command we created just to allow us to create parameters on down-level libs
     private readonly DbCommand? dbCommand;
+
 
     /// <inheritdoc cref="DbCommand.CreateParameter"/>
     public DbParameter CreateParameter()
@@ -162,7 +201,10 @@ public readonly struct UnifiedCommand
         dbCommand = null;
     }
 
+    internal DbBatch? Batch => batch;
     internal DbBatchCommandCollection AssertBatchCommands => AssertBatch.BatchCommands;
+
+    [MemberNotNullWhen(true, nameof(Batch))]
     internal DbBatch AssertBatch
     {
         get
@@ -198,12 +240,15 @@ public readonly struct UnifiedCommand
         UnsafeSetBatchCommand(null);
     }
 
+    [MemberNotNullWhen(true, nameof(Batch))]
     internal bool HasBatch => batch is not null;
 
     internal DbBatchCommand UnsafeCreateNewCommand() => Unsafe.AsRef(in batchCommand) = AssertBatch.CreateBatchCommand();
 
     internal void UnsafeSetBatchCommand(DbBatchCommand? value) => Unsafe.AsRef(in batchCommand) = value;
 #endif
+
+    internal void UnsafeSetCommand(DbCommand? value) => Unsafe.AsRef(in dbCommand) = value;
 
     private DbCommand UnsafeWithCommandForParameters()
     {
@@ -217,9 +262,50 @@ public readonly struct UnifiedCommand
 
     internal void Cleanup()
     {
-        dbCommand?.Dispose();
+        if (dbCommand is not null)
+        {
+            dbCommand.Dispose();
+            Unsafe.AsRef(in dbCommand) = null!;
+        }
 #if NET6_0_OR_GREATER
-        batch?.Dispose();
+        if (batch is not null)
+        {
+            batch.Dispose();
+            Unsafe.AsRef(in batch) = null!;
+        }
 #endif
+    }
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Creates a new <see cref="DbBatchCommand"/> and switch context into the <see cref="BatchCommand"/> property.
+    /// </summary>
+    [MemberNotNull(nameof(BatchCommand))]
+    public DbParameterCollection AddBatchCommand(string commandText)
+    {
+        var batch = AssertBatch;
+        var cmd = batch.CreateBatchCommand();
+        cmd.CommandType = CommandType.Text;
+        cmd.CommandText = commandText;
+        batch.BatchCommands.Add(cmd);
+        UnsafeSetBatchCommand(cmd);
+#pragma warning disable CS8774 // "Member must have a non-null value when exiting." - we just did that; we just can't prove it to the compiler
+        return cmd.Parameters;
+#pragma warning restore CS8774
+    }
+#endif
+
+    internal void Prepare()
+    {
+#if NET6_0_OR_GREATER
+        if (batch is not null)
+        {
+            batch.Prepare();
+        }
+        else
+#endif
+        {
+            AssertCommand.Prepare();
+        }
     }
 }
