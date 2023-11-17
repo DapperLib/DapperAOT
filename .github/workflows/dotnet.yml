@@ -33,7 +33,7 @@ jobs:
       run: dotnet restore Build.csproj
 
     - name: Purge
-      run: del src/Dapper.*/bin/Release/Dapper.AOT.*.nupkg
+      run: del src/Dapper.*/bin/Release/Dapper.*.nupkg
       
     - name: Build
       run: dotnet build Build.csproj --no-restore -c Release
@@ -47,6 +47,6 @@ jobs:
 
     - name: Push to MyGet
       if: ${{ success() && !github.base_ref }}
-      run: dotnet nuget push src/Dapper.*/bin/Release/Dapper.AOT.*.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key "$env:MYGETAPIKEY"
+      run: dotnet nuget push src/Dapper.*/bin/Release/Dapper.*.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key "$env:MYGETAPIKEY"
       env:
         MYGETAPIKEY: ${{ secrets.MYGETAPIKEY }}
