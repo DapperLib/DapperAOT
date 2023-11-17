@@ -16,5 +16,12 @@ public class DAP226 : Verifier<DapperAnalyzer>
         from A a
         inner join B b on b.X = a.Id
         """, Diagnostic(Diagnostics.FromMultiTableUnqualifiedColumn).WithLocation(0).WithArguments("Name"));
-    
+
+    [Fact] // false positive: https://github.com/DapperLib/DapperAOT/issues/80
+    public Task DoNotReportDateAdd() => SqlVerifyAsync("""
+        SELECT DATEADD(YEAR, 1, t.Year) AS NextYear
+        FROM MyTable t
+        JOIN MyOtherTable o ON o.Id = t.Id
+        """);
+
 }

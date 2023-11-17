@@ -46,4 +46,17 @@ public class DAP025 : Verifier<DapperAnalyzer>
             Diagnostic(Diagnostics.ExecuteCommandWithQuery).WithLocation(0),
         ]);
 
+    [Fact]
+    public Task ReportWhenNoQueryExpected() => SqlVerifyAsync("""
+        SELECT [Test]
+        FROM MyTable
+        """, SqlAnalysis.SqlParseInputFlags.ExpectNoQuery,
+    Diagnostic(Diagnostics.ExecuteCommandWithQuery).WithLocation(Execute));
+
+    [Fact] // false positive scenario, https://github.com/DapperLib/DapperAOT/issues/79
+    public Task DoNotReportSelectInto() => SqlVerifyAsync("""
+        SELECT [Test]
+        INTO #MyTemporaryTable FROM MyTable
+        """, SqlAnalysis.SqlParseInputFlags.ExpectNoQuery);
+
 }
