@@ -4,10 +4,7 @@ using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.Data;
 using System.Diagnostics;
-using static Dapper.SqlAnalysis.TSqlProcessor;
 
 namespace Dapper.Internal;
 
@@ -126,6 +123,10 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
         => OnDiagnostic(DapperAnalyzer.Diagnostics.FromMultiTableMissingAlias, location);
     protected override void OnFromMultiTableUnqualifiedColumn(Location location, string name)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.FromMultiTableUnqualifiedColumn, location, name);
+
+    protected override void OnInvalidDatepartToken(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.InvalidDatepartToken, location);
+
     protected override void OnNonIntegerTop(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.NonIntegerTop, location);
     protected override void OnNonPositiveTop(Location location)
