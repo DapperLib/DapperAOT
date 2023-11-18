@@ -49,6 +49,8 @@ partial class DapperAnalyzer
         ValueTypeSingleFirstOrDefaultUsage = LibraryWarning("DAP038", "Value-type single row 'OrDefault' usage", "Type '{0}' is a value-type; it will not be trivial to identify missing rows from {1}"),
         FactoryMethodMultipleExplicit = LibraryError("DAP039", "Multiple explicit factory methods", "Only one factory method should be marked [ExplicitConstructor] for type '{0}'"),
         ConstructorOverridesFactoryMethod = LibraryWarning("DAP041", "Constructor overrides factory method", "Type '{0}' has both constructor and factory method; Constructor will be used instead of a factory method"),
+        ParameterNameOverrideConflict = LibraryWarning("DAP042", "Parameter name override conflict", "A column name is specified via both [DbValue] and [Column]; '{0}' will be used"),
+        UseColumnAttributeNotSpecified = LibraryWarning("DAP043", "[Column] has no effect", "Attach the [UseColumnAttribute] attribute to make Dapper consider [Column]"),
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),

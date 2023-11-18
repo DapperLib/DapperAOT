@@ -197,6 +197,14 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 var resultMap = MemberMap.CreateForResults(resultType, location);
                 if (resultMap is not null)
                 {
+                    if (resultMap.Members.Length != 0)
+                    {
+                        foreach (var member in resultMap.Members)
+                        {
+                            ValidateMember(member, onDiagnostic);
+                        }
+                    }
+
                     // check for single-row value-type usage
                     if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
                         && resultMap.ElementType.IsValueType && !CouldBeNullable(resultMap.ElementType))
@@ -815,6 +823,28 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null
             ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps);
+    }
+
+    static void ValidateMember(ElementMember member, Action<Diagnostic>? reportDiagnostic)
+    {
+        ValidateColumnAttribute();
+
+        void ValidateColumnAttribute()
+        {
+            if (member.HasDbValueAttribute && member.ColumnAttributeData.IsCorrectUsage)
+            {
+                reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.ParameterNameOverrideConflict,
+                    location: member.GetLocation(Types.DbValueAttribute),
+                    additionalLocations: member.AsAdditionalLocations(Types.ColumnAttribute, allowNonDapperLocations: true),
+                    messageArgs: member.DbName));
+            }
+            if (member.ColumnAttributeData.ColumnAttribute == ColumnAttributeData.ColumnAttributeState.Specified
+                && member.ColumnAttributeData.UseColumnAttribute == ColumnAttributeData.UseColumnAttributeState.NotSpecified)
+            {
+                reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UseColumnAttributeNotSpecified,
+                    location: member.GetLocation(Types.ColumnAttribute, allowNonDapperLocations: true)));
+            }
+        }
     }
 
     internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, ref OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)

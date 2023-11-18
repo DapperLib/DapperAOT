@@ -103,6 +103,7 @@ public abstract class Verifier
         }
         test.TestState.AdditionalReferences.Add(typeof(System.Data.SqlClient.SqlConnection).Assembly);
         test.TestState.AdditionalReferences.Add(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly);
+        test.TestState.AdditionalReferences.Add(typeof(System.ComponentModel.DataAnnotations.Schema.ColumnAttribute).Assembly);
         if (transforms is not null)
         {
             test.SolutionTransforms.AddRange(transforms);

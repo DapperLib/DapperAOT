@@ -54,6 +54,7 @@ internal static class RoslynTestHelpers
                    MetadataReference.CreateFromFile(Assembly.Load("System.Data").Location),
                    MetadataReference.CreateFromFile(Assembly.Load("netstandard").Location),
                    MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
+                   MetadataReference.CreateFromFile(typeof(System.ComponentModel.DataAnnotations.Schema.ColumnAttribute).Assembly.Location),
 #endif
                    MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
