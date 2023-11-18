@@ -1,12 +1,65 @@
-﻿using Microsoft.CodeAnalysis.VisualBasic.Syntax;
-using System;
+﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 
-namespace Dapper.Internal;
+namespace Dapper.Internal.SqlParsing;
+
+public enum Batch
+{
+    None,
+    Semicolon, // used by Postgresql
+    Go, // used by TSQL
+}
+
+public readonly struct CommandVariable : IEquatable<CommandVariable>
+{
+    public CommandVariable(string name, int index)
+    {
+        Name = name;
+        Index = index;
+    }
+    public int Index { get; }
+    public string Name { get; }
+
+    public override int GetHashCode() => Index;
+    public override bool Equals(object obj) => obj is CommandVariable other && Equals(other);
+    public bool Equals(CommandVariable other)
+        => Index == other.Index && Name == other.Name;
+    public override string ToString() => $"@{Index}:{Name}";
+}
+public readonly struct CommandBatch : IEquatable<CommandBatch>
+{
+    public ImmutableArray<CommandVariable> Variables { get; }
+    public string Sql { get; }
+
+    public CommandBatch(string sql) : this(ImmutableArray<CommandVariable>.Empty, sql) { }
+    public CommandBatch(string sql, CommandVariable var0) : this(ImmutableArray.Create(var0), sql) { }
+    public CommandBatch(string sql, CommandVariable var0, CommandVariable var1) : this(ImmutableArray.Create(var0, var1), sql) { }
+    public CommandBatch(string sql, CommandVariable var0, CommandVariable var1, CommandVariable var2) : this(ImmutableArray.Create(var0, var1, var2), sql) { }
+    public CommandBatch(string sql, CommandVariable var0, CommandVariable var1, CommandVariable var2, CommandVariable var3) : this(ImmutableArray.Create(var0, var1, var2, var3), sql) { }
+    public CommandBatch(string sql, CommandVariable var0, CommandVariable var1, CommandVariable var2, CommandVariable var3, CommandVariable var4) : this(ImmutableArray.Create(var0, var1, var2, var3, var4), sql) { }
+    public static CommandBatch Create(string sql, params CommandVariable[] variables)
+        => new(ImmutableArray.Create(variables), sql);
+    public static CommandBatch Create(string sql, ImmutableArray<CommandVariable> variables)
+        => new(variables, sql);
+    // invert order to solve some .ctor ambiguity issues
+    private CommandBatch(ImmutableArray<CommandVariable> variables, string sql)
+    {
+        Sql = sql;
+        Variables = variables;
+    }
+
+    public override int GetHashCode() => Sql.GetHashCode(); // args are a component of the sql; no need to hash them
+    public override string ToString() => Variables.IsDefaultOrEmpty ? Sql :
+        (Sql + " with " + string.Join(", ", Variables));
+
+    public override bool Equals(object obj) => obj is CommandBatch other && Equals(other);
+
+    public bool Equals(CommandBatch other)
+        => Sql == other.Sql && Variables.SequenceEqual(other.Variables);
+}
 
 internal static class GeneralSqlParser
 {
@@ -25,27 +78,28 @@ internal static class GeneralSqlParser
     /// Tokenize a sql fragment into batches, extracting the variables/locals in use
     /// </summary>
     /// <remarks>This is a basic parse only; no syntax processing - just literals, identifiers, etc</remarks>
-    public static List<CommandBatch> Parse(string sql, bool strip = false)
+    public static List<CommandBatch> Parse(string sql, Batch batch, bool strip = false)
     {
         int bIndex = 0;
         char[] buffer = ArrayPool<char>.Shared.Rent(sql.Length + 1);
 
         char stringType = '\0';
         var state = ParseState.None;
-        int i = 0, elementStartIndex = 0;
-        ImmutableArray<string>.Builder? variables = null;
+        int i = 0, elementStartbIndex = 0;
+        ImmutableArray<CommandVariable>.Builder? variables = null;
         var result = new List<CommandBatch>();
-        bool LookBehind(char expected, int delta = 1)
-            => Look(-delta, expected);
 
-        bool LookAhead(char expected, int delta = 1)
-            => Look(delta, expected);
-
-        bool Look(int delta, char expected)
+        char LookAhead(int delta = 1)
         {
             var ci = i + delta;
-            return ci >= 0 && ci < sql.Length && sql[ci] == expected;
+            return ci >= 0 && ci < sql.Length ? sql[ci] : '\0';
         }
+        char Last(int offset)
+        {
+            var ci = bIndex - (offset + 1);
+            return ci >= 0 && ci < bIndex ? buffer[ci] : '\0';
+        }
+        char LookBehind(int delta = 1) => LookAhead(-delta);
         void Discard() => bIndex--;
         void NormalizeSpace()
         {
@@ -63,9 +117,9 @@ internal static class GeneralSqlParser
         }
         bool ActivateStringPrefix()
         {
-            if (i == elementStartIndex + 1)
+            if (i == elementStartbIndex + 1)
             {
-                stringType = sql[elementStartIndex];
+                stringType = buffer[elementStartbIndex];
                 return true;
             };
             return false;
@@ -78,32 +132,88 @@ internal static class GeneralSqlParser
                 // when stripping
                 Discard();
             }
+            else if (strip && Last(0) == ';')
+            {
+                Discard(); // don't write whitespace after ;
+            }
             else
             {
                 NormalizeSpace();
             }
         }
-        bool IsTrivialBatch()
+        int ElementLength() => bIndex - elementStartbIndex + 1;
+
+        void FlushBatch()
         {
-            if (bIndex < 2) return true;
+            if (IsGo()) bIndex -= 2; // don't retain the GO
+
+            bool removedSemicolon = false;
+            if ((strip || batch == Batch.Semicolon) && Last(0) == ';')
+            {
+                Discard();
+                removedSemicolon = true;
+            }
+
+            if (strip) // remove trailing whitespace
+            {
+                while (bIndex > 0 && char.IsWhiteSpace(buffer[bIndex - 1]))
+                {
+                    bIndex--;
+                }
+            }
+
+            if (!IsWhitespace()) // anything left?
+            {
+                if (removedSemicolon)
+                {
+                    // reattach
+                    buffer[bIndex++] = ';';
+                }
+
+                var batchSql = new string(buffer, 0, bIndex);
+                var args = variables is null ? ImmutableArray<CommandVariable>.Empty : variables.ToImmutable();
+                result.Add(CommandBatch.Create(batchSql, args));
+            }
+            // logical reset
+            bIndex = 0;
+            variables?.Clear();
+            state = ParseState.None;
+        }
+        bool IsWhitespace()
+        {
+            if (bIndex == 0) return true;
             for (int i = 0; i < bIndex; i++)
             {
-                if (char.IsWhiteSpace(buffer[i])
-                    || (i == bIndex - 1 && buffer[i] == ';'))
-                {
-                    continue; // fine
-                }
-                return false;
+                if (!char.IsWhiteSpace(buffer[i])) return false;
             }
             return true;
+        }
+        bool IsGo()
+        {
+            return batch == Batch.Go && ElementLength() == 2
+                    && Last(1) is 'g' or 'G' && Last(0) is 'o' or 'O';
         }
 
         bool IsString(char c) => state == ParseState.String && stringType == c;
 
-        for (; i <= sql.Length; i++)
+        for (; i < sql.Length; i++)
         {
-            // store by default, we'll backtrack in the rare scenarios that we don't want it
             var c = i == sql.Length ? ';' : sql[i]; // spoof a ; at the end to simplify end-of-block handling
+
+            // detect end of GO token
+            if (state == ParseState.Token && !IsToken(c) && IsGo())
+            {
+                FlushBatch(); // and keep going
+            }
+            else if (state == ParseState.Variable && !IsToken(c))
+            {
+                int varLen = ElementLength(), varStart = bIndex - varLen;
+                var name = new string(buffer, varStart, varLen);
+                variables ??= ImmutableArray.CreateBuilder<CommandVariable>();
+                variables.Add(new(name, varStart));
+            }
+
+            // store by default, we'll backtrack in the rare scenarios that we don't want it
             buffer[bIndex++] = c;
 
             switch (state)
@@ -113,20 +223,18 @@ internal static class GeneralSqlParser
                     else SkipLeadingWhitespace(c);
                     continue;
                 case ParseState.LineComment when c is '\r' or '\n': // end of line comment
+                case ParseState.BlockComment when c == '/' && LookBehind() == '*': // end of block comment
+                    if (strip) Discard();
+                    else NormalizeSpace();
                     state = ParseState.Whitespace;
-                    NormalizeSpace();
-                    continue;
-                case ParseState.BlockComment when c == '/' && LookBehind('*'): // end of block comment
-                    NormalizeSpace();
-                    state = ParseState.None;
                     continue;
                 case ParseState.BlockComment or ParseState.LineComment: // keep ignoring line comment
                     if (strip) Discard();
                     continue;
-                case ParseState.String when c == '\'' && IsString('E') && LookBehind('\\'): // E'...\'...'
+                case ParseState.String when c == '\'' && IsString('E') && LookBehind() == '\\': // E'...\'...'
                     continue;
                 case ParseState.String when c == '\'' && (!IsString('"')):
-                    if (!LookBehind('\'')) // [E]'...''...'
+                    if (LookBehind() != '\'') // [E]'...''...'
                     {
                         state = ParseState.None; // '.....'
                     }
@@ -142,11 +250,7 @@ internal static class GeneralSqlParser
                 case ParseState.Token or ParseState.Variable when IsToken(c):
                     // ongoing token / variable content
                     continue;
-                case ParseState.Variable: // end of variable - store it
-                    var name = sql.Substring(elementStartIndex, i - elementStartIndex);
-                    variables ??= ImmutableArray.CreateBuilder<string>();
-                    if (!variables.Contains(name)) variables.Add(name);
-                    goto case ParseState.Token;
+                case ParseState.Variable: // end of variable
                 case ParseState.Whitespace: // end of whitespace chunk
                 case ParseState.Token: // end of token
                 case ParseState.None: // not started
@@ -156,14 +260,13 @@ internal static class GeneralSqlParser
                     throw new InvalidOperationException($"Token kind not handled: {state}");
             }
 
-
-            if (c == '-' && LookAhead('-'))
+            if (c == '-' && LookAhead() == '-')
             {
                 state = ParseState.LineComment;
                 if (strip) Discard();
                 continue;
             }
-            if (c == '/' && LookAhead('*'))
+            if (c == '/' && LookAhead() == '*')
             {
                 state = ParseState.BlockComment;
                 if (strip) Discard();
@@ -172,27 +275,19 @@ internal static class GeneralSqlParser
 
             if (c == ';')
             {
-                // end of batch
-                if (strip)
+                if (batch == Batch.Semicolon)
                 {
-                    Discard(); // take any trailing whitespace, then re-attach
-                    while (bIndex > 0 && char.IsWhiteSpace(buffer[bIndex - 1]))
-                    {
-                        bIndex--;
-                    }
-                    buffer[bIndex++] = ';';
+                    FlushBatch();
+                    continue;
                 }
 
-                if (!IsTrivialBatch())
-                {
-                    var batch = new string(buffer, 0, bIndex);
-                    var args = variables is null ? ImmutableArray<string>.Empty : variables.ToImmutable();
-                    result.Add(new(batch, args));
+                // otherwise end-statement
+                // (prevent unnecessary additional whitespace when stripping)
+                state = ParseState.Whitespace;
+                if (strip && Last(1) == ';')
+                {   // squash down to just one
+                    Discard();
                 }
-                // logical reset
-                bIndex = 0;
-                variables?.Clear();
-                state = ParseState.None;
                 continue;
             }
 
@@ -203,7 +298,7 @@ internal static class GeneralSqlParser
                 continue;
             }
 
-            elementStartIndex = i;
+            elementStartbIndex = bIndex;
 
             if (c is '"' or '\'')
             {
@@ -213,7 +308,8 @@ internal static class GeneralSqlParser
                 continue;
             }
 
-            if (SqlTools.ParameterPrefixCharacters.IndexOf(c) >= 0)
+            if (SqlTools.ParameterPrefixCharacters.IndexOf(c) >= 0
+                && IsToken(LookAhead())) // avoid altgt alt
             {
                 // start a new variable
                 state = ParseState.Variable;
@@ -230,38 +326,17 @@ internal static class GeneralSqlParser
             // other arbitrary syntax - operators etc
         }
 
+        if (batch == Batch.Semicolon)
+        {
+            // spoof a final ;
+            buffer[bIndex++] = ';';
+        }
+        // deal with any remaining bits
+        FlushBatch();
+
         ArrayPool<char>.Shared.Return(buffer);
         return result;
         static bool IsToken(char c) => c == '_' || char.IsLetterOrDigit(c);
-    }
-
-
-    public readonly struct CommandBatch : IEquatable<CommandBatch>
-    {
-        public ImmutableArray<string> Variables { get; }
-        public string Sql { get; }
-
-        public CommandBatch(string sql) : this(sql, ImmutableArray<string>.Empty) { }
-        public CommandBatch(string sql, string var0) : this(sql, ImmutableArray.Create(var0)) { }
-        public CommandBatch(string sql, string var0, string var1) : this(sql, ImmutableArray.Create(var0, var1)) { }
-        public CommandBatch(string sql, string var0, string var1, string var2) : this(sql, ImmutableArray.Create(var0, var1, var2)) { }
-        public CommandBatch(string sql, string var0, string var1, string var2, string var3) : this(sql, ImmutableArray.Create(var0, var1, var2, var3)) { }
-        public CommandBatch(string sql, string var0, string var1, string var2, string var3, string var4) : this(sql, ImmutableArray.Create(var0, var1, var2, var3, var4)) { }
-        public CommandBatch(string sql, params string[] variables) : this(sql, ImmutableArray.Create(variables)) { }
-        public CommandBatch(string sql, ImmutableArray<string> variables)
-        {
-            Sql = sql;
-            Variables = variables;
-        }
-
-        public override int GetHashCode() => Sql.GetHashCode(); // args are a component of the sql; no need to hash them
-        public override string ToString() => Variables.IsDefaultOrEmpty ? Sql :
-            (Sql + " with " + string.Join(", ", Variables));
-
-        public override bool Equals(object obj) => obj is CommandBatch other && Equals(other);
-
-        public bool Equals(CommandBatch other)
-            => Sql == other.Sql && Variables.SequenceEqual(other.Variables);
     }
 }
 
