@@ -161,4 +161,7 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
 
     protected override void OnTrivialOperand(Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.TrivialOperand, location);
+
+    protected override void OnDangerousNonDelimitedIdentifier(Location location, string name)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.DangerousNonDelimitedIdentifier, location, name);
 }
