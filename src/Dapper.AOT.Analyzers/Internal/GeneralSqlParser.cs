@@ -1,17 +1,11 @@
-﻿using System;
+﻿using Dapper.SqlAnalysis;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
 namespace Dapper.Internal.SqlParsing;
-
-public enum Batch
-{
-    None,
-    Semicolon, // used by Postgresql
-    Go, // used by TSQL
-}
 
 public readonly struct CommandVariable : IEquatable<CommandVariable>
 {
@@ -78,7 +72,7 @@ internal static class GeneralSqlParser
     /// Tokenize a sql fragment into batches, extracting the variables/locals in use
     /// </summary>
     /// <remarks>This is a basic parse only; no syntax processing - just literals, identifiers, etc</remarks>
-    public static List<CommandBatch> Parse(string sql, Batch batch, bool strip = false)
+    public static List<CommandBatch> Parse(string sql, SqlSyntax syntax, bool strip = false)
     {
         int bIndex = 0;
         char[] buffer = ArrayPool<char>.Shared.Rent(sql.Length + 1);
@@ -88,6 +82,8 @@ internal static class GeneralSqlParser
         int i = 0, elementStartbIndex = 0;
         ImmutableArray<CommandVariable>.Builder? variables = null;
         var result = new List<CommandBatch>();
+
+        bool BatchSemicolon() => syntax == SqlSyntax.PostgreSql;
 
         char LookAhead(int delta = 1)
         {
@@ -148,7 +144,7 @@ internal static class GeneralSqlParser
             if (IsGo()) bIndex -= 2; // don't retain the GO
 
             bool removedSemicolon = false;
-            if ((strip || batch == Batch.Semicolon) && Last(0) == ';')
+            if ((strip || BatchSemicolon()) && Last(0) == ';')
             {
                 Discard();
                 removedSemicolon = true;
@@ -190,11 +186,14 @@ internal static class GeneralSqlParser
         }
         bool IsGo()
         {
-            return batch == Batch.Go && ElementLength() == 2
+            return syntax == SqlSyntax.SqlServer && ElementLength() == 2
                     && Last(1) is 'g' or 'G' && Last(0) is 'o' or 'O';
         }
 
         bool IsString(char c) => state == ParseState.String && stringType == c;
+
+        bool IsSingleQuoteString() => state == ParseState.String && (stringType == '\'' || char.IsLetter(stringType));
+        void Advance() => buffer[bIndex++] = sql[++i];
 
         for (; i < sql.Length; i++)
         {
@@ -214,7 +213,7 @@ internal static class GeneralSqlParser
             }
 
             // store by default, we'll backtrack in the rare scenarios that we don't want it
-            buffer[bIndex++] = c;
+            buffer[bIndex++] = sql[i];
 
             switch (state)
             {
@@ -231,16 +230,19 @@ internal static class GeneralSqlParser
                 case ParseState.BlockComment or ParseState.LineComment: // keep ignoring line comment
                     if (strip) Discard();
                     continue;
-                case ParseState.String when c == '\'' && IsString('E') && LookBehind() == '\\': // E'...\'...'
+                // string-escape characters
+                case ParseState.String when c == '\'' && IsSingleQuoteString() && LookAhead() == '\'': // [?]'...''...'
+                case ParseState.String when c == '"' && IsString('"') && LookAhead() == '\"': // "...""..."
+                case ParseState.String when c == '\\' && IsString('E') && LookAhead() != '\0': // E'...\*...'
+                case ParseState.String when c == ']' && IsString('[') && LookAhead() == ']': // [...]]...]
+                    // escaped or double-quote; move forwards immediately
+                    Advance();
                     continue;
-                case ParseState.String when c == '\'' && (!IsString('"')):
-                    if (LookBehind() != '\'') // [E]'...''...'
-                    {
-                        state = ParseState.None; // '.....'
-                    }
-                    continue;
+                // end string
                 case ParseState.String when c == '"' && IsString('"'): // "....."
-                    state = ParseState.None;
+                case ParseState.String when c == ']' && IsString('['): // [.....]
+                case ParseState.String when c == '\'' && IsSingleQuoteString(): // [?]'....'
+                    state = ParseState.None; 
                     continue;
                 case ParseState.String:
                     // ongoing string content
@@ -275,7 +277,7 @@ internal static class GeneralSqlParser
 
             if (c == ';')
             {
-                if (batch == Batch.Semicolon)
+                if (BatchSemicolon())
                 {
                     FlushBatch();
                     continue;
@@ -300,7 +302,7 @@ internal static class GeneralSqlParser
 
             elementStartbIndex = bIndex;
 
-            if (c is '"' or '\'')
+            if (c is '"' or '\'' or '[')
             {
                 // start a new string
                 state = ParseState.String;
@@ -309,7 +311,7 @@ internal static class GeneralSqlParser
             }
 
             if (SqlTools.ParameterPrefixCharacters.IndexOf(c) >= 0
-                && IsToken(LookAhead())) // avoid altgt alt
+                && IsToken(LookAhead()) && LookBehind() != c) // avoid @>, @@IDENTTIY etc
             {
                 // start a new variable
                 state = ParseState.Variable;
@@ -326,7 +328,7 @@ internal static class GeneralSqlParser
             // other arbitrary syntax - operators etc
         }
 
-        if (batch == Batch.Semicolon)
+        if (BatchSemicolon())
         {
             // spoof a final ;
             buffer[bIndex++] = ';';

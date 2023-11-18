@@ -1,7 +1,7 @@
-﻿using Dapper.Internal;
+﻿
 using Dapper.Internal.SqlParsing;
 using Xunit;
-
+using static global::Dapper.SqlAnalysis.SqlSyntax;
 namespace Dapper.AOT.Test;
 
 public class GeneralSqlParseTests
@@ -23,7 +23,7 @@ public class GeneralSqlParseTests
             ;
             ;
             more
-            """, Batch.Semicolon, strip: false));
+            """, PostgreSql, strip: false));
 
     [Fact]
     public void BatchifyStrippedPostgresql() => Assert.Equal(
@@ -38,7 +38,7 @@ public class GeneralSqlParseTests
             ;
             ;
             more
-            """, Batch.Semicolon, strip: true));
+            """, PostgreSql, strip: true));
 
     [Fact]
     public void BatchifyNonStrippedSqlServer() => Assert.Equal(
@@ -58,7 +58,7 @@ public class GeneralSqlParseTests
             ;
             ;
             more
-            """, Batch.Go, strip: false));
+            """, SqlServer, strip: false));
 
     [Fact]
     public void BatchifyStrippedSqlServer() => Assert.Equal(
@@ -73,7 +73,7 @@ public class GeneralSqlParseTests
             ;
             ;
             more
-            """, Batch.Go, strip: true));
+            """, SqlServer, strip: true));
 
     [Fact]
     public void BatchifyNonStrippedSqlServer_Go() => Assert.Equal(
@@ -84,7 +84,7 @@ public class GeneralSqlParseTests
             something
             GO
             something ' GO ' else;
-            """, Batch.Go, strip: true));
+            """, SqlServer, strip: true));
 
     [Fact]
     public void DetectArgs() => Assert.Equal(
@@ -95,18 +95,26 @@ public class GeneralSqlParseTests
         ], GeneralSqlParser.Parse("""
         select * from SomeTable
         where Id = @foo and Name = '@bar'
-        """, Batch.Semicolon, strip: true));
+        """, PostgreSql, strip: true));
 
     [Fact]
     public void DetectArgsAndBatchify() => Assert.Equal(
         [
             new("select * from SomeTable where Id = @foo and Name = '@bar';", new("@foo", 35)),
-            new("insert Bar (Id) values ($1);", new("$1", 24)),
+            new("insert Bar (Id, X) values ($1, @@IDENTITY);", new("$1", 27)),
             new("insert Blap (Id) values ($1, @foo);", new("$1", 25), new("@foo", 29)),
         ], GeneralSqlParser.Parse("""
         select * from SomeTable where Id = @foo and Name = '@bar' -- $4
         ;
-        insert Bar (Id) /* @abc */ values ($1);
+        insert Bar (Id, X) /* @abc */ values ($1, @@IDENTITY);
         insert Blap (Id) values ($1, @foo)
-        """, Batch.Semicolon, strip: true));
+        """, PostgreSql, strip: true));
+
+    [Fact]
+    public void StringEscapingSqlServer() => Assert.Equal(
+        [
+            new("select ' @a '' @b ' as [ @c ]] @d ];") // no vars
+        ], GeneralSqlParser.Parse("""
+        select ' @a '' @b ' as [ @c ]] @d ];
+        """, SqlServer, strip: true));
 }
