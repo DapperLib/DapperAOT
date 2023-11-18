@@ -547,9 +547,11 @@ internal static class Inspection
                 return GetLocation();
             }
 
-            return allowNonDapperLocations
+            var result = allowNonDapperLocations
                 ? GetAttribute(Member, attributeName)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation()
                 : GetDapperAttribute(Member, attributeName)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
+
+            return result ?? GetLocation();
         }
     }
 
