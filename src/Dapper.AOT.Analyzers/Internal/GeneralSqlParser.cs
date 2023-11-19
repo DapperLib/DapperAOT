@@ -3,11 +3,13 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
+using System.Text;
 
 namespace Dapper.Internal.SqlParsing;
 
-public readonly struct CommandVariable : IEquatable<CommandVariable>
+internal readonly struct CommandVariable : IEquatable<CommandVariable>
 {
     public CommandVariable(string name, int index)
     {
@@ -17,13 +19,31 @@ public readonly struct CommandVariable : IEquatable<CommandVariable>
     public int Index { get; }
     public string Name { get; }
 
+    public ParameterKind Kind
+    {
+        get
+        {
+            var name = Name;
+            if (name is { Length: >= 2 } && SqlTools.ParameterPrefixCharacters.IndexOf(name[0]) >= 0)
+            {
+                if ((char.IsLetter(name[1]) || name[1] == '_'))
+                    return ParameterKind.Nominal;
+
+                if (char.IsNumber(name[1]))
+                    return ParameterKind.Ordinal;
+            }
+
+            return ParameterKind.Unknown;
+        }
+    }
+
     public override int GetHashCode() => Index;
     public override bool Equals(object obj) => obj is CommandVariable other && Equals(other);
     public bool Equals(CommandVariable other)
         => Index == other.Index && Name == other.Name;
     public override string ToString() => $"@{Index}:{Name}";
 }
-public readonly struct CommandBatch : IEquatable<CommandBatch>
+internal readonly struct CommandBatch : IEquatable<CommandBatch>
 {
     public ImmutableArray<CommandVariable> Variables { get; }
     public string Sql { get; }
@@ -45,6 +65,23 @@ public readonly struct CommandBatch : IEquatable<CommandBatch>
         Variables = variables;
     }
 
+    public ParameterKind ParameterKind
+    {
+        get
+        {
+            if (Variables.IsDefaultOrEmpty)
+            {
+                return ParameterKind.NonParametrized;
+            }
+            var first = Variables[0].Kind;
+            foreach (var arg in Variables.AsSpan().Slice(1))
+            {
+                if (arg.Kind != first) return ParameterKind.Mixed;
+            }
+            return first;
+        }
+    }
+
     public override int GetHashCode() => Sql.GetHashCode(); // args are a component of the sql; no need to hash them
     public override string ToString() => Variables.IsDefaultOrEmpty ? Sql :
         (Sql + " with " + string.Join(", ", Variables));
@@ -53,6 +90,92 @@ public readonly struct CommandBatch : IEquatable<CommandBatch>
 
     public bool Equals(CommandBatch other)
         => Sql == other.Sql && Variables.SequenceEqual(other.Variables);
+
+    public OrdinalResult TryMakeOrdinal<T>(IList<T> inputArgs, Func<T, string> argName, Func<T, int, T> argFactory, out IList<T> args, out string sql, int argIndex = 0)
+    {
+        static bool TryFindByName(string name, IList<T> inputArgs, Func<T, string> argName, out T found)
+        {
+            foreach (var arg in inputArgs)
+            {
+                if (string.Equals(name, argName(arg), StringComparison.OrdinalIgnoreCase))
+                {
+                    found = arg;
+                    return true;
+                }
+            }
+            found = default!;
+            return false;
+        }
+        sql = Sql;
+        var kind = ParameterKind;
+        switch (kind)
+        {
+            case ParameterKind.NonParametrized:
+                args = [];
+                return OrdinalResult.NoChange;
+            case ParameterKind.Mixed:
+                args = inputArgs;
+                return OrdinalResult.MixedParameters;
+            case ParameterKind.Ordinal:
+                // TODO: rewrite, filtering and ordering; i.e.
+                // where Id = $4 and Name = $3 -- no mention of $1 or $2
+                // could be
+                // where Id = $1 and Name = $2
+                args = inputArgs;
+                return OrdinalResult.NoChange;
+            case ParameterKind.Nominal:
+                break; // below
+            default:
+                args = inputArgs;
+                return OrdinalResult.UnsupportedScenario;
+        }
+
+        Debug.Assert(kind == ParameterKind.Nominal);
+
+        var map = new Dictionary<string, T>(Variables.Length, StringComparer.OrdinalIgnoreCase);
+        args = new List<T>();
+        var sb = new StringBuilder(sql);
+        int delta = 0; // change in length of string
+        foreach (var queryArg in Variables)
+        {
+            if (!map.TryGetValue(queryArg.Name, out var finalArg))
+            {
+                if (!TryFindByName(queryArg.Name, inputArgs, argName, out var found))
+                {
+                    args = inputArgs;
+                    return OrdinalResult.UnsupportedScenario;
+                }
+                finalArg = argFactory(found, argIndex++);
+                map.Add(queryArg.Name, finalArg);
+                args.Add(finalArg);
+            }
+            var newName = argName(finalArg);
+            // could potentially be more efficient with forwards-only write
+            sb.Remove(queryArg.Index + delta, queryArg.Name.Length);
+            sb.Insert(queryArg.Index + delta, newName);
+            delta += newName.Length - queryArg.Name.Length;
+        }
+        sql = sb.ToString();
+        return sql == Sql ? OrdinalResult.NoChange : OrdinalResult.Success;
+    }
+
+    internal static Func<string, int, string> OrdinalNaming { get; } = (name, index) => $"${index + 1}";
+}
+
+internal enum ParameterKind
+{
+    NonParametrized,
+    Mixed,
+    Ordinal, // $1
+    Nominal,  // @foo
+    Unknown,
+}
+internal enum OrdinalResult
+{
+    NoChange,
+    MixedParameters,
+    Success,
+    UnsupportedScenario,
 }
 
 internal static class GeneralSqlParser
@@ -147,7 +270,7 @@ internal static class GeneralSqlParser
             if ((strip || BatchSemicolon()) && Last(0) == ';')
             {
                 Discard();
-                removedSemicolon = true;
+                //removedSemicolon = true;
             }
 
             if (strip) // remove trailing whitespace
@@ -160,11 +283,11 @@ internal static class GeneralSqlParser
 
             if (!IsWhitespace()) // anything left?
             {
-                if (removedSemicolon)
-                {
-                    // reattach
-                    buffer[bIndex++] = ';';
-                }
+                //if (removedSemicolon)
+                //{
+                //    // reattach
+                //    buffer[bIndex++] = ';';
+                //}
 
                 var batchSql = new string(buffer, 0, bIndex);
                 var args = variables is null ? ImmutableArray<CommandVariable>.Empty : variables.ToImmutable();
@@ -189,6 +312,13 @@ internal static class GeneralSqlParser
             return syntax == SqlSyntax.SqlServer && ElementLength() == 2
                     && Last(1) is 'g' or 'G' && Last(0) is 'o' or 'O';
         }
+        void FlushVariable()
+        {
+            int varLen = ElementLength(), varStart = bIndex - varLen;
+            var name = new string(buffer, varStart, varLen);
+            variables ??= ImmutableArray.CreateBuilder<CommandVariable>();
+            variables.Add(new(name, varStart));
+        }
 
         bool IsString(char c) => state == ParseState.String && stringType == c;
 
@@ -206,10 +336,7 @@ internal static class GeneralSqlParser
             }
             else if (state == ParseState.Variable && !IsToken(c))
             {
-                int varLen = ElementLength(), varStart = bIndex - varLen;
-                var name = new string(buffer, varStart, varLen);
-                variables ??= ImmutableArray.CreateBuilder<CommandVariable>();
-                variables.Add(new(name, varStart));
+                FlushVariable();
             }
 
             // store by default, we'll backtrack in the rare scenarios that we don't want it
@@ -328,12 +455,13 @@ internal static class GeneralSqlParser
             // other arbitrary syntax - operators etc
         }
 
+        // deal with any remaining bits
+        if (state == ParseState.Variable) FlushVariable();
         if (BatchSemicolon())
         {
             // spoof a final ;
             buffer[bIndex++] = ';';
         }
-        // deal with any remaining bits
         FlushBatch();
 
         ArrayPool<char>.Shared.Return(buffer);
