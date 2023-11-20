@@ -2,11 +2,10 @@
 using BenchmarkDotNet.Configs;
 using Npgsql;
 using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using Testcontainers.PostgreSql;
 
 namespace Dapper;
@@ -67,6 +66,167 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
 
     [Benchmark]
     public int DapperAOT_Rewrite() => npgsql.Command<MyArgsType>(BasicSql, handler: RewriteCommand.Instance).Execute(Args);
+
+    static DbCommand CreateCommand(DbConnection connection)
+    {
+        var cmd = connection.CreateCommand();
+        cmd.Connection = connection;
+        cmd.CommandText = BasicSql;
+        cmd.CommandType = CommandType.Text;
+
+        var ps = cmd.Parameters;
+
+        var p = cmd.CreateParameter();
+        p.ParameterName = "Name0";
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name0;
+        ps.Add(p);
+
+        p = cmd.CreateParameter();
+        p.ParameterName = "Name1";
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name1;
+        ps.Add(p);
+
+        p = cmd.CreateParameter();
+        p.ParameterName = "Name2";
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name1;
+        ps.Add(p);
+
+        p = cmd.CreateParameter();
+        p.ParameterName = "Name3";
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name1;
+        ps.Add(p);
+
+        return cmd;
+    }
+
+    static void UpdateCommand(DbCommand cmd, DbConnection connection)
+    {
+        cmd.Connection = connection;
+        var ps = cmd.Parameters;
+        ps[0].Value = Args.Name0;
+        ps[1].Value = Args.Name1;
+        ps[2].Value = Args.Name2;
+        ps[3].Value = Args.Name3;
+    }
+
+    [Benchmark]
+    public int AdoNetCommand()
+    {
+        using var cmd = CreateCommand(npgsql);
+        return cmd.ExecuteNonQuery();
+    }
+
+    static DbCommand? _spareCommand;
+
+    [Benchmark]
+    public int AdoNetCommandCached()
+    {
+        var cmd = Interlocked.Exchange(ref _spareCommand, null);
+        if (cmd is null)
+        {
+            cmd = CreateCommand(npgsql);
+        }
+        else
+        {
+            UpdateCommand(cmd, npgsql);
+        }
+        var result = cmd.ExecuteNonQuery();
+        cmd.Connection = null;
+        Interlocked.Exchange(ref _spareCommand, cmd)?.Dispose();
+        return result;
+    }
+    private static DbBatch CreateBatch(DbConnection connection)
+    {
+        var batch = connection.CreateBatch();
+        batch.Connection = connection;
+
+        var cmd = batch.CreateBatchCommand();
+        cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
+        cmd.CommandType = CommandType.Text;
+        var p = new NpgsqlParameter();
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name0;
+        cmd.Parameters.Add(p);
+        batch.BatchCommands.Add(cmd);
+
+        cmd = batch.CreateBatchCommand();
+        cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
+        cmd.CommandType = CommandType.Text;
+        p = new NpgsqlParameter();
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name1;
+        cmd.Parameters.Add(p);
+        batch.BatchCommands.Add(cmd);
+
+        cmd = batch.CreateBatchCommand();
+        cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
+        cmd.CommandType = CommandType.Text;
+        p = new NpgsqlParameter();
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name2;
+        cmd.Parameters.Add(p);
+        batch.BatchCommands.Add(cmd);
+
+        cmd = batch.CreateBatchCommand();
+        cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
+        cmd.CommandType = CommandType.Text;
+        p = new NpgsqlParameter();
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name3;
+        cmd.Parameters.Add(p);
+        batch.BatchCommands.Add(cmd);
+
+        return batch;
+    }
+
+    static void UpdateBatch(DbBatch batch, DbConnection connection)
+    {
+        batch.Connection = connection;
+        var cmds = batch.BatchCommands;
+        cmds[0].Parameters[0].Value = Args.Name0;
+        cmds[1].Parameters[0].Value = Args.Name1;
+        cmds[2].Parameters[0].Value = Args.Name2;
+        cmds[3].Parameters[0].Value = Args.Name3;
+    }
+
+    static DbBatch? _spareBatch;
+
+    [Benchmark]
+    public int AdoNetBatch()
+    {
+        using var batch = CreateBatch(npgsql);
+        return batch.ExecuteNonQuery();
+    }
+
+    [Benchmark]
+    public int AdoNetBatchCached()
+    {
+        var batch = Interlocked.Exchange(ref _spareBatch, null);
+        if (batch is null)
+        {
+            batch = CreateBatch(npgsql);
+        }
+        else
+        {
+            UpdateBatch(batch, npgsql);
+        }
+        var result = batch.ExecuteNonQuery();
+        batch.Connection = null;
+        Interlocked.Exchange(ref _spareBatch, batch)?.Dispose();
+        return result;
+    }
 
     public async ValueTask DisposeAsync()
     {

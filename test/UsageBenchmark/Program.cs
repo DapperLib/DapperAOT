@@ -21,6 +21,10 @@ static class Program
             Console.WriteLine(obj.Dapper());
             Console.WriteLine(obj.DapperAOT_Simple());
             Console.WriteLine(obj.DapperAOT_Rewrite());
+            Console.WriteLine(obj.AdoNetCommand());
+            Console.WriteLine(obj.AdoNetBatch());
+            Console.WriteLine(obj.AdoNetCommandCached());
+            Console.WriteLine(obj.AdoNetBatchCached());
         }
         //await using (var obj = new BatchInsertBenchmarks())
         //{
