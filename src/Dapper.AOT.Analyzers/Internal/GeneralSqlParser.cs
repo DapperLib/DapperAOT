@@ -223,7 +223,7 @@ internal static class GeneralSqlParser
         // "find first [@$:'"...] etc, copy backfill then search for end of that symbol and process
         // accordingly
 
-        int bIndex = 0;
+        int bIndex = 0, parenDepth = 0;
         char[] buffer = ArrayPool<char>.Shared.Rent(sql.Length + 1);
 
         char stringType = '\0';
@@ -366,7 +366,7 @@ internal static class GeneralSqlParser
             {
                 FlushBatch(); // and keep going
             }
-            else if (state == ParseState.Variable && !IsToken(c))
+            else if (state == ParseState.Variable && !IsMidToken(c))
             {
                 FlushVariable();
             }
@@ -392,7 +392,7 @@ internal static class GeneralSqlParser
                 // string-escape characters
                 case ParseState.String when c == '\'' && IsSingleQuoteString() && LookAhead() == '\'': // [?]'...''...'
                 case ParseState.String when c == '"' && IsString('"') && LookAhead() == '\"': // "...""..."
-                case ParseState.String when c == '\\' && (IsString('E') || IsString('e')) && LookAhead() != '\0': // E'...\*...'
+                case ParseState.String when c == '\\' && (IsString('E') || IsString('e')) && LookAhead() != '\0' && AllowEscapedStrings(): // E'...\*...'
                 case ParseState.String when c == ']' && IsString('[') && LookAhead() == ']': // [...]]...]
                     // escaped or double-quote; move forwards immediately
                     Advance();
@@ -408,7 +408,7 @@ internal static class GeneralSqlParser
                     continue;
                 case ParseState.Token when c == '\'' && ActivateStringPrefix(): // E'..., N'... etc
                     continue;
-                case ParseState.Token or ParseState.Variable when IsToken(c):
+                case ParseState.Token or ParseState.Variable when IsMidToken(c):
                     // ongoing token / variable content
                     continue;
                 case ParseState.Variable: // end of variable
@@ -434,9 +434,11 @@ internal static class GeneralSqlParser
                 continue;
             }
 
+            if (c == '(') parenDepth++;
+            if (c == ')') parenDepth--;
             if (c == ';')
             {
-                if (BatchSemicolon())
+                if (BatchSemicolon() && parenDepth == 0)
                 {
                     FlushBatch();
                     continue;
@@ -461,11 +463,17 @@ internal static class GeneralSqlParser
 
             elementStartbIndex = bIndex;
 
-            if (c is '"' or '\'' or '[')
+            if (c is '"' or '\'' or '[') // TODO: '$' dollar quoting
             {
                 // start a new string
                 state = ParseState.String;
                 stringType = c;
+                continue;
+            }
+
+            if (c is '$' && AllowDollarQuotedStrings())
+            {
+                TryReadDollarQuotedString();
                 continue;
             }
 
@@ -497,11 +505,54 @@ internal static class GeneralSqlParser
         FlushBatch();
 
         ArrayPool<char>.Shared.Return(buffer);
+
         return result;
 
-        bool IsToken(char c) => c == '_' || char.IsLetterOrDigit(c)
-            // npgsql allows @a.b as a valid parameter name
-            || (c == '.' && state == ParseState.Variable && syntax == SqlSyntax.PostgreSql);
+        bool IsMidToken(char c) => IsToken(c)
+            || (syntax == SqlSyntax.PostgreSql && (
+                (c == '$' && state != ParseState.Variable) // postgresql identifiers can contain $, but variables can't
+                || (c == '.' && state == ParseState.Variable) // postgresql mapped variables (only) can contain .
+            ));
+
+        bool IsToken(char c) => c == '_' || char.IsLetterOrDigit(c);
+
+        bool AllowEscapedStrings() => syntax == SqlSyntax.PostgreSql;
+        bool AllowDollarQuotedStrings() => syntax == SqlSyntax.PostgreSql;
+
+        void TryReadDollarQuotedString()
+        {
+            // https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING
+
+            // A dollar-quoted string constant consists of a dollar sign ($), an optional “tag” of zero or more characters,
+            // another dollar sign, an arbitrary sequence of characters that makes up the string content, a dollar sign,
+            // the same tag that began this dollar quote, and a dollar sign.
+
+            // The tag, if any, of a dollar-quoted string follows the same rules as an
+            // unquoted identifier, except that it cannot contain a dollar sign
+
+            // note this is too complex to process in the iterative way; we'll switch to forwards looking
+            int len = 1; // $
+            while (true)
+            {
+                var next = LookAhead(len++);
+                if (next == '$') break; // found end of marker
+                if (!IsToken(next)) return; // covers _, letters and digits
+                if (len == 2 && char.IsDigit(next)) return; // identifier rules; cannot start with digit
+            }
+
+            var sqlSpan = sql.AsSpan();
+            var hunt = sqlSpan.Slice(i, len);
+            var remaining = sqlSpan.Slice(i + len);
+            var found = remaining.IndexOf(hunt);
+            if (found < 0) return; // non-terminated; ignore
+
+            var toCopy = len * 2 + found - 1; // we already copied the first $
+            for (int j = 0; j < toCopy; j++)
+            {
+                Advance();
+            }
+            
+        }
     }
 
     internal static bool IsParameterPrefix(char c)

@@ -110,88 +110,82 @@ public class NpgsqlParseTests
         Assert.Equal(Args(("$1", "def"), ("$2", "ghi")), result.Parameters);
     }
 
-    //    [Fact]
-    //    public void No_output_parameters()
-    //    {
-    //        var p = new NpgsqlParameter("p", DbType.String) { Direction = ParameterDirection.Output };
-    //        Assert.That(() => ParseCommand("SELECT @p", p), Throws.Exception);
-    //    }
+    // N/A in this context of Dapper, although we should investigate further
+    //[Fact]
+    //public void No_output_parameters()
+    //{
+    //    var p = new NpgsqlParameter("p", DbType.String) { Direction = ParameterDirection.Output };
+    //    Assert.That(() => ParseCommand("SELECT @p", p), Throws.Exception);
+    //}
 
-    //    [Fact]
-    //    public void Missing_parameter_is_ignored()
-    //    {
-    //        var results = ParseCommand("SELECT @p; SELECT 1");
-    //        Assert.That(results[0].FinalCommandText, Is.EqualTo("SELECT @p"));
-    //        Assert.That(results[1].FinalCommandText, Is.EqualTo("SELECT 1"));
-    //        Assert.That(results[0].PositionalParameters, Is.Empty);
-    //        Assert.That(results[1].PositionalParameters, Is.Empty);
-    //    }
+    [Fact]
+    public void Missing_parameter_is_ignored()
+    {
+        var results = ParseCommand("SELECT @p; SELECT 1");
+        Assert.Equal(2, results.Count);
+        Assert.Equal("SELECT @p", results[0].FinalCommandText);
+        Assert.Equal("SELECT 1", results[1].FinalCommandText);
+        Assert.Empty(results[0].Parameters);
+        Assert.Empty(results[1].Parameters);
+    }
 
-    //    [Fact]
-    //    public void Consecutive_semicolons()
-    //    {
-    //        var results = ParseCommand(";;SELECT 1");
-    //        Assert.That(results, Has.Count.EqualTo(3));
-    //        Assert.That(results[0].FinalCommandText, Is.Empty);
-    //        Assert.That(results[1].FinalCommandText, Is.Empty);
-    //        Assert.That(results[2].FinalCommandText, Is.EqualTo("SELECT 1"));
-    //    }
+    [Fact]
+    public void Consecutive_semicolons()
+    {
+        var results = ParseCommand(";;SELECT 1");
+        Assert.Equal(3, results.Count);
+        Assert.Equal("", results[0].FinalCommandText);
+        Assert.Equal("", results[1].FinalCommandText);
+        Assert.Equal("SELECT 1", results[0].FinalCommandText);
 
-    //    [Test]
-    //    public void Trailing_semicolon()
-    //    {
-    //        var results = ParseCommand("SELECT 1;");
-    //        Assert.That(results, Has.Count.EqualTo(1));
-    //        Assert.That(results[0].FinalCommandText, Is.EqualTo("SELECT 1"));
-    //    }
+        // what actually happens (passes)
+        // Assert.Equal("SELECT 1", Assert.Single(results).FinalCommandText);
+    }
 
-    //    [Fact]
-    //    public void Empty()
-    //    {
-    //        var results = ParseCommand("");
-    //        Assert.That(results, Has.Count.EqualTo(1));
-    //        Assert.That(results[0].FinalCommandText, Is.Empty);
-    //    }
+    [Fact]
+    public void Trailing_semicolon()
+    {
+        var results = Assert.Single(ParseCommand("SELECT 1;"));
+        Assert.Equal("SELECT 1", results.FinalCommandText);
+    }
 
-    //    [Fact]
-    //    public void Semicolon_in_parentheses()
-    //    {
-    //        var results = ParseCommand("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1; SELECT 1)");
-    //        Assert.That(results, Has.Count.EqualTo(1));
-    //        Assert.That(results[0].FinalCommandText, Is.EqualTo("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1; SELECT 1)"));
-    //    }
+    [Fact]
+    public void Empty()
+    {
+        var results = ParseCommand("");
+        Assert.Equal("", Assert.Single(results).FinalCommandText);
+    }
 
-    //    [Fact]
-    //    public void Semicolon_after_parentheses()
-    //    {
-    //        var results = ParseCommand("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1); SELECT 1");
-    //        Assert.That(results, Has.Count.EqualTo(2));
-    //        Assert.That(results[0].FinalCommandText, Is.EqualTo("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1)"));
-    //        Assert.That(results[1].FinalCommandText, Is.EqualTo("SELECT 1"));
-    //    }
+    [Fact]
+    public void Semicolon_in_parentheses()
+    {
+        var results = Assert.Single(ParseCommand("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1; SELECT 1)"));
+        Assert.Equal("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1; SELECT 1)", results.FinalCommandText);
+    }
 
-    //    [Fact]
-    //    public void Reduce_number_of_statements()
-    //    {
-    //        var parser = new SqlQueryParser();
+    [Fact]
+    public void Semicolon_after_parentheses()
+    {
+        var results = ParseCommand("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1); SELECT 1");
+        Assert.Equal(2, results.Count);
+        Assert.Equal("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1)", results[0].FinalCommandText);
+        Assert.Equal("SELECT 1", results[1].FinalCommandText);
+    }
 
-    //        var cmd = new NpgsqlCommand("SELECT 1; SELECT 2");
-    //        parser.ParseRawQuery(cmd);
-    //        Assert.That(cmd.InternalBatchCommands, Has.Count.EqualTo(2));
+    [Fact]
+    public void Reduce_number_of_statements()
+    {
+        Assert.Equal(2, ParseCommand("SELECT 1; SELECT 2").Count);
+        Assert.Single(ParseCommand("SELECT 1"));
+    }
 
-    //        cmd.CommandText = "SELECT 1";
-    //        parser.ParseRawQuery(cmd);
-    //        Assert.That(cmd.InternalBatchCommands, Has.Count.EqualTo(1));
-    //    }
-
-    //#if TODO
-    //    [Test]
-    //    public void Trim_whitespace()
-    //    {
-    //        _parser.ParseRawQuery("   SELECT 1\t", _params, _queries, standardConformingStrings: true);
-    //        Assert.That(_queries.Single().Sql, Is.EqualTo("SELECT 1"));
-    //    }
-    //#endif
+    [Fact]
+    public void Trim_whitespace()
+    {
+        var result = Assert.Single(ParseCommand("   SELECT 1\t", strip: true));
+        Assert.Equal("SELECT 1", result.FinalCommandText);
+        Assert.Empty(result.Parameters);
+    }
 
     #region Setup / Teardown / Utils
 
@@ -203,8 +197,22 @@ public class NpgsqlParseTests
     }
 
     List<ParseResult> ParseCommand(string sql, params (string name, object value)[] parameters)
+        => ParseCommand(sql, false, parameters);
+    List<ParseResult> ParseCommand(string sql, bool strip, params (string name, object value)[] parameters)
     {
-        var parsed = GeneralSqlParser.Parse(sql, SqlAnalysis.SqlSyntax.PostgreSql, false);
+        var parsed = GeneralSqlParser.Parse(sql, SqlAnalysis.SqlSyntax.PostgreSql, strip);
+        if (parsed.Count == 0)
+        {
+            return new List<ParseResult>
+            {
+                new ParseResult
+                {
+                    FinalCommandText = "",
+                    Parameters = [],
+                    Result = sql == "" ? OrdinalResult.NoChange : OrdinalResult.Success,
+                }
+            };
+        }
         return parsed.ConvertAll(cmd =>
         {
             var result = cmd.TryMakeOrdinal(parameters, p => p.name,
