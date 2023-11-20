@@ -919,7 +919,7 @@ internal static class Inspection
                 int index = 0;
                 foreach (var p in ctor.Parameters)
                 {
-                    if (p.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase))
+                    if (StringComparer.InvariantCultureIgnoreCase.Equals(p.Name, name))
                     {
                         value = Parse(attrib.ConstructorArguments[index], out isNull);
                         return true;
