@@ -13,6 +13,6 @@ to TSQL / SQL Server). There are multiple ways of letting the tools know more (i
 4. if a `<Dapper_SqlSyntax>...</Dapper_SqlSyntax>` property is specified in the project file (inside a `<PropertyGroup>`) with a known value, it will be used
 5. otherwise no SQL variant is applied
 
-For options 3 & 4, The "known values" are the names from the `SqlSyntax` enumeration, evaluated case-insensitively.
+For options 3 & 4, The "known values" are the names from the [`SqlSyntax`](https://github.com/DapperLib/DapperAOT/blob/main/src/Dapper.AOT/SqlSyntax.cs) enumeration, evaluated case-insensitively.
 
 At the current time, only the `SqlServer` option provides enhanced syntax analysis.
