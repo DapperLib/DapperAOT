@@ -26,6 +26,9 @@ internal static class SyntaxExtensions
     public static bool IsMethodDeclaration(this SyntaxNode syntax)
         => GetHelper(syntax.Language).IsMethodDeclaration(syntax);
 
+    public static bool IsGlobalStatement(this SyntaxNode syntax, out SyntaxNode? entryPoint)
+        => GetHelper(syntax.Language).IsGlobalStatement(syntax, out entryPoint);
+
     public static StringSyntaxKind? TryDetectOperationStringSyntaxKind(this IOperation operation)
         => GetHelper(operation.Syntax?.Language).TryDetectOperationStringSyntaxKind(operation);
 
@@ -95,6 +98,11 @@ internal abstract partial class LanguageHelper
 {
     internal abstract bool IsMemberAccess(SyntaxNode syntax);
     internal abstract bool IsMethodDeclaration(SyntaxNode syntax);
+    internal virtual bool IsGlobalStatement(SyntaxNode syntax, out SyntaxNode? entryPoint)
+    {
+        entryPoint = null;
+        return false;
+    }
     internal abstract bool TryGetLiteralToken(SyntaxNode syntax, out SyntaxToken token);
     internal abstract bool TryGetStringSpan(SyntaxToken token, string text, scoped in TSqlProcessor.Location location, out int skip, out int take);
     internal abstract bool IsName(SyntaxNode syntax);
