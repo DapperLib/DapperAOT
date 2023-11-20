@@ -206,29 +206,32 @@ partial struct Command<TArgs>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool UseBatch(int batchSize) => batchSize != 0 && connection is { CanCreateBatch: true };
 
-    private DbBatchCommand AddCommand(ref UnifiedCommand state, TArgs args)
+    void Add(ref UnifiedBatch batch, TArgs args)
     {
-        var cmd = state.UnsafeCreateNewCommand();
-        commandFactory.Initialize(state, sql, commandType, args);
-        state.AssertBatchCommands.Add(cmd);
-        return cmd;
+        if (batch.IsDefault)
+        {
+            // create a new batch initialized on a ready command
+            batch = new(connection, transaction);
+        }
+        else
+        {
+            batch.PrepareToAppend();
+        }
+        commandFactory.Initialize(in batch.Command, sql, commandType, args);
     }
 
     private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize) // TODO: sub-batching
     {
         Debug.Assert(source.Length > 1);
-        UnifiedCommand batch = default;
+        UnifiedBatch batch = default;
         try
         {
             foreach (var arg in source)
             {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
-                AddCommand(ref batch, arg);
+                Add(ref batch, arg);
             }
-            if (!batch.HasBatch) return 0;
 
-            var result = batch.AssertBatch.ExecuteNonQuery();
-
+            var result = batch.ExecuteNonQuery();
             if (commandFactory.RequirePostProcess)
             {
                 batch.PostProcess(source, commandFactory);
@@ -248,17 +251,15 @@ partial struct Command<TArgs>
             source = (source as IReadOnlyCollection<TArgs>) ?? source.ToList();
         }
 
-        UnifiedCommand batch = default;
+        UnifiedBatch batch = default;
         try
         {
             foreach (var arg in source)
             {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
-                AddCommand(ref batch, arg);
+                Add(ref batch, arg);
             }
-            if (!batch.HasBatch) return 0;
 
-            var result = batch.AssertBatch.ExecuteNonQuery();
+            var result = batch.ExecuteNonQuery();
             if (commandFactory.RequirePostProcess)
             {
                 batch.PostProcess(source, commandFactory);
@@ -566,18 +567,16 @@ partial struct Command<TArgs>
     private async Task<int> ExecuteMultiBatchAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken) // TODO: sub-batching
     {
         Debug.Assert(source.Length > 1);
-        UnifiedCommand batch = default;
+        UnifiedBatch batch = default;
         var end = offset + count;
         try
         {
             for (int i = offset ; i < end; i++)
             {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
-                AddCommand(ref batch, source[i]);
+                Add(ref batch, source[i]);
             }
-            if (!batch.HasBatch) return 0;
 
-            var result = await batch.AssertBatch.ExecuteNonQueryAsync(cancellationToken);
+            var result = await batch.ExecuteNonQueryAsync(cancellationToken);
 
             if (commandFactory.RequirePostProcess)
             {

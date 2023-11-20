@@ -195,6 +195,8 @@ public class CommandFactory<T> : CommandFactory
         AddParameters(in cmd, args);
     }
 
+
+
     internal override sealed void PostProcessObject(in UnifiedCommand command, object? args, int rowCount) => PostProcess(in command, (T)args!, rowCount);
 
     /// <summary>
@@ -243,24 +245,27 @@ public class CommandFactory<T> : CommandFactory
     /// </summary>
     public virtual bool RequirePostProcess => false;
 
-#if NET6_0_OR_GREATER
+#pragma warning disable IDE0079 // following will look unnecessary on up-level
+#pragma warning disable CS1574 // DbBatchCommand will not resolve on down-level TFMs
     /// <summary>
     /// Indicates whether the factory wishes to split this command into a multi-command batch.
     /// </summary>
-    /// <remarks>This will only be used for <see cref="CommandType.Text"/> scenarios where <see cref="DbConnection.CanCreateBatch"/> is <c>true</c></remarks>
-    public virtual bool CanExpandIntoBatch(string sql) => false;
+    /// <remarks>This may or may not be implemented using <see cref="DbBatch"/>, depending on the capabilities
+    /// of the runtime and ADO.NET provider.</remarks>
+    /// #pragma warning disable IDE0079 // following will look unnecessary on up-level
+#pragma warning restore CS1574 // DbBatchCommand will not resolve on down-level TFMs
+#pragma warning restore IDE0079 // following will look unnecessary on up-level
+    public virtual bool UseBatch(string sql) => false;
 
     /// <summary>
-    /// Allows the caller to rewrite a composite command using the <see cref="DbBatch"/> API.
+    /// Allows the caller to rewrite a composite command into a multi-command batch.
     /// </summary>
-    public virtual void ExpandIntoBatch(in UnifiedCommand command, string sql, T args) => throw new NotSupportedException();
+    public virtual void AddCommands(in UnifiedBatch batch, string sql, T args) => throw new NotSupportedException();
 
     /// <summary>
-    /// Allows an implementation to process output parameters etc after an operation has completed
+    /// Allows an implementation to process output parameters etc after a multi-command batch has completed.
     /// </summary>
-    /// <remarks>This API is only invoked when <see cref="CanExpandIntoBatch(string)"/> reported <c>true</c>, and
-    /// corresponds to <see cref="ExpandIntoBatch(in UnifiedCommand, string, T)"/></remarks>
-    public virtual void PostProcessBatch(DbBatchCommandCollection commands, T args, int rowCount, int commandIndex) { }
-#endif
-
+    /// <remarks>This API is only invoked when <see cref="UseBatch(string)"/> reported <c>true</c>, and
+    /// corresponds to <see cref="AddCommands(in UnifiedBatch, string, T)"/></remarks>
+    public virtual void PostProcess(in UnifiedBatch batch, T args, int rowCount, int commandIndex) { }
 }

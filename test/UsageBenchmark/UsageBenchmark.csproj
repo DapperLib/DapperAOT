@@ -6,11 +6,15 @@
         <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
     </PropertyGroup>
     <ItemGroup>
+        <None Update="BatchInsertBenchmarks - Copy.txt">
+          <DependentUpon>BatchInsertBenchmarks.cs</DependentUpon>
+        </None>
         <None Update="BatchInsertBenchmarks.txt" DependentUpon="BatchInsertBenchmarks.cs" />
         <None Update="ListIterationBenchmarks.txt" DependentUpon="ListIterationBenchmarks.cs" />
         <None Update="QueryBenchmarks.txt" DependentUpon="QueryBenchmarks.cs" />
 
-        <PackageReference Include="Dapper.AOT" />
+        <PackageReference Include="Dapper.Advisor" />
+        <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
         <PackageReference Include="Dapper" />
         <PackageReference Include="FastMember" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" />

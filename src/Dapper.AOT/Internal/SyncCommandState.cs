@@ -11,7 +11,7 @@ namespace Dapper.Internal
         private DbConnection? connection;
         public DbCommand? Command;
 
-        public UnifiedCommand UnifiedCommand; // the idea is that this would completely replace Command; just doing minimal to explore
+        public UnifiedBatch UnifiedBatch;
 
         private int _flags;
 
@@ -38,14 +38,7 @@ namespace Dapper.Internal
         public DbDataReader ExecuteReaderUnified(CommandBehavior flags)
         {
             OnBeforeExecuteUnified();
-#if NET6_0_OR_GREATER
-            if (UnifiedCommand.HasBatch)
-            {
-                return UnifiedCommand.Batch.ExecuteReader(flags);
-            }
-            else
-#endif
-            return UnifiedCommand.AssertCommand.ExecuteReader(flags);
+            return UnifiedBatch.ExecuteReader(flags);
         }
 
         [MemberNotNull(nameof(Command))]
@@ -69,7 +62,7 @@ namespace Dapper.Internal
 
         private void OnBeforeExecuteUnified()
         {
-            connection = UnifiedCommand.Connection;
+            connection = UnifiedBatch.Connection;
             Debug.Assert(connection is not null);
 
             if (connection!.State != ConnectionState.Open)
@@ -80,8 +73,14 @@ namespace Dapper.Internal
             if ((_flags & FLAG_PREPARE_COMMMAND) != 0)
             {
                 _flags &= ~FLAG_PREPARE_COMMMAND;
-                UnifiedCommand.Prepare();
+                UnifiedBatch.Prepare();
             }
+        }
+
+        public int ExecuteNonQueryUnified()
+        {
+            OnBeforeExecuteUnified();
+            return UnifiedBatch.ExecuteNonQuery();
         }
 
         [MemberNotNull(nameof(Command))]
@@ -97,7 +96,7 @@ namespace Dapper.Internal
             Command = null;
             tmp?.Dispose();
 
-            UnifiedCommand.Cleanup();
+            UnifiedBatch.Cleanup();
 
             var conn = connection;
             connection = null;

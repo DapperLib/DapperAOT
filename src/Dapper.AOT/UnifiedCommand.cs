@@ -4,6 +4,8 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Dapper;
 
@@ -19,293 +21,470 @@ namespace Dapper;
 public readonly struct UnifiedCommand
 
 {
-    /// <inheritdoc/>
-    public override string ToString()
-    {
-#if NET6_0_OR_GREATER
-        if (batch is not null)
-        {
-            return $"Batch with {batch.BatchCommands.Count} commands";
-        }
-#endif
-        return dbCommand?.ToString() ?? "";
-    }
-    /// <see cref="DbCommand.Connection"/>
-    internal DbConnection? Connection
-    {
-        get
-        {
-#if NET6_0_OR_GREATER
-            if (batch is not null) return batch.Connection;
-#endif
-            return dbCommand?.Connection;
-        }
-    }
+    // could be:
+    // a) a DbCommand instance for a single operation
+    // b) a DbBatch instance for a multi-command operation using the DbBatch API
+    // c) a List<DbCommand> instance for a multi-command operation using the legacy API
+    private readonly object _source;
 
-    /// <see cref="DbCommand.Transaction"/>
-    internal DbTransaction? Transaction
-    {
-        get
-        {
+    // 0 for "a"; for "b" and "c", this is the index of the current operation
+    private readonly int _index;
+
 #if NET6_0_OR_GREATER
-            if (batch is not null) return batch.Transaction;
+    // may be used by the multi-command API to create new parameters
+    private readonly DbCommand? _spareCommandForParameters;
 #endif
-            return dbCommand?.Transaction;
-        }
-    }
+
+    /*
+    private object? Source => _source switch
+    {
+        DbCommand cmd => cmd,
+        List<DbCommand> list => list[_index],
+#if NET6_0_OR_GREATER
+        DbBatch batch => batch.BatchCommands[_index],
+#endif
+        _ => null,
+    };
+    */
+
+    internal int CommandCount => _source switch
+    {
+        DbCommand cmd => 1,
+        List<DbCommand> list => list.Count,
+#if NET6_0_OR_GREATER
+        DbBatch batch => batch.BatchCommands.Count,
+#endif
+        _ => 0,
+    };
+
+    /// <inheritdoc/>
+    public override string ToString() => CommandText;
+
+    /// <inheritdoc cref="DbCommand.Connection"/>
+    internal DbConnection? Connection => _source switch
+    {
+        DbCommand cmd => cmd.Connection,
+        List<DbCommand> list => list[_index].Connection,
+#if NET6_0_OR_GREATER
+        DbBatch batch => batch.Connection,
+#endif
+        _ => null,
+    };
+
+    /// <inheritdoc cref="DbCommand.Transaction"/>
+    internal DbTransaction? Transaction => _source switch
+    {
+        DbCommand cmd => cmd.Transaction,
+        List<DbCommand> list => list[_index].Transaction,
+#if NET6_0_OR_GREATER
+        DbBatch batch => batch.Transaction,
+#endif
+        _ => null,
+    };
 
     /// <summary>
     /// The <see cref="System.Data.Common.DbCommand"/> associated with the current operation; this may be <c>null</c> for batch commands.
     /// </summary>
-    public DbCommand? Command
+    public DbCommand? Command => _source switch
     {
-        get
-        {
-#if NET6_0_OR_GREATER
-            return batchCommand is null ? dbCommand : null;
-#else
-            return dbCommand;
-#endif
-        }
-    }
+        DbCommand cmd => cmd,
+        List<DbCommand> list => list[_index],
+        _ => null,
+    };
 
     /// <inheritdoc cref="DbCommand.CommandText"/>
     public string CommandText
     {
-        get
+        get => _source switch
         {
+            DbCommand cmd => cmd.CommandText,
+            List<DbCommand> list => list[_index].CommandText,
 #if NET6_0_OR_GREATER
-            if (batchCommand is not null) return batchCommand.CommandText;
+            DbBatch batch => batch.BatchCommands[_index].CommandText,
 #endif
-            return AssertCommand.CommandText;
-        }
+            _ => "",
+        };
         set
         {
-#if NET6_0_OR_GREATER
-            if (batchCommand is not null)
+            switch (_source)
             {
-                batchCommand.CommandText = value;
-                return;
-            }
+                case DbCommand cmd:
+                    cmd.CommandText = value;
+                    break;
+                case List<DbCommand> list:
+                    list[_index].CommandText = value;
+                    break;
+#if NET6_0_OR_GREATER
+                case DbBatch batch:
+                    batch.BatchCommands[_index].CommandText = value;
+                    break;
 #endif
-            AssertCommand.CommandText = value;
+            }
         }
     }
 
+    internal bool IsDefault => _source is null;
+
     /// <inheritdoc cref="DbCommand.Parameters"/>
-    public DbParameterCollection Parameters
+    public DbParameterCollection Parameters => _source switch
     {
-        get
-        {
+        DbCommand cmd => cmd.Parameters,
+        List<DbCommand> list => list[_index].Parameters,
 #if NET6_0_OR_GREATER
-            if (batchCommand is not null) return batchCommand.Parameters;
+        DbBatch batch => batch.BatchCommands[_index].Parameters,
 #endif
-            return AssertCommand.Parameters;
-        }
-    }
+        _ => null!,
+    };
 
     /// <inheritdoc cref="DbCommand.CommandType"/>
     public CommandType CommandType
     {
-        get
+        get => _source switch
         {
+            DbCommand cmd => cmd.CommandType,
+            List<DbCommand> list => list[_index].CommandType,
 #if NET6_0_OR_GREATER
-            if (batchCommand is not null) return batchCommand.CommandType;
+            DbBatch batch => batch.BatchCommands[_index].CommandType,
 #endif
-            return AssertCommand.CommandType;
-        }
+            _ => CommandType.Text,
+        };
         set
         {
-#if NET6_0_OR_GREATER
-            if (batchCommand is not null)
+            switch (_source)
             {
-                batchCommand.CommandType = value;
-                return;
-            }
+                case DbCommand cmd:
+                    cmd.CommandType = value;
+                    break;
+                case List<DbCommand> list:
+                    list[_index].CommandType = value;
+                    break;
+#if NET6_0_OR_GREATER
+                case DbBatch batch:
+                    batch.BatchCommands[_index].CommandType = value;
+                    break;
 #endif
-            AssertCommand.CommandType = value;
+            }
         }
     }
 
     /// <inheritdoc cref="DbCommand.CommandTimeout"/>
     public int TimeoutSeconds
     {
-        get
+        get => _source switch
         {
+            DbCommand cmd => cmd.CommandTimeout,
+            List<DbCommand> list => list[_index].CommandTimeout,
 #if NET6_0_OR_GREATER
-            if (batch is not null) return batch.Timeout;
+            DbBatch batch => batch.Timeout,
 #endif
-            return AssertCommand.CommandTimeout;
-        }
+            _ => 0,
+        };
         set
         {
-#if NET6_0_OR_GREATER
-            if (batch is not null)
+            switch (_source)
             {
-                batch.Timeout = value;
-                return;
-            }
+                case DbCommand cmd:
+                    cmd.CommandTimeout = value;
+                    break;
+                case List<DbCommand> list:
+                    list[_index].CommandTimeout = value;
+                    break;
+#if NET6_0_OR_GREATER
+                case DbBatch batch:
+                    batch.Timeout = value;
+                    break;
 #endif
-            AssertCommand.CommandTimeout = value;
+            }
         }
     }
 
-    internal DbCommand AssertCommand
+    /// <summary>
+    /// Create a parameter and add it to the parameter collection
+    /// </summary>
+    public DbParameter AddParameter()
     {
-        get
-        {
-            return dbCommand ?? Throw();
-            static DbCommand Throw() => throw new InvalidOperationException($"The {nameof(UnifiedCommand)} is not associated with a valid command");
-        }
+        // TODO: optimize to avoid double tests
+        var p = CreateParameter();
+        Parameters.Add(p);
+        return p;
     }
-
-    // this *might* be our effective command, but in the case of batches: it might also
-    // be a throwaway command we created just to allow us to create parameters on down-level libs
-    private readonly DbCommand? dbCommand;
-
 
     /// <inheritdoc cref="DbCommand.CreateParameter"/>
     public DbParameter CreateParameter()
     {
-#if NET8_0_OR_GREATER // https://github.com/dotnet/runtime/issues/82326
-        if (batchCommand is { CanCreateParameter: true })
+        switch (_source)
         {
-            return batchCommand.CreateParameter();
+            case DbCommand cmd:
+                return cmd.CreateParameter();
+            case List<DbCommand> list:
+                return list[_index].CreateParameter();
+#if NET6_0_OR_GREATER
+            case DbBatch batch:
+#if NET8_0_OR_GREATER // https://github.com/dotnet/runtime/issues/82326
+                var bc = batch.BatchCommands[_index];
+                if (bc.CanCreateParameter) return bc.CreateParameter();
+#endif // NET8
+                return (_spareCommandForParameters ?? UnsafeBatchWithCommandForParameters()).CreateParameter();
+#endif // NET6
+            default:
+                return Throw();
+
         }
-#endif
-        return (dbCommand ?? UnsafeWithCommandForParameters()).CreateParameter();
+        static DbParameter Throw() => throw new InvalidOperationException("It was not possible to create a parameter for this command");
     }
 
     internal UnifiedCommand(DbCommand command)
     {
-        dbCommand = command;
+        _source = command;
+        _index = 0;
 #if NET6_0_OR_GREATER
-        batchCommand = null;
-        batch = null;
+        _spareCommandForParameters = null;
 #endif
     }
 
 #if NET6_0_OR_GREATER
-    private readonly DbBatch? batch;
-    private readonly DbBatchCommand? batchCommand;
-
-    /// <summary>
-    /// The <see cref="System.Data.Common.DbBatchCommand"/> associated with the current operation - this may be <c>null</c> for non-batch operations.
-    /// </summary>
-    public DbBatchCommand? BatchCommand => batchCommand;
 
     internal UnifiedCommand(DbBatch batch)
     {
-        this.batch = batch;
-        batchCommand = null;
-        dbCommand = null;
+        // withCommand is typically true for a ready-to-go command; it is false if, for example, we're
+        // doing a multi-row exec and want to start completely empty
+        _source = batch;
+        _spareCommandForParameters = null;
+        
+        batch.BatchCommands.Add(batch.CreateBatchCommand());
+        _index = 0;
     }
 
-    internal DbBatch? Batch => batch;
-    internal DbBatchCommandCollection AssertBatchCommands => AssertBatch.BatchCommands;
-
-    [MemberNotNullWhen(true, nameof(Batch))]
-    internal DbBatch AssertBatch
+    private DbCommand UnsafeBatchWithCommandForParameters()
     {
-        get
-        {
-            return batch ?? Throw();
-            static DbBatch Throw() => throw new InvalidOperationException($"The {nameof(UnifiedCommand)} is not associated with a valid command-batch");
-        }
+        return _spareCommandForParameters
+            ?? (Unsafe.AsRef(in _spareCommandForParameters) = Connection?.CreateCommand())
+            ?? Throw();
+        static DbCommand Throw() => throw new InvalidOperationException("It was not possible to create command parameters for this batch; the connection may be null");
     }
+#endif
+
+    internal void ClearSource() => Unsafe.AsRef(in _source) = null!;
 
     internal void PostProcess<T>(IEnumerable<T> source, CommandFactory<T> commandFactory)
     {
-        int i = 0;
-        var commands = AssertBatchCommands;
+        var snapshot = _index;
+        ref int index = ref Unsafe.AsRef(in _index);
+        index = 0;
+
         foreach (var arg in source)
         {
-            var cmd = commands[i++];
-            UnsafeSetBatchCommand(cmd);
-            commandFactory.PostProcess(in this, arg, cmd.RecordsAffected);
+            commandFactory.PostProcess(in this, arg, 0); // TODO: records affected
+            index++;
         }
-        UnsafeSetBatchCommand(null);
+
+        index = snapshot;
     }
 
     internal void PostProcess<T>(ReadOnlySpan<T> source, CommandFactory<T> commandFactory)
     {
-        int i = 0;
-        var commands = AssertBatchCommands;
+        var snapshot = _index;
+        ref int index = ref Unsafe.AsRef(in _index);
+        index = 0;
+
         foreach (var arg in source)
         {
-            var cmd = commands[i++];
-            UnsafeSetBatchCommand(cmd);
-            commandFactory.PostProcess(in this, arg, cmd.RecordsAffected);
+            commandFactory.PostProcess(in this, arg, 0); // TODO: records affected
+            index++;
         }
-        UnsafeSetBatchCommand(null);
+
+        index = snapshot;
     }
 
-    [MemberNotNullWhen(true, nameof(Batch))]
-    internal bool HasBatch => batch is not null;
-
-    internal DbBatchCommand UnsafeCreateNewCommand() => Unsafe.AsRef(in batchCommand) = AssertBatch.CreateBatchCommand();
-
-    internal void UnsafeSetBatchCommand(DbBatchCommand? value) => Unsafe.AsRef(in batchCommand) = value;
-#endif
-
-    internal void UnsafeSetCommand(DbCommand? value) => Unsafe.AsRef(in dbCommand) = value;
-
-    private DbCommand UnsafeWithCommandForParameters()
+    /// <summary>
+    /// Creates a new command and moves into that context
+    /// </summary>
+    internal DbParameterCollection AddCommand(string? commandText, CommandType commandType)
     {
-        return dbCommand
+        DbParameterCollection? result = null;
+        switch (_source)
+        {
+            case DbCommand cmd when cmd.Connection is not null:
+                // swap for a list, then!
+                var newCmd = cmd.Connection.CreateCommand();
+                if (commandText is not null)
+                {
+                    newCmd.CommandText = commandText;
+                    newCmd.CommandType = commandType;
+                }
+                Unsafe.AsRef(in _source) = new List<DbCommand> { cmd, newCmd };
+                result = newCmd.Parameters;
+                break;
+            case List<DbCommand> list:
+                foreach (var item in list)
+                {
+                    if (item.Connection is not null)
+                    {
+                        newCmd = item.Connection.CreateCommand();
+                        if (commandText is not null)
+                        {
+                            newCmd.CommandText = commandText;
+                            newCmd.CommandType = commandType;
+                        }
+                        list.Add(newCmd);
+                        result = newCmd.Parameters;
+                        break;
+                    }
+                }
+                break;
 #if NET6_0_OR_GREATER
-            ?? (Unsafe.AsRef(in dbCommand) = batch?.Connection?.CreateCommand())
+            case DbBatch batch:
+                var bc = batch.CreateBatchCommand();
+                if (commandText is not null)
+                {
+                    bc.CommandText = commandText;
+                    bc.CommandType = commandType;
+                }
+                batch.BatchCommands.Add(bc);
+                result = bc.Parameters;
+                break;
 #endif
-            ?? Throw();
-        static DbCommand Throw() => throw new InvalidOperationException("It was not possible to create command parameters for this batch; the connection may be null");
+        }
+        if (result is null) Throw();
+        Unsafe.AsRef(in _index)++;
+        return result!;
+
+        static void Throw() => throw new NotSupportedException("It was not possible to create a new command in this batch; the connection may be invalid");
     }
 
+    internal DbParameterCollection this[int index]
+    {
+        get
+        {
+            return _source switch
+            {
+                DbCommand cmd when index == 0 => cmd.Parameters,
+                List<DbCommand> list => list[index].Parameters,
+#if NET6_0_OR_GREATER
+                DbBatch batch => batch.BatchCommands[index].Parameters,
+#endif
+                _ => Throw()
+            };
+            static DbParameterCollection Throw() => throw new IndexOutOfRangeException();
+        }
+    }
     internal void Cleanup()
     {
-        if (dbCommand is not null)
-        {
-            dbCommand.Dispose();
-            Unsafe.AsRef(in dbCommand) = null!;
-        }
 #if NET6_0_OR_GREATER
-        if (batch is not null)
-        {
-            batch.Dispose();
-            Unsafe.AsRef(in batch) = null!;
-        }
+        var spare = _spareCommandForParameters;
 #endif
-    }
+        var source = _source;
+        Unsafe.AsRef(in this) = default; // best efforts to prevent double-stomp
 
 #if NET6_0_OR_GREATER
-    /// <summary>
-    /// Creates a new <see cref="DbBatchCommand"/> and switch context into the <see cref="BatchCommand"/> property.
-    /// </summary>
-    [MemberNotNull(nameof(BatchCommand))]
-    public DbBatchCommand AddBatchCommand(string commandText)
-    {
-        var batch = AssertBatch;
-        var cmd = batch.CreateBatchCommand();
-        cmd.CommandType = CommandType.Text;
-        cmd.CommandText = commandText;
-        batch.BatchCommands.Add(cmd);
-        UnsafeSetBatchCommand(cmd);
-#pragma warning disable CS8774 // "Member must have a non-null value when exiting." - we just did that; we just can't prove it to the compiler
-        return cmd;
-#pragma warning restore CS8774
-    }
+        spare?.Dispose();
 #endif
+
+        switch (source)
+        {
+            case DbCommand cmd:
+                cmd.Dispose();
+                break;
+            case List<DbCommand> list:
+                foreach (var cmd in list)
+                {
+                    cmd.Dispose();
+                }
+                break;
+#if NET6_0_OR_GREATER
+            case DbBatch batch:
+                batch.Dispose();
+                break;
+#endif
+        }
+    }
 
     internal void Prepare()
     {
+        switch (_source)
+        {
+            case DbCommand cmd:
+                cmd.Prepare();
+                break;
+            case List<DbCommand> list:
+                foreach (var cmd in list)
+                {
+                    cmd.Prepare();
+                }
+                break;
 #if NET6_0_OR_GREATER
-        if (batch is not null)
-        {
-            batch.Prepare();
-        }
-        else
+            case DbBatch batch:
+                batch.Prepare();
+                break;
 #endif
-        {
-            AssertCommand.Prepare();
         }
     }
+
+    internal int ExecuteNonQuery()
+    {
+        switch (_source)
+        {
+            case DbCommand cmd:
+                return cmd.ExecuteNonQuery();
+            case List<DbCommand> list:
+                int sum = 0;
+                foreach (var cmd in list)
+                {
+                    sum += cmd.ExecuteNonQuery();
+                }
+                return sum;
+#if NET6_0_OR_GREATER
+            case DbBatch batch:
+                return batch.ExecuteNonQuery();
+#endif
+            default:
+                return 0;
+        }
+    }
+
+    internal DbDataReader ExecuteReader(CommandBehavior flags)
+    {
+        switch (_source)
+        {
+            case DbCommand cmd:
+                return cmd.ExecuteReader(flags);
+#if NET6_0_OR_GREATER
+            case DbBatch batch:
+                return batch.ExecuteReader(flags);
+#endif
+            case null:
+                throw new InvalidOperationException();
+            default:
+                throw new NotImplementedException($"ExecuteReader for {_source.GetType().Name} is not yet implemented; poke Marc");
+        }
+    }
+
+    internal Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
+    {
+        switch (_source)
+        {
+            case DbCommand cmd:
+                return cmd.ExecuteNonQueryAsync(cancellationToken);
+            case List<DbCommand> list:
+                return ExecuteListAsync(list, cancellationToken);
+#if NET6_0_OR_GREATER
+            case DbBatch batch:
+                return batch.ExecuteNonQueryAsync(cancellationToken);
+#endif
+            default:
+                return TaskZero;
+        }
+
+        static async Task<int> ExecuteListAsync(List<DbCommand> list, CancellationToken cancellationToken)
+        {
+            int sum = 0;
+            foreach (var cmd in list)
+            {
+                sum += await cmd.ExecuteNonQueryAsync(cancellationToken);
+            }
+            return sum;
+        }
+    }
+
+    private static readonly Task<int> TaskZero = Task.FromResult<int>(0);
 }

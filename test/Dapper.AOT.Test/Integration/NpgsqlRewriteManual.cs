@@ -122,65 +122,65 @@ public class NpgsqlRewriteManual
         // assert that the SQL is what we expected; we do *not* want to parse and split
         // SQL at runtime, so we only do this if we already figured out how to do it
         // (otherwise, we'll defer to the underlying ADO.NET provider)
-        public override bool CanExpandIntoBatch(string sql) => sql == CompositeQuery;
+        public override bool UseBatch(string sql) => sql == CompositeQuery;
 
-        public override void ExpandIntoBatch(in UnifiedCommand command, string sql, object args)
+        public override void AddCommands(in UnifiedBatch batch, string sql, object args)
         {
             var typed = Cast(args, static () => new { x = "abc", y = "def" });
 
-            command.AddBatchCommand("""
+            batch.AddCommand("""
                 TRUNCATE rewrite_test RESTART IDENTITY
                 """);
 
             // note: not allowed to reuse parameters between commands; throws if you try
 
-            var ps = command.AddBatchCommand("""
+            var ps = batch.AddCommand("""
                 INSERT INTO rewrite_test(name)
                 VALUES ($1)
-                """).Parameters;
+                """);
 
-            var p = command.CreateParameter();
+            var p = batch.CreateParameter();
             p.DbType = DbType.String;
             p.Size = -1;
             p.Value = AsValue(typed.x);
             ps.Add(p);
 
-            ps = command.AddBatchCommand("""
+            ps = batch.AddCommand("""
                 INSERT INTO rewrite_test(name)
                 VALUES ($1 || $2)
-                """).Parameters;
+                """);
 
-            p = command.CreateParameter();
+            p = batch.CreateParameter();
             p.DbType = DbType.String;
             p.Size = -1;
             p.Value = AsValue(typed.x);
             ps.Add(p);
 
-            p = command.CreateParameter();
+            p = batch.CreateParameter();
             p.DbType = DbType.String;
             p.Size = -1;
             p.Value = AsValue(typed.y);
             ps.Add(p);
 
-            ps = command.AddBatchCommand("""
+            ps = batch.AddCommand("""
                 INSERT INTO rewrite_test(name)
                 VALUES ($1)
-                """).Parameters;
+                """);
 
-            p = command.CreateParameter();
+            p = batch.CreateParameter();
             p.DbType = DbType.String;
             p.Size = -1;
             p.Value = AsValue(typed.y);
             ps.Add(p);
 
-            command.AddBatchCommand("""
+            batch.AddCommand("""
                 select id, name
                 from rewrite_test
                 order by id
                 """);
         }
 
-        public override void PostProcessBatch(DbBatchCommandCollection commands, object args, int rowCount, int commandIndex)
+        public override void PostProcess(in UnifiedBatch batch, object args, int rowCount, int commandIndex)
         {
             // example usage
             // args.Something = Cast<int>(commands[commandIndex].Parameters[1].Value);

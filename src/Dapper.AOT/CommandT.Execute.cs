@@ -14,8 +14,9 @@ partial struct Command<TArgs>
         SyncCommandState state = default;
         try
         {
-            var result = state.ExecuteNonQuery(GetCommand(args));
-            PostProcessAndRecycle(ref state, args, result);
+            GetUnifiedBatch(out state.UnifiedBatch, args);
+            var result = state.ExecuteNonQueryUnified();
+            PostProcessAndRecycleUnified(ref state, args, result);
             return result;
         }
         finally
