@@ -136,7 +136,7 @@ public class NpgsqlParseTests
         Assert.Equal(3, results.Count);
         Assert.Equal("", results[0].FinalCommandText);
         Assert.Equal("", results[1].FinalCommandText);
-        Assert.Equal("SELECT 1", results[0].FinalCommandText);
+        Assert.Equal("SELECT 1", results[2].FinalCommandText);
 
         // what actually happens (passes)
         // Assert.Equal("SELECT 1", Assert.Single(results).FinalCommandText);
