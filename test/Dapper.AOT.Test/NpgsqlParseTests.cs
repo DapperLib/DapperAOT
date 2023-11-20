@@ -1,5 +1,6 @@
 ﻿using Dapper.Internal.SqlParsing;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using Xunit;
 
@@ -69,47 +70,45 @@ public class NpgsqlParseTests
         Assert.Equal(Args(("$1", "foo")), results.Parameters);
     }
 
-    //    [Test]
-    //    [TestCase(@"SELECT e'ab\'c:param'", TestName = "Estring")]
-    //    [TestCase(@"SELECT/*/* -- nested comment :int /*/* *//*/ **/*/*/*/1")]
-    //    [TestCase(@"SELECT 1,
-    //-- Comment, @param and also :param
-    //2", TestName = "LineComment")]
-    //    public void Parameter_does_not_get_bound(string sql)
-    //    {
-    //        var p = new NpgsqlParameter(":param", "foo");
-    //        var results = ParseCommand(sql, p);
-    //        Assert.That(results.Single().PositionalParameters, Is.Empty);
-    //    }
+    [Theory]
+    [InlineData(@"SELECT e'ab\'c:param'")]
+    [InlineData(@"SELECT/*/* -- nested comment :int /*/* *//*/ **/*/*/*/1")]
+    [InlineData(@"SELECT 1,
+    -- Comment, @param and also :param
+    2")]
+    public void Parameter_does_not_get_bound(string sql)
+    {
+        var p = (":param", "foo");
+        var results = Assert.Single(ParseCommand(sql, p));
+        Assert.Equal(sql, results.FinalCommandText);
+        Assert.Empty(results.Parameters);
+    }
 
-    //    [Test]
-    //    public void Non_conforming_string()
-    //    {
-    //        var result = ParseCommand(@"SELECT 'abc\':str''a:str'").Single();
-    //        Assert.That(result.FinalCommandText, Is.EqualTo(@"SELECT 'abc\':str''a:str'"));
-    //        Assert.That(result.PositionalParameters, Is.Empty);
-    //    }
+    [Fact]
+    public void Non_conforming_string()
+    {
+        var result = ParseCommand(@"SELECT 'abc\':str''a:str'").Single();
+        Assert.Equal(@"SELECT 'abc\':str''a:str'", result.FinalCommandText);
+        Assert.Empty(result.Parameters);
+    }
 
-    //    [Test]
-    //    public void Multiquery_with_parameters()
-    //    {
-    //        var parameters = new NpgsqlParameter[]
-    //        {
-    //            new("p1", DbType.String),
-    //            new("p2", DbType.String),
-    //            new("p3", DbType.String),
-    //        };
+    [Fact]
+    public void Multiquery_with_parameters()
+    {
+        var parameters = Args(("p1", "abc"), ("p2", "def"), ("p3", "ghi"));
 
-    //        var results = ParseCommand("SELECT @p3, @p1; SELECT @p2, @p3", parameters);
+        var results = ParseCommand("SELECT @p3, @p1; SELECT @p2, @p3", parameters);
 
-    //        Assert.That(results, Has.Count.EqualTo(2));
-    //        Assert.That(results[0].FinalCommandText, Is.EqualTo("SELECT $1, $2"));
-    //        Assert.That(results[0].PositionalParameters[0], Is.SameAs(parameters[2]));
-    //        Assert.That(results[0].PositionalParameters[1], Is.SameAs(parameters[0]));
-    //        Assert.That(results[1].FinalCommandText, Is.EqualTo("SELECT $1, $2"));
-    //        Assert.That(results[1].PositionalParameters[0], Is.SameAs(parameters[1]));
-    //        Assert.That(results[1].PositionalParameters[1], Is.SameAs(parameters[2]));
-    //    }
+        Assert.Equal(2, results.Count);
+
+        var result = results[0];
+        Assert.Equal("SELECT $1, $2", result.FinalCommandText);
+        Assert.Equal(Args(("$1", "ghi"), ("$2", "abc")), result.Parameters);
+
+        result = results[1];
+        Assert.Equal("SELECT $1, $2", result.FinalCommandText);
+        Assert.Equal(Args(("$1", "def"), ("$2", "ghi")), result.Parameters);
+    }
 
     //    [Fact]
     //    public void No_output_parameters()

@@ -24,7 +24,7 @@ internal readonly struct CommandVariable : IEquatable<CommandVariable>
         get
         {
             var name = Name;
-            if (name is { Length: >= 2 } && SqlTools.ParameterPrefixCharacters.IndexOf(name[0]) >= 0)
+            if (name is { Length: >= 2 } && GeneralSqlParser.IsParameterPrefix(name[0]))
             {
                 if ((char.IsLetter(name[1]) || name[1] == '_'))
                     return ParameterKind.Nominal;
@@ -93,16 +93,38 @@ internal readonly struct CommandBatch : IEquatable<CommandBatch>
 
     public OrdinalResult TryMakeOrdinal<T>(IList<T> inputArgs, Func<T, string> argName, Func<T, int, T> argFactory, out IList<T> args, out string sql, int argIndex = 0)
     {
-        static bool TryFindByName(string name, IList<T> inputArgs, Func<T, string> argName, out T found)
+        static bool TryFindByName(string name, IList<T> inputArgs, Func<T, string> argNameSelector, out T found)
         {
+            if (string.IsNullOrWhiteSpace(name) || name.Length < 2
+                || !GeneralSqlParser.IsParameterPrefix(name[0]))
+            {
+                // general preconditions for nominal match: looking for @x
+                // i.e. must have parameter symbol and at least one token character
+                found = default!;
+                return false;
+
+            }
             foreach (var arg in inputArgs)
             {
-                if (string.Equals(name, argName(arg), StringComparison.OrdinalIgnoreCase))
+                var argName = argNameSelector(arg);
+                if (string.IsNullOrWhiteSpace(argName)) continue; // looking for nominal match
+
+                // check for exact match including prefix, i.e. "@foo" vs "@foo"
+                if (string.Equals(name, argName, StringComparison.OrdinalIgnoreCase))
+                {
+                    found = arg;
+                    return true;
+                }
+                // check for input name excluding prefix, i.e. "foo" vs detected "@foo"
+                // (when using Dapper, this is the normal usage)
+                if (argName.Length == name.Length - 1 && !GeneralSqlParser.IsParameterPrefix(argName[0])
+                    && name.EndsWith(argName, StringComparison.OrdinalIgnoreCase))
                 {
                     found = arg;
                     return true;
                 }
             }
+
             found = default!;
             return false;
         }
@@ -197,6 +219,10 @@ internal static class GeneralSqlParser
     /// <remarks>This is a basic parse only; no syntax processing - just literals, identifiers, etc</remarks>
     public static List<CommandBatch> Parse(string sql, SqlSyntax syntax, bool strip = false)
     {
+        // this is a basic first pass; TODO: rewrite using a forwards seek approach, i.e.
+        // "find first [@$:'"...] etc, copy backfill then search for end of that symbol and process
+        // accordingly
+
         int bIndex = 0;
         char[] buffer = ArrayPool<char>.Shared.Rent(sql.Length + 1);
 
@@ -236,9 +262,9 @@ internal static class GeneralSqlParser
         }
         bool ActivateStringPrefix()
         {
-            if (i == elementStartbIndex + 1)
+            if (ElementLength() == 2) // already written, so: N'... E'... etc
             {
-                stringType = buffer[elementStartbIndex];
+                stringType = Last(0);
                 return true;
             };
             return false;
@@ -266,7 +292,7 @@ internal static class GeneralSqlParser
         {
             if (IsGo()) bIndex -= 2; // don't retain the GO
 
-            bool removedSemicolon = false;
+            //bool removedSemicolon = false;
             if ((strip || BatchSemicolon()) && Last(0) == ';')
             {
                 Discard();
@@ -297,6 +323,12 @@ internal static class GeneralSqlParser
             bIndex = 0;
             variables?.Clear();
             state = ParseState.None;
+
+            // lose any same-line simple space between batches
+            while (LookAhead() is ' ' or '\t')
+            {
+                i++; // same as Advance();Discard();
+            }
         }
         bool IsWhitespace()
         {
@@ -360,7 +392,7 @@ internal static class GeneralSqlParser
                 // string-escape characters
                 case ParseState.String when c == '\'' && IsSingleQuoteString() && LookAhead() == '\'': // [?]'...''...'
                 case ParseState.String when c == '"' && IsString('"') && LookAhead() == '\"': // "...""..."
-                case ParseState.String when c == '\\' && IsString('E') && LookAhead() != '\0': // E'...\*...'
+                case ParseState.String when c == '\\' && (IsString('E') || IsString('e')) && LookAhead() != '\0': // E'...\*...'
                 case ParseState.String when c == ']' && IsString('[') && LookAhead() == ']': // [...]]...]
                     // escaped or double-quote; move forwards immediately
                     Advance();
@@ -369,7 +401,7 @@ internal static class GeneralSqlParser
                 case ParseState.String when c == '"' && IsString('"'): // "....."
                 case ParseState.String when c == ']' && IsString('['): // [.....]
                 case ParseState.String when c == '\'' && IsSingleQuoteString(): // [?]'....'
-                    state = ParseState.None; 
+                    state = ParseState.None;
                     continue;
                 case ParseState.String:
                     // ongoing string content
@@ -437,7 +469,7 @@ internal static class GeneralSqlParser
                 continue;
             }
 
-            if (SqlTools.ParameterPrefixCharacters.IndexOf(c) >= 0
+            if (IsParameterPrefix(c)
                 && IsToken(LookAhead()) && LookBehind() != c) // avoid @>, @@IDENTTIY etc
             {
                 // start a new variable
@@ -466,8 +498,14 @@ internal static class GeneralSqlParser
 
         ArrayPool<char>.Shared.Return(buffer);
         return result;
-        static bool IsToken(char c) => c == '_' || char.IsLetterOrDigit(c);
+
+        bool IsToken(char c) => c == '_' || char.IsLetterOrDigit(c)
+            // npgsql allows @a.b as a valid parameter name
+            || (c == '.' && state == ParseState.Variable && syntax == SqlSyntax.PostgreSql);
     }
+
+    internal static bool IsParameterPrefix(char c)
+        => SqlTools.ParameterPrefixCharacters.IndexOf(c) >= 0;
 }
 
 
