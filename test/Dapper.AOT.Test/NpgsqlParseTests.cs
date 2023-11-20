@@ -133,13 +133,14 @@ public class NpgsqlParseTests
     public void Consecutive_semicolons()
     {
         var results = ParseCommand(";;SELECT 1");
-        Assert.Equal(3, results.Count);
-        Assert.Equal("", results[0].FinalCommandText);
-        Assert.Equal("", results[1].FinalCommandText);
-        Assert.Equal("SELECT 1", results[2].FinalCommandText);
 
-        // what actually happens (passes)
-        // Assert.Equal("SELECT 1", Assert.Single(results).FinalCommandText);
+        Assert.Equal("SELECT 1", Assert.Single(results).FinalCommandText);
+
+        // // Npgsql behaviour, discussed with roji - above is fine
+        // Assert.Equal(3, results.Count);
+        // Assert.Equal("", results[0].FinalCommandText);
+        // Assert.Equal("", results[1].FinalCommandText);
+        // Assert.Equal("SELECT 1", results[2].FinalCommandText);
     }
 
     [Fact]
