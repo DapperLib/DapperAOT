@@ -111,6 +111,10 @@ internal static class Inspection
                 {
                     return syntax;
                 }
+                if (syntax.IsGlobalStatement(out var entryPoint))
+                {
+                    return entryPoint;
+                }
                 syntax = syntax.Parent;
             }
             return null;

@@ -33,6 +33,16 @@ partial class LanguageHelper
 
         internal override bool IsMethodDeclaration(SyntaxNode syntax)
             => syntax.IsKind(SyntaxKind.MethodDeclaration);
+        internal override bool IsGlobalStatement(SyntaxNode syntax, out SyntaxNode? entryPoint)
+        {
+            if (syntax.IsKind(SyntaxKind.GlobalStatement))
+            {
+                // compilation-unit relating to the top-level statement entry point
+                entryPoint = syntax.Parent;
+                return true;
+            }
+            return base.IsGlobalStatement(syntax, out entryPoint);
+        }
 
         internal override bool IsName(SyntaxNode syntax)
             => syntax is SimpleNameSyntax; // NameSyntax?
