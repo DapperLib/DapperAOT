@@ -157,37 +157,4 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
             p.Value = AsValue(args.Name3);
         }
     }
-
-    private sealed class CustomHandler : CommandFactory<Customer>
-    {
-        public static readonly CustomHandler Prepared = new(true), Unprepared = new(false);
-        private readonly bool _canPrepare;
-        private CustomHandler(bool canPrepare) => _canPrepare = canPrepare;
-
-        private static DbCommand? _spareP, _spareU;
-
-        private ref DbCommand? Spare => ref (_canPrepare ? ref _spareP : ref _spareU);
-
-        public override DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, Customer args)
-            => TryReuse(ref Spare, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);
-
-        public override bool TryRecycle(DbCommand command) => TryRecycle(ref Spare, command);
-
-        public override void AddParameters(in UnifiedCommand command, Customer obj)
-        {
-            var p = command.CreateParameter();
-            p.ParameterName = "name";
-            p.DbType = DbType.String;
-            p.Size = 400;
-            p.Value = AsValue(obj.Name);
-            command.Parameters.Add(p);
-        }
-
-        public override void UpdateParameters(in UnifiedCommand command, Customer obj)
-        {
-            command.Parameters[0].Value = AsValue(obj.Name);
-        }
-
-        public override bool CanPrepare => _canPrepare;
-    }
 }
