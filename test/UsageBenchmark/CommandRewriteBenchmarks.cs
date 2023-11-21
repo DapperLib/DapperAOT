@@ -315,7 +315,7 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         private readonly bool cached;
         private RewriteCommand(bool cached) => this.cached = cached;
         public static RewriteCommand Cached { get; } = new RewriteCommand(true);
-        public static RewriteCommand NonCached { get; } = new RewriteCommand(true);
+        public static RewriteCommand NonCached { get; } = new RewriteCommand(false);
 
         public override void AddParameters(in UnifiedCommand command, MyArgsType args)
             => throw new NotSupportedException(); // we don't expect to get here (in reality, we would have both versions)
