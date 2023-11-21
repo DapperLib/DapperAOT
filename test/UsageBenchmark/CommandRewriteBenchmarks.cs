@@ -74,46 +74,48 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
     [Benchmark]
     public int DapperAOT_BatchCached() => npgsql.Command<MyArgsType>(BasicSql, handler: RewriteCommand.Cached).Execute(Args);
 
-    static NpgsqlCommand CreateCommand(NpgsqlConnection connection) => new()
+    static DbCommand CreateCommand(DbConnection connection)
     {
-        Connection = connection,
-        CommandText = BasicSql,
-        CommandType = CommandType.Text,
+        // note that connection.CreateCommand has a stash for command recycling,
+        // that isn't available if you "new" etc
+        var cmd = connection.CreateCommand();
+        cmd.Connection = connection;
+        cmd.CommandText = BasicSql;
+        cmd.CommandType = CommandType.Text;
 
-        Parameters =
-        {
-            new NpgsqlParameter
-            {
-                ParameterName = "Name0",
-                DbType = DbType.String,
-                Size = -1,
-                Value = Args.Name0
-            },
-            new NpgsqlParameter
-            {
-                ParameterName = "Name1",
-                DbType = DbType.String,
-                Size = -1,
-                Value = Args.Name1
-            },
-            new NpgsqlParameter
-            {
-                ParameterName = "Name2",
-                DbType = DbType.String,
-                Size = -1,
-                Value = Args.Name2
-            },
-            new NpgsqlParameter
-            {
-                ParameterName = "Name3",
-                DbType = DbType.String,
-                Size = -1,
-                Value = Args.Name3
-            },
-        },
-    };
+        var ps = cmd.Parameters;
+        var p = cmd.CreateParameter();
+        p.ParameterName = "Name0";
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name0;
+        ps.Add(p);
 
-    static void UpdateCommand(NpgsqlCommand cmd, NpgsqlConnection connection)
+        p = cmd.CreateParameter();
+        p.ParameterName = "Name1";
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name1;
+        ps.Add(p);
+
+        p = cmd.CreateParameter();
+        p.ParameterName = "Name2";
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name2;
+        ps.Add(p);
+
+        p = cmd.CreateParameter();
+        p.ParameterName = "Name3";
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name3;
+        ps.Add(p);
+
+        return cmd;
+    }
+
+    static void UpdateCommand(DbCommand cmd, DbConnection connection)
     {
         cmd.Connection = connection;
         var ps = cmd.Parameters;
@@ -130,7 +132,7 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         return cmd.ExecuteNonQuery();
     }
 
-    static NpgsqlCommand? _spareCommand;
+    static DbCommand? _spareCommand;
 
     [Benchmark]
     public int AdoNetCommandCached()
@@ -149,69 +151,55 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         Interlocked.Exchange(ref _spareCommand, cmd)?.Dispose();
         return result;
     }
-    private static NpgsqlBatch CreateBatch(NpgsqlConnection connection) => new()
+    private static NpgsqlBatch CreateBatch(NpgsqlConnection connection)
     {
-        Connection = connection,
-        BatchCommands =
-        {
-            new NpgsqlBatchCommand
-            {
-                CommandText = "insert into RewriteCustomers(Name) values($1)",
-                CommandType = CommandType.Text,
-                Parameters =
-                {
-                    new NpgsqlParameter
-                    {
-                        DbType = DbType.String,
-                        Size = -1,
-                        Value = Args.Name0,
-                    }
-                },
-            },
-            new NpgsqlBatchCommand
-            {
-                CommandText = "insert into RewriteCustomers(Name) values($1)",
-                CommandType = CommandType.Text,
-                Parameters =
-                {
-                    new NpgsqlParameter
-                    {
-                        DbType = DbType.String,
-                        Size = -1,
-                        Value = Args.Name1,
-                    }
-                },
-            },
-            new NpgsqlBatchCommand
-            {
-                CommandText = "insert into RewriteCustomers(Name) values($1)",
-                CommandType = CommandType.Text,
-                Parameters =
-                {
-                    new NpgsqlParameter
-                    {
-                        DbType = DbType.String,
-                        Size = -1,
-                        Value = Args.Name2,
-                    }
-                },
-            },
-            new NpgsqlBatchCommand
-            {
-                CommandText = "insert into RewriteCustomers(Name) values($1)",
-                CommandType = CommandType.Text,
-                Parameters =
-                {
-                    new NpgsqlParameter
-                    {
-                        DbType = DbType.String,
-                        Size = -1,
-                        Value = Args.Name3,
-                    }
-                },
-            },
-        },
-    };
+        // note that CreateBatch has obj reuse that new() lacks
+        var batch = connection.CreateBatch();
+        batch.Connection = connection;
+        var cmds = batch.BatchCommands;
+
+        var cmd = batch.CreateBatchCommand();
+        cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
+        cmd.CommandType = CommandType.Text;
+        var p = cmd.CreateParameter();
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name0;
+        cmd.Parameters.Add(p);
+        cmds.Add(cmd);
+
+        cmd = batch.CreateBatchCommand();
+        cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
+        cmd.CommandType = CommandType.Text;
+        p = cmd.CreateParameter();
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name1;
+        cmd.Parameters.Add(p);
+        cmds.Add(cmd);
+
+        cmd = batch.CreateBatchCommand();
+        cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
+        cmd.CommandType = CommandType.Text;
+        p = cmd.CreateParameter();
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name2;
+        cmd.Parameters.Add(p);
+        cmds.Add(cmd);
+
+        cmd = batch.CreateBatchCommand();
+        cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
+        cmd.CommandType = CommandType.Text;
+        p = cmd.CreateParameter();
+        p.DbType = DbType.String;
+        p.Size = -1;
+        p.Value = Args.Name3;
+        cmd.Parameters.Add(p);
+        cmds.Add(cmd);
+
+        return batch;
+    }
 
     static void UpdateBatch(NpgsqlBatch batch, NpgsqlConnection connection)
     {

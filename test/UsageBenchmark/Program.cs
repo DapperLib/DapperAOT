@@ -1,8 +1,4 @@
-﻿using Dapper;
-using System;
-using System.Threading.Tasks;
-
-namespace UsageBenchmark;
+﻿namespace UsageBenchmark;
 
 static class Program
 {
@@ -16,7 +12,7 @@ static class Program
         await Task.Yield();
         var obj = new CommandRewriteBenchmarks();
         obj.Setup();
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 5; i++)
         {
             Console.WriteLine(obj.Dapper());
 
@@ -29,6 +25,9 @@ static class Program
             Console.WriteLine(obj.AdoNetBatch());
             Console.WriteLine(obj.AdoNetCommandCached());
             Console.WriteLine(obj.AdoNetBatchCached());
+
+            // for profiling single methods etc
+            // _ = obj.AdoNetCommand();
         }
 
         //await using (var obj = new BatchInsertBenchmarks())
