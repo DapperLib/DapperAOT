@@ -1,4 +1,8 @@
-﻿namespace UsageBenchmark;
+﻿using Dapper;
+using System;
+using System.Threading.Tasks;
+
+namespace UsageBenchmark;
 
 static class Program
 {

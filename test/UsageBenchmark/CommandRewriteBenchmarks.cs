@@ -154,14 +154,14 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
     private static NpgsqlBatch CreateBatch(NpgsqlConnection connection)
     {
         // note that CreateBatch has obj reuse that new() lacks
-        var batch = connection.CreateBatch();
+        var batch = connection.CanCreateBatch ? connection.CreateBatch() : new NpgsqlBatch();
         batch.Connection = connection;
         var cmds = batch.BatchCommands;
 
         var cmd = batch.CreateBatchCommand();
         cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
         cmd.CommandType = CommandType.Text;
-        var p = cmd.CreateParameter();
+        var p = cmd.CanCreateParameter ? cmd.CreateParameter() : new NpgsqlParameter();
         p.DbType = DbType.String;
         p.Size = -1;
         p.Value = Args.Name0;
@@ -171,7 +171,7 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         cmd = batch.CreateBatchCommand();
         cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
         cmd.CommandType = CommandType.Text;
-        p = cmd.CreateParameter();
+        p = cmd.CanCreateParameter ? cmd.CreateParameter() : new NpgsqlParameter();
         p.DbType = DbType.String;
         p.Size = -1;
         p.Value = Args.Name1;
@@ -181,7 +181,7 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         cmd = batch.CreateBatchCommand();
         cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
         cmd.CommandType = CommandType.Text;
-        p = cmd.CreateParameter();
+        p = cmd.CanCreateParameter ? cmd.CreateParameter() : new NpgsqlParameter();
         p.DbType = DbType.String;
         p.Size = -1;
         p.Value = Args.Name2;
@@ -191,7 +191,7 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         cmd = batch.CreateBatchCommand();
         cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
         cmd.CommandType = CommandType.Text;
-        p = cmd.CreateParameter();
+        p = cmd.CanCreateParameter ? cmd.CreateParameter() : new NpgsqlParameter();
         p.DbType = DbType.String;
         p.Size = -1;
         p.Value = Args.Name3;
