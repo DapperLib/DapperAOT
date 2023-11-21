@@ -291,7 +291,7 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
             p.Value = AsValue(args.Name3);
         }
 
-        public override void UpdateParameters(in UnifiedBatch command, MyArgsType args)
+        public override void UpdateParameters(in UnifiedCommand command, MyArgsType args)
         {
             var ps = command.Parameters;
             ps[0].Value = AsValue(args.Name0);
