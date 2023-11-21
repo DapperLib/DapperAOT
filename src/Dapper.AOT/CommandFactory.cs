@@ -159,6 +159,26 @@ public abstract class CommandFactory
         command.Transaction = null;
         return Interlocked.CompareExchange(ref storage, command, null) is null;
     }
+
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse batch instances
+    /// </summary>
+    protected static bool TryRecycle(ref DbBatch? storage, DbBatch batch)
+    {
+        // detach and recycle
+        batch.Connection = null;
+        batch.Transaction = null;
+        return Interlocked.CompareExchange(ref storage, batch, null) is null;
+    }
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse batch instances
+    /// </summary>
+    public virtual bool TryRecycle(DbBatch batch) => false;
+#endif
+
 }
 
 /// <summary>
@@ -190,8 +210,7 @@ public class CommandFactory<T> : CommandFactory
     internal void Initialize(in UnifiedCommand cmd,
         string sql, CommandType commandType, T args)
     {
-        cmd.CommandText = sql;
-        cmd.CommandType = commandType != 0 ? commandType : DapperAotExtensions.GetCommandType(sql);
+        cmd.SetCommand(sql, commandType != 0 ? commandType : DapperAotExtensions.GetCommandType(sql));
         AddParameters(in cmd, args);
     }
 
@@ -216,9 +235,10 @@ public class CommandFactory<T> : CommandFactory
     /// </summary>
     public virtual void UpdateParameters(in UnifiedCommand command, T args)
     {
-        if (command.Parameters.Count != 0) // try to avoid rogue "dirty" checks
+        var ps = command.Parameters;
+        if (ps.Count != 0) // try to avoid rogue "dirty" checks
         {
-            command.Parameters.Clear();
+            ps.Clear();
         }
         AddParameters(in command, args);
     }
@@ -234,10 +254,9 @@ public class CommandFactory<T> : CommandFactory
             // try to avoid any dirty detection in the setters
             if (cmd.CommandText != sql) cmd.CommandText = sql;
             if (cmd.CommandType != commandType) cmd.CommandType = commandType;
-            UpdateParameters(new(cmd), args);
+            UpdateParameters(new UnifiedCommand(cmd), args);
         }
         return cmd;
-
     }
 
     /// <summary>
@@ -257,10 +276,52 @@ public class CommandFactory<T> : CommandFactory
 #pragma warning restore IDE0079 // following will look unnecessary on up-level
     public virtual bool UseBatch(string sql) => false;
 
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Create a populated batch from a command
+    /// </summary>
+    public virtual DbBatch GetBatch(DbConnection connection, string sql, CommandType commandType, T args)
+    {
+        Debug.Assert(connection.CanCreateBatch);
+        var batch = connection.CreateBatch();
+        batch.Connection = connection;
+        AddCommands(new(batch), sql, args);
+        return batch;
+    }
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse batch instances
+    /// </summary>
+    protected DbBatch? TryReuse(ref DbBatch? storage, T args)
+    {
+        var batch = Interlocked.Exchange(ref storage, null);
+        if (batch is not null)
+        {
+            // try to avoid any dirty detection in the setters
+            UpdateParameters(new UnifiedBatch(batch), args);
+        }
+        return batch;
+    }
+#endif
+
+
     /// <summary>
     /// Allows the caller to rewrite a composite command into a multi-command batch.
     /// </summary>
-    public virtual void AddCommands(in UnifiedBatch batch, string sql, T args) => throw new NotSupportedException();
+    public virtual void AddCommands(in UnifiedBatch batch, string sql, T args)
+    {
+        // implement as basic mode
+        batch.SetCommand(sql, CommandType.Text);
+        AddParameters(in batch.Command, args);
+    }
+
+    /// <summary>
+    /// Allows the caller to update the parameter values of a multi-command batch.
+    /// </summary>
+    public virtual void UpdateParameters(in UnifiedBatch batch, T args)
+    {
+        UpdateParameters(in batch.Command, args);
+    }
 
     /// <summary>
     /// Allows an implementation to process output parameters etc after a multi-command batch has completed.

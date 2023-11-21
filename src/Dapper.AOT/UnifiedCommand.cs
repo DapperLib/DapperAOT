@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -104,6 +104,7 @@ public readonly struct UnifiedCommand
 #endif
             _ => "",
         };
+        [Obsolete("When possible, " + nameof(SetCommand) + " should be preferred", false)]
         set
         {
             switch (_source)
@@ -148,6 +149,7 @@ public readonly struct UnifiedCommand
 #endif
             _ => CommandType.Text,
         };
+        [Obsolete("When possible, " + nameof(SetCommand) + " should be preferred", false)]
         set
         {
             switch (_source)
@@ -203,25 +205,31 @@ public readonly struct UnifiedCommand
     /// </summary>
     public DbParameter AddParameter()
     {
-        // TODO: optimize to avoid double tests
-        var p = CreateParameter();
-        Parameters.Add(p);
+        var p = CreateParameter(out var parameters);
+        parameters.Add(p);
         return p;
     }
 
     /// <inheritdoc cref="DbCommand.CreateParameter"/>
-    public DbParameter CreateParameter()
+    public DbParameter CreateParameter() => CreateParameter(out _);
+
+    /// <inheritdoc cref="DbCommand.CreateParameter"/>
+    private DbParameter CreateParameter(out DbParameterCollection parameters)
     {
         switch (_source)
         {
             case DbCommand cmd:
+                parameters = cmd.Parameters;
                 return cmd.CreateParameter();
             case List<DbCommand> list:
-                return list[_index].CreateParameter();
+                var activeCmd = list[_index];
+                parameters = activeCmd.Parameters;
+                return activeCmd.CreateParameter();
 #if NET6_0_OR_GREATER
             case DbBatch batch:
-#if NET8_0_OR_GREATER // https://github.com/dotnet/runtime/issues/82326
                 var bc = batch.BatchCommands[_index];
+                parameters = bc.Parameters;
+#if NET8_0_OR_GREATER // https://github.com/dotnet/runtime/issues/82326
                 if (bc.CanCreateParameter) return bc.CreateParameter();
 #endif // NET8
                 return (_spareCommandForParameters ?? UnsafeBatchWithCommandForParameters()).CreateParameter();
@@ -246,12 +254,15 @@ public readonly struct UnifiedCommand
 
     internal UnifiedCommand(DbBatch batch)
     {
-        // withCommand is typically true for a ready-to-go command; it is false if, for example, we're
-        // doing a multi-row exec and want to start completely empty
         _source = batch;
         _spareCommandForParameters = null;
-        
-        batch.BatchCommands.Add(batch.CreateBatchCommand());
+
+        var bc = batch.BatchCommands;
+        if (bc.Count == 0)
+        {
+            // initialize the first command
+            bc.Add(batch.CreateBatchCommand());
+        }
         _index = 0;
     }
 
@@ -263,8 +274,6 @@ public readonly struct UnifiedCommand
         static DbCommand Throw() => throw new InvalidOperationException("It was not possible to create command parameters for this batch; the connection may be null");
     }
 #endif
-
-    internal void ClearSource() => Unsafe.AsRef(in _source) = null!;
 
     internal void PostProcess<T>(IEnumerable<T> source, CommandFactory<T> commandFactory)
     {
@@ -461,19 +470,15 @@ public readonly struct UnifiedCommand
 
     internal Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
     {
-        switch (_source)
+        return _source switch
         {
-            case DbCommand cmd:
-                return cmd.ExecuteNonQueryAsync(cancellationToken);
-            case List<DbCommand> list:
-                return ExecuteListAsync(list, cancellationToken);
+            DbCommand cmd => cmd.ExecuteNonQueryAsync(cancellationToken),
+            List<DbCommand> list => ExecuteListAsync(list, cancellationToken),
 #if NET6_0_OR_GREATER
-            case DbBatch batch:
-                return batch.ExecuteNonQueryAsync(cancellationToken);
+            DbBatch batch => batch.ExecuteNonQueryAsync(cancellationToken),
 #endif
-            default:
-                return TaskZero;
-        }
+            _ => TaskZero,
+        };
 
         static async Task<int> ExecuteListAsync(List<DbCommand> list, CancellationToken cancellationToken)
         {
@@ -483,6 +488,54 @@ public readonly struct UnifiedCommand
                 sum += await cmd.ExecuteNonQueryAsync(cancellationToken);
             }
             return sum;
+        }
+    }
+
+    /// <summary>
+    /// Initialize the <see cref="DbCommand.CommandText"/> and <see cref="DbCommand.CommandType"/>
+    /// </summary>
+    public void SetCommand(string commandText, CommandType commandType = CommandType.Text)
+    {
+        switch (_source)
+        {
+            // note we're trying to avoid triggering any unnecessary side-effects and
+            // cache-invalidations that could be triggered from setters
+            case DbCommand cmd:
+                if (cmd.CommandText != commandText) cmd.CommandText = commandText;
+                if (cmd.CommandType != commandType) cmd.CommandType = commandType;
+                break;
+            case List<DbCommand> list:
+                var activeCmd = list[_index];
+                if (activeCmd.CommandText != commandText) activeCmd.CommandText = commandText;
+                if (activeCmd.CommandType != commandType) activeCmd.CommandType = commandType;
+                break;
+#if NET6_0_OR_GREATER
+            case DbBatch batch:
+                var bc = batch.BatchCommands[_index];
+                if (bc.CommandText != commandText) bc.CommandText = commandText;
+                if (bc.CommandType != commandType) bc.CommandType = commandType;
+                break;
+#endif
+        }
+    }
+
+    internal void TryRecycle(CommandFactory commandFactory)
+    {
+        if (_source switch
+        {
+            // note we're trying to avoid triggering any unnecessary side-effects and
+            // cache-invalidations that could be triggered from setters
+            DbCommand cmd => commandFactory.TryRecycle(cmd),
+            // note we don't expect to recycle list usage in this way; we're only expecting
+            // single-arg scenarios
+#if NET6_0_OR_GREATER
+            DbBatch batch => commandFactory.TryRecycle(batch),
+#endif
+            _ => false,
+        })
+        {
+            // wipe the source - someone else can see it
+            Unsafe.AsRef(in _source) = null!;
         }
     }
 

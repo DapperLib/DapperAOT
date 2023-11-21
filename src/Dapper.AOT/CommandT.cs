@@ -90,12 +90,25 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     {
         if (commandType == CommandType.Text && commandFactory.UseBatch(sql))
         {
-            batch = new UnifiedBatch(connection, transaction);
-            if (timeout >= 0)
+#if NET6_0_OR_GREATER
+            if (connection.CanCreateBatch)
             {
-                batch.TimeoutSeconds = timeout;
+                var dbBatch = commandFactory.GetBatch(connection, sql, commandType, args);
+                dbBatch.Connection = connection;
+                dbBatch.Timeout = timeout;
+                dbBatch.Transaction = transaction;
+                batch = new(dbBatch);
             }
-            commandFactory.AddCommands(in batch, sql, args);
+            else
+#endif
+            {
+                var cmd = connection.CreateCommand();
+                cmd.Connection = connection;
+                cmd.Transaction = transaction;
+                cmd.CommandTimeout = timeout;
+                batch = new(cmd);
+                commandFactory.AddCommands(in batch, sql, args);
+            }
         }
         else
         {
@@ -118,11 +131,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     {
         Debug.Assert(state.Command is null); // all on unified command now
         commandFactory.PostProcess(in state.UnifiedBatch.Command, args, rowCount);
-
-        if (state.UnifiedBatch.Command.Command is { } cmd && commandFactory.TryRecycle(cmd))
-        {
-            state.UnifiedBatch.Command.ClearSource();
-        }
+        state.UnifiedBatch.Command.TryRecycle(commandFactory);
     }
 
     internal void PostProcessAndRecycle(AsyncQueryState state, TArgs args, int rowCount)

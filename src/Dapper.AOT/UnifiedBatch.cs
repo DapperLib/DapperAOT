@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,6 +32,15 @@ public readonly struct UnifiedBatch
         Debug.Assert(Command.CommandCount == 1);
     }
 
+#if NET6_0_OR_GREATER
+    internal UnifiedBatch(DbBatch batch)
+    {
+        Command = new UnifiedCommand(batch);
+        commandStart = 0;
+        commandCount = batch.BatchCommands.Count;
+        Debug.Assert(Command.CommandCount > 0); // could be multiple for batch re-use scenarios
+    }
+#endif
 
     internal UnifiedBatch(DbConnection connection, DbTransaction? transaction)
     {
@@ -91,13 +99,21 @@ public readonly struct UnifiedBatch
     public string CommandText
     {
         get => Command.CommandText;
+        [Obsolete("When possible, " + nameof(SetCommand) + " should be preferred", false)]
         set => Command.CommandText = value;
     }
+
+    /// <summary>
+    /// Initialize the <see cref="DbCommand.CommandText"/> and <see cref="DbCommand.CommandType"/>
+    /// </summary>
+    public void SetCommand(string commandText, CommandType commandType = CommandType.Text)
+        => Command.SetCommand(commandText, commandType);
 
     /// <inheritdoc cref="DbCommand.CommandType"/>
     public CommandType CommandType
     {
         get => Command.CommandType;
+        [Obsolete("When possible, " + nameof(SetCommand) + " should be preferred", false)]
         set => Command.CommandType = value;
     }
 

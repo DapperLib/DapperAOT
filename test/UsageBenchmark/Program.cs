@@ -19,13 +19,18 @@ static class Program
         for (int i = 0; i < 3; i++)
         {
             Console.WriteLine(obj.Dapper());
-            Console.WriteLine(obj.DapperAOT_Simple());
-            Console.WriteLine(obj.DapperAOT_Rewrite());
+
+            Console.WriteLine(obj.DapperAOT());
+            Console.WriteLine(obj.DapperAOT_Cached());
+            Console.WriteLine(obj.DapperAOT_Batch());
+            Console.WriteLine(obj.DapperAOT_BatchCached());
+
             Console.WriteLine(obj.AdoNetCommand());
             Console.WriteLine(obj.AdoNetBatch());
             Console.WriteLine(obj.AdoNetCommandCached());
             Console.WriteLine(obj.AdoNetBatchCached());
         }
+
         //await using (var obj = new BatchInsertBenchmarks())
         //{
         //    await RunAllInserts(obj, 10, false);
