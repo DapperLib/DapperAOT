@@ -10,7 +10,7 @@ namespace Dapper.AOT.Test.Integration;
 [Collection(SharedPostgresqlClient.Collection)]
 public class NpgsqlRewriteManual
 {
-    private PostgresqlFixture _fixture;
+    private readonly PostgresqlFixture _fixture;
 
     public NpgsqlRewriteManual(PostgresqlFixture fixture)
     {
@@ -42,18 +42,18 @@ public class NpgsqlRewriteManual
         """;
     private static readonly object CompositeArgs = new { x = "abc", y = "def" };
 
-    private void AssertResults(IEnumerable<RewriteTestRow> results)
+    private static void AssertResults(IEnumerable<RewriteTestRow> results)
     {
         var list = results.AsList();
         Assert.Equal(3, list.Count);
-        Assert.Equal(1, list[0].id);
-        Assert.Equal("abc", list[0].name);
-        Assert.Equal(2, list[1].id);
-        Assert.Equal("abcdef", list[1].name);
-        Assert.Equal(3, list[2].id);
-        Assert.Equal("def", list[2].name);
+        Assert.Equal(1, list[0].Id);
+        Assert.Equal("abc", list[0].Name);
+        Assert.Equal(2, list[1].Id);
+        Assert.Equal("abcdef", list[1].Name);
+        Assert.Equal(3, list[2].Id);
+        Assert.Equal("def", list[2].Name);
     }
-    public record struct RewriteTestRow(int id, string name);
+    public record struct RewriteTestRow(int Id, string Name);
 
     [Fact]
     public void DapperVanillaConsistency()
@@ -80,19 +80,17 @@ public class NpgsqlRewriteManual
         {
             var typed = Cast(args, static () => new { x = "abc", y = "def" });
             var ps = command.Parameters;
-            DbParameter p = command.CreateParameter();
+            DbParameter p = command.AddParameter();
             p.ParameterName = "x";
             p.DbType = DbType.String;
             p.Size = -1;
             p.Value = AsValue(typed.x);
-            ps.Add(p);
 
-            p = command.CreateParameter();
+            p = command.AddParameter();
             p.ParameterName = "y";
             p.DbType = DbType.String;
             p.Size = -1;
             p.Value = AsValue(typed.y);
-            ps.Add(p);
         }
 
         public override void UpdateParameters(in UnifiedCommand command, object args)
@@ -110,7 +108,7 @@ public class NpgsqlRewriteManual
 
         // note we're ignoring tokenize etc for simplicity; just do raw
         public override RewriteTestRow Read(DbDataReader reader, ReadOnlySpan<int> tokens, int columnOffset, object? state)
-            => new RewriteTestRow(reader.GetInt32(columnOffset), reader.GetString(columnOffset+1));
+            => new(reader.GetInt32(columnOffset), reader.GetString(columnOffset + 1));
     }
 
     sealed class FancyCommandFactory : CommandFactory<object>
@@ -134,44 +132,40 @@ public class NpgsqlRewriteManual
 
             // note: not allowed to reuse parameters between commands; throws if you try
 
-            var ps = batch.AddCommand("""
+            batch.AddCommand("""
                 INSERT INTO rewrite_test(name)
                 VALUES ($1)
                 """);
 
-            var p = batch.CreateParameter();
+            var p = batch.AddParameter();
             p.DbType = DbType.String;
             p.Size = -1;
             p.Value = AsValue(typed.x);
-            ps.Add(p);
 
-            ps = batch.AddCommand("""
+            batch.AddCommand("""
                 INSERT INTO rewrite_test(name)
                 VALUES ($1 || $2)
                 """);
 
-            p = batch.CreateParameter();
+            p = batch.AddParameter();
             p.DbType = DbType.String;
             p.Size = -1;
             p.Value = AsValue(typed.x);
-            ps.Add(p);
 
-            p = batch.CreateParameter();
+            p = batch.AddParameter();
             p.DbType = DbType.String;
             p.Size = -1;
             p.Value = AsValue(typed.y);
-            ps.Add(p);
 
-            ps = batch.AddCommand("""
+            batch.AddCommand("""
                 INSERT INTO rewrite_test(name)
                 VALUES ($1)
                 """);
 
-            p = batch.CreateParameter();
+            p = batch.AddParameter();
             p.DbType = DbType.String;
             p.Size = -1;
             p.Value = AsValue(typed.y);
-            ps.Add(p);
 
             batch.AddCommand("""
                 select id, name
@@ -180,7 +174,7 @@ public class NpgsqlRewriteManual
                 """);
         }
 
-        public override void PostProcess(in UnifiedBatch batch, object args, int rowCount, int commandIndex)
+        public override void PostProcess(in UnifiedBatch batch, object args, int rowCount)
         {
             // example usage
             // args.Something = Cast<int>(commands[commandIndex].Parameters[1].Value);

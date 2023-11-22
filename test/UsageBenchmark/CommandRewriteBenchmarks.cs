@@ -63,16 +63,29 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
     // note these are hand written
 
     [Benchmark]
-    public int DapperAOT() => npgsql.Command<MyArgsType>(BasicSql, handler: BasicCommand.NonCached).Execute(Args);
+    public int DapperAOT() => npgsql.Command(BasicSql, handler: BasicCommand.NonCached).Execute(Args);
 
     [Benchmark]
-    public int DapperAOT_Cached() => npgsql.Command<MyArgsType>(BasicSql, handler: BasicCommand.Cached).Execute(Args);
+    public int DapperAOT_Cached() => npgsql.Command(BasicSql, handler: BasicCommand.Cached).Execute(Args);
 
     [Benchmark]
-    public int DapperAOT_Batch() => npgsql.Command<MyArgsType>(BasicSql, handler: RewriteCommand.NonCached).Execute(Args);
+    public int DapperAOT_Batch() => npgsql.Command(BasicSql, handler: RewriteCommand.NonCached).Execute(Args);
 
     [Benchmark]
-    public int DapperAOT_BatchCached() => npgsql.Command<MyArgsType>(BasicSql, handler: RewriteCommand.Cached).Execute(Args);
+    public int DapperAOT_BatchCached() => npgsql.Command(BasicSql, handler: RewriteCommand.Cached).Execute(Args);
+
+
+    [Benchmark]
+    public Task<int> DapperAOT_Async() => npgsql.Command(BasicSql, handler: BasicCommand.NonCached).ExecuteAsync(Args);
+
+    [Benchmark]
+    public Task<int> DapperAOT_CachedAsync() => npgsql.Command(BasicSql, handler: BasicCommand.Cached).ExecuteAsync(Args);
+
+    [Benchmark]
+    public Task<int> DapperAOT_BatchAsync() => npgsql.Command(BasicSql, handler: RewriteCommand.NonCached).ExecuteAsync(Args);
+
+    [Benchmark]
+    public Task<int> DapperAOT_BatchCachedAsync() => npgsql.Command(BasicSql, handler: RewriteCommand.Cached).ExecuteAsync(Args);
 
     static DbCommand CreateCommand(DbConnection connection)
     {
@@ -132,31 +145,55 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         return cmd.ExecuteNonQuery();
     }
 
+    [Benchmark]
+    public async Task<int> AdoNetCommandAsync()
+    {
+        using var cmd = CreateCommand(npgsql);
+        return await cmd.ExecuteNonQueryAsync();
+    }
+
     static DbCommand? _spareCommand;
+
+    private DbCommand GetCached()
+    {
+        var cmd = Interlocked.Exchange(ref _spareCommand, null);
+        if (cmd is not null)
+        {
+            UpdateCommand(cmd, npgsql);
+            return cmd;
+        }
+        return CreateCommand(npgsql);
+    }
+    private void PutCommand(DbCommand command)
+    {
+        command.Connection = null;
+        Interlocked.Exchange(ref _spareCommand, command)?.Dispose();
+    }
 
     [Benchmark]
     public int AdoNetCommandCached()
     {
-        var cmd = Interlocked.Exchange(ref _spareCommand, null);
-        if (cmd is null)
-        {
-            cmd = CreateCommand(npgsql);
-        }
-        else
-        {
-            UpdateCommand(cmd, npgsql);
-        }
+        var cmd = GetCached();
         var result = cmd.ExecuteNonQuery();
-        cmd.Connection = null;
-        Interlocked.Exchange(ref _spareCommand, cmd)?.Dispose();
+        PutCommand(cmd);
         return result;
     }
+
+    [Benchmark]
+    public async Task<int> AdoNetCommandCachedAsync()
+    {
+        var cmd = GetCached();
+        var result = await cmd.ExecuteNonQueryAsync();
+        PutCommand(cmd);
+        return result;
+    }
+
     private static NpgsqlBatch CreateBatch(NpgsqlConnection connection)
     {
         // note that CreateBatch has obj reuse that new() lacks
         var batch = connection.CanCreateBatch ? connection.CreateBatch() : new NpgsqlBatch();
         batch.Connection = connection;
-        var cmds = batch.BatchCommands;
+        var commands = batch.BatchCommands;
 
         var cmd = batch.CreateBatchCommand();
         cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
@@ -166,7 +203,7 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         p.Size = -1;
         p.Value = Args.Name0;
         cmd.Parameters.Add(p);
-        cmds.Add(cmd);
+        commands.Add(cmd);
 
         cmd = batch.CreateBatchCommand();
         cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
@@ -176,7 +213,7 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         p.Size = -1;
         p.Value = Args.Name1;
         cmd.Parameters.Add(p);
-        cmds.Add(cmd);
+        commands.Add(cmd);
 
         cmd = batch.CreateBatchCommand();
         cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
@@ -186,7 +223,7 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         p.Size = -1;
         p.Value = Args.Name2;
         cmd.Parameters.Add(p);
-        cmds.Add(cmd);
+        commands.Add(cmd);
 
         cmd = batch.CreateBatchCommand();
         cmd.CommandText = "insert into RewriteCustomers(Name) values($1)";
@@ -196,7 +233,7 @@ public class CommandRewriteBenchmarks : IAsyncDisposable
         p.Size = -1;
         p.Value = Args.Name3;
         cmd.Parameters.Add(p);
-        cmds.Add(cmd);
+        commands.Add(cmd);
 
         return batch;
     }

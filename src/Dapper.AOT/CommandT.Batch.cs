@@ -1,10 +1,9 @@
 ﻿using Dapper.Internal;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Data.Common;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -142,24 +141,6 @@ partial struct Command<TArgs>
         };
     }
 
-    internal void Recycle(ref SyncCommandState state)
-    {
-        Debug.Assert(state.Command is not null);
-        if (commandFactory.TryRecycle(state.Command!))
-        {
-            state.Command = null;
-        }
-    }
-
-    internal void Recycle(AsyncCommandState state)
-    {
-        Debug.Assert(state.Command is not null);
-        if (commandFactory.TryRecycle(state.Command!))
-        {
-            state.Command = null;
-        }
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int ExecuteMulti(ReadOnlySpan<TArgs> source, int batchSize)
     {
@@ -180,7 +161,7 @@ partial struct Command<TArgs>
             var current = source[0];
 
             var local = state.ExecuteNonQuery(GetCommand(current));
-            UnifiedCommand cmdState = new(state.Command);
+            UnifiedCommand cmdState = new(commandFactory, state.Command);
             commandFactory.PostProcess(in cmdState, current, local);
             total += local;
 
@@ -193,7 +174,7 @@ partial struct Command<TArgs>
                 total += local;
             }
 
-            Recycle(ref state);
+            state.UnifiedBatch.TryRecycle();
             return total;
         }
         finally
@@ -211,64 +192,135 @@ partial struct Command<TArgs>
         if (batch.IsDefault)
         {
             // create a new batch initialized on a ready command
-            batch = new(connection, transaction);
+            batch = new(commandFactory, connection, transaction);
+            if (timeout >= 0) batch.TimeoutSeconds = timeout;
+            Debug.Assert(batch.Mode is BatchMode.MultiCommandDbBatchCommand); // current expectations
+            batch.SetCommand(sql, commandType);
+            commandFactory.AddParameters(in batch.Command, args);
+        }
+        else if (batch.IsLastCommand)
+        {
+            // create a new command at the end of the batch
+            batch.CreateNextBatchGroup(sql, commandType);
+            commandFactory.AddParameters(in batch.Command, args);
         }
         else
         {
-            batch.PrepareToAppend();
+            // overwriting
+            batch.OverwriteNextBatchGroup();
+            commandFactory.UpdateParameters(in batch.Command, args);
         }
-        commandFactory.Initialize(in batch.Command, sql, commandType, args);
     }
 
-    private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize) // TODO: sub-batching
+    private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize)
     {
         Debug.Assert(source.Length > 1);
-        UnifiedBatch batch = default;
+        SyncCommandState state = default;
+        // note that we currently only use single-command-per-TArg mode, i.e. UseBatch is ignored
         try
         {
+            int sum = 0, ppOffset = 0;
             foreach (var arg in source)
             {
-                Add(ref batch, arg);
+                Add(ref state.UnifiedBatch, arg);
+                if (state.UnifiedBatch.GroupCount == batchSize)
+                {
+                    sum += state.ExecuteNonQueryUnified();
+                    PostProcessMultiBatch(in state.UnifiedBatch, ref ppOffset, source);
+                }
             }
-
-            var result = batch.ExecuteNonQuery();
-            if (commandFactory.RequirePostProcess)
+            if (state.UnifiedBatch.GroupCount != 0)
             {
-                batch.PostProcess(source, commandFactory);
+                state.UnifiedBatch.Trim();
+                sum += state.ExecuteNonQueryUnified();
+                PostProcessMultiBatch(in state.UnifiedBatch, ref ppOffset, source);
             }
-            return result;
+            state.UnifiedBatch.TryRecycle();
+            return sum;
         }
         finally
         {
-            batch.Cleanup();
+            state.Dispose();
         }
     }
-    private int ExecuteMultiBatch(IEnumerable<TArgs> source, int batchSize) // TODO: sub-batching
+
+    private void PostProcessMultiBatch(in UnifiedBatch batch, ReadOnlySpan<TArgs> args)
     {
+        int i = 0;
+        PostProcessMultiBatch(batch, ref i, args);
+    }
+
+    private void PostProcessMultiBatch(in UnifiedBatch batch, ref int argOffset, ReadOnlySpan<TArgs> args)
+    {
+        // TODO: we'd need to buffer the sub-batch from IEnumerable<T>
+        if (batch.IsDefault) return;
+
+        // assert that we currently expect only single commands per element
+        if (batch.Command.CommandCount != batch.GroupCount) Throw();
+
         if (commandFactory.RequirePostProcess)
         {
-            // try to ensure it is repeatable
-            source = (source as IReadOnlyCollection<TArgs>) ?? source.ToList();
+            batch.Command.UnsafeMoveTo(0);
+            foreach (var val in args.Slice(argOffset, batch.GroupCount))
+            {
+                commandFactory.PostProcess(in batch.Command, val, batch.Command.RecordsAffected);
+                batch.Command.UnsafeAdvance();
+            }
+            argOffset += batch.GroupCount;
         }
+        // prepare for the next batch, if one
+        batch.UnsafeMoveBeforeFirst();
 
-        UnifiedBatch batch = default;
+        static void Throw() => throw new InvalidOperationException("The number of operations should have matched the number of groups!");
+    }
+
+    private TArgs[]? GetMultiBatchBuffer(ref int batchSize)
+    {
+        if (!commandFactory.RequirePostProcess) return null; // no problem, then
+
+        const int MAX_SIZE = 1024;
+        if (batchSize < 0 || batchSize > 1024) batchSize = MAX_SIZE;
+
+        return ArrayPool<TArgs>.Shared.Rent(batchSize);
+    }
+    private static void RecycleMultiBatchBuffer(TArgs[]? buffer)
+    {
+        if (buffer is not null) ArrayPool<TArgs>.Shared.Return(buffer);
+    }
+
+    private int ExecuteMultiBatch(IEnumerable<TArgs> source, int batchSize)
+    {
+        SyncCommandState state = default;
+        var buffer = GetMultiBatchBuffer(ref batchSize);
         try
         {
+            int sum = 0, ppOffset = 0;
             foreach (var arg in source)
             {
-                Add(ref batch, arg);
+                Add(ref state.UnifiedBatch, arg);
+                if (buffer is not null) buffer[ppOffset++] = arg;
+
+                if (state.UnifiedBatch.GroupCount == batchSize)
+                {
+                    sum += state.ExecuteNonQueryUnified();
+                    PostProcessMultiBatch(in state.UnifiedBatch, buffer);
+                    ppOffset = 0;
+                }
             }
 
-            var result = batch.ExecuteNonQuery();
-            if (commandFactory.RequirePostProcess)
+            if (state.UnifiedBatch.GroupCount != 0)
             {
-                batch.PostProcess(source, commandFactory);
+                state.UnifiedBatch.Trim();
+                sum += state.ExecuteNonQueryUnified();
+                PostProcessMultiBatch(in state.UnifiedBatch, buffer);
             }
-            return result;
+            state.UnifiedBatch.TryRecycle();
+            return sum;
         }
         finally
         {
-            batch.Cleanup();
+            RecycleMultiBatchBuffer(buffer);
+            state.Dispose();
         }
     }
 #endif
@@ -281,7 +333,7 @@ partial struct Command<TArgs>
 #endif
         return ExecuteMultiSequential(source);
     }
-    
+
     private int ExecuteMultiSequential(IEnumerable<TArgs> source)
     {
         SyncCommandState state = default;
@@ -295,7 +347,7 @@ partial struct Command<TArgs>
                 bool haveMore = iterator.MoveNext();
                 if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
                 var local = state.ExecuteNonQuery(GetCommand(current));
-                UnifiedCommand cmdState = new(state.Command);
+                UnifiedCommand cmdState = new(commandFactory, state.Command);
                 commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
 
@@ -309,7 +361,7 @@ partial struct Command<TArgs>
 
                     haveMore = iterator.MoveNext();
                 }
-                Recycle(ref state);
+                state.UnifiedBatch.TryRecycle();
                 return total;
             }
             return total;
@@ -386,16 +438,16 @@ partial struct Command<TArgs>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Task<int> ExecuteMultiAsync(ReadOnlyMemory<TArgs> source, int batchSize, CancellationToken cancellationToken)
     {
-//#if NET6_0_OR_GREATER
-//        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
-//#endif
+        //#if NET6_0_OR_GREATER
+        //        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
+        //#endif
         return ExecuteMultiSequentialAsync(source, cancellationToken);
     }
 
     private async Task<int> ExecuteMultiSequentialAsync(ReadOnlyMemory<TArgs> source, CancellationToken cancellationToken)
     {
         Debug.Assert(source.Length > 1);
-        AsyncCommandState state = new();
+        var state = AsyncCommandState.Create();
         try
         {
             if (commandFactory.CanPrepare) state.PrepareBeforeExecute();
@@ -403,7 +455,7 @@ partial struct Command<TArgs>
             var current = source.Span[0];
 
             var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
-            UnifiedCommand cmdState = new(state.Command);
+            UnifiedCommand cmdState = new(commandFactory, state.Command);
             commandFactory.PostProcess(in cmdState, current, local);
             total += local;
 
@@ -416,37 +468,41 @@ partial struct Command<TArgs>
                 total += local;
             }
 
-            Recycle(state);
+            state.UnifiedBatch.TryRecycle();
             return total;
         }
         finally
         {
             await state.DisposeAsync();
+            state.Recycle();
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Task<int> ExecuteMultiAsync(IAsyncEnumerable<TArgs> source, int batchSize, CancellationToken cancellationToken)
     {
-//#if NET6_0_OR_GREATER
-//        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
-//#endif
+        //#if NET6_0_OR_GREATER
+        //        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
+        //#endif
         return ExecuteMultiSequentialAsync(source, cancellationToken);
     }
     private async Task<int> ExecuteMultiSequentialAsync(IAsyncEnumerable<TArgs> source, CancellationToken cancellationToken)
     {
-        AsyncCommandState state = new();
+        AsyncCommandState? state = null;
         var iterator = source.GetAsyncEnumerator(cancellationToken);
         try
         {
             int total = 0;
             if (await iterator.MoveNextAsync())
             {
+                state ??= AsyncCommandState.Create();
+
                 var current = iterator.Current;
                 bool haveMore = await iterator.MoveNextAsync();
                 if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
+
                 var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
-                UnifiedCommand cmdState = new(state.Command);
+                UnifiedCommand cmdState = new(commandFactory, state.Command);
                 commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
 
@@ -460,41 +516,46 @@ partial struct Command<TArgs>
 
                     haveMore = await iterator.MoveNextAsync();
                 }
-                Recycle(state);
-                return total;
+                state.UnifiedBatch.TryRecycle();
             }
             return total;
         }
         finally
         {
             await iterator.DisposeAsync();
-            await state.DisposeAsync();
+            if (state is not null)
+            {
+                await state.DisposeAsync();
+                state.Recycle();
+            }
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Task<int> ExecuteMultiAsync(IEnumerable<TArgs> source, int batchSize, CancellationToken cancellationToken)
     {
-//#if NET6_0_OR_GREATER
-//        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
-//#endif
+#if NET6_0_OR_GREATER
+        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
+#endif
         return ExecuteMultiSequentialAsync(source, cancellationToken);
     }
 
     private async Task<int> ExecuteMultiSequentialAsync(IEnumerable<TArgs> source, CancellationToken cancellationToken)
     {
-        AsyncCommandState state = new();
+        AsyncCommandState? state = null;
         var iterator = source.GetEnumerator();
         try
         {
             int total = 0;
             if (iterator.MoveNext())
             {
+                state ??= AsyncCommandState.Create();
+
                 var current = iterator.Current;
                 bool haveMore = iterator.MoveNext();
                 if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
                 var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
-                UnifiedCommand cmdState = new(state.Command);
+                UnifiedCommand cmdState = new(commandFactory, state.Command);
                 commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
 
@@ -508,17 +569,65 @@ partial struct Command<TArgs>
 
                     haveMore = iterator.MoveNext();
                 }
-                Recycle(state);
-                return total;
+                state.UnifiedBatch.TryRecycle();
             }
             return total;
         }
         finally
         {
             iterator.Dispose();
-            await state.DisposeAsync();
+            if (state is not null)
+            {
+                await state.DisposeAsync();
+                state.Recycle();
+            }
         }
     }
+
+#if NET6_0_OR_GREATER
+    private async Task<int> ExecuteMultiBatchAsync(IEnumerable<TArgs> source, int batchSize, CancellationToken cancellationToken)
+    {
+        AsyncCommandState? state = null;
+        var buffer = GetMultiBatchBuffer(ref batchSize);
+        try
+        {
+            int sum = 0, ppOffset = 0;
+            foreach (var arg in source)
+            {
+                state ??= AsyncCommandState.Create();
+                Add(ref state.UnifiedBatch, arg);
+                if (buffer is not null) buffer[ppOffset++] = arg;
+
+                if (state.UnifiedBatch.GroupCount == batchSize)
+                {
+                    sum += await state.ExecuteNonQueryUnifiedAsync(cancellationToken);
+                    PostProcessMultiBatch(in state.UnifiedBatch, buffer);
+                    ppOffset = 0;
+                }
+            }
+
+            if (state is not null)
+            {
+                if (state.UnifiedBatch.GroupCount != 0)
+                {
+                    sum += await state.ExecuteNonQueryUnifiedAsync(cancellationToken);
+                    PostProcessMultiBatch(in state.UnifiedBatch, buffer);
+                }
+                state.UnifiedBatch.TryRecycle();
+            }
+            return sum;
+        }
+        finally
+        {
+            RecycleMultiBatchBuffer(buffer);
+            if (state is not null)
+            {
+                await state.DisposeAsync();
+                state.Recycle();
+            }
+        }
+    }
+#endif
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Task<int> ExecuteMultiAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken)
@@ -530,7 +639,8 @@ partial struct Command<TArgs>
     }
     private async Task<int> ExecuteMultiSequentialAsync(TArgs[] source, int offset, int count, CancellationToken cancellationToken)
     {
-        AsyncCommandState state = new();
+        Debug.Assert(count > 0);
+        var state = AsyncCommandState.Create();
         try
         {
             // count is now actually "end"
@@ -541,7 +651,7 @@ partial struct Command<TArgs>
             var current = source[offset++];
 
             var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
-            UnifiedCommand cmdState = new(state.Command);
+            UnifiedCommand cmdState = new(commandFactory, state.Command);
             commandFactory.PostProcess(in cmdState, current, local);
             total += local;
 
@@ -554,39 +664,54 @@ partial struct Command<TArgs>
                 total += local;
             }
 
-            Recycle(state);
+            state.UnifiedBatch.TryRecycle();
             return total;
         }
         finally
         {
             await state.DisposeAsync();
+            state.Recycle();
         }
     }
 
 #if NET6_0_OR_GREATER
-    private async Task<int> ExecuteMultiBatchAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken) // TODO: sub-batching
+    private async Task<int> ExecuteMultiBatchAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken)
     {
         Debug.Assert(source.Length > 1);
-        UnifiedBatch batch = default;
+        AsyncCommandState? state = null;
         var end = offset + count;
         try
         {
-            for (int i = offset ; i < end; i++)
+            int sum = 0, ppOffset = offset;
+            for (int i = offset; i < end; i++)
             {
-                Add(ref batch, source[i]);
+                state ??= AsyncCommandState.Create();
+                Add(ref state.UnifiedBatch, source[i]);
+                if (state.UnifiedBatch.GroupCount == batchSize)
+                {
+                    sum += await state.ExecuteNonQueryUnifiedAsync(cancellationToken);
+                    PostProcessMultiBatch(in state.UnifiedBatch, ref ppOffset, source);
+                }
             }
 
-            var result = await batch.ExecuteNonQueryAsync(cancellationToken);
-
-            if (commandFactory.RequirePostProcess)
+            if (state is not null)
             {
-                batch.PostProcess(new ReadOnlySpan<TArgs>(source, offset, count), commandFactory);
+                if (state.UnifiedBatch.GroupCount != 0)
+                {
+                    sum += await state.ExecuteNonQueryUnifiedAsync(cancellationToken);
+                    PostProcessMultiBatch(in state.UnifiedBatch, ref ppOffset, source);
+                }
+                state.UnifiedBatch.TryRecycle();
             }
-            return result;
+            return sum;
         }
         finally
         {
-            batch.Cleanup();
+            if (state is not null)
+            {
+                await state.DisposeAsync();
+                state.Recycle();
+            }
         }
     }
 #endif

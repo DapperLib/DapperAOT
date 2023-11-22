@@ -52,7 +52,7 @@ partial struct Command<TArgs>
 
             // consume entire results (avoid unobserved TDS error messages)
             while (state.Reader.NextResult()) { }
-            PostProcessAndRecycleUnified(ref state.CommandState, args, state.Reader.CloseAndCapture());
+            PostProcessAndRecycleUnified(in state.CommandState.UnifiedBatch, args, state.Reader.CloseAndCapture());
             return results;
         }
         finally
@@ -67,7 +67,7 @@ partial struct Command<TArgs>
     public async Task<List<TRow>> QueryBufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null,
         int rowCountHint = 0, CancellationToken cancellationToken = default)
     {
-        AsyncQueryState state = new();
+        var state = AsyncQueryState.Create();
         try
         {
             await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
@@ -106,7 +106,7 @@ partial struct Command<TArgs>
     public async IAsyncEnumerable<TRow> QueryUnbufferedAsync<TRow>(TArgs args, [DapperAot] RowFactory<TRow>? rowFactory = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        AsyncQueryState state = new();
+        var state = AsyncQueryState.Create();
         try
         {
             await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
@@ -214,8 +214,7 @@ partial struct Command<TArgs>
         RowFactory<TRow>? rowFactory,
         CancellationToken cancellationToken)
     {
-        AsyncQueryState state = new();
-
+        var state = AsyncQueryState.Create();
         try
         {
             await state.ExecuteReaderAsync(GetCommand(args), SingleFlags(flags), cancellationToken);

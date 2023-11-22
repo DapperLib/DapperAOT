@@ -135,12 +135,11 @@ public class BatchTests : IDisposable
 
         public override void AddParameters(in UnifiedCommand command, string name)
         {
-            var p = command.CreateParameter();
+            var p = command.AddParameter();
             p.ParameterName = "name";
             p.DbType = DbType.String;
             p.Size = 400;
             p.Value = AsValue(name);
-            command.Parameters.Add(p);
         }
 
         public override void UpdateParameters(in UnifiedCommand command, string name)

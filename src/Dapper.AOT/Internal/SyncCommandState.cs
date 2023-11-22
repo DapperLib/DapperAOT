@@ -92,9 +92,13 @@ namespace Dapper.Internal
 
         public void Dispose()
         {
-            var tmp = Command;
+            var tmp = UnifiedBatch;
+            UnifiedBatch = default;
+            tmp.Cleanup();
+
+            var cmd = Command;
             Command = null;
-            tmp?.Dispose();
+            cmd?.Dispose();
 
             UnifiedBatch.Cleanup();
 
@@ -105,6 +109,8 @@ namespace Dapper.Internal
                 _flags &= ~FLAG_CLOSE_CONNECTION;
                 conn.Close();
             }
+
+            _flags = 0;
         }
     }
 

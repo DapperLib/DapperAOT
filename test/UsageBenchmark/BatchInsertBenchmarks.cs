@@ -341,12 +341,11 @@ public class BatchInsertBenchmarks : IAsyncDisposable
 
         public override void AddParameters(in UnifiedCommand command, Customer obj)
         {
-            var p = command.CreateParameter();
+            var p = command.AddParameter();
             p.ParameterName = "name";
             p.DbType = DbType.String;
             p.Size = 400;
             p.Value = AsValue(obj.Name);
-            command.Parameters.Add(p);
         }
 
         public override void UpdateParameters(in UnifiedCommand command, Customer obj)

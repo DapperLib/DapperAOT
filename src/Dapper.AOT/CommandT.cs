@@ -36,7 +36,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         this.connection = connection!;
         this.transaction = null;
         this.sql = sql;
-        this.commandType = commandType;
+        this.commandType = commandType == 0 ? DapperAotExtensions.GetCommandType(sql) : commandType;
         this.timeout = timeout;
         this.commandFactory = commandFactory ?? CommandFactory<TArgs>.Default;
 
@@ -97,47 +97,54 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
                 dbBatch.Connection = connection;
                 dbBatch.Timeout = timeout;
                 dbBatch.Transaction = transaction;
-                batch = new(dbBatch);
+                batch = new(commandFactory, dbBatch);
             }
             else
 #endif
             {
-                var cmd = connection.CreateCommand();
+                var cmd = commandFactory.CreateNewCommand(connection);
                 cmd.Connection = connection;
                 cmd.Transaction = transaction;
                 cmd.CommandTimeout = timeout;
-                batch = new(cmd);
+                batch = new(commandFactory, cmd);
                 commandFactory.AddCommands(in batch, sql, args);
             }
+            batch.Command.UnsafeMoveToFinal();
         }
         else
         {
             var cmd = GetCommand(args);
-            batch = new UnifiedBatch(cmd);
+            batch = new UnifiedBatch(commandFactory, cmd);
         }
     }
 
     internal void PostProcessAndRecycle(ref SyncQueryState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(new(state.Command!), args, rowCount);
+        commandFactory.PostProcess(new UnifiedCommand(commandFactory, state.Command!), args, rowCount);
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;
         }
     }
 
-    internal void PostProcessAndRecycleUnified(ref SyncCommandState state, TArgs args, int rowCount)
+    internal void PostProcessAndRecycleUnified(in UnifiedBatch batch, TArgs args, int rowCount)
     {
-        Debug.Assert(state.Command is null); // all on unified command now
-        commandFactory.PostProcess(in state.UnifiedBatch.Command, args, rowCount);
-        state.UnifiedBatch.Command.TryRecycle(commandFactory);
+        if (batch.Mode is BatchMode.SingleCommandDbBatch)
+        {
+            commandFactory.PostProcess(in batch, args, rowCount);
+        }
+        else
+        {
+            commandFactory.PostProcess(in batch.Command, args, rowCount);
+        }
+        batch.Command.TryRecycle();
     }
 
     internal void PostProcessAndRecycle(AsyncQueryState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(new(state.Command!), args, rowCount);
+        commandFactory.PostProcess(new UnifiedCommand(commandFactory, state.Command!), args, rowCount);
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;
@@ -147,7 +154,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     internal void PostProcessAndRecycle(ref SyncCommandState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(new(state.Command!), args, rowCount);
+        commandFactory.PostProcess(new UnifiedCommand(commandFactory, state.Command!), args, rowCount);
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;
@@ -157,7 +164,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     internal void PostProcessAndRecycle(AsyncCommandState state, TArgs args, int rowCount)
     {
         Debug.Assert(state.Command is not null);
-        commandFactory.PostProcess(new(state.Command!), args, rowCount);
+        commandFactory.PostProcess(new UnifiedCommand(commandFactory, state.Command!), args, rowCount);
         if (commandFactory.TryRecycle(state.Command!))
         {
             state.Command = null;
@@ -202,7 +209,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
     public async Task<DbDataReader> ExecuteReaderAsync<TReader>(TArgs args, CommandBehavior behavior = CommandBehavior.Default, CancellationToken cancellationToken = default)
         where TReader : WrappedDbDataReader, new()
     {
-        AsyncQueryState? state = new();
+        var state = AsyncQueryState.Create();
         try
         {
             await state.ExecuteReaderAsync(GetCommand(args), behavior, cancellationToken);

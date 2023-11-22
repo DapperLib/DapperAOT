@@ -9,6 +9,15 @@ using System.Threading.Tasks;
 
 namespace Dapper;
 
+internal enum BatchMode
+{
+    None,
+    SingleCommandDbCommand,
+    SingleCommandDbBatch,
+    MultiCommandDbCommand,
+    MultiCommandDbBatchCommand,
+}
+
 #pragma warning disable IDE0079 // following will look unnecessary on up-level
 #pragma warning disable CS1574 // DbBatchCommand will not resolve on down-level TFMs
 /// <summary>
@@ -20,59 +29,66 @@ namespace Dapper;
 public readonly struct UnifiedBatch
 {
 
+    private readonly BatchMode mode;
     internal readonly UnifiedCommand Command; // avoid duplication by offloading a lot of details here
 
-    private readonly int commandStart, commandCount; // these are used to restrict the commands that are available to a single consumer
+    private readonly int commandStart, commandCount, groupCount; // these are used to restrict the commands that are available to a single consumer
+    internal int GroupCount => groupCount;
+    internal BatchMode Mode => mode;
 
-    internal UnifiedBatch(DbCommand command)
+    internal UnifiedBatch(CommandFactory commandFactory, DbCommand command)
     {
-        Command = new UnifiedCommand(command);
+        Command = new UnifiedCommand(commandFactory, command);
         commandStart = 0;
-        commandCount = 1;
+        commandCount = groupCount = 1;
+        mode = BatchMode.SingleCommandDbCommand;
         Debug.Assert(Command.CommandCount == 1);
     }
 
 #if NET6_0_OR_GREATER
-    internal UnifiedBatch(DbBatch batch)
+    internal UnifiedBatch(CommandFactory commandFactory, DbBatch batch)
     {
-        Command = new UnifiedCommand(batch);
+        if (batch.BatchCommands.Count == 0) Throw();
+
+        Command = new UnifiedCommand(commandFactory, batch);
         commandStart = 0;
         commandCount = batch.BatchCommands.Count;
-        Debug.Assert(Command.CommandCount > 0); // could be multiple for batch re-use scenarios
+        groupCount = 1;
+        mode = BatchMode.SingleCommandDbBatch;
+        static void Throw() => throw new ArgumentException(
+            message: "When creating a " + nameof(UnifiedBatch) + " for an existing batch, the batch cannot be empty",
+            paramName: nameof(batch));
     }
 #endif
 
-    internal UnifiedBatch(DbConnection connection, DbTransaction? transaction)
+    internal UnifiedBatch(CommandFactory commandFactory, DbConnection connection, DbTransaction? transaction)
     {
 #if NET6_0_OR_GREATER
         if (connection is { CanCreateBatch: true })
         {
-            var batch = connection.CreateBatch();
+            var batch = commandFactory.CreateNewBatch(connection);
             batch.Connection = connection;
             batch.Transaction = transaction;
-            Command = new UnifiedCommand(batch);
+            Command = new UnifiedCommand(commandFactory, batch);
+            mode = BatchMode.MultiCommandDbBatchCommand;
         }
         else
 #endif
         {
-            var cmd = connection.CreateCommand();
+            var cmd = commandFactory.CreateNewCommand(connection);
             cmd.Connection = connection;
             cmd.Transaction = transaction;
-            Command = new UnifiedCommand(cmd);
+            Command = new UnifiedCommand(commandFactory, cmd);
+            mode = BatchMode.MultiCommandDbCommand;
         }
         commandStart = 0;
-        commandCount = 1;
+        commandCount = groupCount = 1;
         Debug.Assert(Command.CommandCount == 1);
     }
 
-    internal void PrepareToAppend()
-    {
-        var count = Command.CommandCount;
-        Command.AddCommand(default, default);
-        // move into the new slice at the end
-        Unsafe.AsRef(in commandStart) = count;
-        Unsafe.AsRef(in commandCount) = 1;
-    }
+#if NET6_0_OR_GREATER
+    internal DbBatch? Batch => Command.Batch;
+#endif
 
     private int GetCommandIndex(int localIndex)
     {
@@ -128,38 +144,72 @@ public readonly struct UnifiedBatch
     public DbParameterCollection Parameters => Command.Parameters;
 
     /// <inheritdoc cref="DbCommand.CreateParameter"/>
+#if DEBUG
+    [Obsolete("Prefer " + nameof(AddParameter))]
+#endif
     public DbParameter CreateParameter() => Command.CreateParameter();
+
+    /// <inheritdoc cref="UnifiedCommand.AddParameter"/>
+    public DbParameter AddParameter() => Command.AddParameter();
+
+    internal bool IsLastCommand => Command.CommandCount == Command.Index + 1;
 
     /// <summary>
     /// Creates and initializes new command, returning .the parameters collection.
     /// </summary>
     public DbParameterCollection AddCommand(string commandText, CommandType commandType = CommandType.Text)
     {
-        var result = Command.AddCommand(commandText, commandType);
-        Unsafe.AsRef(in commandCount)++;
-        return result;
+        Debug.Assert(mode is BatchMode.SingleCommandDbBatch);
+        return Command.AddCommand(commandText, commandType);
+    }
+
+    internal void OverwriteNextBatchGroup()
+    {
+        Debug.Assert(mode is BatchMode.MultiCommandDbCommand or BatchMode.MultiCommandDbBatchCommand);
+        Debug.Assert(!IsLastCommand);
+        Command.UnsafeAdvance();
+        Unsafe.AsRef(in commandStart) = Command.Index;
+        Unsafe.AsRef(in groupCount)++;
+    }
+
+    internal void CreateNextBatchGroup(string commandText, CommandType commandType)
+    {
+        Debug.Assert(mode is BatchMode.MultiCommandDbCommand or BatchMode.MultiCommandDbBatchCommand);
+        Debug.Assert(IsLastCommand);
+        AddCommand(commandText, commandType);
+        Unsafe.AsRef(in commandStart) = Command.Index;
+        Unsafe.AsRef(in commandCount) = 1;
+        Unsafe.AsRef(in groupCount)++;
     }
 
     internal bool IsDefault => Command.IsDefault;
 
+    internal CommandFactory CommandFactory => Command.CommandFactory;
 
-    internal int ExecuteNonQuery() => Command.ExecuteNonQuery();
+    internal int ExecuteNonQuery() => GroupCount == 0 ? 0 : Command.ExecuteNonQuery();
 
-    internal Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken) => Command.ExecuteNonQueryAsync(cancellationToken);
+    internal Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken) => GroupCount == 0 ? TaskZero : Command.ExecuteNonQueryAsync(cancellationToken);
 
     internal void Cleanup() => Command.Cleanup();
 
-    internal void PostProcess<T>(IEnumerable<T> source, CommandFactory<T> commandFactory)
-        => Command.PostProcess(source, commandFactory);
+    internal void Trim() => Command.Trim();
 
-    internal void PostProcess<T>(ReadOnlySpan<T> source, CommandFactory<T> commandFactory)
-        => Command.PostProcess(source, commandFactory);
+    internal void TryRecycle() => Command.TryRecycle();
 
     internal DbDataReader ExecuteReader(CommandBehavior flags)
         => Command.ExecuteReader(flags);
 
     internal void Prepare() => Command.Prepare();
 
-    /// <inheritdoc cref="UnifiedCommand.AddParameter"/>
-    public DbParameter AddParameter() => Command.AddParameter();
+    internal Task PrepareAsync(CancellationToken cancellationToken) => Command.PrepareAsync(cancellationToken);
+
+    internal void UnsafeMoveBeforeFirst()
+    {
+        Command.UnsafeMoveTo(-1);
+        Unsafe.AsRef(in commandStart) = 0;
+        Unsafe.AsRef(in commandCount) = 0;
+        Unsafe.AsRef(in groupCount) = 0;
+    }
+
+    static readonly Task<int> TaskZero = Task.FromResult(0);
 }

@@ -179,6 +179,37 @@ public abstract class CommandFactory
     public virtual bool TryRecycle(DbBatch batch) => false;
 #endif
 
+    /// <summary>
+    /// Creates and initializes new <see cref="DbParameter"/> instances.
+    /// </summary>
+    public virtual DbParameter CreateNewParameter(in UnifiedCommand command)
+        => command.DefaultCreateParameter();
+
+    /// <summary>
+    /// Creates and initializes new <see cref="DbParameter"/> instances.
+    /// </summary>
+    public virtual DbCommand CreateNewCommand(DbConnection connection)
+        => connection.CreateCommand();
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Creates and initializes new <see cref="DbBatch"/> instances.
+    /// </summary>
+    public virtual DbBatch CreateNewBatch(DbConnection connection)
+        => connection.CreateBatch();
+
+    /// <summary>
+    /// Creates and initializes new <see cref="DbBatchCommand"/> instances.
+    /// </summary>
+    public virtual DbBatchCommand CreateNewCommand(DbBatch batch)
+        => batch.CreateBatchCommand();
+#endif
+
+
+    /// <summary>
+    /// Indicates where it is <em>required</em> to invoke post-operation logic to update parameter values.
+    /// </summary>
+    public virtual bool RequirePostProcess => false;
 }
 
 /// <summary>
@@ -202,18 +233,12 @@ public class CommandFactory<T> : CommandFactory
     public virtual DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, T args)
     {
         // default behavior assumes no args, no special logic
-        var cmd = connection.CreateCommand();
-        Initialize(new(cmd), sql, commandType, args);
+        var cmd = CreateNewCommand(connection);
+        var unified = new UnifiedCommand(this, cmd);
+        unified.SetCommand(sql, commandType);
+        AddParameters(in unified, args);
         return cmd;
     }
-
-    internal void Initialize(in UnifiedCommand cmd,
-        string sql, CommandType commandType, T args)
-    {
-        cmd.SetCommand(sql, commandType != 0 ? commandType : DapperAotExtensions.GetCommandType(sql));
-        AddParameters(in cmd, args);
-    }
-
 
 
     internal override sealed void PostProcessObject(in UnifiedCommand command, object? args, int rowCount) => PostProcess(in command, (T)args!, rowCount);
@@ -254,15 +279,10 @@ public class CommandFactory<T> : CommandFactory
             // try to avoid any dirty detection in the setters
             if (cmd.CommandText != sql) cmd.CommandText = sql;
             if (cmd.CommandType != commandType) cmd.CommandType = commandType;
-            UpdateParameters(new UnifiedCommand(cmd), args);
+            UpdateParameters(new UnifiedCommand(this, cmd), args);
         }
         return cmd;
     }
-
-    /// <summary>
-    /// Indicates where it is <em>required</em> to invoke post-operation logic to update parameter values.
-    /// </summary>
-    public virtual bool RequirePostProcess => false;
 
 #pragma warning disable IDE0079 // following will look unnecessary on up-level
 #pragma warning disable CS1574 // DbBatchCommand will not resolve on down-level TFMs
@@ -283,9 +303,10 @@ public class CommandFactory<T> : CommandFactory
     public virtual DbBatch GetBatch(DbConnection connection, string sql, CommandType commandType, T args)
     {
         Debug.Assert(connection.CanCreateBatch);
-        var batch = connection.CreateBatch();
-        batch.Connection = connection;
-        AddCommands(new(batch), sql, args);
+        var batch = CreateNewBatch(connection);
+        // initialize with a command
+        batch.BatchCommands.Add(CreateNewCommand(batch));
+        AddCommands(new(this, batch), sql, args);
         return batch;
     }
 
@@ -298,7 +319,7 @@ public class CommandFactory<T> : CommandFactory
         if (batch is not null)
         {
             // try to avoid any dirty detection in the setters
-            UpdateParameters(new UnifiedBatch(batch), args);
+            UpdateParameters(new UnifiedBatch(this, batch), args);
         }
         return batch;
     }
@@ -328,5 +349,10 @@ public class CommandFactory<T> : CommandFactory
     /// </summary>
     /// <remarks>This API is only invoked when <see cref="UseBatch(string)"/> reported <c>true</c>, and
     /// corresponds to <see cref="AddCommands(in UnifiedBatch, string, T)"/></remarks>
-    public virtual void PostProcess(in UnifiedBatch batch, T args, int rowCount, int commandIndex) { }
+    public virtual void PostProcess(in UnifiedBatch batch, T args, int rowCount) { }
+
+    internal void PostProcess<TArgs>(in UnifiedCommand command, TArgs? val, object recordsAffected)
+    {
+        throw new NotImplementedException();
+    }
 }

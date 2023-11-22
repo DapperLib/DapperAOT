@@ -11,8 +11,14 @@ namespace Dapper.Internal
     // split out because of async state machine semantics; see https://github.com/DapperLib/DapperAOT/issues/27
     internal class AsyncCommandState : IAsyncDisposable
     {
+        private static AsyncCommandState? _spare;
+        protected AsyncCommandState() {}
+
+        public static AsyncCommandState Create() => Interlocked.Exchange(ref _spare, null) ?? new();
+
         private DbConnection? connection;
         public DbCommand? Command;
+        public UnifiedBatch UnifiedBatch;
         private int _flags;
 
         const int
@@ -48,6 +54,47 @@ namespace Dapper.Internal
             }
         }
 
+        private Task OnBeforeExecuteUnifiedAsync(CancellationToken cancellationToken)
+        {
+            Debug.Assert(UnifiedBatch.Connection is not null);
+            connection = UnifiedBatch.Connection!;
+
+            if (connection.State == ConnectionState.Open)
+            {
+                if ((_flags & FLAG_PREPARE_COMMMAND) == 0)
+                {
+                    // nothing to do
+                    return Task.CompletedTask;
+                }
+                else
+                {
+                    // just need to prepare
+                    _flags &= ~FLAG_PREPARE_COMMMAND; // once is enough
+                    return UnifiedBatch.PrepareAsync(cancellationToken);
+                }
+            }
+            else
+            {
+                _flags |= FLAG_CLOSE_CONNECTION;
+                if ((_flags & FLAG_PREPARE_COMMMAND) == 0)
+                {
+                    // just need to open
+                    return connection.OpenAsync(cancellationToken);
+                }
+                else
+                {
+                    _flags &= ~FLAG_PREPARE_COMMMAND; // once is enough
+                    return OpenAndPrepareAsync(this, cancellationToken);
+
+                    static async Task OpenAndPrepareAsync(AsyncCommandState state, CancellationToken cancellationToken)
+                    {
+                        await state.UnifiedBatch.Connection!.OpenAsync(cancellationToken);
+                        await state.UnifiedBatch.PrepareAsync(cancellationToken);
+                    }
+                }
+            }
+        }
+
         [MemberNotNull(nameof(Command))]
         private Task OnBeforeExecuteAsync(DbCommand command, CancellationToken cancellationToken)
         {
@@ -65,6 +112,7 @@ namespace Dapper.Internal
                 else
                 {
                     // just need to prepare
+                    _flags &= ~FLAG_PREPARE_COMMMAND; // once is enough
 #if NETCOREAPP3_1_OR_GREATER
                     return command.PrepareAsync(cancellationToken);
 #else
@@ -83,6 +131,7 @@ namespace Dapper.Internal
                 }
                 else
                 {
+                    _flags &= ~FLAG_PREPARE_COMMMAND; // once is enough
                     return OpenAndPrepareAsync(command, cancellationToken);
 
                     static async Task OpenAndPrepareAsync(DbCommand command, CancellationToken cancellationToken)
@@ -97,6 +146,20 @@ namespace Dapper.Internal
                 }
             }
         }
+
+        public Task<int> ExecuteNonQueryUnifiedAsync(CancellationToken cancellationToken)
+        {
+            var pending = OnBeforeExecuteUnifiedAsync(cancellationToken);
+            return pending.IsCompletedSuccessfully() ? UnifiedBatch.ExecuteNonQueryAsync(cancellationToken)
+                : Awaited(pending, this, cancellationToken);
+
+            static async Task<int> Awaited(Task pending, AsyncCommandState state, CancellationToken cancellationToken)
+            {
+                await pending;
+                return await state.UnifiedBatch.ExecuteNonQueryAsync(cancellationToken);
+            }
+        }
+
 
 
         [MemberNotNull(nameof(Command))]
@@ -115,18 +178,24 @@ namespace Dapper.Internal
 
         public virtual ValueTask DisposeAsync()
         {
+            var tmp = UnifiedBatch;
+            UnifiedBatch = default;
+            tmp.Cleanup();
+
             var cmd = Command;
             Command = null;
 
             var conn = connection;
             connection = null;
 
+            var flags = _flags;
+            _flags = 0;
+
             if (cmd is not null)
             {
-                if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
+                if (conn is not null && (flags & FLAG_CLOSE_CONNECTION) != 0)
                 {
                     // need to close the connection and dispose the command
-                    _flags &= ~FLAG_CLOSE_CONNECTION;
                     return DisposeCommandAndCloseConnectionAsync(conn, cmd);
 
 #if NETCOREAPP3_1_OR_GREATER
@@ -157,7 +226,7 @@ namespace Dapper.Internal
             }
             else
             {
-                if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
+                if (conn is not null && (flags & FLAG_CLOSE_CONNECTION) != 0)
                 {
 #if NETCOREAPP3_1_OR_GREATER
                     return new(conn.CloseAsync());
@@ -176,18 +245,27 @@ namespace Dapper.Internal
 
         public virtual void Dispose()
         {
+            var tmp = UnifiedBatch;
+            UnifiedBatch = default;
+            tmp.Cleanup();
+
             var cmd = Command;
             Command = null;
             cmd?.Dispose();
 
             var conn = connection;
             connection = null;
-            if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
+
+            var flags = _flags;
+            _flags = 0;
+
+            if (conn is not null && (flags & FLAG_CLOSE_CONNECTION) != 0)
             {
-                _flags &= ~FLAG_CLOSE_CONNECTION;
                 conn.Close();
             }
         }
+
+        public virtual void Recycle() => Interlocked.Exchange(ref _spare, this);
     }
 
 }

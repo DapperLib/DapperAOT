@@ -104,6 +104,8 @@ public abstract class RowFactory
 
     internal const int MAX_STACK_TOKENS = 64;
 
+    internal static CommandFactory NotRequired => null!; // for times when we don't *actually* need a row-factory, but we want to be clear
+
     internal static Span<int> Lease(int fieldCount, ref int[]? lease)
     {
         if (lease is null || lease.Length < fieldCount)
