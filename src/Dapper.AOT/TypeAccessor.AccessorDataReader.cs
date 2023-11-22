@@ -97,6 +97,7 @@ partial class TypeAccessor
             {
                 var result = pending.Result;
                 if (!result) return CloseAsyncReturnFalse(this);
+                Current = _source.Current;
                 return s_CompletedTrue;
             }
             return Awaited(this, pending);
@@ -105,6 +106,10 @@ partial class TypeAccessor
             {
                 var result = await pending;
                 if (!result) @this.Close();
+                if (@this._source != null) 
+                {
+                    @this.Current = @this._source.Current;
+                }
                 return result;
             }
 
