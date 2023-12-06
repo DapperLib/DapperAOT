@@ -28,6 +28,7 @@
         <PackageVersion Include="Oracle.ManagedDataAccess" Version="21.12.0" />
         <PackageVersion Include="Oracle.ManagedDataAccess.Core" Version="3.21.120" />
         <PackageVersion Include="System.Collections.Immutable" Version="8.0.0" />
+        <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
         <PackageVersion Include="System.Data.Common" Version="4.3.0" />
         <PackageVersion Include="System.Data.SqlClient" Version="4.8.5" />
         <PackageVersion Include="System.Memory" Version="4.5.5" />
