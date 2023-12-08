@@ -120,6 +120,29 @@ public abstract class CommandFactory
     }
 
     /// <summary>
+    /// Gets the default size to use for parameters; to override, see <see cref="DbValueAttribute.Size"/>
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected static void SetValueWithDefaultSize(DbParameter parameter, string? value)
+    {
+        // fixing the defined length avoids query plan mismatch due to constantly different
+        // parameters; mirror Dapper vanilla size behaviour; see
+        // https://github.com/DapperLib/DapperAOT/issues/95 for more context
+        const int DefaultLength = 4000, Max = -1; // see DbString.DefaultLength in Dapper
+        if (value is null)
+        {
+            parameter.Value = DBNull.Value;
+            parameter.Size = DefaultLength;
+        }
+        else
+        {
+            parameter.Value = value;
+            var len = value.Length;
+            parameter.Size = len <= DefaultLength ? DefaultLength : Max;
+        }
+    }
+
+    /// <summary>
     /// Flexibly parse an <see cref="object"/> as a value of type <typeparamref name="T"/>.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

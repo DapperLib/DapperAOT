@@ -17,7 +17,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace Dapper.CodeAnalysis;
@@ -1034,6 +1033,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
                     var dbType = member.GetDbType(out _);
                     var size = member.TryGetValue<int>("Size");
+                    bool useSetValueWithDefaultSize = false;
                     if (dbType is not null)
                     {
                         sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.GetValueOrDefault().ToString()).Append(";").NewLine();
@@ -1044,7 +1044,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                                 case DbType.Binary:
                                 case DbType.String:
                                 case DbType.AnsiString:
-                                    size = -1; // default to [n]varchar(max)/varbinary(max)
+                                    if (member.CodeType.SpecialType == SpecialType.System_String)
+                                    {
+                                        useSetValueWithDefaultSize = true;
+                                    }
+                                    else
+                                    {
+                                        size = -1; // default to [n]varchar(max)/varbinary(max)
+                                    }
                                     break;
                             }
                         }
@@ -1066,15 +1073,23 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         ParameterDirection.Output => nameof(ParameterDirection.Output),
                         ParameterDirection.ReturnValue => nameof(ParameterDirection.ReturnValue),
                         _ => direction.ToString(),
-                    }).Append(";").NewLine().Append("p.Value = ");
+                    }).Append(";").NewLine();
+                    // the actual value expression
                     switch (direction)
                     {
                         case ParameterDirection.Input:
                         case ParameterDirection.InputOutput:
-                            sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                            if (useSetValueWithDefaultSize)
+                            {
+                                sb.Append("SetValueWithDefaultSize(p, ").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                            }
+                            else
+                            {
+                                sb.Append("p.Value = ").Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                            }
                             break;
                         default:
-                            sb.Append("global::System.DBNull.Value;").NewLine();
+                            sb.Append("p.Value = global::System.DBNull.Value;").NewLine();
                             break;
                     }
                     sb.Append("ps.Add(p);").NewLine();
