@@ -7,7 +7,7 @@ namespace Dapper;
 [ShortRunJob, MemoryDiagnoser]
 public class ListIterationBenchmarks
 {
-    private readonly List<Customer> customers = new();
+    private readonly List<Customer> customers = [];
 
     [Params(0, 1, 10, 100, 1000)]
     public int Count { get; set; }

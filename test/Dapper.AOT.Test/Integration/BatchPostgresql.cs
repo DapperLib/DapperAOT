@@ -7,7 +7,7 @@ namespace Dapper.AOT.Test.Integration;
 [Collection(SharedPostgresqlClient.Collection)]
 public class BatchPostgresql
 {
-    private PostgresqlFixture _fixture;
+    private readonly PostgresqlFixture _fixture;
 
     public BatchPostgresql(PostgresqlFixture fixture)
     {
@@ -45,21 +45,18 @@ public class BatchPostgresql
 
         public override void AddParameters(in UnifiedCommand command, (int x, string y) args)
         {
-            var ps = command.Parameters;
-            var p = command.CreateParameter();
+            var p = command.AddParameter();
             p.DbType = DbType.Int32;
             p.Direction = ParameterDirection.Input;
             p.Value = AsValue(args.x);
             p.ParameterName = "x";
-            ps.Add(p);
 
-            p = command.CreateParameter();
+            p = command.AddParameter();
             p.DbType = DbType.AnsiString;
             p.Size = 40;
             p.Direction = ParameterDirection.Input;
             p.Value = AsValue(args.y);
             p.ParameterName = "y";
-            ps.Add(p);
         }
 
         public override void UpdateParameters(in UnifiedCommand command, (int x, string y) args)

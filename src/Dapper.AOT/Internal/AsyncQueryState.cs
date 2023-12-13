@@ -14,7 +14,6 @@ namespace Dapper.Internal
     {
         DbDataReader? Reader { get; }
         DbCommand? Command{ get; set; }
-
         void Dispose();
         ValueTask DisposeAsync();
     }
@@ -110,6 +109,15 @@ namespace Dapper.Internal
             Reader?.Dispose();
             base.Dispose();
         }
+
+        public override void Recycle() => Interlocked.Exchange(ref _spare, this);
+
+        protected AsyncQueryState() : base() { }
+
+        public static new AsyncQueryState Create() => Interlocked.Exchange(ref _spare, null) ?? new();
+
+        private static AsyncQueryState? _spare;
+
     }
 }
 

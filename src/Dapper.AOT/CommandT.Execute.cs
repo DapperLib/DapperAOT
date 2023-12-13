@@ -14,8 +14,9 @@ partial struct Command<TArgs>
         SyncCommandState state = default;
         try
         {
-            var result = state.ExecuteNonQuery(GetCommand(args));
-            PostProcessAndRecycle(ref state, args, result);
+            GetUnifiedBatch(out state.UnifiedBatch, args);
+            var result = state.ExecuteNonQueryUnified();
+            PostProcessAndRecycleUnified(state.UnifiedBatch, args, result);
             return result;
         }
         finally
@@ -29,16 +30,18 @@ partial struct Command<TArgs>
     /// </summary>
     public async Task<int> ExecuteAsync(TArgs args, CancellationToken cancellationToken = default)
     {
-        AsyncCommandState state = new();
+        var state = AsyncCommandState.Create();
         try
         {
-            var result = await state.ExecuteNonQueryAsync(GetCommand(args), cancellationToken);
-            PostProcessAndRecycle(state, args, result);
+            GetUnifiedBatch(out state.UnifiedBatch, args);
+            var result = await state.ExecuteNonQueryUnifiedAsync(cancellationToken);
+            PostProcessAndRecycleUnified(in state.UnifiedBatch, args, result);
             return result;
         }
         finally
         {
             await state.DisposeAsync();
+            state.Recycle();
         }
     }
 }

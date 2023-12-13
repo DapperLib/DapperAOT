@@ -13,70 +13,99 @@ static class Program
 #else
     static async Task Main()
     {
-        await using (var obj = new BatchInsertBenchmarks())
+        await Task.Yield();
+        var obj = new CommandRewriteBenchmarks();
+        obj.Setup();
+        for (int i = 0; i < 10; i++)
         {
-            await RunAllInserts(obj, 10, false);
-            await RunAllInserts(obj, 10, true);
-        }
-
-        using (var obj = new QueryBenchmarks())
-        {
-            await RunAllQueries(obj, 10, false);
-            await RunAllQueries(obj, 10, true);
-        }
-
-        static async Task RunAllInserts(BatchInsertBenchmarks obj, int count, bool isOpen)
-        {
-            obj.Count = count;
-            obj.IsOpen = isOpen;
-            obj.Setup();
-
-            obj.DebugState();
-
-            Console.WriteLine(obj.Manual());
-            Console.WriteLine(await obj.ManualAsync());
-
             Console.WriteLine(obj.Dapper());
-            Console.WriteLine(await obj.DapperAsync());
 
-            Console.WriteLine(obj.DapperAot());
-            Console.WriteLine(await obj.DapperAotAsync());
+            Console.WriteLine(obj.DapperAOT());
+            Console.WriteLine(obj.DapperAOT_Cached());
+            Console.WriteLine(obj.DapperAOT_Batch());
+            Console.WriteLine(obj.DapperAOT_BatchCached());
 
-            Console.WriteLine(obj.DapperAotManual());
-            Console.WriteLine(await obj.DapperAotAsync());
+            Console.WriteLine(await obj.DapperAOT_Async());
+            Console.WriteLine(await obj.DapperAOT_CachedAsync());
+            Console.WriteLine(await obj.DapperAOT_BatchAsync());
+            Console.WriteLine(await obj.DapperAOT_BatchCachedAsync());
 
-            Console.WriteLine(obj.DapperAot_PreparedManual());
-            Console.WriteLine(await obj.DapperAot_PreparedAsync());
+            Console.WriteLine(obj.AdoNetCommand());
+            Console.WriteLine(obj.AdoNetBatch());
+            Console.WriteLine(obj.AdoNetCommandCached());
+            Console.WriteLine(obj.AdoNetBatchCached());
 
-            Console.WriteLine(obj.EntityFramework());
-            Console.WriteLine(await obj.EntityFrameworkAsync());
+            Console.WriteLine(await obj.AdoNetCommandAsync());
+            Console.WriteLine(await obj.AdoNetCommandCachedAsync());
 
-            Console.WriteLine(obj.SqlBulkCopyFastMember());
-            Console.WriteLine(obj.SqlBulkCopyDapper());
-            Console.WriteLine(await obj.SqlBulkCopyFastMemberAsync());
-
-            Console.WriteLine(obj.NpgsqlDapperAotNoBatch());
-            Console.WriteLine(obj.NpgsqlDapperAotFullBatch());
+            // for profiling single methods etc
+            // _ = obj.AdoNetCommand();
         }
 
-        static async Task RunAllQueries(QueryBenchmarks obj, int count, bool isOpen)
-        {
-            obj.Count = count;
-            obj.IsOpen = isOpen;
-            obj.Setup();
+        //await using (var obj = new BatchInsertBenchmarks())
+        //{
+        //    await RunAllInserts(obj, 10, false);
+        //    await RunAllInserts(obj, 10, true);
+        //}
 
-            Console.WriteLine(obj.DapperDynamic());
-            Console.WriteLine(obj.Dapper());
-            Console.WriteLine(obj.DapperAotDynamic());
-            Console.WriteLine(obj.DapperAot());
-            Console.WriteLine(obj.EntityFramework());
+        //using (var obj = new QueryBenchmarks())
+        //{
+        //    await RunAllQueries(obj, 10, false);
+        //    await RunAllQueries(obj, 10, true);
+        //}
 
-            Console.WriteLine(await obj.DapperDynamicAsync());
-            Console.WriteLine(await obj.DapperAsync());
-            Console.WriteLine(await obj.DapperAotDynamicAsync());
-            Console.WriteLine(await obj.DapperAotAsync());
-            Console.WriteLine(await obj.EntityFrameworkAsync());
-        }
+        //static async Task RunAllInserts(BatchInsertBenchmarks obj, int count, bool isOpen)
+        //{
+        //    obj.Count = count;
+        //    obj.IsOpen = isOpen;
+        //    obj.Setup();
+
+        //    obj.DebugState();
+
+        //    Console.WriteLine(obj.Manual());
+        //    Console.WriteLine(await obj.ManualAsync());
+
+        //    Console.WriteLine(obj.Dapper());
+        //    Console.WriteLine(await obj.DapperAsync());
+
+        //    Console.WriteLine(obj.DapperAot());
+        //    Console.WriteLine(await obj.DapperAotAsync());
+
+        //    Console.WriteLine(obj.DapperAotManual());
+        //    Console.WriteLine(await obj.DapperAotAsync());
+
+        //    Console.WriteLine(obj.DapperAot_PreparedManual());
+        //    Console.WriteLine(await obj.DapperAot_PreparedAsync());
+
+        //    Console.WriteLine(obj.EntityFramework());
+        //    Console.WriteLine(await obj.EntityFrameworkAsync());
+
+        //    Console.WriteLine(obj.SqlBulkCopyFastMember());
+        //    Console.WriteLine(obj.SqlBulkCopyDapper());
+        //    Console.WriteLine(await obj.SqlBulkCopyFastMemberAsync());
+
+        //    Console.WriteLine(obj.NpgsqlDapperAotNoBatch());
+        //    Console.WriteLine(obj.NpgsqlDapperAotFullBatch());
+        //}
+
+        //static async Task RunAllQueries(QueryBenchmarks obj, int count, bool isOpen)
+        //{
+        //    obj.Count = count;
+        //    obj.IsOpen = isOpen;
+        //    obj.Setup();
+
+        //    Console.WriteLine(obj.DapperDynamic());
+        //    Console.WriteLine(obj.Dapper());
+        //    Console.WriteLine(obj.DapperAotDynamic());
+        //    Console.WriteLine(obj.DapperAot());
+        //    Console.WriteLine(obj.EntityFramework());
+
+        //    Console.WriteLine(await obj.DapperDynamicAsync());
+        //    Console.WriteLine(await obj.DapperAsync());
+        //    Console.WriteLine(await obj.DapperAotDynamicAsync());
+        //    Console.WriteLine(await obj.DapperAotAsync());
+        //    Console.WriteLine(await obj.EntityFrameworkAsync());
+        //}
     }
 #endif
 }

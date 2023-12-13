@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,7 +30,7 @@ partial struct Command<TArgs>
     /// </summary>
     public async Task<object?> ExecuteScalarAsync(TArgs args, CancellationToken cancellationToken = default)
     {
-        AsyncCommandState state = new();
+        var state = AsyncCommandState.Create();
         try
         {
             var result = await state.ExecuteScalarAsync(GetCommand(args), cancellationToken);
@@ -39,6 +40,7 @@ partial struct Command<TArgs>
         finally
         {
             await state.DisposeAsync();
+            state.Recycle();
         }
     }
 
@@ -65,7 +67,7 @@ partial struct Command<TArgs>
     /// </summary>
     public async Task<T> ExecuteScalarAsync<T>(TArgs args, CancellationToken cancellationToken = default)
     {
-        AsyncCommandState state = new();
+        var state = AsyncCommandState.Create();
         try
         {
             var result = await state.ExecuteScalarAsync(GetCommand(args), cancellationToken);
@@ -75,6 +77,7 @@ partial struct Command<TArgs>
         finally
         {
             await state.DisposeAsync();
+            state.Recycle();
         }
     }
 }

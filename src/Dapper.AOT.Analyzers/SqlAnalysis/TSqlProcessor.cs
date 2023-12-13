@@ -257,7 +257,8 @@ internal class TSqlProcessor
         => OnError($"Valid datepart token expected", location);
     protected virtual void OnTopWithOffset(Location location)
         => OnError($"TOP cannot be used when OFFSET is specified", location);
-
+    protected virtual void OnDangerousNonDelimitedIdentifier(Location location, string name)
+        => OnError($"The identifier '{name}' can be confusing when not delimited", location);
 
     internal readonly struct Location
     {
@@ -755,6 +756,15 @@ internal class TSqlProcessor
             "microsecond", "mcs",
             "nanosecond", "ns"
             ];
+
+        public override void Visit(Identifier node)
+        {
+            if (node.QuoteType == QuoteType.NotQuoted && string.Equals("GO", node.Value, StringComparison.OrdinalIgnoreCase))
+            {
+                parser.OnDangerousNonDelimitedIdentifier(node, node.Value);
+            }
+            base.Visit(node);
+        }
 
         private void ValidateDateArg(ScalarExpression value)
         {

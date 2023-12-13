@@ -10,6 +10,9 @@ namespace Dapper.Internal
     {
         private DbConnection? connection;
         public DbCommand? Command;
+
+        public UnifiedBatch UnifiedBatch;
+
         private int _flags;
 
         const int
@@ -32,6 +35,12 @@ namespace Dapper.Internal
             return command.ExecuteReader(flags);
         }
 
+        public DbDataReader ExecuteReaderUnified(CommandBehavior flags)
+        {
+            OnBeforeExecuteUnified();
+            return UnifiedBatch.ExecuteReader(flags);
+        }
+
         [MemberNotNull(nameof(Command))]
         private void OnBeforeExecute(DbCommand command)
         {
@@ -51,6 +60,29 @@ namespace Dapper.Internal
             }
         }
 
+        private void OnBeforeExecuteUnified()
+        {
+            connection = UnifiedBatch.Connection;
+            Debug.Assert(connection is not null);
+
+            if (connection!.State != ConnectionState.Open)
+            {
+                connection.Open();
+                _flags |= FLAG_CLOSE_CONNECTION;
+            }
+            if ((_flags & FLAG_PREPARE_COMMMAND) != 0)
+            {
+                _flags &= ~FLAG_PREPARE_COMMMAND;
+                UnifiedBatch.Prepare();
+            }
+        }
+
+        public int ExecuteNonQueryUnified()
+        {
+            OnBeforeExecuteUnified();
+            return UnifiedBatch.ExecuteNonQuery();
+        }
+
         [MemberNotNull(nameof(Command))]
         public int ExecuteNonQuery(DbCommand command)
         {
@@ -60,9 +92,15 @@ namespace Dapper.Internal
 
         public void Dispose()
         {
+            var tmp = UnifiedBatch;
+            UnifiedBatch = default;
+            tmp.Cleanup();
+
             var cmd = Command;
             Command = null;
             cmd?.Dispose();
+
+            UnifiedBatch.Cleanup();
 
             var conn = connection;
             connection = null;
@@ -71,6 +109,8 @@ namespace Dapper.Internal
                 _flags &= ~FLAG_CLOSE_CONNECTION;
                 conn.Close();
             }
+
+            _flags = 0;
         }
     }
 

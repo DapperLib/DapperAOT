@@ -182,6 +182,57 @@ public abstract class CommandFactory
         command.Transaction = null;
         return Interlocked.CompareExchange(ref storage, command, null) is null;
     }
+
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse batch instances
+    /// </summary>
+    protected static bool TryRecycle(ref DbBatch? storage, DbBatch batch)
+    {
+        // detach and recycle
+        batch.Connection = null;
+        batch.Transaction = null;
+        return Interlocked.CompareExchange(ref storage, batch, null) is null;
+    }
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse batch instances
+    /// </summary>
+    public virtual bool TryRecycle(DbBatch batch) => false;
+#endif
+
+    /// <summary>
+    /// Creates and initializes new <see cref="DbParameter"/> instances.
+    /// </summary>
+    public virtual DbParameter CreateNewParameter(in UnifiedCommand command)
+        => command.DefaultCreateParameter();
+
+    /// <summary>
+    /// Creates and initializes new <see cref="DbParameter"/> instances.
+    /// </summary>
+    public virtual DbCommand CreateNewCommand(DbConnection connection)
+        => connection.CreateCommand();
+
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Creates and initializes new <see cref="DbBatch"/> instances.
+    /// </summary>
+    public virtual DbBatch CreateNewBatch(DbConnection connection)
+        => connection.CreateBatch();
+
+    /// <summary>
+    /// Creates and initializes new <see cref="DbBatchCommand"/> instances.
+    /// </summary>
+    public virtual DbBatchCommand CreateNewCommand(DbBatch batch)
+        => batch.CreateBatchCommand();
+#endif
+
+
+    /// <summary>
+    /// Indicates where it is <em>required</em> to invoke post-operation logic to update parameter values.
+    /// </summary>
+    public virtual bool RequirePostProcess => false;
 }
 
 /// <summary>
@@ -205,18 +256,13 @@ public class CommandFactory<T> : CommandFactory
     public virtual DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, T args)
     {
         // default behavior assumes no args, no special logic
-        var cmd = connection.CreateCommand();
-        Initialize(new(cmd), sql, commandType, args);
+        var cmd = CreateNewCommand(connection);
+        var unified = new UnifiedCommand(this, cmd);
+        unified.SetCommand(sql, commandType);
+        AddParameters(in unified, args);
         return cmd;
     }
 
-    internal void Initialize(in UnifiedCommand cmd,
-        string sql, CommandType commandType, T args)
-    {
-        cmd.CommandText = sql;
-        cmd.CommandType = commandType != 0 ? commandType : DapperAotExtensions.GetCommandType(sql);
-        AddParameters(in cmd, args);
-    }
 
     internal override sealed void PostProcessObject(in UnifiedCommand command, object? args, int rowCount) => PostProcess(in command, (T)args!, rowCount);
 
@@ -237,9 +283,10 @@ public class CommandFactory<T> : CommandFactory
     /// </summary>
     public virtual void UpdateParameters(in UnifiedCommand command, T args)
     {
-        if (command.Parameters.Count != 0) // try to avoid rogue "dirty" checks
+        var ps = command.Parameters;
+        if (ps.Count != 0) // try to avoid rogue "dirty" checks
         {
-            command.Parameters.Clear();
+            ps.Clear();
         }
         AddParameters(in command, args);
     }
@@ -255,14 +302,80 @@ public class CommandFactory<T> : CommandFactory
             // try to avoid any dirty detection in the setters
             if (cmd.CommandText != sql) cmd.CommandText = sql;
             if (cmd.CommandType != commandType) cmd.CommandType = commandType;
-            UpdateParameters(new(cmd), args);
+            UpdateParameters(new UnifiedCommand(this, cmd), args);
         }
         return cmd;
     }
 
+#pragma warning disable IDE0079 // following will look unnecessary on up-level
+#pragma warning disable CS1574 // DbBatchCommand will not resolve on down-level TFMs
     /// <summary>
-    /// Indicates where it is <em>required</em> to invoke post-operation logic to update parameter values.
+    /// Indicates whether the factory wishes to split this command into a multi-command batch.
     /// </summary>
-    public virtual bool RequirePostProcess => false;
+    /// <remarks>This may or may not be implemented using <see cref="DbBatch"/>, depending on the capabilities
+    /// of the runtime and ADO.NET provider.</remarks>
+    /// #pragma warning disable IDE0079 // following will look unnecessary on up-level
+#pragma warning restore CS1574 // DbBatchCommand will not resolve on down-level TFMs
+#pragma warning restore IDE0079 // following will look unnecessary on up-level
+    public virtual bool UseBatch(string sql) => false;
 
+#if NET6_0_OR_GREATER
+    /// <summary>
+    /// Create a populated batch from a command
+    /// </summary>
+    public virtual DbBatch GetBatch(DbConnection connection, string sql, CommandType commandType, T args)
+    {
+        Debug.Assert(connection.CanCreateBatch);
+        var batch = CreateNewBatch(connection);
+        // initialize with a command
+        batch.BatchCommands.Add(CreateNewCommand(batch));
+        AddCommands(new(this, batch), sql, args);
+        return batch;
+    }
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse batch instances
+    /// </summary>
+    protected DbBatch? TryReuse(ref DbBatch? storage, T args)
+    {
+        var batch = Interlocked.Exchange(ref storage, null);
+        if (batch is not null)
+        {
+            // try to avoid any dirty detection in the setters
+            UpdateParameters(new UnifiedBatch(this, batch), args);
+        }
+        return batch;
+    }
+#endif
+
+
+    /// <summary>
+    /// Allows the caller to rewrite a composite command into a multi-command batch.
+    /// </summary>
+    public virtual void AddCommands(in UnifiedBatch batch, string sql, T args)
+    {
+        // implement as basic mode
+        batch.SetCommand(sql, CommandType.Text);
+        AddParameters(in batch.Command, args);
+    }
+
+    /// <summary>
+    /// Allows the caller to update the parameter values of a multi-command batch.
+    /// </summary>
+    public virtual void UpdateParameters(in UnifiedBatch batch, T args)
+    {
+        UpdateParameters(in batch.Command, args);
+    }
+
+    /// <summary>
+    /// Allows an implementation to process output parameters etc after a multi-command batch has completed.
+    /// </summary>
+    /// <remarks>This API is only invoked when <see cref="UseBatch(string)"/> reported <c>true</c>, and
+    /// corresponds to <see cref="AddCommands(in UnifiedBatch, string, T)"/></remarks>
+    public virtual void PostProcess(in UnifiedBatch batch, T args, int rowCount) { }
+
+    internal void PostProcess<TArgs>(in UnifiedCommand command, TArgs? val, object recordsAffected)
+    {
+        throw new NotImplementedException();
+    }
 }
