@@ -183,7 +183,7 @@ partial class TypeAccessor
             int[] tokens;
             if (members is null || members.Length == 0)
             {
-                _tokens = tokens = accessor.MemberCount == 0 ? Array.Empty<int>() : new int[accessor.MemberCount];
+                _tokens = tokens = accessor.MemberCount == 0 ? [] : new int[accessor.MemberCount];
                 for (int i = 0; i < tokens.Length; i++)
                 {
                     tokens[i] = i;

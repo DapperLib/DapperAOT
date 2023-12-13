@@ -20,7 +20,7 @@ public class BulkInsertIntegrationTests : IDisposable
 
     public void Dispose() => _connection?.Dispose();
 
-    IEnumerable<Foo> GenerateRows(int count)
+    static IEnumerable<Foo> GenerateRows(int count)
     {
         for (int i = 0; i < count; i++)
         {
@@ -28,7 +28,7 @@ public class BulkInsertIntegrationTests : IDisposable
         }
     }
 
-    async IAsyncEnumerable<Foo> GenerateRowsAsync(int count)
+    static async IAsyncEnumerable<Foo> GenerateRowsAsync(int count)
     {
         for (int i = 0; i < count; i++)
         {
@@ -96,7 +96,7 @@ public class BulkInsertIntegrationTests : IDisposable
     internal class Foo
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = null!;
     }
 }
 
