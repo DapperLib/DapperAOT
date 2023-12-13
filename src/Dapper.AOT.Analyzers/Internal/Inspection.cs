@@ -19,6 +19,7 @@ internal static class Inspection
     {
         while (type is not null) // dive for inheritance
         {
+            if (type is IErrorTypeSymbol or { IsUnmanagedType: true }) break; // nope!
             var named = type as INamedTypeSymbol;
             if (type.IsTupleType)
             {
@@ -49,10 +50,9 @@ internal static class Inspection
                 return array.ElementType.InvolvesTupleType(out hasNames);
             }
 
-            if (named is { IsGenericType: true })
+            if (named is { IsGenericType: true, IsUnboundGenericType: false })
             {
-                var args = named.TypeArguments;
-                foreach (var arg in args)
+                foreach (var arg in named.TypeArguments)
                 {
                     if (arg.InvolvesTupleType(out hasNames)) return true;
                 }
