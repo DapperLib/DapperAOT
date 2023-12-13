@@ -155,6 +155,22 @@ internal static class Inspection
             }
         };
 
+    public static AttributeData? GetAttribute(ISymbol? symbol, string attributeName)
+    {
+        if (symbol is not null)
+        {
+            foreach (var attrib in symbol.GetAttributes())
+            {
+                if (attrib.AttributeClass!.Name == attributeName)
+                {
+                    return attrib;
+                }
+            }
+        }
+
+        return null;
+    }
+
     public static AttributeData? GetDapperAttribute(ISymbol? symbol, string attributeName)
     {
         if (symbol is not null)
@@ -404,15 +420,33 @@ internal static class Inspection
     }
     public readonly struct ElementMember
     {
-        public Location[]? AsAdditionalLocations(string? attributeName = null)
+        public Location[]? AsAdditionalLocations(string? attributeName = null, bool allowNonDapperLocations = false)
         {
-            var loc = GetLocation(attributeName);
+            var loc = GetLocation(attributeName, allowNonDapperLocations);
             return loc is null ? null : [loc];
         }
 
         private readonly AttributeData? _dbValue;
-        public string DbName => TryGetAttributeValue(_dbValue, "Name", out string? name)
-            && !string.IsNullOrWhiteSpace(name) ? name!.Trim() : CodeName;
+        public readonly ColumnAttributeData ColumnAttributeData { get; } = ColumnAttributeData.Default;
+        public string DbName
+        {
+            get
+            {      
+                if (TryGetAttributeValue(_dbValue, "Name", out string? name) && !string.IsNullOrWhiteSpace(name))
+                {
+                    // priority 1: [DbValue] attribute
+                    return name!.Trim();
+                }
+
+                if (ColumnAttributeData.IsCorrectUsage)
+                {
+                    // priority 2: [Column] attribute
+                    return ColumnAttributeData.Name!;
+                }
+
+                return CodeName;
+            }
+        }
         public string CodeName => Member.Name;
         public ISymbol Member { get; }
         public ITypeSymbol CodeType => Member switch
@@ -486,6 +520,7 @@ internal static class Inspection
         public ElementMember(
             ISymbol member,
             AttributeData? dbValue,
+            ColumnAttributeData columnAttributeData,
             ElementMemberKind kind,
             ElementMemberFlags flags,
             int? constructorParameterOrder,
@@ -493,6 +528,7 @@ internal static class Inspection
         {
             _dbValue = dbValue;
             _flags = flags;
+            ColumnAttributeData = columnAttributeData;
 
             Member = member;
             Kind = kind;
@@ -518,11 +554,51 @@ internal static class Inspection
             }
             return null;
         }
-        public Location? GetLocation(string? attributeName = null)
+        public Location? GetLocation(string? attributeName = null, bool allowNonDapperLocations = false)
         {
-            var loc = attributeName is null ? null :
-                GetDapperAttribute(Member, attributeName)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
-            return loc ?? GetLocation();
+            if (attributeName is null)
+            {
+                return GetLocation();
+            }
+
+            var result = allowNonDapperLocations
+                ? GetAttribute(Member, attributeName)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation()
+                : GetDapperAttribute(Member, attributeName)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
+
+            return result ?? GetLocation();
+        }
+    }
+
+    internal struct ColumnAttributeData
+    {
+        public UseColumnAttributeState UseColumnAttribute { get; }
+        public ColumnAttributeState ColumnAttribute { get; }
+        public string? Name { get; }
+
+        public ColumnAttributeData(UseColumnAttributeState useColumnAttribute, ColumnAttributeState columnAttribute, string? name)
+        {
+            UseColumnAttribute = useColumnAttribute;
+            ColumnAttribute = columnAttribute;
+            Name = name;
+        }
+
+        public bool IsCorrectUsage 
+            => UseColumnAttribute is UseColumnAttributeState.NotSpecified or UseColumnAttributeState.Enabled
+            && ColumnAttribute is ColumnAttributeState.Specified && !string.IsNullOrEmpty(Name);
+
+        public static ColumnAttributeData Default => new(UseColumnAttributeState.NotSpecified, ColumnAttributeState.NotSpecified, null);
+
+        public enum UseColumnAttributeState
+        {
+            NotSpecified,
+            Disabled,
+            Enabled
+        }
+
+        public enum ColumnAttributeState
+        {
+            NotSpecified,
+            Specified
         }
     }
 
@@ -775,10 +851,53 @@ internal static class Inspection
                     flags |= ElementMember.ElementMemberFlags.IsExpandable;
                 }
 
+                var columnAttributeData = ParseColumnAttributeData(member);
+
                 // all good, then!
-                builder.Add(new(member, dbValue, kind, flags, constructorParameterOrder, factoryMethodParamOrder));
+                builder.Add(new(member, dbValue, columnAttributeData, kind, flags, constructorParameterOrder, factoryMethodParamOrder));
             }
             return builder.ToImmutable();
+        }
+
+        static ColumnAttributeData ParseColumnAttributeData(ISymbol? member)
+        {
+            if (member is null) return ColumnAttributeData.Default;
+            var useColumnAttributeState = ParseUseColumnAttributeState();
+            var (columnAttributeState, columnName) = ParseColumnAttributeState();
+
+            return new ColumnAttributeData(useColumnAttributeState, columnAttributeState, columnName);
+
+            (ColumnAttributeData.ColumnAttributeState state, string? columnName) ParseColumnAttributeState()
+            {
+                var columnAttribute = GetAttribute(member, Types.ColumnAttribute);
+                if (columnAttribute is null) return (ColumnAttributeData.ColumnAttributeState.NotSpecified, null);
+
+                if (TryGetAttributeValue(columnAttribute, "name", out string? name) && !string.IsNullOrWhiteSpace(name))
+                {
+                    return (ColumnAttributeData.ColumnAttributeState.Specified, name);
+                }
+                else
+                {
+                    // [Column] is specified, but value is null. Can happen for ctor overload: 
+                    // https://learn.microsoft.com/en-us/dotnet/api/system.componentmodel.dataannotations.schema.columnattribute.-ctor?view=net-7.0#system-componentmodel-dataannotations-schema-columnattribute-ctor
+                    return (ColumnAttributeData.ColumnAttributeState.Specified, null);
+                }
+            }
+            ColumnAttributeData.UseColumnAttributeState ParseUseColumnAttributeState()
+            {
+                var useColumnAttribute = GetDapperAttribute(member, Types.UseColumnAttributeAttribute);
+                if (useColumnAttribute is null) return ColumnAttributeData.UseColumnAttributeState.NotSpecified;
+
+                if (TryGetAttributeValue(useColumnAttribute, "enable", out bool useColumnAttributeState))
+                {
+                    return useColumnAttributeState ? ColumnAttributeData.UseColumnAttributeState.Enabled : ColumnAttributeData.UseColumnAttributeState.Disabled;
+                }
+                else
+                {
+                    // default
+                    return ColumnAttributeData.UseColumnAttributeState.Enabled;
+                }
+            }
         }
 
         static IReadOnlyDictionary<string, MethodParameter> ParseMethodParameters(IMethodSymbol constructorSymbol)
@@ -814,7 +933,7 @@ internal static class Inspection
                 int index = 0;
                 foreach (var p in ctor.Parameters)
                 {
-                    if (StringComparer.InvariantCultureIgnoreCase.Equals(p.Name == name))
+                    if (StringComparer.InvariantCultureIgnoreCase.Equals(p.Name, name))
                     {
                         value = Parse(attrib.ConstructorArguments[index], out isNull);
                         return true;
