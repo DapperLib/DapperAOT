@@ -17,7 +17,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace Dapper.CodeAnalysis;
@@ -71,46 +70,58 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Chosen API")]
     internal SourceState? Parse(ParseState ctx)
     {
-        if (ctx.Node is not InvocationExpressionSyntax ie
-            || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op
-            || !op.IsDapperMethod(out var flags)
-            || flags.HasAny(OperationFlags.NotAotSupported | OperationFlags.DoNotGenerate)
-            || !Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out var aotAttribExists))
+        try
         {
-            return null;
-        }
-
-        var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var argExpression, reportDiagnostic: null, out var resultType, exitFirstFailure: true);
-        if (flags.HasAny(OperationFlags.DoNotGenerate))
-        {
-            return null;
-        }
-
-
-
-        // additional result-type checks
-
-        // perform SQL inspection
-        var map = MemberMap.CreateForParameters(argExpression);
-        var parameterMap = BuildParameterMap(ctx, op, sql, ref flags, map, location, out var parseFlags);
-
-        if (flags.HasAny(OperationFlags.CacheCommand))
-        {
-            bool canBeCached = true;
-            // need fixed text, command-type and parameters to be reusable
-            if (string.IsNullOrWhiteSpace(sql) || parameterMap == "?" || !flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect | OperationFlags.Text))
+            if (ctx.Node is not InvocationExpressionSyntax ie
+                || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op
+                || !op.IsDapperMethod(out var flags)
+                || flags.HasAny(OperationFlags.NotAotSupported | OperationFlags.DoNotGenerate)
+                || !Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out var aotAttribExists))
             {
-                canBeCached = false;
+                return null;
             }
 
-            if (!canBeCached) flags &= ~OperationFlags.CacheCommand;
+            var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var argExpression, reportDiagnostic: null, out var resultType, exitFirstFailure: true);
+            if (flags.HasAny(OperationFlags.DoNotGenerate))
+            {
+                return null;
+            }
+
+
+
+            // additional result-type checks
+
+            // perform SQL inspection
+            var map = MemberMap.CreateForParameters(argExpression);
+            var parameterMap = BuildParameterMap(ctx, op, sql, ref flags, map, location, out var parseFlags);
+
+            if (flags.HasAny(OperationFlags.CacheCommand))
+            {
+                bool canBeCached = true;
+                // need fixed text, command-type and parameters to be reusable
+                if (string.IsNullOrWhiteSpace(sql) || parameterMap == "?" || !flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect | OperationFlags.Text))
+                {
+                    canBeCached = false;
+                }
+
+                if (!canBeCached) flags &= ~OperationFlags.CacheCommand;
+            }
+
+            var additionalState = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), map, null);
+
+            Debug.Assert(!flags.HasAny(OperationFlags.DoNotGenerate), "should have already exited");
+            return new SuccessSourceState(location, op.TargetMethod, flags, sql, resultType, argExpression?.Type, parameterMap, additionalState);
         }
-
-        var additionalState = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), map, null);
-
-        Debug.Assert(!flags.HasAny(OperationFlags.DoNotGenerate), "should have already exited");
-        return new SourceState(location, op.TargetMethod, flags, sql, resultType, argExpression?.Type, parameterMap, additionalState);
-
+        catch (Exception ex)
+        {
+            Location? loc = null;
+            try
+            {
+                loc = ctx.Node.GetLocation();
+            }
+            catch { } // best effort only
+            return new FaultSourceState(loc, ex);
+        }
 
         static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, ref OperationFlags flags, MemberMap? map, Location loc, out SqlParseOutputFlags parseFlags)
         {
@@ -189,7 +200,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         if (ctx.Nodes.IsDefaultOrEmpty) return false; // nothing to do
 
         // find the first enabled thing with a C# parse options
-        if (ctx.Nodes[0].Location.SourceTree?.Options is not CSharpParseOptions options) return false; // not C#
+        if (ctx.Nodes.OfType<SuccessSourceState>().FirstOrDefault()?.Location?.SourceTree?.Options is not CSharpParseOptions options) return false; // not C#
 
         bool success = true;
 
@@ -220,6 +231,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Allow expectation of state")]
     internal void Generate(in GenerateState ctx)
     {
+        foreach (var fault in ctx.Nodes.OfType<FaultSourceState>())
+        {
+            var ex = fault.Fault;
+            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnknownError, fault.Location, ex.Message, ex.StackTrace));
+        }
+
         if (!CheckPrerequisites(ctx)) // also reports per-item diagnostics
         {
             // failed checks; do nothing
@@ -237,7 +254,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         var factories = new CommandFactoryState(ctx.Compilation);
         var readers = new RowReaderState();
 
-        foreach (var grp in ctx.Nodes.Where(x => !x.Flags.HasAny(OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
+        foreach (var grp in ctx.Nodes.OfType<SuccessSourceState>().Where(x => !x.Flags.HasAny(OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
             // first, try to resolve the helper method that we're going to use for this
             var (flags, method, parameterType, parameterMap, _, additionalCommandState) = grp.Key;
@@ -1034,6 +1051,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
                     var dbType = member.GetDbType(out _);
                     var size = member.TryGetValue<int>("Size");
+                    bool useSetValueWithDefaultSize = false;
                     if (dbType is not null)
                     {
                         sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.GetValueOrDefault().ToString()).Append(";").NewLine();
@@ -1044,7 +1062,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                                 case DbType.Binary:
                                 case DbType.String:
                                 case DbType.AnsiString:
-                                    size = -1; // default to [n]varchar(max)/varbinary(max)
+                                    if (member.CodeType.SpecialType == SpecialType.System_String)
+                                    {
+                                        useSetValueWithDefaultSize = true;
+                                    }
+                                    else
+                                    {
+                                        size = -1; // default to [n]varchar(max)/varbinary(max)
+                                    }
                                     break;
                             }
                         }
@@ -1066,15 +1091,23 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         ParameterDirection.Output => nameof(ParameterDirection.Output),
                         ParameterDirection.ReturnValue => nameof(ParameterDirection.ReturnValue),
                         _ => direction.ToString(),
-                    }).Append(";").NewLine().Append("p.Value = ");
+                    }).Append(";").NewLine();
+                    // the actual value expression
                     switch (direction)
                     {
                         case ParameterDirection.Input:
                         case ParameterDirection.InputOutput:
-                            sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                            if (useSetValueWithDefaultSize)
+                            {
+                                sb.Append("SetValueWithDefaultSize(p, ").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                            }
+                            else
+                            {
+                                sb.Append("p.Value = ").Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                            }
                             break;
                         default:
-                            sb.Append("global::System.DBNull.Value;").NewLine();
+                            sb.Append("p.Value = global::System.DBNull.Value;").NewLine();
                             break;
                     }
                     sb.Append("ps.Add(p);").NewLine();
@@ -1276,9 +1309,24 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    internal sealed class SourceState
+    internal abstract class SourceState
     {
-        public Location Location { get; }
+        public Location? Location { get; }
+        protected SourceState(Location? location) => Location = location;
+    }
+
+    internal sealed class FaultSourceState : SourceState
+    {
+        public Exception Fault { get; }
+
+        public FaultSourceState(Location? location, Exception fault) : base(location)
+            => Fault = fault;
+    }
+
+    internal sealed class SuccessSourceState : SourceState
+    {
+        public new Location Location => base.Location!; // assert non-null
+
         public OperationFlags Flags { get; }
         public string? Sql { get; }
         public string ParameterMap { get; }
@@ -1286,11 +1334,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public ITypeSymbol? ResultType { get; }
         public ITypeSymbol? ParameterType { get; }
         public AdditionalCommandState? AdditionalCommandState { get; }
-        public SourceState(Location location, IMethodSymbol method, OperationFlags flags, string? sql,
+
+        public SuccessSourceState(Location location, IMethodSymbol method, OperationFlags flags, string? sql,
             ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap,
-            AdditionalCommandState? additionalCommandState)
+            AdditionalCommandState? additionalCommandState) : base(location)
         {
-            Location = location;
             Flags = flags;
             Sql = sql;
             ResultType = resultType;

@@ -47,4 +47,17 @@ public class DAP026 : Verifier<DapperAnalyzer>
             Diagnostic(Diagnostics.QueryCommandMissingQuery).WithLocation(0),
         ]);
 
+    [Fact]
+    public Task DoNotReportWhenQueryExpected() => SqlVerifyAsync("""
+        SELECT [Test]
+        FROM MyTable
+        """, SqlAnalysis.SqlParseInputFlags.ExpectQuery);
+
+    [Fact]
+    public Task ReportSelectInto() => SqlVerifyAsync("""
+        SELECT [Test]
+        INTO #MyTemporaryTable FROM MyTable
+        """, SqlAnalysis.SqlParseInputFlags.ExpectQuery,
+            Diagnostic(Diagnostics.QueryCommandMissingQuery).WithLocation(Execute));
+
 }

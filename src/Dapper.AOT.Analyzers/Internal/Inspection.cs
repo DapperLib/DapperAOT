@@ -16,9 +16,19 @@ namespace Dapper.Internal;
 internal static class Inspection
 {
     public static bool InvolvesTupleType(this ITypeSymbol? type, out bool hasNames)
+        => InvolvesTupleTypeDepthChecked(type, out hasNames, 0);
+
+    private static bool InvolvesTupleTypeDepthChecked(ITypeSymbol? type, out bool hasNames, int depth)
     {
+        if (depth >= 20) ThrowPossibleRecursion();
+
+        // avoid SOE
+        static void ThrowPossibleRecursion() => throw new InvalidOperationException("Recursion depth exceeded checking for tuple-type");
+
         while (type is not null) // dive for inheritance
         {
+            if (type is IErrorTypeSymbol) break; // nope!
+
             var named = type as INamedTypeSymbol;
             if (type.IsTupleType)
             {
@@ -46,15 +56,14 @@ internal static class Inspection
             }
             if (type is IArrayTypeSymbol array)
             {
-                return array.ElementType.InvolvesTupleType(out hasNames);
+                return InvolvesTupleTypeDepthChecked(array.ElementType, out hasNames, depth + 1);
             }
 
-            if (named is { IsGenericType: true })
+            if (named is { IsGenericType: true, IsUnboundGenericType: false })
             {
-                var args = named.TypeArguments;
-                foreach (var arg in args)
+                foreach (var arg in named.TypeArguments)
                 {
-                    if (arg.InvolvesTupleType(out hasNames)) return true;
+                    if (InvolvesTupleTypeDepthChecked(arg, out hasNames, depth + 1)) return true;
                 }
             }
 
@@ -110,6 +119,10 @@ internal static class Inspection
                 if (syntax.IsMethodDeclaration())
                 {
                     return syntax;
+                }
+                if (syntax.IsGlobalStatement(out var entryPoint))
+                {
+                    return entryPoint;
                 }
                 syntax = syntax.Parent;
             }
@@ -463,6 +476,7 @@ internal static class Inspection
                 if (preferredType != dbType)
                 {   // only preserve the reader method if this matches
                     readerMethod = null;
+                    dbType = preferredType;
                 }
             }
             return dbType;

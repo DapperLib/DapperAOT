@@ -152,9 +152,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 p = cmd.CreateParameter();
                 p.ParameterName = "bar";
                 p.DbType = global::System.Data.DbType.String;
-                p.Size = -1;
                 p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(typed.bar);
+                SetValueWithDefaultSize(p, typed.bar);
                 ps.Add(p);
 
             }
@@ -187,9 +186,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 p = cmd.CreateParameter();
                 p.ParameterName = "Bar";
                 p.DbType = global::System.Data.DbType.String;
-                p.Size = -1;
                 p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(args.Bar);
+                SetValueWithDefaultSize(p, args.Bar);
                 ps.Add(p);
 
             }

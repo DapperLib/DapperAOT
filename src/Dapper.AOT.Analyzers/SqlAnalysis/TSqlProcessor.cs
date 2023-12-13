@@ -238,6 +238,8 @@ internal class TSqlProcessor
         => OnError($"SELECT for First* should use TOP 1", location);
     protected virtual void OnSelectSingleRowWithoutWhere(Location location)
         => OnError($"SELECT for single row without WHERE or (TOP and ORDER BY)", location);
+    protected virtual void OnSelectAggregateAndNonAggregate(Location location)
+        => OnError($"SELECT has mixture of aggregate and non-aggregate expressions", location);
     protected virtual void OnNonPositiveTop(Location location)
         => OnError($"TOP literals should be positive", location);
     protected virtual void OnNonPositiveFetch(Location location)
@@ -250,6 +252,9 @@ internal class TSqlProcessor
         => OnError($"FROM expressions with multiple elements should use aliases", location);
     protected virtual void OnFromMultiTableUnqualifiedColumn(Location location, string name)
         => OnError($"FROM expressions with multiple elements should qualify all columns; it is unclear where '{name}' is located", location);
+
+    protected virtual void OnInvalidDatepartToken(Location location)
+        => OnError($"Valid datepart token expected", location);
     protected virtual void OnTopWithOffset(Location location)
         => OnError($"TOP cannot be used when OFFSET is specified", location);
 
@@ -702,6 +707,66 @@ internal class TSqlProcessor
             base.Visit(node);
         }
 
+        public override void ExplicitVisit(FunctionCall node)
+        {
+            ScalarExpression? ignore = null;
+            if (node.Parameters.Count != 0 && IsSpecialDateFunction(node.FunctionName.Value))
+            {
+                ValidateDateArg(ignore = node.Parameters[0]);
+            }
+            var oldIgnore = _demandAliases.IgnoreNode; // stash
+            _demandAliases.IgnoreNode = ignore;
+            base.ExplicitVisit(node); // dive
+            _demandAliases.IgnoreNode = oldIgnore; // restore
+
+            static bool IsSpecialDateFunction(string name)
+                => name.StartsWith("DATE", StringComparison.OrdinalIgnoreCase)
+                && IsAnyCaseInsensitive(name, DateTokenFunctions);
+        }
+
+        static bool IsAnyCaseInsensitive(string value, string[] options)
+        {
+            if (value is not null)
+            {
+                foreach (var option in options)
+                {
+                    if (string.Equals(option, value, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        // arg0 has special meaning - not a column/etc
+        static readonly string[] DateTokenFunctions = ["DATE_BUCKET", "DATEADD", "DATEDIFF", "DATEDIFF_BIG", "DATENAME", "DATEPART", "DATETRUNC"];
+        static readonly string[] DateTokens = [
+            "year", "yy", "yyyy",
+            "quarter", "qq", "q",
+            "month", "mm", "m",
+            "dayofyear", "dy", "y",
+            "day", "dd", "d",
+            "week", "wk", "ww",
+            "weekday", "dw", "w",
+            "hour", "hh",
+            "minute", "mi", "n",
+            "second", "ss", "s",
+            "millisecond", "ms",
+            "microsecond", "mcs",
+            "nanosecond", "ns"
+            ];
+
+        private void ValidateDateArg(ScalarExpression value)
+        {
+            if (!(value is ColumnReferenceExpression col
+                && col.MultiPartIdentifier.Count == 1 && IsAnyCaseInsensitive(
+                    col.MultiPartIdentifier[0].Value, DateTokens)))
+            {
+                parser.OnInvalidDatepartToken(value);
+            }
+
+        }
+
         public override void Visit(SelectStatement node)
         {
             if (node.QueryExpression is QuerySpecification spec)
@@ -717,6 +782,7 @@ internal class TSqlProcessor
                 var checkNames = ValidateSelectNames;
                 HashSet<string> names = checkNames ? new HashSet<string>(StringComparer.InvariantCultureIgnoreCase) : null!;
 
+                var aggregate = AggregateFlags.None;
                 int index = 0;
                 foreach (var el in spec.SelectElements)
                 {
@@ -724,6 +790,7 @@ internal class TSqlProcessor
                     {
                         case SelectStarExpression:
                             parser.OnSelectStar(el);
+                            aggregate |= AggregateFlags.HaveNonAggregate;
                             reads++;
                             break;
                         case SelectScalarExpression scalar:
@@ -747,6 +814,7 @@ internal class TSqlProcessor
                                     parser.OnSelectDuplicateColumnName(scalar, name!);
                                 }
                             }
+                            aggregate |= IsAggregate(scalar.Expression);
                             reads++;
                             break;
                         case SelectSetVariable:
@@ -755,33 +823,43 @@ internal class TSqlProcessor
                     }
                     index++;
                 }
+
+                if (aggregate == (AggregateFlags.HaveAggregate | AggregateFlags.HaveNonAggregate))
+                {
+                    parser.OnSelectAggregateAndNonAggregate(spec);
+                }
+
                 if (reads != 0)
                 {
                     if (sets != 0)
                     {
                         parser.OnSelectAssignAndRead(spec);
                     }
-                    bool firstQuery = AddQuery();
-                    if (firstQuery && SingleRow // optionally enforce single-row validation
-                        && spec.FromClause is not null) // no "from" is things like 'select @id, @name' - always one row
+                    if (node.Into is null) // otherwise not actually a query
                     {
-                        bool haveTopOrFetch = false;
-                        if (spec.TopRowFilter is { Percent: false, Expression: ScalarExpression top })
+                        bool firstQuery = AddQuery();
+                        if (firstQuery && SingleRow // optionally enforce single-row validation
+                            && spec.FromClause is not null) // no "from" is things like 'select @id, @name' - always one row
                         {
-                            haveTopOrFetch = EnforceTop(top);
-                        }
-                        else if (spec.OffsetClause is { FetchExpression: ScalarExpression fetch })
-                        {
-                            haveTopOrFetch = EnforceTop(fetch);
-                        }
+                            bool haveTopOrFetch = false;
+                            if (spec.TopRowFilter is { Percent: false, Expression: ScalarExpression top })
+                            {
+                                haveTopOrFetch = EnforceTop(top);
+                            }
+                            else if (spec.OffsetClause is { FetchExpression: ScalarExpression fetch })
+                            {
+                                haveTopOrFetch = EnforceTop(fetch);
+                            }
 
-                        // we want *either* a WHERE (which we will allow with/without a TOP),
-                        // or a TOP + ORDER BY
-                        if (!IsUnfiltered(spec.FromClause, spec.WhereClause)) { } // fine
-                        else if (haveTopOrFetch && spec.OrderByClause is not null) { } // fine
-                        else
-                        {
-                            parser.OnSelectSingleRowWithoutWhere(node);
+                            // we want *either* a WHERE (which we will allow with/without a TOP),
+                            // or a TOP + ORDER BY
+                            if (!IsUnfiltered(spec.FromClause, spec.WhereClause)) { } // fine
+                            else if (haveTopOrFetch && spec.OrderByClause is not null) { } // fine
+                            else if ((aggregate & (AggregateFlags.HaveAggregate | AggregateFlags.Uncertain)) != 0) { } // fine
+                            else
+                            {
+                                parser.OnSelectSingleRowWithoutWhere(node);
+                            }
                         }
                     }
                 }
@@ -789,6 +867,50 @@ internal class TSqlProcessor
 
             base.Visit(node);
         }
+
+        enum AggregateFlags
+        {
+            None = 0,
+            HaveAggregate = 1 << 0,
+            HaveNonAggregate = 1 << 1,
+            Uncertain = 1 << 2,
+        }
+
+        private AggregateFlags IsAggregate(ScalarExpression expression)
+        {
+            // any use of an aggregate function contributes HaveAggregate
+            // - there could be unary/binary operations on that aggregate function
+            // - column references etc inside an aggregate expression,
+            //   otherwise they contribute HaveNonAggregate
+            switch (expression)
+            {
+                case Literal:
+                    return AggregateFlags.None;
+                case UnaryExpression ue:
+                    return IsAggregate(ue.Expression);
+                case BinaryExpression be:
+                    return IsAggregate(be.FirstExpression)
+                        | IsAggregate(be.SecondExpression);
+                case FunctionCall func when IsAggregateFunction(func.FunctionName.Value):
+                    return AggregateFlags.HaveAggregate; // don't need to look inside
+                case ScalarSubquery sq:
+                    throw new NotSupportedException();
+                case IdentityFunctionCall:
+                case PrimaryExpression:
+                    return AggregateFlags.HaveNonAggregate;
+                default:
+                    return AggregateFlags.Uncertain;
+            }
+
+            static bool IsAggregateFunction(string name)
+                => IsAnyCaseInsensitive(name, AggregateFunctions);
+        }
+
+        static readonly string[] AggregateFunctions = [
+            "APPROX_COUNT_DISTINCT", "AVG","CHECKSUM_AGG", "COUNT", "COUNT_BIG",
+            "GROUPING", "GROUPING_ID", "MAX", "MIN", "STDEV",
+            "STDEVP", "STRING_AGG", "SUM", "VAR", "VARP",
+            ];
 
         private bool EnforceTop(ScalarExpression expr)
         {
@@ -1291,7 +1413,7 @@ internal class TSqlProcessor
         {
             if (_expressionAlreadyEvaluated) return true;
 
-            if (node is UnaryExpression {  UnaryExpressionType: UnaryExpressionType.Negative, Expression: IntegerLiteral or NumericLiteral })
+            if (node is UnaryExpression { UnaryExpressionType: UnaryExpressionType.Negative, Expression: IntegerLiteral or NumericLiteral })
             {
                 // just "-4" or similar; don't warn the user to simplify that!
                 _expressionAlreadyEvaluated = true;
@@ -1340,6 +1462,9 @@ internal class TSqlProcessor
 
         public override void Visit(OutputClause node)
         {
+            // note that this doesn't handle OUTPUT INTO,
+            // which is via OutputIntoClause
+
             AddQuery(); // works like a query
             base.Visit(node);
         }
@@ -1409,6 +1534,8 @@ internal class TSqlProcessor
             public readonly bool Active;
             public readonly TableReference? Amnesty; // we can't validate the target until too late
             public bool AmnestyNodeIsAlias;
+
+            public ScalarExpression? IgnoreNode { get; set; }
         }
 
         private DemandAliasesState _demandAliases;
@@ -1435,7 +1562,8 @@ internal class TSqlProcessor
         }
         public override void Visit(ColumnReferenceExpression node)
         {
-            if (_demandAliases.Active && node.MultiPartIdentifier.Count == 1)
+            if (_demandAliases.Active && node.MultiPartIdentifier.Count == 1
+                && !ReferenceEquals(node, _demandAliases.IgnoreNode))
             {
                 parser.OnFromMultiTableUnqualifiedColumn(node, node.MultiPartIdentifier[0].Value);
             }

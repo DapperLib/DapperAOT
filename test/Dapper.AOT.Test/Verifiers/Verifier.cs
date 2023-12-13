@@ -173,7 +173,9 @@ public class Verifier<TAnalyzer> : Verifier where TAnalyzer : DiagnosticAnalyzer
 {
     internal Task SqlVerifyAsync(string sql,
         params DiagnosticResult[] expected) => SqlVerifyAsync(sql, SqlParseInputFlags.None, expected);
-    
+
+    public const int Execute = 9999;
+
     internal Task SqlVerifyAsync(string sql, SqlParseInputFlags sqlParseInputFlags, params DiagnosticResult[] expected)
     {
         var cs = $$"""
@@ -183,7 +185,7 @@ public class Verifier<TAnalyzer> : Verifier where TAnalyzer : DiagnosticAnalyzer
             [DapperAot(false)]
             class SomeCode
             {
-                public void Foo(DbConnection conn) => conn.Execute(@"{{sql.Replace("\"", "\"\"")}}");
+                public void Foo(DbConnection conn) => conn.{|#{{Execute}}:Execute|}(@"{{sql.Replace("\"", "\"\"")}}");
             }
             """;
         return CSVerifyAsync(cs, DefaultConfig, expected, SqlSyntax.SqlServer, sqlParseInputFlags | SqlParseInputFlags.DebugMode);

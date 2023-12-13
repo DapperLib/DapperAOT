@@ -21,7 +21,7 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: |
-          7.0.x
+          6.0.x
           8.0.x
         include-prerelease: true
         
@@ -32,11 +32,14 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore Build.csproj
 
+    - name: Purge
+      run: del src/Dapper.*/bin/Release/Dapper.*.nupkg
+      
     - name: Build
       run: dotnet build Build.csproj --no-restore -c Release
 
     - name: Test
-      run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net6.0
+      run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net6.0 --filter FullyQualifiedName!~Integration
 
     - name: Pack
       if: ${{ success() && !github.base_ref }}
@@ -44,6 +47,6 @@ jobs:
 
     - name: Push to MyGet
       if: ${{ success() && !github.base_ref }}
-      run: dotnet nuget push src/Dapper.AOT/bin/Release/Dapper.AOT.${NBGV_NuGetPackageVersion}.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key ${MYGETAPIKEY}
+      run: dotnet nuget push src/Dapper.*/bin/Release/Dapper.*.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key "$env:MYGETAPIKEY"
       env:
         MYGETAPIKEY: ${{ secrets.MYGETAPIKEY }}

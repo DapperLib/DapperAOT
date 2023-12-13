@@ -45,10 +45,10 @@ partial class TypeAccessor
 
         public override void Close()
         {
+            Current = default!;
             var tmp = _source;
             if (tmp is not null)
             {
-                Current = default!;
                 _source = null;
                 tmp.Dispose();
             }
@@ -84,7 +84,14 @@ partial class TypeAccessor
             var pending = _source.MoveNextAsync();
             var result = pending.IsCompletedSuccessfully ? pending.Result : pending.AsTask().Result;
 
-            if (!result) Close();
+            if (!result)
+            {
+                Close();
+            }
+            else
+            {
+                Current = _source.Current;
+            }
             return result;
         }
         public override bool IsClosed => _source is null;
@@ -97,6 +104,7 @@ partial class TypeAccessor
             {
                 var result = pending.Result;
                 if (!result) return CloseAsyncReturnFalse(this);
+                Current = _source.Current;
                 return s_CompletedTrue;
             }
             return Awaited(this, pending);
@@ -104,7 +112,14 @@ partial class TypeAccessor
             static async Task<bool> Awaited(AsyncAccessorDataReader<T> @this, ValueTask<bool> pending)
             {
                 var result = await pending;
-                if (!result) @this.Close();
+                if (!result)
+                {
+                    @this.Close();
+                }
+                else
+                {
+                    @this.Current = @this._source!.Current;
+                }
                 return result;
             }
 
@@ -126,10 +141,10 @@ partial class TypeAccessor
             #endif
         Task CloseAsync()
         {
+            Current = default!;
             var tmp = _source;
             if (tmp is not null)
             {
-                Current = default!;
                 _source = null;
                 var pending = tmp.DisposeAsync();
 
@@ -154,7 +169,7 @@ partial class TypeAccessor
         private readonly int[] _tokens;
         private readonly bool _exact;
 
-        protected T? Current
+        protected T Current
         {
             get => _current;
             set => _current = value!;

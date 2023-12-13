@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Data.Common;
 using System.Linq;
 using System.Reflection;
@@ -73,6 +74,7 @@ internal static class RoslynTestHelpers
                    MetadataReference.CreateFromFile(typeof(IgnoreDataMemberAttribute).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(DynamicAttribute).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(IValidatableObject).Assembly.Location),
            },
            options: new CSharpCompilationOptions(OutputKind.ConsoleApplication, allowUnsafe: true));
 }
