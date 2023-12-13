@@ -19,7 +19,8 @@ internal static class Inspection
     {
         while (type is not null) // dive for inheritance
         {
-            if (type is IErrorTypeSymbol or { IsUnmanagedType: true }) break; // nope!
+            if (type is IErrorTypeSymbol) break; // nope!
+
             var named = type as INamedTypeSymbol;
             if (type.IsTupleType)
             {
