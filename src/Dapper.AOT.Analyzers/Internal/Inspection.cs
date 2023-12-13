@@ -442,6 +442,7 @@ internal static class Inspection
                 if (preferredType != dbType)
                 {   // only preserve the reader method if this matches
                     readerMethod = null;
+                    dbType = preferredType;
                 }
             }
             return dbType;
