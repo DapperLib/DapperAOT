@@ -405,7 +405,7 @@ partial struct Command<TArgs>
             int total = 0;
             var current = source.Span[0];
 
-            var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
+            var local = await state.ExecuteNonQueryAsync(GetCommand(current), GetCancellationToken(current, cancellationToken));
             UnifiedCommand cmdState = new(state.Command);
             commandFactory.PostProcess(in cmdState, current, local);
             total += local;
@@ -414,7 +414,7 @@ partial struct Command<TArgs>
             {
                 current = source.Span[i];
                 commandFactory.UpdateParameters(in cmdState, current);
-                local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
+                local = await state.Command.ExecuteNonQueryAsync(GetCancellationToken(current, cancellationToken));
                 commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
             }
@@ -448,7 +448,7 @@ partial struct Command<TArgs>
                 var current = iterator.Current;
                 bool haveMore = await iterator.MoveNextAsync();
                 if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
-                var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
+                var local = await state.ExecuteNonQueryAsync(GetCommand(current), GetCancellationToken(current, cancellationToken));
                 UnifiedCommand cmdState = new(state.Command);
                 commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
@@ -457,7 +457,7 @@ partial struct Command<TArgs>
                 {
                     current = iterator.Current;
                     commandFactory.UpdateParameters(in cmdState, current);
-                    local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
+                    local = await state.Command.ExecuteNonQueryAsync(GetCancellationToken(current, cancellationToken));
                     commandFactory.PostProcess(in cmdState, current, local);
                     total += local;
 
@@ -543,7 +543,7 @@ partial struct Command<TArgs>
             int total = 0;
             var current = source[offset++];
 
-            var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
+            var local = await state.ExecuteNonQueryAsync(GetCommand(current), GetCancellationToken(current, cancellationToken));
             UnifiedCommand cmdState = new(state.Command);
             commandFactory.PostProcess(in cmdState, current, local);
             total += local;
@@ -552,7 +552,7 @@ partial struct Command<TArgs>
             {
                 current = source[offset++];
                 commandFactory.UpdateParameters(in cmdState, current);
-                local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
+                local = await state.Command.ExecuteNonQueryAsync(GetCancellationToken(current, cancellationToken));
                 commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
             }
