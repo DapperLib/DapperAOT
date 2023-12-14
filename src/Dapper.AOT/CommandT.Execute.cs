@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -32,7 +33,7 @@ partial struct Command<TArgs>
         AsyncCommandState state = new();
         try
         {
-            var result = await state.ExecuteNonQueryAsync(GetCommand(args), cancellationToken);
+            var result = await state.ExecuteNonQueryAsync(GetCommand(args), GetCancellationToken(args, cancellationToken));
             PostProcessAndRecycle(state, args, result);
             return result;
         }

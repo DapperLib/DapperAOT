@@ -218,6 +218,11 @@ public class CommandFactory<T> : CommandFactory
         AddParameters(in cmd, args);
     }
 
+    /// <summary>
+    /// Gets the cancellation-token associated with a command
+    /// </summary>
+    public virtual CancellationToken GetCancellationToken(T args) => default;
+
     internal override sealed void PostProcessObject(in UnifiedCommand command, object? args, int rowCount) => PostProcess(in command, (T)args!, rowCount);
 
     /// <summary>

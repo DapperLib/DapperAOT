@@ -51,6 +51,8 @@ partial class DapperAnalyzer
         ConstructorOverridesFactoryMethod = LibraryWarning("DAP041", "Constructor overrides factory method", "Type '{0}' has both constructor and factory method; Constructor will be used instead of a factory method"),
         ParameterNameOverrideConflict = LibraryWarning("DAP042", "Parameter name override conflict", "A column name is specified via both [DbValue] and [Column]; '{0}' will be used"),
         UseColumnAttributeNotSpecified = LibraryWarning("DAP043", "[Column] has no effect", "Attach the [UseColumnAttribute] attribute to make Dapper consider [Column]"),
+        CancellationNotSupported = LibraryWarning("DAP044", "Cancellation not supported", "Vanilla Dapper does not support cancellation parameters in this scenario"),
+        CancellationDuplicated = LibraryWarning("DAP045", "Duplicate cancellation", "Multiple parameter values cannot define cancellation"),
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),

@@ -167,7 +167,7 @@ public readonly partial struct Command<TArgs> : ICommand<TArgs>
         AsyncQueryState? state = new();
         try
         {
-            await state.ExecuteReaderAsync(GetCommand(args), behavior, cancellationToken);
+            await state.ExecuteReaderAsync(GetCommand(args), behavior, GetCancellationToken(args, cancellationToken));
             var obj = new TReader();
             obj.Initialize(commandFactory, args, ref state);
             return obj;
