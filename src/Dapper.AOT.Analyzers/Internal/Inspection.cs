@@ -10,6 +10,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 
 namespace Dapper.Internal;
 
@@ -417,7 +418,27 @@ internal static class Inspection
         None = 0,
         RowCount = 1 << 0,
         RowCountHint = 1 << 1,
+        Cancellation = 1 << 2,
     }
+
+    internal static bool IsCancellationToken(ITypeSymbol? type)
+           => type is INamedTypeSymbol
+           {
+               Name: nameof(CancellationToken),
+               Arity: 0,
+               TypeKind: TypeKind.Struct,
+               ContainingType: null,
+               ContainingNamespace:
+               {
+                   Name: "Threading",
+                   ContainingNamespace:
+                   {
+                       Name: "System",
+                       ContainingNamespace.IsGlobalNamespace: true
+                   }
+               }
+           };
+
     public readonly struct ElementMember
     {
         public Location[]? AsAdditionalLocations(string? attributeName = null, bool allowNonDapperLocations = false)
@@ -431,7 +452,7 @@ internal static class Inspection
         public string DbName
         {
             get
-            {      
+            {
                 if (TryGetAttributeValue(_dbValue, "Name", out string? name) && !string.IsNullOrWhiteSpace(name))
                 {
                     // priority 1: [DbValue] attribute
@@ -462,6 +483,7 @@ internal static class Inspection
 
         public bool IsRowCount => (Kind & ElementMemberKind.RowCount) != 0;
         public bool IsRowCountHint => (Kind & ElementMemberKind.RowCountHint) != 0;
+        public bool IsCancellation => (Kind & ElementMemberKind.Cancellation) != 0;
         public bool HasDbValueAttribute => _dbValue is not null;
 
         public T? TryGetValue<T>(string memberName) where T : struct
@@ -505,7 +527,9 @@ internal static class Inspection
             Member = member;
             _dbValue = dbValue;
             Kind = kind;
+            if (IsCancellationToken(CodeType)) Kind |= ElementMemberKind.Cancellation;
         }
+
         [Flags]
         public enum ElementMemberFlags
         {
@@ -535,6 +559,7 @@ internal static class Inspection
 
             ConstructorParameterOrder = constructorParameterOrder;
             FactoryMethodParameterOrder = factoryMethodParameterOrder;
+            if (IsCancellationToken(CodeType)) Kind |= ElementMemberKind.Cancellation;
         }
 
         public override int GetHashCode() => SymbolEqualityComparer.Default.GetHashCode(Member);
@@ -582,7 +607,7 @@ internal static class Inspection
             Name = name;
         }
 
-        public bool IsCorrectUsage 
+        public bool IsCorrectUsage
             => UseColumnAttribute is UseColumnAttributeState.NotSpecified or UseColumnAttributeState.Enabled
             && ColumnAttribute is ColumnAttributeState.Specified && !string.IsNullOrEmpty(Name);
 

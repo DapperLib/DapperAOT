@@ -69,6 +69,7 @@ partial struct Command<TArgs>
         AsyncQueryState state = new();
         try
         {
+            cancellationToken = GetCancellationToken(args, cancellationToken);
             await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
 
             List<TRow> results;
@@ -108,6 +109,7 @@ partial struct Command<TArgs>
         AsyncQueryState state = new();
         try
         {
+            cancellationToken = GetCancellationToken(args, cancellationToken);
             await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
 
             if (await state.Reader.ReadAsync(cancellationToken))
@@ -217,6 +219,7 @@ partial struct Command<TArgs>
 
         try
         {
+            cancellationToken = GetCancellationToken(args, cancellationToken);
             await state.ExecuteReaderAsync(GetCommand(args), SingleFlags(flags), cancellationToken);
 
             TRow? result = default;

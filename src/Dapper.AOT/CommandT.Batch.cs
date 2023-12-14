@@ -114,6 +114,10 @@ partial struct Command<TArgs>
         };
     }
 
+    // if not specified on the API, fetch cancellation from the command-factory
+    private CancellationToken GetCancellationToken(TArgs args, CancellationToken cancellationToken)
+        => cancellationToken.CanBeCanceled ? cancellationToken : commandFactory.GetCancellationToken(args);
+
     /// <summary>
     /// Execute an operation against a batch of inputs, returning the sum of all results
     /// </summary>
@@ -492,7 +496,7 @@ partial struct Command<TArgs>
                 var current = iterator.Current;
                 bool haveMore = iterator.MoveNext();
                 if (haveMore && commandFactory.CanPrepare) state.PrepareBeforeExecute();
-                var local = await state.ExecuteNonQueryAsync(GetCommand(current), cancellationToken);
+                var local = await state.ExecuteNonQueryAsync(GetCommand(current), GetCancellationToken(current, cancellationToken));
                 UnifiedCommand cmdState = new(state.Command);
                 commandFactory.PostProcess(in cmdState, current, local);
                 total += local;
@@ -501,7 +505,7 @@ partial struct Command<TArgs>
                 {
                     current = iterator.Current;
                     commandFactory.UpdateParameters(in cmdState, current);
-                    local = await state.Command.ExecuteNonQueryAsync(cancellationToken);
+                    local = await state.Command.ExecuteNonQueryAsync(GetCancellationToken(current, cancellationToken));
                     commandFactory.PostProcess(in cmdState, current, local);
                     total += local;
 

@@ -32,7 +32,7 @@ partial struct Command<TArgs>
         AsyncCommandState state = new();
         try
         {
-            var result = await state.ExecuteScalarAsync(GetCommand(args), cancellationToken);
+            var result = await state.ExecuteScalarAsync(GetCommand(args), GetCancellationToken(args, cancellationToken));
             PostProcessAndRecycle(state, args, -1);
             return result;
         }
@@ -68,7 +68,7 @@ partial struct Command<TArgs>
         AsyncCommandState state = new();
         try
         {
-            var result = await state.ExecuteScalarAsync(GetCommand(args), cancellationToken);
+            var result = await state.ExecuteScalarAsync(GetCommand(args), GetCancellationToken(args, cancellationToken));
             PostProcessAndRecycle(state, args, -1);
             return CommandUtils.As<T>(result);
         }

@@ -478,6 +478,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 break;
         }
 
+        if (Inspection.IsCancellationToken(type))
+        {
+            sb.Append("public override global::System.Threading.CancellationToken GetCancellationToken(").Append(declaredType).Append(" args) => args;").NewLine();
+        }
         var flags = WriteArgsFlags.None;
         if (string.IsNullOrWhiteSpace(map))
         {
@@ -513,6 +517,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 {
                     sb.Append("base.PostProcess(in cmd, args, rowCount);").NewLine();
                 }
+                sb.Outdent().NewLine();
+            }
+
+            if ((flags & WriteArgsFlags.HasCancellation) != 0)
+            {
+                sb.Append("public override global::System.Threading.CancellationToken GetCancellationToken(").Append(declaredType).Append(" args)")
+                    .Indent().NewLine();
+                WriteArgs(type, sb, WriteArgsMode.GetCancellationToken, map, ref flags);
                 sb.Outdent().NewLine();
             }
         }
@@ -944,12 +956,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         NeedsPostProcess = 1 << 1,
         NeedsRowCount = 1 << 2,
         CanPrepare = 1 << 3,
+        HasCancellation = 1 << 4,
     }
 
     enum WriteArgsMode
     {
         Add, Update, PostProcess,
-        SetRowCount
+        SetRowCount,
+        GetCancellationToken
     }
 
     private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags)
@@ -981,6 +995,19 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var member in memberMap.Members)
         {
+            if (member.IsCancellation)
+            {
+                if (mode == WriteArgsMode.GetCancellationToken)
+                {
+                    sb.Append("return ").Append(source).Append(".").Append(member.CodeName).Append(";");
+                }
+                else
+                {
+                    flags |= WriteArgsFlags.HasCancellation;
+                    continue;
+                }
+            }
+
             if (member.IsRowCount)
             {
                 flags |= WriteArgsFlags.NeedsRowCount;
@@ -1015,7 +1042,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 }
             }
 
-            if (first)
+            if (first && mode != WriteArgsMode.GetCancellationToken)
             {
                 sb.Append("var ps = cmd.Parameters;").NewLine();
                 switch (mode)

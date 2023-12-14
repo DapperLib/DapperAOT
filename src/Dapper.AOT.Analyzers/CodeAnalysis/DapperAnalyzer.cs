@@ -256,6 +256,34 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             {
                 _ = AdditionalCommandState.Parse(GetSymbol(parseState, invoke), parameters, onDiagnostic);
             }
+            if (parameters is not null)
+            {
+                if (flags.HasAny(OperationFlags.DoNotGenerate)) // using vanilla Dapper mode
+                {
+                    if (parameters.Members.Any(s => s.IsCancellation) || IsCancellationToken(parameters.ElementType))
+                    {
+                        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CancellationNotSupported, parameters.Location));
+                    }
+                }
+                else
+                {
+                    bool first = true;
+                    foreach(var member in parameters.Members)
+                    {
+                        if (member.IsCancellation)
+                        {
+                            if (first)
+                            {
+                                first = false;
+                            }
+                            else
+                            {
+                                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CancellationDuplicated, member.GetLocation()));
+                            }
+                        }
+                    }
+                }
+            }
             var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags);
 
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(args), location);
@@ -663,9 +691,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
                 // extra checks specific to Dapper vanilla
-                if (paramTuple)
+                if (reportDiagnostic is not null)
                 {
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.DapperLegacyTupleParameter, argLocation));
+                    if (paramTuple)
+                    {
+                        reportDiagnostic.Invoke(Diagnostic.Create(Diagnostics.DapperLegacyTupleParameter, argLocation));
+                    }
                 }
             }
             else
