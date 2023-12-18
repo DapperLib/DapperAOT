@@ -19,9 +19,28 @@ namespace Dapper.CodeAnalysis.Writers
         public void Write(Compilation compilation)
         {
             var attrib = compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute");
-            if (attrib is null || attrib.DeclaredAccessibility != Accessibility.Public)
+            if (!IsAvailable(attrib, compilation))
             {
                 _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InterceptsLocationAttribute.cs"));
+            }
+
+            static bool IsAvailable(INamedTypeSymbol? type, Compilation compilation)
+            {
+                if (type is null) return false;
+                if (type.IsFileLocal) return false; // we're definitely not in that file
+
+                switch (type.DeclaredAccessibility)
+                {
+                    case Accessibility.Public:
+                        // fine, we'll use it
+                        return true;
+                    case Accessibility.Internal:
+                    case Accessibility.ProtectedOrInternal:
+                        // we can use it if we're in the same project (note we won't check IVTA)
+                        return SymbolEqualityComparer.Default.Equals(type.ContainingAssembly, compilation.Assembly);
+                    default:
+                        return false;
+                }
             }
         }
     }
