@@ -802,85 +802,94 @@ internal static class Inspection
         }
         else
         {
-            var elMembers = elementType.GetMembers();
-            var builder = ImmutableArray.CreateBuilder<ElementMember>(elMembers.Length);
-            var constructorParameters = (constructor is not null) ? ParseMethodParameters(constructor) : null;
-            var factoryMethodParameters = (factoryMethod is not null) ? ParseMethodParameters(factoryMethod) : null;
-            foreach (var member in elMembers)
+            var tier = elementType;
+
+            var builder = ImmutableArray.CreateBuilder<ElementMember>();
+            while (tier is not null or IErrorTypeSymbol)
             {
-                // instance only, must be able to access by name
-                if (member.IsStatic || !member.CanBeReferencedByName) continue;
+                var elMembers = tier.GetMembers(); // walk hierarchy model
 
-                // public or annotated only; not explicitly ignored
-                var dbValue = GetDapperAttribute(member, Types.DbValueAttribute);
-                var kind = ElementMemberKind.None;
-                if (GetDapperAttribute(member, Types.RowCountAttribute) is not null)
+                var constructorParameters = (constructor is not null) ? ParseMethodParameters(constructor) : null;
+                var factoryMethodParameters = (factoryMethod is not null) ? ParseMethodParameters(factoryMethod) : null;
+                foreach (var member in elMembers)
                 {
-                    kind |= ElementMemberKind.RowCount;
-                }
-                if (GetDapperAttribute(member, Types.RowCountHintAttribute) is not null)
-                {
-                    kind |= ElementMemberKind.RowCountHint;
-                }
+                    // instance only, must be able to access by name
+                    if (member.IsStatic || !member.CanBeReferencedByName) continue;
 
-                if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && kind == ElementMemberKind.None) continue;
-                if (TryGetAttributeValue(dbValue, "Ignore", out bool ignore) && ignore)
-                {
-                    continue;
-                }
+                    // public or annotated only; not explicitly ignored
+                    var dbValue = GetDapperAttribute(member, Types.DbValueAttribute);
+                    var kind = ElementMemberKind.None;
+                    if (GetDapperAttribute(member, Types.RowCountAttribute) is not null)
+                    {
+                        kind |= ElementMemberKind.RowCount;
+                    }
+                    if (GetDapperAttribute(member, Types.RowCountHintAttribute) is not null)
+                    {
+                        kind |= ElementMemberKind.RowCountHint;
+                    }
 
-                // field or property (not indexer)
-                ITypeSymbol memberType;
-                switch (member)
-                {
-                    case IPropertySymbol { IsIndexer: false } prop:
-                        memberType = prop.Type;
-                        break;
-                    case IFieldSymbol field:
-                        memberType = field.Type;
-                        break;
-                    default:
+                    if (dbValue is null && member.DeclaredAccessibility != Accessibility.Public && kind == ElementMemberKind.None) continue;
+                    if (TryGetAttributeValue(dbValue, "Ignore", out bool ignore) && ignore)
+                    {
                         continue;
+                    }
+
+                    // field or property (not indexer)
+                    ITypeSymbol memberType;
+                    switch (member)
+                    {
+                        case IPropertySymbol { IsIndexer: false } prop:
+                            memberType = prop.Type;
+                            break;
+                        case IFieldSymbol field:
+                            memberType = field.Type;
+                            break;
+                        default:
+                            continue;
+                    }
+                    if (memberType is null) continue;
+
+                    int? constructorParameterOrder = constructorParameters?.TryGetValue(member.Name, out var constructorParameter) == true
+                        ? constructorParameter.Order
+                        : null;
+
+                    int? factoryMethodParamOrder = factoryMethodParameters?.TryGetValue(member.Name, out var factoryMethodParam) == true
+                        ? factoryMethodParam.Order
+                        : null;
+
+                    ElementMember.ElementMemberFlags flags = ElementMember.ElementMemberFlags.None;
+                    if (CodeWriter.IsGettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsGettable;
+                    if (CodeWriter.IsSettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsSettable;
+                    if (CodeWriter.IsInitOnlyInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsInitOnly;
+                    if (CodeWriter.IsRequired(member)) flags |= ElementMember.ElementMemberFlags.IsRequired;
+
+                    if (forParameters)
+                    {
+                        // needs to be readable
+                        if ((flags & ElementMember.ElementMemberFlags.IsGettable) == 0) continue;
+                    }
+                    else
+                    {
+                        // needs to be writable
+                        if (constructorParameterOrder is null && factoryMethodParamOrder is null &&
+                            (flags & (ElementMember.ElementMemberFlags.IsSettable | ElementMember.ElementMemberFlags.IsInitOnly)) == 0) continue;
+                    }
+
+                    // see Dapper's TryStringSplit logic
+                    if (IsCollectionType(memberType, out var innerType) && innerType is not null)
+                    {
+                        flags |= ElementMember.ElementMemberFlags.IsExpandable;
+                    }
+
+                    var columnAttributeData = ParseColumnAttributeData(member);
+
+                    // all good, then!
+                    builder.Add(new(member, dbValue, columnAttributeData, kind, flags, constructorParameterOrder, factoryMethodParamOrder));
                 }
-                if (memberType is null) continue;
 
-                int? constructorParameterOrder = constructorParameters?.TryGetValue(member.Name, out var constructorParameter) == true
-                    ? constructorParameter.Order
-                    : null;
-
-                int? factoryMethodParamOrder = factoryMethodParameters?.TryGetValue(member.Name, out var factoryMethodParam) == true
-                    ? factoryMethodParam.Order
-                    : null;
-
-                ElementMember.ElementMemberFlags flags = ElementMember.ElementMemberFlags.None;
-                if (CodeWriter.IsGettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsGettable;
-                if (CodeWriter.IsSettableInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsSettable;
-                if (CodeWriter.IsInitOnlyInstanceMember(member, out _)) flags |= ElementMember.ElementMemberFlags.IsInitOnly;
-                if (CodeWriter.IsRequired(member)) flags |= ElementMember.ElementMemberFlags.IsRequired;
-
-                if (forParameters)
-                {
-                    // needs to be readable
-                    if ((flags & ElementMember.ElementMemberFlags.IsGettable) == 0) continue;
-                }
-                else
-                {
-                    // needs to be writable
-                    if (constructorParameterOrder is null && factoryMethodParamOrder is null &&
-                        (flags & (ElementMember.ElementMemberFlags.IsSettable | ElementMember.ElementMemberFlags.IsInitOnly)) == 0) continue;
-                }
-
-                // see Dapper's TryStringSplit logic
-                if (IsCollectionType(memberType, out var innerType) && innerType is not null)
-                {
-                    flags |= ElementMember.ElementMemberFlags.IsExpandable;
-                }
-
-                var columnAttributeData = ParseColumnAttributeData(member);
-
-                // all good, then!
-                builder.Add(new(member, dbValue, columnAttributeData, kind, flags, constructorParameterOrder, factoryMethodParamOrder));
+                tier = tier.BaseType;
             }
+
             return builder.ToImmutable();
         }
 
