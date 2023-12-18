@@ -5,26 +5,22 @@
         <RootNamespace>Dapper.AOT.Test</RootNamespace>
         <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
         <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
+        <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./</PathMap>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="Accessors/Data/**/*.*.cs" />
         <None Include="Accessors/Data/**/*.*" />
         <None Update="Accessors/Data/**/*.*" CopyToOutputDirectory="PreserveNewest" />
-
         <Compile Remove="Interceptors/**/*.*.cs" />
         <None Include="Interceptors/**/*.*" />
-
         <Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
-
         <None Remove="Interceptors\SqliteUsage.input.cs" />
-
         <None Remove="Interceptors\SqliteUsage.snapshot.cs" />
         <Compile Include="Interceptors\SqliteUsage.input.cs" />
         <Compile Include="Interceptors\SqliteUsage.snapshot.cs">
           <DependentUpon>Interceptors\SqliteUsage.input.cs</DependentUpon>
         </Compile>
         <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
-
         <None Update="**/*.output.*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>
         </None>
@@ -34,7 +30,6 @@
         <None Update="**/*DAP*.*.cs*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.VB.cs', '.cs'))</DependentUpon>
         </None>
-
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />

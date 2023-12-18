@@ -3,7 +3,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(@"C:\Code\DapperAOT\test\Dapper.AOT.Test\Interceptors\SqliteUsage.input.cs", 11, 23)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(@"./Interceptors/SqliteUsage.input.cs", 11, 23)]
         internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters
@@ -17,7 +17,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(@"C:\Code\DapperAOT\test\Dapper.AOT.Test\Interceptors\SqliteUsage.input.cs", 14, 23)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute(@"./Interceptors/SqliteUsage.input.cs", 14, 23)]
         internal static global::System.Collections.Generic.IEnumerable<global::Dapper.AOT.Test.Integration.TypeWithSomeEnum> Query1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, Buffered, Text, BindResultsByName
