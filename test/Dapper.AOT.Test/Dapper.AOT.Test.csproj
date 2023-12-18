@@ -5,7 +5,8 @@
         <RootNamespace>Dapper.AOT.Test</RootNamespace>
         <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
         <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
-        <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./</PathMap>
+        <Deterministic>true</Deterministic>
+        <DeterministicSourcePaths>true</DeterministicSourcePaths>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="Accessors/Data/**/*.*.cs" />
