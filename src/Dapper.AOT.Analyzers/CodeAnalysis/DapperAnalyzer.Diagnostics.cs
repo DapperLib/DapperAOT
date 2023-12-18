@@ -61,7 +61,7 @@ partial class DapperAnalyzer
         GlobalIdentity = SqlError("DAP203", "Do not use @@identity", "@@identity should not be used; prefer SCOPE_IDENTITY() or OUTPUT INSERTED.yourid"),
         SelectScopeIdentity = SqlInfo("DAP204", "Prefer OUTPUT over SELECT", "Consider using OUTPUT INSERTED.yourid in the INSERT instead of SELECT SCOPE_IDENTITY()"),
         NullLiteralComparison = SqlWarning("DAP205", "Null comparison", "Literal null used in comparison; 'is null' or 'is not null' should be preferred"),
-        ParseError = SqlError("DAP206", "SQL parse error", "Error {0}: {1}"),
+        ParseError = SqlError("DAP206", "SQL parse error", "SQL parse error {0}: '{1}'"),
         ScalarVariableUsedAsTable = SqlError("DAP207", "Scalar used like table", "Scalar variable {0} is used like a table"),
         TableVariableUsedAsScalar = SqlError("DAP208", "Table used like scalar", "Table-variable {0} is used like a scalar"),
         TableVariableAccessedBeforePopulate = SqlError("DAP209", "Table used before populate", "Table-variable {0} is accessed before it populated"),
