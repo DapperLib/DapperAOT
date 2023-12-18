@@ -4,6 +4,7 @@
         <NoWarn>$(NoWarn);IDE0042;CS8002;CA1816</NoWarn>
         <RootNamespace>Dapper.AOT.Test</RootNamespace>
         <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
+        <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="Accessors/Data/**/*.*.cs" />
@@ -12,7 +13,16 @@
 
         <Compile Remove="Interceptors/**/*.*.cs" />
         <None Include="Interceptors/**/*.*" />
+
         <Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
+
+        <None Remove="Interceptors\SqliteUsage.input.cs" />
+
+        <None Remove="Interceptors\SqliteUsage.snapshot.cs" />
+        <Compile Include="Interceptors\SqliteUsage.input.cs" />
+        <Compile Include="Interceptors\SqliteUsage.snapshot.cs">
+          <DependentUpon>Interceptors\SqliteUsage.input.cs</DependentUpon>
+        </Compile>
         <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
 
         <None Update="**/*.output.*">
@@ -21,14 +31,16 @@
         <None Update="**/*.output.netfx.*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output.netfx', '.input.cs'))</DependentUpon>
         </None>
-		<None Update="**/*DAP*.*.cs*">
-			<DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.VB.cs', '.cs'))</DependentUpon>
-		</None>
+        <None Update="**/*DAP*.*.cs*">
+            <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.VB.cs', '.cs'))</DependentUpon>
+        </None>
 
-	</ItemGroup>
+    </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
+        <PackageReference Include="System.Data.Sqlite" Condition="'$(TargetFramework)'=='net48'" />
+        <PackageReference Include="Microsoft.Data.Sqlite" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="System.ComponentModel.Annotations" Condition="'$(TargetFramework)'=='net48'" />
         <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net6.0'" />
         <PackageReference Include="Microsoft.Build" VersionOverride="[17.3.2]" Condition="'$(TargetFramework)'=='net6.0'" />
