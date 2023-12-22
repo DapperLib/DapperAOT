@@ -21,7 +21,7 @@ public class DAP045 : Verifier<DapperAnalyzer>
             {
                 _ = conn.ExecuteAsync("some_proc", cancellationToken);
                 _ = conn.ExecuteAsync("some_proc", new { id, x = cancellationToken });
-                _ = conn.ExecuteAsync("some_proc", new { id, x = cancellationToken, {|#0:y = cancellationToken|}});
+                _ = conn.ExecuteAsync("some_proc", new { id, x = cancellationToken, {|#0:y|} = cancellationToken});
             }
         }
         """,

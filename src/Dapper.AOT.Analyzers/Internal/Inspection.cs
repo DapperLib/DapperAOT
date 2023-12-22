@@ -481,6 +481,8 @@ internal static class Inspection
 
         public ElementMemberKind Kind { get; }
 
+        public SymbolKind SymbolKind => Member.Kind;
+
         public bool IsRowCount => (Kind & ElementMemberKind.RowCount) != 0;
         public bool IsRowCountHint => (Kind & ElementMemberKind.RowCountHint) != 0;
         public bool IsCancellation => (Kind & ElementMemberKind.Cancellation) != 0;
@@ -570,6 +572,15 @@ internal static class Inspection
 
         public Location? GetLocation()
         {
+            // `ISymbol.Locations` gives the best location of member
+            // (i.e. for property it will be NAME of an element without modifiers \ getters and setters),
+            // but it also returns implicitly defined members -> so we need to double check if that can be used
+            if (Member.Locations.Length > 0)
+            {
+                var sourceLocation = Member.Locations.FirstOrDefault(loc => loc.IsInSource);
+                if (sourceLocation is not null) return sourceLocation;
+            }
+
             foreach (var node in Member.DeclaringSyntaxReferences)
             {
                 if (node.GetSyntax().GetLocation() is { } loc)

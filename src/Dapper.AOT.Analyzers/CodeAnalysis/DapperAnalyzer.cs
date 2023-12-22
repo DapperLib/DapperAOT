@@ -191,19 +191,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
 
             // check the types
-            var resultType = invoke.GetResultType(flags);
+           var resultType = invoke.GetResultType(flags);
             if (resultType is not null && IdentifyDbType(resultType, out _) is null) // don't warn if handled as an inbuilt
             {
                 var resultMap = MemberMap.CreateForResults(resultType, location);
                 if (resultMap is not null)
                 {
-                    if (resultMap.Members.Length != 0)
-                    {
-                        foreach (var member in resultMap.Members)
-                        {
-                            ValidateMember(member, onDiagnostic);
-                        }
-                    }
+                    ValidateMembers(resultMap, onDiagnostic);
 
                     // check for single-row value-type usage
                     if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
@@ -854,6 +848,63 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null
             ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps);
+    }
+
+    static void ValidateMembers(MemberMap memberMap, Action<Diagnostic> onDiagnostic)
+    {
+        if (memberMap.Members.Length == 0)
+        {
+            return;
+        }
+        
+        var normalizedPropertyNames = new Dictionary<string, List<Location>>();
+        var normalizedFieldNames = new Dictionary<string, List<Location>>();
+
+        foreach (var member in memberMap!.Members)
+        {
+            ValidateMember(member, onDiagnostic);
+
+            // build collection of duplicate normalized memberNames with memberLocations
+            Location? memberLoc;
+            if ((memberLoc = member.GetLocation()) is not null)
+            {
+                var normalizedName = StringHashing.Normalize(member.CodeName);
+
+                switch (member.SymbolKind)
+                {
+                    case SymbolKind.Property:
+                        if (!normalizedPropertyNames.ContainsKey(normalizedName)) normalizedPropertyNames[normalizedName] = new();
+                        normalizedPropertyNames[normalizedName].Add(memberLoc);
+                        break;
+
+                    case SymbolKind.Field:
+                        if (!normalizedFieldNames.ContainsKey(normalizedName)) normalizedFieldNames[normalizedName] = new();
+                        normalizedFieldNames[normalizedName].Add(memberLoc);
+                        break;
+                }
+            }
+        }
+
+        ReportNormalizedMembersNamesCollisions(normalizedFieldNames, Diagnostics.AmbiguousFields);
+        ReportNormalizedMembersNamesCollisions(normalizedPropertyNames, Diagnostics.AmbiguousProperties);
+
+        void ReportNormalizedMembersNamesCollisions(Dictionary<string, List<Location>> nameMemberLocations, DiagnosticDescriptor diagnosticDescriptor)
+        {
+            if (nameMemberLocations.Count == 0) return;
+
+            foreach (var entry in nameMemberLocations)
+            {
+                if (entry.Value?.Count <= 1)
+                {
+                    continue;
+                }
+
+                onDiagnostic?.Invoke(Diagnostic.Create(diagnosticDescriptor,
+                        location: entry.Value.First(),
+                        additionalLocations: entry.Value.Skip(1),
+                        messageArgs: entry.Key));
+            }
+        }
     }
 
     static void ValidateMember(ElementMember member, Action<Diagnostic>? reportDiagnostic)
