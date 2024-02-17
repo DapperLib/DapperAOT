@@ -18,11 +18,10 @@ public class DAP021 : Verifier<DapperAnalyzer>
             void SomeMethod(DbConnection conn)
                 => conn.Execute("someproc", this);
 
-            {|#1:public int Id {get;set;}|}
+            public int {|#1:Id|} {get;set;}
 
             [{|#0:DbValue(Name = "Id")|}] // location should prefer the attrib when exists; dup is primary
             public int OtherId {get;set;}
-
 
             [{|#3:DbValue(Name = "X")|}]
             public int Y {get;set;}
@@ -30,8 +29,8 @@ public class DAP021 : Verifier<DapperAnalyzer>
             [{|#2:DbValue(Name = "X")|}] // dup is primary
             public int Z {get;set;}
 
-            {|#5:public int casing {get;set;}|}
-            {|#4:public int CASING {get;set;}|} // dup is primary
+            public int {|#5:casing|} {get;set;}
+            public int {|#4:CASING|} {get;set;} // dup is primary
 
             public int fixedCase {get;set;}
             [DbValue(Name = "AnotherName")]
