@@ -24,6 +24,22 @@ public class SqlDetection : Verifier<DapperAnalyzer>
     .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111.")]);
 
     [Fact]
+    public Task CSVerifyQuestionMarkInQuery() => CSVerifyAsync("""
+        using Dapper;
+        using System.Data.Common;
+    
+        [DapperAot(true)]
+        class SomeCode
+        {
+            public void Foo(DbConnection conn)
+            {
+                _ = conn.Query<int>("select 'this ? looks like OLE DB'");
+                _ = conn.Query<int>("select 'this ?looks? like pseudo-positional'");
+            }
+        }
+    """, DefaultConfig, []);
+
+    [Fact]
     public Task CSViaProperty() => CSVerifyAsync("""
         using System.Data.Common;
         using Dapper;
