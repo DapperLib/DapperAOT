@@ -191,7 +191,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
 
             // check the types
-           var resultType = invoke.GetResultType(flags);
+            var resultType = invoke.GetResultType(flags);
             if (resultType is not null && IdentifyDbType(resultType, out _) is null) // don't warn if handled as an inbuilt
             {
                 var resultMap = MemberMap.CreateForResults(resultType, location);
@@ -250,34 +250,9 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             {
                 _ = AdditionalCommandState.Parse(GetSymbol(parseState, invoke), parameters, onDiagnostic);
             }
-            if (parameters is not null)
-            {
-                if (flags.HasAny(OperationFlags.DoNotGenerate)) // using vanilla Dapper mode
-                {
-                    if (parameters.Members.Any(s => s.IsCancellation) || IsCancellationToken(parameters.ElementType))
-                    {
-                        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CancellationNotSupported, parameters.Location));
-                    }
-                }
-                else
-                {
-                    bool first = true;
-                    foreach(var member in parameters.Members)
-                    {
-                        if (member.IsCancellation)
-                        {
-                            if (first)
-                            {
-                                first = false;
-                            }
-                            else
-                            {
-                                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CancellationDuplicated, member.GetLocation()));
-                            }
-                        }
-                    }
-                }
-            }
+            
+            ValidateParameters(parameters, flags, onDiagnostic);
+
             var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags);
 
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(args), location);
@@ -848,6 +823,46 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null
             ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps);
+    }
+
+    static void ValidateParameters(MemberMap? parameters, OperationFlags flags, Action<Diagnostic> onDiagnostic)
+    {
+        if (parameters is null) return;
+
+        var isCancellationElement = IsCancellationToken(parameters.ElementType);
+        var isFirstCancellation = true;
+        foreach (var member in parameters.Members)
+        {
+            ValidateCancellationTokenParameter(member);
+            ValidateDbStringParameter(member);
+        }
+
+        void ValidateDbStringParameter(ElementMember member)
+        {
+            if (member.IsDbString)
+            {
+                onDiagnostic(Diagnostic.Create(Diagnostics.MoveFromDbString, member.GetLocation()));
+            }
+        }
+
+        void ValidateCancellationTokenParameter(ElementMember member)
+        {
+            if (flags.HasAny(OperationFlags.DoNotGenerate)) // using vanilla Dapper mode
+            {
+                if (isCancellationElement)
+                {
+                    onDiagnostic(Diagnostic.Create(Diagnostics.CancellationNotSupported, parameters.Location));
+                }
+            }
+            else
+            {
+                if (member.IsCancellation)
+                {
+                    if (isFirstCancellation) isFirstCancellation = false;
+                    else onDiagnostic(Diagnostic.Create(Diagnostics.CancellationDuplicated, member.GetLocation()));
+                }
+            }
+        }
     }
 
     static void ValidateMembers(MemberMap memberMap, Action<Diagnostic> onDiagnostic)

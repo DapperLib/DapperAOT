@@ -488,6 +488,16 @@ internal static class Inspection
         public bool IsCancellation => (Kind & ElementMemberKind.Cancellation) != 0;
         public bool HasDbValueAttribute => _dbValue is not null;
 
+        public bool IsDbString => CodeType is
+        {
+            Name: "DbString",
+            TypeKind: TypeKind.Class,
+            ContainingNamespace:
+            {
+                Name: "Dapper"
+            }
+        };
+
         public T? TryGetValue<T>(string memberName) where T : struct
             => TryGetAttributeValue(_dbValue, memberName, out T value) ? value : null;
 
