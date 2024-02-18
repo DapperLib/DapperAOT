@@ -31,7 +31,7 @@ public class DAP048 : Verifier<DapperAnalyzer>
                         {
                             Value = "MyCar",
                             IsFixedLength = false,
-                            Length = 9,
+                            Length = 5,
                             IsAnsi = true
                         }
                     });
