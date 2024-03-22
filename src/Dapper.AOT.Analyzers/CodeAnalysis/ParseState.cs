@@ -70,11 +70,13 @@ internal readonly struct GenerateState
         Nodes = proxy.Nodes;
         ctx = default;
         this.proxy = proxy;
+        TypeHandlers = ImmutableDictionary<ITypeSymbol, ITypeSymbol>.Empty;
     }
-    public GenerateState(SourceProductionContext ctx, in (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+    public GenerateState(SourceProductionContext ctx, Compilation compilation, ImmutableArray<SourceState> nodes, IImmutableDictionary<ITypeSymbol, ITypeSymbol> typeHandlers)
     {
-        Compilation = state.Compilation;
-        Nodes = state.Nodes;
+        Compilation = compilation;
+        Nodes = nodes;
+        TypeHandlers = typeHandlers;
         this.ctx = ctx;
         proxy = null;
     }
@@ -82,6 +84,7 @@ internal readonly struct GenerateState
     private readonly GenerateContextProxy? proxy;
     public readonly ImmutableArray<SourceState> Nodes;
     public readonly Compilation Compilation;
+    public readonly IImmutableDictionary<ITypeSymbol, ITypeSymbol> TypeHandlers;
 
     internal void ReportDiagnostic(Diagnostic diagnostic)
     {

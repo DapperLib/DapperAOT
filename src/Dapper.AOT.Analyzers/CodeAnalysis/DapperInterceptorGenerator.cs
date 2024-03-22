@@ -218,7 +218,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     {
         try
         {
-            Generate(new(ctx, state));
+            var typeHandlers = IdentifyTypeHandlers(ctx, state.Compilation);
+            Generate(new(ctx, state.Compilation, state.Nodes, typeHandlers));
         }
         catch (Exception ex)
         {
@@ -244,7 +245,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
 
         var dbCommandTypes = IdentifyDbCommandTypes(ctx.Compilation, out var needsCommandPrep);
-        var typeHandlers = IdentifyTypeHandlers(ctx);
 
         bool allowUnsafe = ctx.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
@@ -421,7 +421,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var pair in readers)
         {
-            WriteRowFactory(typeHandlers, sb, pair.Type, pair.Index);
+            WriteRowFactory(ctx, sb, pair.Type, pair.Index);
         }
 
 
@@ -703,7 +703,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private static void WriteRowFactory(IImmutableDictionary<ITypeSymbol, ITypeSymbol> typeHandlers, CodeWriter sb, ITypeSymbol type, int index)
+    private static void WriteRowFactory(in GenerateState ctx, CodeWriter sb, ITypeSymbol type, int index)
     {
         var map = MemberMap.CreateForResults(type);
         if (map is null) return;
@@ -724,6 +724,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         var hasGetOnlyMembers = members.Any(member => member is { IsGettable: true, IsSettable: false, IsInitOnly: false });
         var useConstructorDeferred = map.Constructor is not null;
         var useFactoryMethodDeferred = map.FactoryMethod is not null;
+        var typeHandlers = ctx.TypeHandlers; // Prevent ctx getting captured
         
         // Implementation detail: 
         // constructor takes advantage over factory method.
@@ -1358,9 +1359,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private static ImmutableDictionary<ITypeSymbol, ITypeSymbol> IdentifyTypeHandlers(in GenerateState ctx)
+    private static IImmutableDictionary<ITypeSymbol, ITypeSymbol> IdentifyTypeHandlers(in SourceProductionContext ctx, Compilation compilation)
     {
-        var assembly = ctx.Compilation.Assembly;
+        var assembly = compilation.Assembly;
         var attributes = assembly.GetAttributes()
             .Concat(assembly.Modules.SelectMany(x => x.GetAttributes()))
             .Where(x => Inspection.IsDapperAttribute(x) && x.AttributeClass!.Name == "TypeHandlerAttribute");
