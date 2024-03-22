@@ -244,6 +244,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
 
         var dbCommandTypes = IdentifyDbCommandTypes(ctx.Compilation, out var needsCommandPrep);
+        var typeHandlers = IdentifyTypeHandlers(ctx);
 
         bool allowUnsafe = ctx.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
@@ -420,7 +421,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var pair in readers)
         {
-            WriteRowFactory(ctx, sb, pair.Type, pair.Index);
+            WriteRowFactory(typeHandlers, sb, pair.Type, pair.Index);
         }
 
 
@@ -702,7 +703,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index)
+    private static void WriteRowFactory(IImmutableDictionary<ITypeSymbol, ITypeSymbol> typeHandlers, CodeWriter sb, ITypeSymbol type, int index)
     {
         var map = MemberMap.CreateForResults(type);
         if (map is null) return;
@@ -756,18 +757,29 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 .Append("var type = reader.GetFieldType(columnOffset);").NewLine()
                 .Append("switch (NormalizedHash(name))").Indent().NewLine();
 
-            int token = 0;
+            int firstToken = 0;
+            int secondToken = map.Members.Length;
             foreach (var member in members)
             {
                 var dbName = member.DbName;
                 sb.Append("case ").Append(StringHashing.NormalizedHash(dbName))
                     .Append(" when NormalizedEquals(name, ")
-                    .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine()
-                    .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(token)
-                    .Append(" : ").Append(token + map.Members.Length).Append(";")
-                    .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
+                    .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine();
+
+                if (typeHandlers.TryGetValue(member.CodeType, out var typeHandler))
+                {
+                    sb.Append("token = ").Append(firstToken).Append(";");
+                }
+                else
+                {
+                    sb.Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(firstToken)
+                        .Append(" : ").Append(secondToken).Append(";");
+                    secondToken++;
+                }
+
+                sb.Append(firstToken == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
                     .Append("break;").Outdent(false).NewLine();
-                token++;
+                firstToken++;
             }
             sb.Outdent().NewLine()
                 .Append("tokens[i] = token;").NewLine()
@@ -825,45 +837,55 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             sb.Append("foreach (var token in tokens)").Indent().NewLine()
             .Append("switch (token)").Indent().NewLine();
 
-            token = 0;
+            int firstToken = 0;
+            int secondToken = members.Length;
             foreach (var member in members)
             {
                 var memberType = member.CodeType;
 
                 member.GetDbType(out var readerMethod);
                 var nullCheck = Inspection.CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
-                sb.Append("case ").Append(token).Append(":").NewLine().Indent(false);
+                sb.Append("case ").Append(firstToken).Append(":").NewLine().Indent(false);
 
                 // write `result.X = ` or `member0 = `
-                if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
+                if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(firstToken);
                 else sb.Append("result.").Append(member.CodeName);
                 sb.Append(" = ");
 
                 sb.Append(nullCheck);
-                if (readerMethod is null)
+                if (typeHandlers.TryGetValue(memberType, out var handler))
                 {
-                    sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                    sb.Append("new ").Append(handler).Append("().Read(reader, columnOffset);").NewLine()
+                        .Append("break;").NewLine().Outdent(false);
                 }
                 else
                 {
-                    sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
+                    if (readerMethod is null)
+                    {
+                        sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                    }
+                    else
+                    {
+                        sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
+                    }
+
+                    sb.NewLine().Append("break;").NewLine().Outdent(false)
+                        .Append("case ").Append(secondToken).Append(":").NewLine().Indent(false);
+
+                    // write `result.X = ` or `member0 = `
+                    if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(firstToken);
+                    else sb.Append("result.").Append(member.CodeName);
+
+                    sb.Append(" = ")
+                        .Append(nullCheck)
+                        .Append("GetValue<")
+                        .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
+                        .Append("break;").NewLine().Outdent(false);
+
+                    secondToken++;
                 }
 
-
-                sb.NewLine().Append("break;").NewLine().Outdent(false)
-                    .Append("case ").Append(token + map.Members.Length).Append(":").NewLine().Indent(false);
-
-                // write `result.X = ` or `member0 = `
-                if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
-                else sb.Append("result.").Append(member.CodeName);
-
-                sb.Append(" = ")
-                    .Append(nullCheck)
-                    .Append("GetValue<")
-                    .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
-                    .Append("break;").NewLine().Outdent(false);
-
-                token++;
+                firstToken++;
             }
 
             sb.Outdent().NewLine().Append("columnOffset++;").NewLine().Outdent().NewLine();
@@ -1334,6 +1356,31 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             return false;
         }
+    }
+
+    private static ImmutableDictionary<ITypeSymbol, ITypeSymbol> IdentifyTypeHandlers(in GenerateState ctx)
+    {
+        var assembly = ctx.Compilation.Assembly;
+        var attributes = assembly.GetAttributes()
+            .Concat(assembly.Modules.SelectMany(x => x.GetAttributes()))
+            .Where(x => Inspection.IsDapperAttribute(x) && x.AttributeClass!.Name == "TypeHandlerAttribute");
+
+        var dictionary = ImmutableDictionary.CreateBuilder<ITypeSymbol, ITypeSymbol>(SymbolEqualityComparer.Default);
+        foreach (var attribute in attributes)
+        {
+            var valueType = attribute.AttributeClass!.TypeArguments[0];
+            var typeHandler = attribute.AttributeClass!.TypeArguments[1];
+            if (dictionary.ContainsKey(valueType))
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.DuplicateTypeHandlers, null, valueType.Name));
+            }
+            else
+            {
+                dictionary.Add(valueType, typeHandler);
+            }
+        }
+
+        return dictionary.ToImmutable();
     }
 
     internal abstract class SourceState
