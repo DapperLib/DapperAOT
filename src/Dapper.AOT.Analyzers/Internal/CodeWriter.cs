@@ -237,8 +237,13 @@ internal sealed class CodeWriter
         return Append("(").Append(enumType).Append(")").Append(value).Append("); ");
 
     }
+
     public CodeWriter AppendVerbatimLiteral(string? value) => Append(
-        value is null ? "null" : SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(value)).ToFullString());
+        CreateVerbatimLiteral(value));
+
+    public static string CreateVerbatimLiteral(string? value) =>
+        value is null ? "null" : SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(value)).ToFullString();
+
     public CodeWriter Append(char value)
     {
         Core.Append(value);

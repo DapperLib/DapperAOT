@@ -491,11 +491,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         else
         {
             sb.Append("public override void AddParameters(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-            WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags);
+            WriteArgs(ctx, type, sb, WriteArgsMode.Add, map, ref flags);
             sb.Outdent().NewLine();
 
             sb.Append("public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-            WriteArgs(type, sb, WriteArgsMode.Update, map, ref flags);
+            WriteArgs(ctx, type, sb, WriteArgsMode.Update, map, ref flags);
             sb.Outdent().NewLine();
 
             if ((flags & (WriteArgsFlags.NeedsRowCount | WriteArgsFlags.NeedsPostProcess)) != 0)
@@ -508,11 +508,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb.Append("public override void PostProcess(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
                 if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
                 {
-                    WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
+                    WriteArgs(ctx, type, sb, WriteArgsMode.PostProcess, map, ref flags);
                 }
                 if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
                 {
-                    WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
+                    WriteArgs(ctx, type, sb, WriteArgsMode.SetRowCount, map, ref flags);
                 }
                 if (baseFactory != DapperBaseCommandFactory)
                 {
@@ -525,7 +525,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             {
                 sb.Append("public override global::System.Threading.CancellationToken GetCancellationToken(").Append(declaredType).Append(" args)")
                     .Indent().NewLine();
-                WriteArgs(type, sb, WriteArgsMode.GetCancellationToken, map, ref flags);
+                WriteArgs(ctx, type, sb, WriteArgsMode.GetCancellationToken, map, ref flags);
                 sb.Outdent().NewLine();
             }
         }
@@ -989,7 +989,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         GetCancellationToken
     }
 
-    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags)
+    private static void WriteArgs(in GenerateState ctx, ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags)
     {
         if (parameterType is null)
         {
@@ -1153,7 +1153,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                             }
                             else
                             {
-                                sb.Append("p.Value = ").Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                                AppendSetValue(ctx, sb, "p", source, member);
                             }
                             break;
                         default:
@@ -1172,30 +1172,32 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                     break;
                 case WriteArgsMode.Update:
-                    sb.Append("ps[");
-                    if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
-                    else sb.Append(parameterIndex);
-                    sb.Append("].Value = ");
+                    var parameter = GetParameterIndex(flags, member.DbName, parameterIndex);
                     switch (direction)
                     {
                         case ParameterDirection.Input:
                         case ParameterDirection.InputOutput:
-                            sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                            AppendSetValue(ctx, sb, parameter, source, member);
                             break;
                         default:
-                            sb.Append("global::System.DBNull.Value;").NewLine();
+                            sb.Append(parameter).Append(".Value = global::System.DBNull.Value;").NewLine();
                             break;
 
                     }
                     break;
                 case WriteArgsMode.PostProcess:
                     // we already eliminated args that we don't need to look at
-                    sb.Append(source).Append(".").Append(member.CodeName).Append(" = Parse<")
-                        .Append(member.CodeType).Append(">(ps[");
-                    if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
-                    else sb.Append(parameterIndex);
-                    sb.Append("].Value);").NewLine();
-
+                    parameter = GetParameterIndex(flags, member.DbName, parameterIndex);
+                    sb.Append(source).Append(".").Append(member.CodeName).Append(" = ");
+                    if (ctx.TypeHandlers.TryGetValue(member.CodeType, out var handler))
+                    {
+                        sb.Append("new ").Append(handler).Append("().Parse(").Append(parameter).Append(");").NewLine();
+                    }
+                    else
+                    {
+                        sb.Append(source).Append(".").Append(member.CodeName).Append("Parse<")
+                            .Append(member.CodeType).Append(">(").Append(parameter).Append(".Value);").NewLine();
+                    }
                     break;
             }
             if (test)
@@ -1218,6 +1220,20 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         if (value is not null)
         {
             sb.Append("p.").Append(memberName).Append(" = ").Append(value.GetValueOrDefault()).Append(";").NewLine();
+        }
+    }
+
+    private static void AppendSetValue(in GenerateState ctx, CodeWriter sb, string parameter, string? source, in Inspection.ElementMember member)
+    {
+        if (ctx.TypeHandlers.TryGetValue(member.CodeType, out var handler))
+        {
+            sb.Append("new ").Append(handler).Append("().SetValue(")
+                .Append(parameter).Append(", ").Append(source).Append(".").Append(member.CodeName)
+                .Append(");").NewLine();
+        }
+        else
+        {
+            sb.Append(parameter).Append(".Value = AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
         }
     }
 
@@ -1248,6 +1264,15 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb.Append(" }");
                 break;
         }
+    }
+
+    private static string GetParameterIndex(WriteArgsFlags flags, string dbName, int parameterIndex)
+    {
+        string index = ((flags & WriteArgsFlags.NeedsTest) != 0)
+            ? CodeWriter.CreateVerbatimLiteral(dbName)
+            : parameterIndex.ToString(CultureInfo.InvariantCulture);
+
+        return "ps[" + index + "]";
     }
 
     private static SpecialCommandFlags GetSpecialCommandFlags(ITypeSymbol type)
