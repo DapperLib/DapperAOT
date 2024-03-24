@@ -9,6 +9,7 @@ Index:
 - [SQL Syntax](/sqlsyntax)
 - [Generated Code](/generatedcode)
 - [Bulk Copy](/bulkcopy)
+- [Type Handlers](/typehandlers)
 - [Frequently Asked Questions](/faq)
 
 Packages:
