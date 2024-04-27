@@ -24,21 +24,6 @@ public class SqlDetection : Verifier<DapperAnalyzer>
     .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111.")]);
 
     [Fact]
-    public Task CSVerifyQuestionMarkInQuery_LikeOLEDB() => CSVerifyAsync("""
-        using Dapper;
-        using System.Data.Common;
-    
-        [DapperAot(true)]
-        class SomeCode
-        {
-            public void Foo(DbConnection conn)
-            {
-                _ = conn.Query<int>("select 'this ? looks like OLE DB'");
-            }
-        }
-    """, DefaultConfig, []);
-
-    [Fact]
     public Task CSVerifyQuestionMarkInQuery_LikePseudoPositional() => CSVerifyAsync("""
         using Dapper;
         using System.Data.Common;
@@ -48,10 +33,13 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         {
             public void Foo(DbConnection conn)
             {
-                _ = conn.Query<int>("select 'this ?looks? like pseudo-positional'");
+                _ = conn.Query<int>("select {|#0:'this ?looks? like pseudo-positional'|}");
+                _ = conn.Query<int>("select 'this ?' + 'does not look like ? pseudo-positional' + 'because only 1 question mark is in every string part ?'");
             }
         }
-    """, DefaultConfig, []);
+    """, DefaultConfig, [
+        Diagnostic(DapperAnalyzer.Diagnostics.PseudoPositionalParameter).WithLocation(0)
+    ]);
 
     [Fact]
     public Task CSViaProperty() => CSVerifyAsync("""

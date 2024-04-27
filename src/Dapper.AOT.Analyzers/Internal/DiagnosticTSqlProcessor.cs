@@ -76,6 +76,9 @@ internal abstract class DiagnosticTSqlProcessor : TSqlProcessor
     protected override void OnParseError(ParseError error, Location location)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.ParseError, location, error.Number, error.Message);
 
+    protected override void OnPseudoPositionalParameter(Location location)
+        => OnDiagnostic(DapperAnalyzer.Diagnostics.PseudoPositionalParameter, location);
+
     protected override void OnScalarVariableUsedAsTable(Variable variable)
         => OnDiagnostic(DapperAnalyzer.Diagnostics.ScalarVariableUsedAsTable, variable.Location, variable.Name);
 
