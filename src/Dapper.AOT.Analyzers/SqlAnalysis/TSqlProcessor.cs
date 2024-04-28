@@ -108,7 +108,7 @@ internal class TSqlProcessor
         tree.Accept(_visitor);
 
         // check state of locals after proc - was anything written and not read?
-        foreach (var variable in _visitor.Variables)
+         foreach (var variable in _visitor.Variables)
         {
             if (variable.IsUnusedParameter)
             {
@@ -173,10 +173,10 @@ internal class TSqlProcessor
         => OnError($"Table variable {variable.Name} is used like a scalar", variable.Location);
 
     protected virtual void OnNullLiteralComparison(Location location)
-        => OnError($"Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null'", location);
+        => OnError("Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null'", location);
 
     protected virtual void OnPseudoPositionalParameter(Location location)
-        => OnError($"Dapper.Vanilla does not handle pseudo-positional parameters correctly", location);
+        => OnError("It is more like Dapper will incorrectly treat this literal as a pseudo-positional parameter", location);
 
     private void OnSimplifyExpression(Location location, int? value)
         => OnSimplifyExpression(location, value is null ? "null" : value.Value.ToString(CultureInfo.InvariantCulture));
@@ -189,77 +189,77 @@ internal class TSqlProcessor
         });
 
     protected virtual void OnDivideByZero(Location location)
-        => OnError($"Division by zero detected", location);
+        => OnError("Division by zero detected", location);
     protected virtual void OnTrivialOperand(Location location)
-        => OnError($"Operand makes this calculation trivial; it can be simplified", location);
+        => OnError("Operand makes this calculation trivial; it can be simplified", location);
     protected virtual void OnInvalidNullExpression(Location location)
-        => OnError($"Operation requires non-null operand", location);
+        => OnError("Operation requires non-null operand", location);
 
     protected virtual void OnSimplifyExpression(Location location, string value)
         => OnError($"Expression can be simplified to '{value}'", location);
 
     protected virtual void OnAdditionalBatch(Location location)
-        => OnError($"Multiple batches are not permitted", location);
+        => OnError("Multiple batches are not permitted", location);
 
     protected virtual void OnGlobalIdentity(Location location)
-        => OnError($"@@identity should not be used; use SCOPE_IDENTITY() instead", location);
+        => OnError("@@identity should not be used; use SCOPE_IDENTITY() instead", location);
 
     protected virtual void OnSelectScopeIdentity(Location location)
-        => OnError($"Consider OUTPUT INSERTED.yourid on the INSERT instead of SELECT SCOPE_IDENTITY()", location);
+        => OnError("Consider OUTPUT INSERTED.yourid on the INSERT instead of SELECT SCOPE_IDENTITY()", location);
 
     protected virtual void OnExecComposedSql(Location location)
-        => OnError($"EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters", location);
+        => OnError("EXEC with composed SQL may be susceptible to SQL injection; consider EXEC sp_executesql with parameters", location);
 
     protected virtual void OnTableVariableOutputParameter(Variable variable)
         => OnError($"Table variable {variable.Name} cannot be used as an output parameter", variable.Location);
 
     protected virtual void OnInsertColumnsNotSpecified(Location location)
-        => OnError($"Target columns for INSERT should be explicitly specified", location);
+        => OnError("Target columns for INSERT should be explicitly specified", location);
 
     protected virtual void OnInsertColumnMismatch(Location location)
-        => OnError($"The columns specified in the INSERT do not match the source columns provided", location);
+        => OnError("The columns specified in the INSERT do not match the source columns provided", location);
     protected virtual void OnInsertColumnsUnbalanced(Location location)
-        => OnError($"The rows specified in the INSERT have differing widths", location);
+        => OnError("The rows specified in the INSERT have differing widths", location);
 
     protected virtual void OnSelectStar(Location location)
-        => OnError($"SELECT columns should be explicitly specified", location);
+        => OnError("SELECT columns should be explicitly specified", location);
     protected virtual void OnSelectEmptyColumnName(Location location, int column)
         => OnError($"SELECT statement with missing column name: {column}", location);
     protected virtual void OnSelectDuplicateColumnName(Location location, string name)
         => OnError($"SELECT statement with duplicate column name: {name}", location);
     protected virtual void OnSelectAssignAndRead(Location location)
-        => OnError($"SELECT statement has both assignment and results", location);
+        => OnError("SELECT statement has both assignment and results", location);
 
     protected virtual void OnDeleteWithoutWhere(Location location)
-        => OnError($"DELETE statement without WHERE clause", location);
+        => OnError("DELETE statement without WHERE clause", location);
     protected virtual void OnUpdateWithoutWhere(Location location)
-        => OnError($"UPDATE statement without WHERE clause", location);
+        => OnError("UPDATE statement without WHERE clause", location);
 
     protected virtual void OnSelectSingleTopError(Location location)
-        => OnError($"SELECT for Single* should use TOP 2; if you do not need to test over-read, use First*", location);
+        => OnError("SELECT for Single* should use TOP 2; if you do not need to test over-read, use First*", location);
     protected virtual void OnSelectFirstTopError(Location location)
-        => OnError($"SELECT for First* should use TOP 1", location);
+        => OnError("SELECT for First* should use TOP 1", location);
     protected virtual void OnSelectSingleRowWithoutWhere(Location location)
-        => OnError($"SELECT for single row without WHERE or (TOP and ORDER BY)", location);
+        => OnError("SELECT for single row without WHERE or (TOP and ORDER BY)", location);
     protected virtual void OnSelectAggregateAndNonAggregate(Location location)
-        => OnError($"SELECT has mixture of aggregate and non-aggregate expressions", location);
+        => OnError("SELECT has mixture of aggregate and non-aggregate expressions", location);
     protected virtual void OnNonPositiveTop(Location location)
-        => OnError($"TOP literals should be positive", location);
+        => OnError("TOP literals should be positive", location);
     protected virtual void OnNonPositiveFetch(Location location)
-        => OnError($"FETCH literals should be positive", location);
+        => OnError("FETCH literals should be positive", location);
     protected virtual void OnNegativeOffset(Location location)
-        => OnError($"OFFSET literals should be non-negative", location);
+        => OnError("OFFSET literals should be non-negative", location);
     protected virtual void OnNonIntegerTop(Location location)
-        => OnError($"TOP literals should be integers", location);
+        => OnError("TOP literals should be integers", location);
     protected virtual void OnFromMultiTableMissingAlias(Location location)
-        => OnError($"FROM expressions with multiple elements should use aliases", location);
+        => OnError("FROM expressions with multiple elements should use aliases", location);
     protected virtual void OnFromMultiTableUnqualifiedColumn(Location location, string name)
         => OnError($"FROM expressions with multiple elements should qualify all columns; it is unclear where '{name}' is located", location);
 
     protected virtual void OnInvalidDatepartToken(Location location)
-        => OnError($"Valid datepart token expected", location);
+        => OnError("Valid datepart token expected", location);
     protected virtual void OnTopWithOffset(Location location)
-        => OnError($"TOP cannot be used when OFFSET is specified", location);
+        => OnError("TOP cannot be used when OFFSET is specified", location);
 
 
     internal readonly struct Location
