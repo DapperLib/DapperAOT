@@ -839,7 +839,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         void ValidateDbStringParameter(ElementMember member)
         {
-            if (member.IsDbString)
+            if (member.DapperSpecialType == DapperSpecialType.DbString)
             {
                 onDiagnostic(Diagnostic.Create(Diagnostics.MoveFromDbString, member.GetLocation()));
             }

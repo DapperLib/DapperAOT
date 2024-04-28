@@ -19,12 +19,20 @@ public static class Foo
             }
         });
 
+        //_ = await connection.QueryAsync<int>("select * from Orders where name = @name", new Poco
+        //{
+        //    Name = new DbString
+        //    {
+        //        Value = "myOrder",
+        //        IsFixedLength = false,
+        //        Length = 7,
+        //        IsAnsi = true
+        //    }
+        //});
     }
 
-    public class Customer
+    public class Poco
     {
-        public int X { get; set; }
-        public string Y;
-        public double? Z { get; set; }
+        public DbString Name { get; set; }
     }
 }

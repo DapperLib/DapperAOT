@@ -19,6 +19,22 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\DbString.input.cs", 22, 30)]
+        internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<int>> QueryAsync1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        {
+            // Query, Async, TypedResult, HasParameters, Buffered, Text, KnownParameters
+            // takes parameter: global::Foo.Poco
+            // parameter map: Name
+            // returns data: int
+            global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+            global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+            global::System.Diagnostics.Debug.Assert(param is not null);
+
+            return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
+                global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).QueryBufferedAsync((global::Foo.Poco)param!, global::Dapper.RowFactory.Inbuilt.Value<int>()));
+
+        }
+
         private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
         {
             public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
@@ -58,6 +74,29 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 var typed = Cast(args, static () => new { name = default(global::Dapper.DbString)! }); // expected shape
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(typed.name);
+
+            }
+
+        }
+
+        private sealed class CommandFactory1 : CommonCommandFactory<global::Foo.Poco>
+        {
+            internal static readonly CommandFactory1 Instance = new();
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Poco args)
+            {
+                var ps = cmd.Parameters;
+                global::System.Data.Common.DbParameter p;
+                p = cmd.CreateParameter();
+                p.ParameterName = "Name";
+                p.Direction = global::System.Data.ParameterDirection.Input;
+                p.Value = AsValue(args.Name);
+                ps.Add(p);
+
+            }
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Poco args)
+            {
+                var ps = cmd.Parameters;
+                ps[0].Value = AsValue(args.Name);
 
             }
 

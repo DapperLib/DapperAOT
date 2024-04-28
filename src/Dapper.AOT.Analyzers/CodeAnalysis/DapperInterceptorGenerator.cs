@@ -18,6 +18,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using static Dapper.Internal.Inspection;
 
 namespace Dapper.CodeAnalysis;
 
@@ -1076,8 +1077,19 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     sb.Append("p = cmd.CreateParameter();").NewLine()
                         .Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
 
-                    var dbType = member.GetDbType(out _);
-                    var size = member.TryGetValue<int>("Size");
+                    // how to calculate DbType / Size / etc if I am writing shared code for type here?
+                    // I need specifics for each usage case
+
+                    var dbType = member.DapperSpecialType switch
+                    {
+                        DapperSpecialType.DbString => member.GetDbType(out _),
+                        _ => member.GetDbType(out _)
+                    };
+                    var size = member.DapperSpecialType switch
+                    {
+                        _ => member.TryGetValue<int>("Size")
+                    };
+
                     bool useSetValueWithDefaultSize = false;
                     if (dbType is not null)
                     {
@@ -1181,6 +1193,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             parameterIndex++;
         }
+    }
+
+    static void CalculateDbSyze()
+    {
+
     }
 
     static void AppendDbParameterSetting(CodeWriter sb, string memberName, int? value)
