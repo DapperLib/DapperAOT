@@ -176,7 +176,7 @@ internal class TSqlProcessor
         => OnError($"Null literals should not be used in binary comparisons; prefer 'is null' and 'is not null'", location);
 
     protected virtual void OnPseudoPositionalParameter(Location location)
-        => OnError($"Dapper.Vanilla does not handle pseudo-positional parameters correctly; Please, split the string into concatenation like \"'?smth' + 'anything?'\"", location);
+        => OnError($"Dapper.Vanilla does not handle pseudo-positional parameters correctly", location);
 
     private void OnSimplifyExpression(Location location, int? value)
         => OnSimplifyExpression(location, value is null ? "null" : value.Value.ToString(CultureInfo.InvariantCulture));
@@ -628,9 +628,6 @@ internal class TSqlProcessor
 
         public override void Visit(StringLiteral node)
         {
-            // LegacyParameterPattern = @"(?<![\p{L}\p{N}@_])[?@:](?![\p{L}\p{N}@_])", // look for ? / @ / : *by itself* - see SupportLegacyParameterTokens
-            // PseudoPositionalPattern = @"\?([\p{L}_][\p{L}\p{N}_]*)\?"; // look for ?abc? for the purpose of subst back to ? using member abc
-
             foreach (var token in node.ScriptTokenStream.Where(t => t.TokenType == TSqlTokenType.AsciiStringLiteral))
             {
                 // searching for 2 appearances of '?'
@@ -639,7 +636,10 @@ internal class TSqlProcessor
                 {
                     if (token.Text.IndexOf('?', firstAppearance + 1) >= 0)
                     {
-                        parser.OnPseudoPositionalParameter(node);
+                        if (CompiledRegex.PseudoPositional.IsMatch(node.Value))
+                        {
+                            parser.OnPseudoPositionalParameter(node);
+                        }
                     }
                 }
             }
