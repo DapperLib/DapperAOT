@@ -108,7 +108,7 @@ internal class TSqlProcessor
         tree.Accept(_visitor);
 
         // check state of locals after proc - was anything written and not read?
-         foreach (var variable in _visitor.Variables)
+        foreach (var variable in _visitor.Variables)
         {
             if (variable.IsUnusedParameter)
             {
