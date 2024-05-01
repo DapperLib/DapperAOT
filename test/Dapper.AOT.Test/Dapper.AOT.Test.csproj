@@ -14,8 +14,8 @@
         <None Include="Interceptors/**/*.*" />
         <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
 
-		<Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
-		<Compile Include="..\..\src\Dapper.AOT.Analyzers\InGeneration\DapperHelpers.cs" Link="DapperHelpers.cs" />
+        <Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
+        <Compile Include="..\..\src\Dapper.AOT.Analyzers\InGeneration\DapperHelpers.cs" Link="DapperHelpers.cs" />
 
         <None Update="**/*.output.*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>

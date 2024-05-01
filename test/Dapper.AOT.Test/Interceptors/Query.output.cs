@@ -78,24 +78,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 20, 24)]
-        internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
-        {
-            // Query, TypedResult, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
-            // takes parameter: <anonymous type: DbString Name>
-            // parameter map: Name
-            // returns data: global::Foo.Customer
-            global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
-            global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
-            global::System.Diagnostics.Debug.Assert(buffered is true);
-            global::System.Diagnostics.Debug.Assert(param is not null);
-
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory2.Instance).QueryBuffered(param, RowFactory0.Instance);
-
-        }
-
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 31, 30)]
-        internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Customer>> QueryAsync6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 19, 30)]
+        internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Customer>> QueryAsync5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, Buffered, StoredProcedure, BindResultsByName
             // returns data: global::Foo.Customer
@@ -108,8 +92,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 32, 30)]
-        internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Customer>> QueryAsync7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 20, 30)]
+        internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Customer>> QueryAsync6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName, KnownParameters
             // takes parameter: <anonymous type: int Foo, string bar>
@@ -124,8 +108,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 34, 47)]
-        internal static global::System.Collections.Generic.IAsyncEnumerable<global::Foo.Customer> QueryUnbufferedAsync8(this global::System.Data.Common.DbConnection cnn, string sql, object? param, global::System.Data.Common.DbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 22, 47)]
+        internal static global::System.Collections.Generic.IAsyncEnumerable<global::Foo.Customer> QueryUnbufferedAsync7(this global::System.Data.Common.DbConnection cnn, string sql, object? param, global::System.Data.Common.DbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, Unbuffered, StoredProcedure, BindResultsByName
             // returns data: global::Foo.Customer
@@ -137,8 +121,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 35, 47)]
-        internal static global::System.Collections.Generic.IAsyncEnumerable<global::Foo.Customer> QueryUnbufferedAsync9(this global::System.Data.Common.DbConnection cnn, string sql, object? param, global::System.Data.Common.DbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Query.input.cs", 23, 47)]
+        internal static global::System.Collections.Generic.IAsyncEnumerable<global::Foo.Customer> QueryUnbufferedAsync8(this global::System.Data.Common.DbConnection cnn, string sql, object? param, global::System.Data.Common.DbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, HasParameters, Unbuffered, Text, BindResultsByName, KnownParameters
             // takes parameter: <anonymous type: int Foo, string bar>
@@ -299,30 +283,6 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        private sealed class CommandFactory2 : CommonCommandFactory<object?> // <anonymous type: DbString Name>
-        {
-            internal static readonly CommandFactory2 Instance = new();
-            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, object? args)
-            {
-                var typed = Cast(args, static () => new { Name = default(global::Dapper.DbString)! }); // expected shape
-                var ps = cmd.Parameters;
-                global::System.Data.Common.DbParameter p;
-                p = cmd.CreateParameter();
-                p = global::Dapper.Aot.Generated.DbStringHelpers.ConvertToDbParameter(p, typed.Name);
-                ps.Add(p);
-
-            }
-            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, object? args)
-            {
-                var typed = Cast(args, static () => new { Name = default(global::Dapper.DbString)! }); // expected shape
-                var ps = cmd.Parameters;
-                ps[0].Value = AsValue(typed.Name);
-
-            }
-            public override bool CanPrepare => true;
-
-        }
-
 
     }
 }
@@ -340,45 +300,6 @@ namespace System.Runtime.CompilerServices
             _ = path;
             _ = lineNumber;
             _ = columnNumber;
-        }
-    }
-}
-namespace Dapper.Aot.Generated
-{
-    /// <summary>
-    /// Contains helpers to properly handle <see href="https://github.com/DapperLib/Dapper/blob/main/Dapper/DbString.cs"/>
-    /// </summary>
-    static class DbStringHelpers
-    {
-        public static global::System.Data.Common.DbParameter ConvertToDbParameter(
-            global::System.Data.Common.DbParameter dbParameter,
-            global::Dapper.DbString? dbString)
-        {
-            if (dbString is null)
-            {
-                dbParameter.Value = global::System.DBNull.Value;
-                return dbParameter;
-            }
-
-            dbParameter.Size = dbString switch
-            {
-                { Value: null } => 0,
-                { IsAnsi: false } => global::System.Text.Encoding.ASCII.GetByteCount(dbString.Value),
-                { IsAnsi: true } => global::System.Text.Encoding.Default.GetByteCount(dbString.Value),
-                _ => default
-            };
-            dbParameter.DbType = dbString switch
-            {
-                { IsAnsi: true, IsFixedLength: true } => global::System.Data.DbType.AnsiStringFixedLength,
-                { IsAnsi: true, IsFixedLength: false } => global::System.Data.DbType.AnsiString,
-                { IsAnsi: false, IsFixedLength: true } => global::System.Data.DbType.StringFixedLength,
-                { IsAnsi: false, IsFixedLength: false } => global::System.Data.DbType.String,
-                _ => dbParameter.DbType
-            };
-
-            dbParameter.Value = dbString.Value as object ?? global::System.DBNull.Value;
-
-            return dbParameter;
         }
     }
 }

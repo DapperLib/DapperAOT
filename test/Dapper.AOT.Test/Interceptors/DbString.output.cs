@@ -63,6 +63,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
                 p = cmd.CreateParameter();
+                p.ParameterName = "Name";
                 p = global::Dapper.Aot.Generated.DbStringHelpers.ConvertToDbParameter(p, typed.Name);
                 ps.Add(p);
 
@@ -94,6 +95,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
                 p = cmd.CreateParameter();
+                p.ParameterName = "Name";
                 p = global::Dapper.Aot.Generated.DbStringHelpers.ConvertToDbParameter(p, args.Name);
                 ps.Add(p);
 

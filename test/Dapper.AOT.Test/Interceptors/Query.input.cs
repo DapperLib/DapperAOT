@@ -16,18 +16,6 @@ public static class Foo
         _ = connection.Query<Customer>("def", buffered: false, commandType: CommandType.StoredProcedure);
         _ = connection.Query<Customer>("def @Foo", obj, buffered: true, commandType: CommandType.Text);
 
-        // DbString
-        _ = connection.Query<Customer>("select * from Foo where Name = @Name", new
-        {
-            Name = new DbString
-            {
-                Value = "MyCar",
-                IsFixedLength = false,
-                Length = 5,
-                IsAnsi = true
-            }
-        });
-
         _ = await connection.QueryAsync<Customer>("def");
         _ = await connection.QueryAsync<Customer>("def", obj);
 #if !NETFRAMEWORK

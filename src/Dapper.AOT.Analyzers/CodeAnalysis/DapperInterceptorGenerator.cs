@@ -1075,7 +1075,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             {
                 case WriteArgsMode.Add:
                     sb.Append("p = cmd.CreateParameter();").NewLine();
-                        
+                    sb.Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
+
                     if (member.DapperSpecialType is DapperSpecialType.DbString)
                     {
                         ctx.GeneratorContext.IncludeGenerationType(IncludedGeneration.DbStringHelpers);
@@ -1087,7 +1088,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         break;
                     }
 
-                    sb.Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
                     var dbType = member.GetDbType(out _);
                     var size = member.TryGetValue<int>("Size");
                     bool useSetValueWithDefaultSize = false;
@@ -1193,11 +1193,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             parameterIndex++;
         }
-    }
-
-    static void CalculateDbSyze()
-    {
-
     }
 
     static void AppendDbParameterSetting(CodeWriter sb, string memberName, int? value)
