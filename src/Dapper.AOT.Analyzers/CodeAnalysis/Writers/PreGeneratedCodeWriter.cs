@@ -3,25 +3,38 @@ using Microsoft.CodeAnalysis;
 
 namespace Dapper.CodeAnalysis.Writers
 {
-    internal struct InterceptorsLocationAttributeWriter
+    internal struct PreGeneratedCodeWriter
     {
+        readonly Compilation _compilation;
         readonly CodeWriter _codeWriter;
 
-        public InterceptorsLocationAttributeWriter(CodeWriter codeWriter)
+        public PreGeneratedCodeWriter(
+            CodeWriter codeWriter,
+            Compilation compilation)
         {
             _codeWriter = codeWriter;
+            _compilation = compilation;
         }
 
-        /// <summary>
-        /// Writes the "InterceptsLocationAttribute" to inner <see cref="CodeWriter"/>.
-        /// </summary>
-        /// <remarks>Does so only when "InterceptsLocationAttribute" is NOT visible by <see cref="Compilation"/>.</remarks>
-        public void Write(Compilation compilation)
+        public void Write(IncludedGeneration includedGenerations)
         {
-            var attrib = compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute");
-            if (!IsAvailable(attrib, compilation))
+            if (includedGenerations.HasFlag(IncludedGeneration.InterceptsLocationAttribute))
             {
-                _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InterceptsLocationAttribute.cs"));
+                WriteInterceptsLocationAttribute();
+            }
+
+            if (includedGenerations.HasFlag(IncludedGeneration.DbStringHelpers))
+            {
+                _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InGeneration.DapperHelpers.cs"));
+            }
+        }
+
+        void WriteInterceptsLocationAttribute()
+        {
+            var attrib = _compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute");
+            if (!IsAvailable(attrib, _compilation))
+            {
+                _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InGeneration.InterceptsLocationAttribute.cs"));
             }
 
             static bool IsAvailable(INamedTypeSymbol? type, Compilation compilation)

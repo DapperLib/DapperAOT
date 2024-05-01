@@ -164,8 +164,8 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
             }
         });
 
-        var interceptsLocWriter = new InterceptorsLocationAttributeWriter(codeWriter);
-        interceptsLocWriter.Write(state.Compilation);
+        var preGenerator = new PreGeneratedCodeWriter(codeWriter, state.Compilation);
+        preGenerator.Write(IncludedGeneration.InterceptsLocationAttribute);
 
         context.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.GetSourceText());
     }

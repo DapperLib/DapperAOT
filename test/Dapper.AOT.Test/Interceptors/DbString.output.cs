@@ -7,8 +7,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<int>> QueryAsync0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, HasParameters, Buffered, Text, KnownParameters
-            // takes parameter: <anonymous type: DbString name>
-            // parameter map: name
+            // takes parameter: <anonymous type: DbString Name, int Id>
+            // parameter map: Id Name
             // returns data: int
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
             global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
@@ -19,12 +19,12 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\DbString.input.cs", 22, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\DbString.input.cs", 24, 30)]
         internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<int>> QueryAsync1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, HasParameters, Buffered, Text, KnownParameters
             // takes parameter: global::Foo.Poco
-            // parameter map: Name
+            // parameter map: Id Name
             // returns data: int
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
             global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
@@ -54,28 +54,35 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();
 
-        private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: DbString name>
+        private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: DbString Name, int Id>
         {
             internal static readonly CommandFactory0 Instance = new();
             public override void AddParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
-                var typed = Cast(args, static () => new { name = default(global::Dapper.DbString)! }); // expected shape
+                var typed = Cast(args, static () => new { Name = default(global::Dapper.DbString)!, Id = default(int) }); // expected shape
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
                 p = cmd.CreateParameter();
-                p.ParameterName = "name";
+                p = global::Dapper.Aot.Generated.DbStringHelpers.ConvertToDbParameter(p, typed.Name);
+                ps.Add(p);
+
+                p = cmd.CreateParameter();
+                p.ParameterName = "Id";
+                p.DbType = global::System.Data.DbType.Int32;
                 p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(typed.name);
+                p.Value = AsValue(typed.Id);
                 ps.Add(p);
 
             }
             public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
-                var typed = Cast(args, static () => new { name = default(global::Dapper.DbString)! }); // expected shape
+                var typed = Cast(args, static () => new { Name = default(global::Dapper.DbString)!, Id = default(int) }); // expected shape
                 var ps = cmd.Parameters;
-                ps[0].Value = AsValue(typed.name);
+                ps[0].Value = AsValue(typed.Name);
+                ps[1].Value = AsValue(typed.Id);
 
             }
+            public override bool CanPrepare => true;
 
         }
 
@@ -87,9 +94,14 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
                 p = cmd.CreateParameter();
-                p.ParameterName = "Name";
+                p = global::Dapper.Aot.Generated.DbStringHelpers.ConvertToDbParameter(p, args.Name);
+                ps.Add(p);
+
+                p = cmd.CreateParameter();
+                p.ParameterName = "Id";
+                p.DbType = global::System.Data.DbType.Int32;
                 p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(args.Name);
+                p.Value = AsValue(args.Id);
                 ps.Add(p);
 
             }
@@ -97,8 +109,10 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             {
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(args.Name);
+                ps[1].Value = AsValue(args.Id);
 
             }
+            public override bool CanPrepare => true;
 
         }
 
@@ -119,6 +133,45 @@ namespace System.Runtime.CompilerServices
             _ = path;
             _ = lineNumber;
             _ = columnNumber;
+        }
+    }
+}
+namespace Dapper.Aot.Generated
+{
+    /// <summary>
+    /// Contains helpers to properly handle <see href="https://github.com/DapperLib/Dapper/blob/main/Dapper/DbString.cs"/>
+    /// </summary>
+    static class DbStringHelpers
+    {
+        public static global::System.Data.Common.DbParameter ConvertToDbParameter(
+            global::System.Data.Common.DbParameter dbParameter,
+            global::Dapper.DbString? dbString)
+        {
+            if (dbString is null)
+            {
+                dbParameter.Value = global::System.DBNull.Value;
+                return dbParameter;
+            }
+
+            dbParameter.Size = dbString switch
+            {
+                { Value: null } => 0,
+                { IsAnsi: false } => global::System.Text.Encoding.ASCII.GetByteCount(dbString.Value),
+                { IsAnsi: true } => global::System.Text.Encoding.Default.GetByteCount(dbString.Value),
+                _ => default
+            };
+            dbParameter.DbType = dbString switch
+            {
+                { IsAnsi: true, IsFixedLength: true } => global::System.Data.DbType.AnsiStringFixedLength,
+                { IsAnsi: true, IsFixedLength: false } => global::System.Data.DbType.AnsiString,
+                { IsAnsi: false, IsFixedLength: true } => global::System.Data.DbType.StringFixedLength,
+                { IsAnsi: false, IsFixedLength: false } => global::System.Data.DbType.String,
+                _ => dbParameter.DbType
+            };
+
+            dbParameter.Value = dbString.Value as object ?? global::System.DBNull.Value;
+
+            return dbParameter;
         }
     }
 }

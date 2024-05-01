@@ -16,6 +16,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 using static Dapper.Internal.Inspection;
@@ -424,16 +425,15 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             WriteRowFactory(ctx, sb, pair.Type, pair.Index);
         }
 
-
         foreach (var tuple in factories)
         {
             WriteCommandFactory(ctx, baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount, tuple.AdditionalCommandState);
         }
 
         sb.Outdent().Outdent(); // ends our generated file-scoped class and the namespace
-
-        var interceptsLocationWriter = new InterceptorsLocationAttributeWriter(sb);
-        interceptsLocationWriter.Write(ctx.Compilation);
+        
+        var preGeneratedCodeWriter = new PreGeneratedCodeWriter(sb, ctx.Compilation);
+        preGeneratedCodeWriter.Write(ctx.GeneratorContext.IncludedGenerationTypes);
 
         ctx.AddSource((ctx.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.ToString());
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, ctx.Nodes.Length, methodIndex, factories.Count(), readers.Count()));
@@ -491,11 +491,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         else
         {
             sb.Append("public override void AddParameters(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-            WriteArgs(type, sb, WriteArgsMode.Add, map, ref flags);
+            WriteArgs(in ctx, type, sb, WriteArgsMode.Add, map, ref flags);
             sb.Outdent().NewLine();
 
             sb.Append("public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args)").Indent().NewLine();
-            WriteArgs(type, sb, WriteArgsMode.Update, map, ref flags);
+            WriteArgs(in ctx, type, sb, WriteArgsMode.Update, map, ref flags);
             sb.Outdent().NewLine();
 
             if ((flags & (WriteArgsFlags.NeedsRowCount | WriteArgsFlags.NeedsPostProcess)) != 0)
@@ -508,11 +508,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb.Append("public override void PostProcess(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine();
                 if ((flags & WriteArgsFlags.NeedsPostProcess) != 0)
                 {
-                    WriteArgs(type, sb, WriteArgsMode.PostProcess, map, ref flags);
+                    WriteArgs(in ctx, type, sb, WriteArgsMode.PostProcess, map, ref flags);
                 }
                 if ((flags & WriteArgsFlags.NeedsRowCount) != 0)
                 {
-                    WriteArgs(type, sb, WriteArgsMode.SetRowCount, map, ref flags);
+                    WriteArgs(in ctx, type, sb, WriteArgsMode.SetRowCount, map, ref flags);
                 }
                 if (baseFactory != DapperBaseCommandFactory)
                 {
@@ -525,7 +525,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             {
                 sb.Append("public override global::System.Threading.CancellationToken GetCancellationToken(").Append(declaredType).Append(" args)")
                     .Indent().NewLine();
-                WriteArgs(type, sb, WriteArgsMode.GetCancellationToken, map, ref flags);
+                WriteArgs(in ctx, type, sb, WriteArgsMode.GetCancellationToken, map, ref flags);
                 sb.Outdent().NewLine();
             }
         }
@@ -967,7 +967,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         GetCancellationToken
     }
 
-    private static void WriteArgs(ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags)
+    private static void WriteArgs(in GenerateState ctx, ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags)
     {
         if (parameterType is null)
         {
@@ -1074,22 +1074,22 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             switch (mode)
             {
                 case WriteArgsMode.Add:
-                    sb.Append("p = cmd.CreateParameter();").NewLine()
-                        .Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
-
-                    // how to calculate DbType / Size / etc if I am writing shared code for type here?
-                    // I need specifics for each usage case
-
-                    var dbType = member.DapperSpecialType switch
+                    sb.Append("p = cmd.CreateParameter();").NewLine();
+                        
+                    if (member.DapperSpecialType is DapperSpecialType.DbString)
                     {
-                        DapperSpecialType.DbString => member.GetDbType(out _),
-                        _ => member.GetDbType(out _)
-                    };
-                    var size = member.DapperSpecialType switch
-                    {
-                        _ => member.TryGetValue<int>("Size")
-                    };
+                        ctx.GeneratorContext.IncludeGenerationType(IncludedGeneration.DbStringHelpers);
 
+                        sb.Append("p = global::Dapper.Aot.Generated.DbStringHelpers.ConvertToDbParameter(p, ")
+                          .Append(source).Append(".").Append(member.DbName).Append(");").NewLine();
+
+                        sb.Append("ps.Add(p);").NewLine(); // dont forget to add parameter to command parameters collection
+                        break;
+                    }
+
+                    sb.Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
+                    var dbType = member.GetDbType(out _);
+                    var size = member.TryGetValue<int>("Size");
                     bool useSetValueWithDefaultSize = false;
                     if (dbType is not null)
                     {

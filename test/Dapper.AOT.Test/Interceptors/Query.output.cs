@@ -308,9 +308,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
                 p = cmd.CreateParameter();
-                p.ParameterName = "Name";
-                p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(typed.Name);
+                p = global::Dapper.Aot.Generated.DbStringHelpers.ConvertToDbParameter(p, typed.Name);
                 ps.Add(p);
 
             }
@@ -321,6 +319,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps[0].Value = AsValue(typed.Name);
 
             }
+            public override bool CanPrepare => true;
 
         }
 
@@ -341,6 +340,45 @@ namespace System.Runtime.CompilerServices
             _ = path;
             _ = lineNumber;
             _ = columnNumber;
+        }
+    }
+}
+namespace Dapper.Aot.Generated
+{
+    /// <summary>
+    /// Contains helpers to properly handle <see href="https://github.com/DapperLib/Dapper/blob/main/Dapper/DbString.cs"/>
+    /// </summary>
+    static class DbStringHelpers
+    {
+        public static global::System.Data.Common.DbParameter ConvertToDbParameter(
+            global::System.Data.Common.DbParameter dbParameter,
+            global::Dapper.DbString? dbString)
+        {
+            if (dbString is null)
+            {
+                dbParameter.Value = global::System.DBNull.Value;
+                return dbParameter;
+            }
+
+            dbParameter.Size = dbString switch
+            {
+                { Value: null } => 0,
+                { IsAnsi: false } => global::System.Text.Encoding.ASCII.GetByteCount(dbString.Value),
+                { IsAnsi: true } => global::System.Text.Encoding.Default.GetByteCount(dbString.Value),
+                _ => default
+            };
+            dbParameter.DbType = dbString switch
+            {
+                { IsAnsi: true, IsFixedLength: true } => global::System.Data.DbType.AnsiStringFixedLength,
+                { IsAnsi: true, IsFixedLength: false } => global::System.Data.DbType.AnsiString,
+                { IsAnsi: false, IsFixedLength: true } => global::System.Data.DbType.StringFixedLength,
+                { IsAnsi: false, IsFixedLength: false } => global::System.Data.DbType.String,
+                _ => dbParameter.DbType
+            };
+
+            dbParameter.Value = dbString.Value as object ?? global::System.DBNull.Value;
+
+            return dbParameter;
         }
     }
 }
