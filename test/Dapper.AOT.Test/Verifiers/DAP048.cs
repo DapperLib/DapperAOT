@@ -8,6 +8,7 @@ namespace Dapper.AOT.Test.Verifiers;
 public class DAP048 : Verifier<DapperAnalyzer>
 {
     [Theory]
+    [InlineData("[DapperAot(false)]")]
     [InlineData("[DapperAot(true)]")]
     public Task MoveFromDbString(string dapperAotAttribute) => CSVerifyAsync($$"""
         using Dapper;
