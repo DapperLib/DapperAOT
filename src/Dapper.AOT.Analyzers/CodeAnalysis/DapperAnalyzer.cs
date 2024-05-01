@@ -829,7 +829,15 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
     {
         if (parameters is null) return;
 
-        var isCancellationElement = IsCancellationToken(parameters.ElementType);
+        var usingVanillaDapperMode = flags.HasAny(OperationFlags.DoNotGenerate); // using vanilla Dapper mode
+        if (usingVanillaDapperMode)
+        {
+            if (parameters.Members.Any(s => s.IsCancellation) || IsCancellationToken(parameters.ElementType))
+            {
+                onDiagnostic(Diagnostic.Create(Diagnostics.CancellationNotSupported, parameters.Location));
+            }
+        }
+
         var isFirstCancellation = true;
         foreach (var member in parameters.Members)
         {
@@ -847,20 +855,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
         void ValidateCancellationTokenParameter(ElementMember member)
         {
-            if (flags.HasAny(OperationFlags.DoNotGenerate)) // using vanilla Dapper mode
+            if (!usingVanillaDapperMode && member.IsCancellation)
             {
-                if (isCancellationElement)
-                {
-                    onDiagnostic(Diagnostic.Create(Diagnostics.CancellationNotSupported, parameters.Location));
-                }
-            }
-            else
-            {
-                if (member.IsCancellation)
-                {
-                    if (isFirstCancellation) isFirstCancellation = false;
-                    else onDiagnostic(Diagnostic.Create(Diagnostics.CancellationDuplicated, member.GetLocation()));
-                }
+                if (isFirstCancellation) isFirstCancellation = false;
+                else onDiagnostic(Diagnostic.Create(Diagnostics.CancellationDuplicated, member.GetLocation()));
             }
         }
     }
