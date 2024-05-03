@@ -1081,7 +1081,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     {
                         ctx.GeneratorContext.IncludeGenerationType(IncludedGeneration.DbStringHelpers);
 
-                        sb.Append("p = global::Dapper.Aot.Generated.DbStringHelpers.ConvertToDbParameter(p, ")
+                        sb.Append("global::Dapper.Aot.Generated.DbStringHelpers.ConfigureDbStringDbParameter(p, ")
                           .Append(source).Append(".").Append(member.DbName).Append(");").NewLine();
 
                         sb.Append("ps.Add(p);").NewLine(); // dont forget to add parameter to command parameters collection

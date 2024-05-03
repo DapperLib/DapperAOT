@@ -24,7 +24,7 @@ namespace Dapper.AOT.Test.InGeneration
                 Length = 60
             };
 
-            param = Aot.Generated.DbStringHelpers.ConvertToDbParameter(param, dbString);
+            Aot.Generated.DbStringHelpers.ConfigureDbStringDbParameter(param, dbString);
 
             Assert.Equal(expectedSize, param.Size);
             Assert.Equal(expectedDbType, param.DbType);

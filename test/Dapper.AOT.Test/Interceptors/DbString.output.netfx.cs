@@ -63,7 +63,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
                 p = cmd.CreateParameter();
-                p = global::Dapper.Aot.Generated.DbStringHelpers.ConvertToDbParameter(p, typed.Name);
+                p.ParameterName = "Name";
+                global::Dapper.Aot.Generated.DbStringHelpers.ConfigureDbStringDbParameter(p, typed.Name);
                 ps.Add(p);
 
                 p = cmd.CreateParameter();
@@ -94,7 +95,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
                 p = cmd.CreateParameter();
-                p = global::Dapper.Aot.Generated.DbStringHelpers.ConvertToDbParameter(p, args.Name);
+                p.ParameterName = "Name";
+                global::Dapper.Aot.Generated.DbStringHelpers.ConfigureDbStringDbParameter(p, args.Name);
                 ps.Add(p);
 
                 p = cmd.CreateParameter();
@@ -143,14 +145,14 @@ namespace Dapper.Aot.Generated
     /// </summary>
     static class DbStringHelpers
     {
-        public static global::System.Data.Common.DbParameter ConvertToDbParameter(
+        public static void ConfigureDbStringDbParameter(
             global::System.Data.Common.DbParameter dbParameter,
             global::Dapper.DbString? dbString)
         {
             if (dbString is null)
             {
                 dbParameter.Value = global::System.DBNull.Value;
-                return dbParameter;
+                return;
             }
 
             dbParameter.Size = dbString switch
@@ -170,8 +172,6 @@ namespace Dapper.Aot.Generated
             };
 
             dbParameter.Value = dbString.Value as object ?? global::System.DBNull.Value;
-
-            return dbParameter;
         }
     }
 }

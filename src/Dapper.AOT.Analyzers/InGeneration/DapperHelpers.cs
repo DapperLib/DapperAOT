@@ -5,14 +5,14 @@
     /// </summary>
     static class DbStringHelpers
     {
-        public static global::System.Data.Common.DbParameter ConvertToDbParameter(
+        public static void ConfigureDbStringDbParameter(
             global::System.Data.Common.DbParameter dbParameter,
             global::Dapper.DbString? dbString)
         {
             if (dbString is null)
             {
                 dbParameter.Value = global::System.DBNull.Value;
-                return dbParameter;
+                return;
             }
 
             dbParameter.Size = dbString switch
@@ -32,8 +32,6 @@
             };
 
             dbParameter.Value = dbString.Value as object ?? global::System.DBNull.Value;
-
-            return dbParameter;
         }
     }
 }
