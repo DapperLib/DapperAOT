@@ -79,7 +79,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             {
                 var typed = Cast(args, static () => new { Name = default(global::Dapper.DbString)!, Id = default(int) }); // expected shape
                 var ps = cmd.Parameters;
-                ps[0].Value = AsValue(typed.Name);
+                global::Dapper.Aot.Generated.DbStringHelpers.ConfigureDbStringDbParameter(ps[0], typed.Name);
                 ps[1].Value = AsValue(typed.Id);
 
             }
@@ -110,7 +110,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Poco args)
             {
                 var ps = cmd.Parameters;
-                ps[0].Value = AsValue(args.Name);
+                global::Dapper.Aot.Generated.DbStringHelpers.ConfigureDbStringDbParameter(ps[0], args.Name);
                 ps[1].Value = AsValue(args.Id);
 
             }
@@ -155,13 +155,17 @@ namespace Dapper.Aot.Generated
                 return;
             }
 
-            dbParameter.Size = dbString switch
+            // repeating logic from Dapper:
+            // https://github.com/DapperLib/Dapper/blob/52160dc44699ec7eb5ad57d0dddc6ded4662fcb9/Dapper/DbString.cs#L71
+            if (dbString.Length == -1 && dbString.Value is not null && dbString.Value.Length <= global::Dapper.DbString.DefaultLength)
             {
-                { Value: null } => 0,
-                { IsAnsi: false } => global::System.Text.Encoding.ASCII.GetByteCount(dbString.Value),
-                { IsAnsi: true } => global::System.Text.Encoding.Default.GetByteCount(dbString.Value),
-                _ => default
-            };
+                dbParameter.Size = global::Dapper.DbString.DefaultLength;
+            }
+            else
+            {
+                dbParameter.Size = dbString.Length;
+            }
+
             dbParameter.DbType = dbString switch
             {
                 { IsAnsi: true, IsFixedLength: true } => global::System.Data.DbType.AnsiStringFixedLength,

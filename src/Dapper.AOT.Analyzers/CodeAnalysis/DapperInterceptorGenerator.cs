@@ -1161,6 +1161,18 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                     break;
                 case WriteArgsMode.Update:
+                    if (member.DapperSpecialType is DapperSpecialType.DbString)
+                    {
+                        ctx.GeneratorContext.IncludeGenerationType(IncludedGeneration.DbStringHelpers);
+
+                        sb.Append("global::Dapper.Aot.Generated.DbStringHelpers.ConfigureDbStringDbParameter")
+                            .Append("(ps[").Append(parameterIndex).Append("], ")
+                            .Append(source).Append(".").Append(member.CodeName)
+                            .Append(");").NewLine();
+
+                        break;
+                    }
+
                     sb.Append("ps[");
                     if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
                     else sb.Append(parameterIndex);

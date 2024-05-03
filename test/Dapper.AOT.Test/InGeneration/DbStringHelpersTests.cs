@@ -9,10 +9,10 @@ namespace Dapper.AOT.Test.InGeneration
     public class DbStringHelpersTests
     {
         [Theory]
-        [InlineData(false, false, "qweqwe", DbType.String, 6)]
-        [InlineData(false, true, "qweqwe", DbType.StringFixedLength, 6)]
-        [InlineData(true, false, "qweqwe", DbType.AnsiString, 6)]
-        [InlineData(true, true, "qweqwe", DbType.AnsiStringFixedLength, 6)]
+        [InlineData(false, false, "qweqwe", DbType.String, 60)]
+        [InlineData(false, true, "qweqwe", DbType.StringFixedLength, 60)]
+        [InlineData(true, false, "qweqwe", DbType.AnsiString, 60)]
+        [InlineData(true, true, "qweqwe", DbType.AnsiStringFixedLength, 60)]
         public void ConfigureDbString_ShouldProperlySetupDbParameter(bool isAnsi, bool isFixedLength, string dbStringValue, DbType expectedDbType, int expectedSize)
         {
             var param = CreateDbParameter();

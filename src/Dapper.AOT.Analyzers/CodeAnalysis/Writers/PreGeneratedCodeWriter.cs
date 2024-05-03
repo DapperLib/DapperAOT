@@ -1,4 +1,5 @@
-﻿using Dapper.Internal;
+﻿using Dapper.CodeAnalysis.Extensions;
+using Dapper.Internal;
 using Microsoft.CodeAnalysis;
 
 namespace Dapper.CodeAnalysis.Writers
@@ -18,12 +19,12 @@ namespace Dapper.CodeAnalysis.Writers
 
         public void Write(IncludedGeneration includedGenerations)
         {
-            if (includedGenerations.HasFlag(IncludedGeneration.InterceptsLocationAttribute))
+            if (includedGenerations.HasAny(IncludedGeneration.InterceptsLocationAttribute))
             {
                 WriteInterceptsLocationAttribute();
             }
 
-            if (includedGenerations.HasFlag(IncludedGeneration.DbStringHelpers))
+            if (includedGenerations.HasAny(IncludedGeneration.DbStringHelpers))
             {
                 _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InGeneration.DapperHelpers.cs"));
             }
