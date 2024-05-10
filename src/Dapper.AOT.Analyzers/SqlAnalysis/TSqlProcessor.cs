@@ -628,19 +628,19 @@ internal class TSqlProcessor
 
         public override void Visit(StringLiteral node)
         {
-            foreach (var token in node.ScriptTokenStream.Where(t => t.TokenType == TSqlTokenType.AsciiStringLiteral))
+            foreach (var token in node.ScriptTokenStream)
             {
-                // searching for 2 appearances of '?'
-                int firstAppearance;
-                if ((firstAppearance = token.Text.IndexOf('?')) >= 0)
+                if (token.TokenType is not TSqlTokenType.AsciiStringLiteral)
                 {
-                    if (token.Text.IndexOf('?', firstAppearance + 1) >= 0)
-                    {
-                        if (CompiledRegex.PseudoPositional.IsMatch(node.Value))
-                        {
-                            parser.OnPseudoPositionalParameter(node);
-                        }
-                    }
+                    continue;
+                }
+
+                int firstAppearance;
+                if ((firstAppearance = token.Text.IndexOf('?')) >= 0
+                    && token.Text.IndexOf('?', firstAppearance + 1) >= 0 // if there are 2 appearances of `?`
+                    && CompiledRegex.PseudoPositional.IsMatch(node.Value))
+                {
+                    parser.OnPseudoPositionalParameter(node);
                 }
             }
 
