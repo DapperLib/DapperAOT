@@ -35,14 +35,22 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             {
                 _ = conn.Query<int>("select {|#0:'this ?looks? like pseudo-positional'|}");
                 _ = conn.Query<int>("select 'this ? does not look ? like pseudo-positional because of spaces'");
-                _ = conn.Query<int>("select 'this ?' + 'does not look like ? pseudo-positional' + 'because only 1 question mark is in every string part ?'");
                 _ = conn.Query<int>("select * from Orders where Id = ?id?", new Poco { Id = "1" });
+                _ = conn.Query<int>("select * from Orders where Id = ?id? and Name = ?name?", new Poco { Id = "1", Name = "me" });
+                _ = conn.Query<int>("select 'this ?' + 'does not look like ? pseudo-positional' + 'because only 1 question mark is in every string part ?'");
+                _ = conn.Query<int>(@"
+                    SELECT *
+                    FROM Orders
+                    WHERE Id = ?id?
+                      AND Name = ?name?",
+                  new Poco { Id = "1", Name = "me" });
             }
         }
 
         class Poco
         {
             public string Id { get; set; }
+            public string Name { get; set; }
         }
     """, DefaultConfig, [
         Diagnostic(DapperAnalyzer.Diagnostics.PseudoPositionalParameter).WithLocation(0)

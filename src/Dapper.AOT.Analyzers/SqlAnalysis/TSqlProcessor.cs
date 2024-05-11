@@ -93,9 +93,10 @@ internal class TSqlProcessor
             tree = parser.Parse(reader, out var errors);
             if (errors is not null && errors.Count != 0)
             {
-                Flags |= SqlParseOutputFlags.SyntaxError;
-                foreach (var error in errors)
+                var errorsProcessingContext = new TSqlErrorsProcessingContext(errors);
+                foreach (var error in errorsProcessingContext.GetErrorsToReport(fixedSql))
                 {
+                    Flags |= SqlParseOutputFlags.SyntaxError;
                     OnParseError(error, new Location(error.Line, error.Column, error.Offset, 0));
                 }
             }
@@ -626,6 +627,11 @@ internal class TSqlProcessor
             base.Visit(node);
         }
 
+        public override void Visit(WhereClause whereClause)
+        {
+            base.Visit(whereClause);
+        }
+
         public override void Visit(StringLiteral node)
         {
             foreach (var token in node.ScriptTokenStream)
@@ -669,6 +675,11 @@ internal class TSqlProcessor
                     MarkAssigned(setVar.Variable, false);
                 }
             }
+        }
+
+        public override void Visit(QueryExpression expression)
+        {
+            base.Visit(expression);
         }
 
         public override void ExplicitVisit(SelectSetVariable node)
