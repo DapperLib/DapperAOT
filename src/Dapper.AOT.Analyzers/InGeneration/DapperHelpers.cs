@@ -3,7 +3,7 @@
     /// <summary>
     /// Contains helpers to properly handle <see href="https://github.com/DapperLib/Dapper/blob/main/Dapper/DbString.cs"/>
     /// </summary>
-    static class DbStringHelpers
+    file static class DbStringHelpers
     {
         public static void ConfigureDbStringDbParameter(
             global::System.Data.Common.DbParameter dbParameter,
