@@ -86,6 +86,11 @@ internal class TSqlProcessor
         {
             Flags |= SqlParseOutputFlags.SqlAdjustedForDapperSyntax;
         }
+        var sqlSpecialScenariosProcessingContext = new TSqlSpecialScenariosProcessingContext(_visitor, fixedSql);
+
+        var memberNamesSet = new HashSet<string>(members.Select(x => x.Name), CaseSensitive ? StringComparer.InvariantCulture : StringComparer.InvariantCultureIgnoreCase);
+        sqlSpecialScenariosProcessingContext.MarkPseudoPositionalVariablesUsed(memberNamesSet);
+        
         var parser = new TSql160Parser(true, SqlEngineType.All);
         TSqlFragment tree;
         using (var reader = new StringReader(fixedSql))
@@ -93,8 +98,7 @@ internal class TSqlProcessor
             tree = parser.Parse(reader, out var errors);
             if (errors is not null && errors.Count != 0)
             {
-                var errorsProcessingContext = new TSqlErrorsProcessingContext(errors);
-                foreach (var error in errorsProcessingContext.GetErrorsToReport(fixedSql))
+                foreach (var error in sqlSpecialScenariosProcessingContext.GetErrorsToReport(errors))
                 {
                     Flags |= SqlParseOutputFlags.SyntaxError;
                     OnParseError(error, new Location(error.Line, error.Column, error.Offset, 0));
@@ -119,7 +123,7 @@ internal class TSqlProcessor
             {
                 if (_visitor.KnownParameters) OnVariableNotDeclared(variable);
             }
-            else if (variable.IsUnconsumed && !variable.IsTable && !variable.IsOutputParameter)
+            else if (variable is { IsUnconsumed: true, IsTable: false, IsOutputParameter: false })
             {
                 if (_visitor.AssignmentTracking) OnVariableValueNotConsumed(variable);
             }
@@ -368,7 +372,8 @@ internal class TSqlProcessor
         public Variable WithLocation(TSqlFragment node) => new(in this, node);
         public Variable WithName(string name) => new(in this, name);
     }
-    class LoggingVariableTrackingVisitor : VariableTrackingVisitor
+    
+    internal class LoggingVariableTrackingVisitor : VariableTrackingVisitor
     {
         private readonly Action<string> log;
         public LoggingVariableTrackingVisitor(SqlParseInputFlags flags, TSqlProcessor parser, Action<string> log) : base(flags, parser)
@@ -410,7 +415,8 @@ internal class TSqlProcessor
             base.Visit(node);
         }
     }
-    class VariableTrackingVisitor : TSqlFragmentVisitor
+    
+    internal class VariableTrackingVisitor : TSqlFragmentVisitor
     {
         // important note for anyone maintaining this;
         //
@@ -478,7 +484,19 @@ internal class TSqlProcessor
             return false;
         }
 
-        private Variable SetVariable(Variable variable) => _variables[variable.Name] = variable;
+        internal Variable SetVariable(Variable variable) => _variables[variable.Name] = variable;
+
+        internal bool TryGetByName(string name, out Variable variable)
+        {
+            if (_variables.TryGetValue(name, out var value))
+            {
+                variable = value;
+                return true;
+            }
+
+            variable = default;
+            return false;
+        }
 
         private readonly Dictionary<string, Variable> _variables;
         private int batchCount;
