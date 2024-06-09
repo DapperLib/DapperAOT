@@ -64,12 +64,6 @@ internal readonly struct SqlProcessingContext
     bool IsPseudoPositionalParameterGenuineUsage(ParseError error)
     {
         if (error.Number != 46010) return false; // `46010` is `Incorrect syntax around ...`
-        if (_pseudoPositionalArgumentsOffsetNames.Count == 0)
-        {
-            // regex would not find positional arguments, if there are any
-            return false;
-        }
-
         return _pseudoPositionalArgumentsOffsetNames.ContainsKey(error.Offset);
     }
 }
