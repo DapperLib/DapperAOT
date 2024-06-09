@@ -86,10 +86,11 @@ internal class TSqlProcessor
         {
             Flags |= SqlParseOutputFlags.SqlAdjustedForDapperSyntax;
         }
-        var sqlSpecialScenariosProcessingContext = new TSqlSpecialScenariosProcessingContext(_visitor, fixedSql);
+        
+        var sqlProcessingContext = new SqlProcessingContext(_visitor, fixedSql);
 
         var memberNamesSet = new HashSet<string>(members.Select(x => x.Name), CaseSensitive ? StringComparer.InvariantCulture : StringComparer.InvariantCultureIgnoreCase);
-        sqlSpecialScenariosProcessingContext.MarkPseudoPositionalVariablesUsed(memberNamesSet);
+        sqlProcessingContext.MarkPseudoPositionalVariablesUsed(memberNamesSet);
         
         var parser = new TSql160Parser(true, SqlEngineType.All);
         TSqlFragment tree;
@@ -98,7 +99,7 @@ internal class TSqlProcessor
             tree = parser.Parse(reader, out var errors);
             if (errors is not null && errors.Count != 0)
             {
-                foreach (var error in sqlSpecialScenariosProcessingContext.GetErrorsToReport(errors))
+                foreach (var error in sqlProcessingContext.GetErrorsToReport(errors))
                 {
                     Flags |= SqlParseOutputFlags.SyntaxError;
                     OnParseError(error, new Location(error.Line, error.Column, error.Offset, 0));

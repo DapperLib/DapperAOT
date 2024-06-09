@@ -6,26 +6,31 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace Dapper.SqlAnalysis;
 
-internal readonly struct TSqlSpecialScenariosProcessingContext
+internal readonly struct SqlProcessingContext
 {
     private readonly TSqlProcessor.VariableTrackingVisitor _variableVisitor;
+    private readonly IReadOnlyDictionary<int, string> _pseudoPositionalArgumentsOffsetNames;
     
-    private readonly IDictionary<int, string> _pseudoPositionalArgumentsOffsetNames;
-    
-    public TSqlSpecialScenariosProcessingContext(TSqlProcessor.VariableTrackingVisitor variableVisitor, string sql)
+    public SqlProcessingContext(TSqlProcessor.VariableTrackingVisitor variableVisitor, string sql)
     {
         _variableVisitor = variableVisitor;
-        
-        var regexMatch = CompiledRegex.PseudoPositional.Match(sql);
-        if (!regexMatch!.Success)
+        _pseudoPositionalArgumentsOffsetNames = BuildPseudoPositionalArgsOffsetNamesMap();
+            
+        IReadOnlyDictionary<int, string> BuildPseudoPositionalArgsOffsetNamesMap()
         {
-            _pseudoPositionalArgumentsOffsetNames = new Dictionary<int, string>();
-        }
-        
-        _pseudoPositionalArgumentsOffsetNames = new Dictionary<int, string>();
-        foreach (var match in regexMatch.Groups.OfType<Match>())
-        {
-            _pseudoPositionalArgumentsOffsetNames.Add(match.Index, match.Value.Trim('?'));
+            var offsetNamesMap = new Dictionary<int, string>();
+            var regexMatch = CompiledRegex.PseudoPositional.Match(sql);
+            while (regexMatch.Success)
+            {
+                foreach (var match in regexMatch.Groups.OfType<Match>())
+                {
+                    offsetNamesMap.Add(match.Index, match.Value.Trim('?'));
+                }
+
+                regexMatch = regexMatch.NextMatch();
+            }
+
+            return offsetNamesMap;
         }
     }
     
