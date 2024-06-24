@@ -1,8 +1,8 @@
-﻿using Microsoft.Data.SqlClient;
-using System;
+﻿using System;
+using Microsoft.Data.SqlClient;
 using Xunit;
 
-namespace Dapper.AOT.Test.Integration;
+namespace Dapper.AOT.Test.Integration.Setup;
 
 [CollectionDefinition(Collection)]
 public class SharedSqlClient : ICollectionFixture<SqlClientFixture>

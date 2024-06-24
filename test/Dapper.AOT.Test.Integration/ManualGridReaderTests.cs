@@ -1,10 +1,10 @@
-﻿using Microsoft.Data.SqlClient;
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Xunit;
 
-namespace Dapper.AOT.Test.Integration;
+namespace Dapper.AOT.Test.Integration.Setup;
 
 [Collection(SharedSqlClient.Collection)]
 public class ManualGridReaderTests : IDisposable

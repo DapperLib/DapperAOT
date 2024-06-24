@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading.Tasks;
+using Dapper.AOT.Test.Integration.Setup;
 using Xunit;
 
 namespace Dapper.AOT.Test.Integration;

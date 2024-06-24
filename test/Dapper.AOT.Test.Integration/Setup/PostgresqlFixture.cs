@@ -1,9 +1,9 @@
-﻿using Npgsql;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
 
-namespace Dapper.AOT.Test.Integration;
+namespace Dapper.AOT.Test.Integration.Setup;
 
 [CollectionDefinition(Collection)]
 public class SharedPostgresqlClient : ICollectionFixture<PostgresqlFixture>

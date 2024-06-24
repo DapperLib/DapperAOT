@@ -1,10 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
     <PropertyGroup>
         <TargetFrameworks>net6.0;net48</TargetFrameworks>
-        <NoWarn>$(NoWarn);IDE0042;CS8002;CA1816</NoWarn>
-        <RootNamespace>Dapper.AOT.Test</RootNamespace>
+        <RootNamespace>Dapper.AOT.Test.Integration</RootNamespace>
         <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
     </PropertyGroup>
+
     <ItemGroup>
         <Compile Remove="Accessors/Data/**/*.*.cs" />
         <None Include="Accessors/Data/**/*.*" />
@@ -16,18 +17,8 @@
 
         <Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
         <Compile Include="..\..\src\Dapper.AOT.Analyzers\InGeneration\DapperHelpers.cs" Link="DapperHelpers.cs" />
+    </ItemGroup>
 
-        <None Update="**/*.output.*">
-            <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>
-        </None>
-        <None Update="**/*.output.netfx.*">
-            <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output.netfx', '.input.cs'))</DependentUpon>
-        </None>
-		<None Update="**/*DAP*.*.cs*">
-			<DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.VB.cs', '.cs'))</DependentUpon>
-		</None>
-	</ItemGroup>
-    
     <ItemGroup>
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
@@ -59,4 +50,5 @@
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" />
         <PackageReference Include="Testcontainers.PostgreSql" />
     </ItemGroup>
+    
 </Project>
