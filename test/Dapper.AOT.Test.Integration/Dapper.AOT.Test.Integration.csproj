@@ -7,16 +7,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Remove="Accessors/Data/**/*.*.cs" />
-        <None Include="Accessors/Data/**/*.*" />
-        <None Update="Accessors/Data/**/*.*" CopyToOutputDirectory="PreserveNewest" />
-
-        <Compile Remove="Interceptors/**/*.*.cs" />
-        <None Include="Interceptors/**/*.*" />
-        <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
-
         <Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
-        <Compile Include="..\..\src\Dapper.AOT.Analyzers\InGeneration\DapperHelpers.cs" Link="DapperHelpers.cs" />
+
+        <Compile Remove="InterceptionExecutables/**/*.*.cs" />
+        <None Include="InterceptionExecutables/**/*.*" />
+        <None Update="InterceptionExecutables/**/*.*" CopyToOutputDirectory="PreserveNewest" />
+        
+<!--        <Compile Remove="InterceptionExecutables\Template.cs" />-->
+<!--        <None Include="InterceptionExecutables\_Template.cs" />-->
+<!--        <Compile Update="InterceptionExecutables\**\*.cs">-->
+<!--          <CopyToOutputDirectory>Always</CopyToOutputDirectory>-->
+<!--        </Compile>-->
     </ItemGroup>
 
     <ItemGroup>
@@ -49,6 +50,7 @@
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Analyzer.Testing.XUnit" />
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" />
         <PackageReference Include="Testcontainers.PostgreSql" />
+        <ProjectReference Include="..\Dapper.AOT.Test\Dapper.AOT.Test.csproj" />
     </ItemGroup>
     
 </Project>

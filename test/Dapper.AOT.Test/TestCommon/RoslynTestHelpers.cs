@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace Dapper.TestCommon;
 
-internal static class RoslynTestHelpers
+public static class RoslynTestHelpers
 {
     internal static readonly CSharpParseOptions ParseOptionsLatestLangVer = CSharpParseOptions.Default
         .WithLanguageVersion(LanguageVersion.Latest)
@@ -45,8 +45,41 @@ internal static class RoslynTestHelpers
     })
     .WithFeatures(new[] { DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair });
 
-    public static Compilation CreateCompilation(string source, string name, string fileName)
-       => CSharpCompilation.Create(name,
+    public static Compilation CreateCompilation(string assemblyName, SyntaxTree[] syntaxTrees, OutputKind outputKind = OutputKind.DynamicallyLinkedLibrary)
+       => CSharpCompilation.Create(assemblyName,
+           syntaxTrees: syntaxTrees,
+           references: new[] {
+                   MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
+#if !NET48
+                   MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
+                   MetadataReference.CreateFromFile(Assembly.Load("System.Data").Location),
+                   MetadataReference.CreateFromFile(Assembly.Load("netstandard").Location),
+                   MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
+                   MetadataReference.CreateFromFile(typeof(System.ComponentModel.DataAnnotations.Schema.ColumnAttribute).Assembly.Location),
+#endif
+                   MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(System.Data.SqlClient.SqlConnection).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(OracleConnection).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(ValueTask<int>).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(Component).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(DapperAotExtensions).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(ImmutableList<int>).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(ImmutableArray<int>).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(IAsyncEnumerable<int>).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(Span<int>).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(IgnoreDataMemberAttribute).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(DynamicAttribute).Assembly.Location),
+                   MetadataReference.CreateFromFile(typeof(IValidatableObject).Assembly.Location),
+           },
+           options: new CSharpCompilationOptions(outputKind, allowUnsafe: true));
+    
+    public static Compilation CreateCompilation(string source, string assemblyName, string fileName)
+       => CSharpCompilation.Create(assemblyName,
            syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source, ParseOptionsLatestLangVer).WithFilePath(fileName) },
            references: new[] {
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
