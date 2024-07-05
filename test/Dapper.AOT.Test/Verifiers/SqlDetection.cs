@@ -24,6 +24,39 @@ public class SqlDetection : Verifier<DapperAnalyzer>
     .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111.")]);
 
     [Fact]
+    public Task CSVerifyQuestionMarkInQuery_LikePseudoPositional() => CSVerifyAsync("""
+        using Dapper;
+        using System.Data.Common;
+    
+        [DapperAot(true)]
+        class SomeCode
+        {
+            public void Foo(DbConnection conn)
+            {
+                _ = conn.Query<int>("select {|#0:'this ?looks? like pseudo-positional'|}");                                                                     // line 9
+                _ = conn.Query<int>("select 'this ? does not look ? like pseudo-positional because of spaces'");                                                // line 10
+                _ = conn.Query<int>("select * from Orders where Id = ?id?", new Poco { Id = "1" });                                                             // line 11
+                _ = conn.Query<int>("select * from Orders where Id = ?id? and Name = ?name?", new Poco { Id = "1", Name = "me" });                              // line 12
+                _ = conn.Query<int>("select 'this ?' + 'does not look like ? pseudo-positional' + 'because only 1 question mark is in every string part ?'");   // line 13
+                _ = conn.Query<int>(@"                                                                                                                          // line 14
+                    SELECT *                                                                                                                                    // line 15
+                    FROM Orders                                                                                                                                 // line 16
+                    WHERE Id = ?id?                                                                                                                             // line 17
+                      AND Name = ?name?",                                                                                                                       // line 18
+                    new Poco { Id = "1", Name = "me" });                                                                                                        // line 19
+            }
+        }
+
+        class Poco
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+        }
+    """, DefaultConfig, [
+        Diagnostic(DapperAnalyzer.Diagnostics.PseudoPositionalParameter).WithLocation(0)
+    ]);
+
+    [Fact]
     public Task CSViaProperty() => CSVerifyAsync("""
         using System.Data.Common;
         using Dapper;

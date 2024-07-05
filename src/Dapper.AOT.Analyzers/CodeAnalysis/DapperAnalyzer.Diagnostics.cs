@@ -101,6 +101,8 @@ partial class DapperAnalyzer
         InterpolatedStringSqlExpression = SqlWarning("DAP241", "Interpolated string usage", "Data values should not be interpolated into SQL string - use parameters instead"),
         ConcatenatedStringSqlExpression = SqlWarning("DAP242", "Concatenated string usage", "Data values should not be concatenated into SQL string - use parameters instead"),
         InvalidDatepartToken = SqlWarning("DAP243", "Valid datepart token expected", "Date functions require a recognized datepart argument"),
-        SelectAggregateMismatch = SqlWarning("DAP244", "SELECT aggregate mismatch", "SELECT has mixture of aggregate and non-aggregate expressions");
+        SelectAggregateMismatch = SqlWarning("DAP244", "SELECT aggregate mismatch", "SELECT has mixture of aggregate and non-aggregate expressions"),
+        PseudoPositionalParameter = SqlError("DAP245", "Avoid SQL pseudo-positional parameter", "It is more like Dapper will incorrectly treat this literal as a pseudo-positional parameter")
+        ;
     }
 }
