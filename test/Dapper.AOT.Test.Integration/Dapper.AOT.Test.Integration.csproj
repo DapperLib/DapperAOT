@@ -9,9 +9,14 @@
     <ItemGroup>
         <Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
 
-        <Compile Remove="InterceptionExecutables/**/*.*.cs" />
-        <None Include="InterceptionExecutables/**/*.*" />
-        <None Update="InterceptionExecutables/**/*.*" CopyToOutputDirectory="PreserveNewest" />
+        <Compile Remove="InterceptionExecutables/*.*.cs" />
+        <None Include="InterceptionExecutables/*.*" />
+        <None Update="InterceptionExecutables/*.*" CopyToOutputDirectory="PreserveNewest" />
+
+        <None Include="InterceptionExecutables/IncludedTypes/Poco.cs">
+            <Link>InterceptionExecutables/IncludedTypes/Poco.txt</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
         
 <!--        <Compile Remove="InterceptionExecutables\Template.cs" />-->
 <!--        <None Include="InterceptionExecutables\_Template.cs" />-->

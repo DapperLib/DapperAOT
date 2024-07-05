@@ -32,7 +32,8 @@ namespace Dapper.AOT.Test
 
         // input from https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#unit-testing-of-generators
         
-        protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics, int ErrorCount) Execute<T>(string source,
+        protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics, int ErrorCount) Execute<T>(
+            string source,
             StringBuilder? diagnosticsTo = null,
             [CallerMemberName] string? name = null,
             string? fileName = null,
