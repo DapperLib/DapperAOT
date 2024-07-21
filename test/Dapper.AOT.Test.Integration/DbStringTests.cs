@@ -32,6 +32,9 @@ public class DbStringTests : InterceptedCodeExecutionTestsBase
         
         var sourceCode = PrepareSourceCodeFromFile("DbString");
         var executionResults = BuildAndExecuteInterceptedUserCode<InterceptionExecutables.IncludedTypes.Poco>(sourceCode, methodName: "Execute");
+
+        var list = Trace.Listeners;
+        Trace.Write("qwe");
         
         Assert.NotNull(executionResults);
         // TODO check that stack trace contains call to `Dapper.Aot.Generated.DbStringHelpers`. probably can be done like here https://stackoverflow.com/a/33939304
