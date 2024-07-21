@@ -18,24 +18,19 @@ namespace InterceptionExecutables
         
         public static async Task<Poco> ExecuteAsync(IDbConnection dbConnection)
         {
-            var a = GetValue();
-            return new Poco() { Id = 1, Name = a };
-            
-            // var results = await dbConnection.QueryAsync<Poco>("select * from dbStringTestsTable where id = @Id and Name = @Name", new
-            // {
-            //     Name = new DbString
-            //     {
-            //         Value = "me testing!",
-            //         IsFixedLength = false,
-            //         Length = 11
-            //     },
-            //     
-            //     Id = 1,
-            // });
-            //
-            // return results.First();
-        }
+            var results = await dbConnection.QueryAsync<Poco>("select * from dbStringTestsTable where id = @Id and Name = @Name", new
+            {
+                Name = new DbString
+                {
+                    Value = "me testing!",
+                    IsFixedLength = false,
+                    Length = 11
+                },
+                
+                Id = 1,
+            });
 
-        public static string GetValue() => "my-data";
+            return results.First();
+        }
     }
 }

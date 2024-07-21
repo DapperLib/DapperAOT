@@ -12,8 +12,6 @@
             global::System.Data.Common.DbParameter dbParameter,
             global::Dapper.DbString? dbString)
         {
-            throw new global::System.Exception("qwe");
-            
             if (dbString is null)
             {
                 dbParameter.Value = global::System.DBNull.Value;

@@ -68,40 +68,13 @@ public abstract class InterceptedCodeExecutionTestsBase : GeneratorTestBase
         Log($$"""
             Generated code:
             ---
-            {{results.GeneratedSources.FirstOrDefault().SourceText}}
+            {{results.GeneratedSources.First().SourceText}}
             ---
         """);
-
-        compilation = compilation.AddSyntaxTrees(RoslynTestHelpers.CreateSyntaxTree("""
-            namespace System.Runtime.CompilerServices
-            {
-                [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-                public sealed class InterceptsLocationAttribute(string path, int lineNumber, int columnNumber) : Attribute
-                {
-                }
-            }
-            """, "attribute.cs"));
-        
-        compilation = compilation.AddSyntaxTrees(RoslynTestHelpers.CreateSyntaxTree($$"""
-                                                              using System;
-                                                              
-                                                              namespace Dapper.AOT
-                                                              {
-                                                                 public static class D
-                                                                 {
-                                                                     [System.Runtime.CompilerServices.InterceptsLocation(path: "Program.cs", lineNumber: 21, columnNumber: 21)]
-                                                                     internal static string GetValue()
-                                                                     {
-                                                                         return "changed-string";
-                                                                     }
-                                                                 }  
-                                                                 
-                                                              }
-                                                             """, "intercepted!"));
         
         Assert.NotNull(compilation);
         Assert.True(errorCount == 0, $"Compilation errors: {diagnosticsOutputStringBuilder}");
-        
+
         var assembly = Compile(compilation!);
         var type = assembly.GetTypes().Single(t => t.FullName == $"InterceptionExecutables.{className}");
         var mainMethod = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);

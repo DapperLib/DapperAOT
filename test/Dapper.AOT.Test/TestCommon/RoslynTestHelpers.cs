@@ -14,7 +14,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
-using Docker.DotNet.Models;
 
 namespace Dapper.TestCommon;
 
@@ -45,10 +44,7 @@ public static class RoslynTestHelpers
         "RELEASE",
 #endif
     })
-    .WithFeatures([
-        new KeyValuePair<string, string>(DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespaces, $"{DapperInterceptorGenerator.FeatureKeys.CodegenNamespace};InterceptionExecutables"),
-        new KeyValuePair<string, string>("LangVersion", "preview"),
-    ]);
+    .WithFeatures([ DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair ]);
 
     public static SyntaxTree CreateSyntaxTree(string source, string fileName)
         => CSharpSyntaxTree.ParseText(source, ParseOptionsLatestLangVer, encoding: Encoding.UTF8).WithFilePath(fileName);
