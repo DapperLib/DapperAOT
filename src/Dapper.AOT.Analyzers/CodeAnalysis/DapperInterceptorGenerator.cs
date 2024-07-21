@@ -312,6 +312,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 resultType = grp.First().ResultType!;
                 sb.Append("// returns data: ").Append(resultType).NewLine();
             }
+            
+            sb.Append($"throw new global::System.Exception(\"my test\");").NewLine();
 
             // assertions
             var commandTypeMode = flags & (OperationFlags.Text | OperationFlags.StoredProcedure | OperationFlags.TableDirect);
