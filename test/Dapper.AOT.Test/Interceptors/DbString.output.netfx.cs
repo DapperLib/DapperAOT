@@ -143,9 +143,6 @@ namespace Dapper.Aot.Generated
     /// <summary>
     /// Contains helpers to properly handle <see href="https://github.com/DapperLib/Dapper/blob/main/Dapper/DbString.cs"/>
     /// </summary>
-#if !DAPPERAOT_INTERNAL
-    file
-#endif
     static class DbStringHelpers
     {
         public static void ConfigureDbStringDbParameter(

@@ -26,8 +26,8 @@
 		<None Update="**/*DAP*.*.cs*">
 			<DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.VB.cs', '.cs'))</DependentUpon>
 		</None>
+
 	</ItemGroup>
-    
     <ItemGroup>
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />

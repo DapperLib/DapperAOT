@@ -1,6 +1,5 @@
 ﻿using System.Data;
 using System.Linq;
-using Dapper.AOT.Test.Integration.Setup;
 using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
