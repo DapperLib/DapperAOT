@@ -6,7 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.Json;
+using System.Threading.Tasks;
 using Dapper.CodeAnalysis;
 using Dapper.TestCommon;
 using Microsoft.CodeAnalysis;
@@ -15,6 +15,7 @@ using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 using Xunit;
 using Xunit.Abstractions;
+using Xunit.Sdk;
 
 namespace Dapper.AOT.Test.Integration.Setup;
 
@@ -40,40 +41,23 @@ public abstract class InterceptedCodeExecutionTestsBase : GeneratorTestBase
     }
     
     protected T BuildAndExecuteInterceptedUserCode<T>(
-        string sourceCode,
+        string userSourceCode,
         string className = "Program",
-        string methodName = "Execute")
+        string methodName = "ExecuteAsync")
     {
-        var syntaxTrees = new List<SyntaxTree>
-        {
-            RoslynTestHelpers.CreateSyntaxTree(sourceCode, fileName: $"{className}.cs")
-        };
-        
-        var includedTypesPath = Path.Combine("InterceptionExecutables", "IncludedTypes");
-        foreach (var file in Directory.GetFiles(includedTypesPath, "*.txt")) // we have copied all same files but in txt format not to have ambiguos references
-        {
-            syntaxTrees.Add(RoslynTestHelpers.CreateSyntaxTree(File.ReadAllText(file), fileName: Path.GetFileName(file)));
-        }
-        
-        var inputCompilation = RoslynTestHelpers.CreateCompilation(assemblyName: "MyAssembly", syntaxTrees);
+        var inputCompilation = RoslynTestHelpers.CreateCompilation("Assembly", syntaxTrees: [
+            BuildInterceptorSupportedSyntaxTree(filename: "Program.cs", userSourceCode)
+        ]);
         
         var diagnosticsOutputStringBuilder = new StringBuilder();
-        var (compilation, generatorDriverRunResult, diagnostics, errorCount) = Execute<DapperInterceptorGenerator>(
-            inputCompilation,
-            diagnosticsOutputStringBuilder,
-            initializer: g =>  { g.Log += message => Log(message); }
-        );
+        var (compilation, generatorDriverRunResult, diagnostics, errorCount) = Execute<DapperInterceptorGenerator>(inputCompilation, diagnosticsOutputStringBuilder, initializer: g =>
+        {
+            g.Log += message => Log(message);
+        });
         
         var results = Assert.Single(generatorDriverRunResult.Results);
-        Log($$"""
-            Generated code:
-            ---
-            {{results.GeneratedSources.First().SourceText}}
-            ---
-        """);
-        
         Assert.NotNull(compilation);
-        Assert.True(errorCount == 0, $"Compilation errors: {diagnosticsOutputStringBuilder}");
+        Assert.True(errorCount == 0, "User code should not report errors");
 
         var assembly = Compile(compilation!);
         var type = assembly.GetTypes().Single(t => t.FullName == $"InterceptionExecutables.{className}");
@@ -82,9 +66,12 @@ public abstract class InterceptedCodeExecutionTestsBase : GeneratorTestBase
         
         var result = mainMethod!.Invoke(obj: null, [ Fixture.NpgsqlConnection ]);
         Assert.NotNull(result);
+        if (result is not Task<T> taskResult)
+        {
+            throw new XunitException($"expected execution result is '{typeof(Task<T>)}' but got {result!.GetType()}");
+        }
 
-        var data = JsonSerializer.Serialize(result);
-        return JsonSerializer.Deserialize<T>(data)!;
+        return taskResult.GetAwaiter().GetResult();
     }
     
     SyntaxTree BuildInterceptorSupportedSyntaxTree(string filename, string text)
@@ -136,14 +123,18 @@ public abstract class InterceptedCodeExecutionTestsBase : GeneratorTestBase
     
     class CompilationException : Exception
     {
+        public IEnumerable<string> Errors { get; private set; }
+
         public CompilationException(IEnumerable<string> errors)
             : base(string.Join(Environment.NewLine, errors))
         {
+            this.Errors = errors;
         }
 
         public CompilationException(params string[] errors)
             : base(string.Join(Environment.NewLine, errors))
         {
+            this.Errors = errors;
         }
     }
 }

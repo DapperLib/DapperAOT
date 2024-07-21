@@ -4,9 +4,8 @@
     using System.IO;
     using Dapper;
     using System.Threading.Tasks;
-    using InterceptionExecutables.IncludedTypes;
     
-    [DapperAot] // Enabling Dapper AOT!
+    // this is just a sample for easy test-writing
     public static class Program
     {
         public static async Task<object> ExecuteAsync(IDbConnection dbConnection)
