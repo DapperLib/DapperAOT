@@ -31,25 +31,11 @@ namespace Dapper.AOT.Test
         protected static string? GetOriginCodeLocation([CallerFilePath] string? path = null) => path;
 
         // input from https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#unit-testing-of-generators
-        
+
         protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics, int ErrorCount) Execute<T>(string source,
             StringBuilder? diagnosticsTo = null,
             [CallerMemberName] string? name = null,
             string? fileName = null,
-            Action<T>? initializer = null
-            ) where T : class, IIncrementalGenerator, new()
-        {
-            // Create the 'input' compilation that the generator will act on
-            if (string.IsNullOrWhiteSpace(name)) name = "compilation";
-            if (string.IsNullOrWhiteSpace(fileName)) fileName = "input.cs";
-            var inputCompilation = RoslynTestHelpers.CreateCompilation(source, name!, fileName!);
-
-            return Execute(inputCompilation, diagnosticsTo, initializer);
-        }
-        
-        protected (Compilation? Compilation, GeneratorDriverRunResult Result, ImmutableArray<Diagnostic> Diagnostics, int ErrorCount) Execute<T>(
-            Compilation inputCompilation,
-            StringBuilder? diagnosticsTo = null,
             Action<T>? initializer = null
             ) where T : class, IIncrementalGenerator, new()
         {
@@ -68,13 +54,18 @@ namespace Dapper.AOT.Test
                     diagnosticsTo?.AppendLine(message.Replace('\\', '/')); // need to normalize paths
                 }
             }
+            // Create the 'input' compilation that the generator will act on
+            if (string.IsNullOrWhiteSpace(name)) name = "compilation";
+            if (string.IsNullOrWhiteSpace(fileName)) fileName = "input.cs";
+            Compilation inputCompilation = RoslynTestHelpers.CreateCompilation(source, name!, fileName!);
+
             // directly create an instance of the generator
             // (Note: in the compiler this is loaded from an assembly, and created via reflection at runtime)
             T generator = new();
             initializer?.Invoke(generator);
 
             ShowDiagnostics("Input code", inputCompilation, diagnosticsTo, "CS8795", "CS1701", "CS1702");
-            
+
             // Create the driver that will control the generation, passing in our generator
             GeneratorDriver driver = CSharpGeneratorDriver.Create(new[] { generator.AsSourceGenerator() }, parseOptions: RoslynTestHelpers.ParseOptionsLatestLangVer);
 
@@ -82,7 +73,7 @@ namespace Dapper.AOT.Test
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)
             driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
             var runResult = driver.GetRunResult();
-            
+
             foreach (var result in runResult.Results)
             {
                 if (result.Exception is not null) throw result.Exception;

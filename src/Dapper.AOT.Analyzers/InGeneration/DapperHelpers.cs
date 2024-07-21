@@ -6,7 +6,7 @@
 #if !DAPPERAOT_INTERNAL
     file
 #endif
-    static partial class DbStringHelpers
+    static class DbStringHelpers
     {
         public static void ConfigureDbStringDbParameter(
             global::System.Data.Common.DbParameter dbParameter,
