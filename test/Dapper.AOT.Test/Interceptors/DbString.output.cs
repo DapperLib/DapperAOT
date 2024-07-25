@@ -4,34 +4,34 @@ namespace Dapper.AOT // interceptors must be in a known namespace
     file static class DapperGeneratedInterceptors
     {
         [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\DbString.input.cs", 11, 30)]
-        internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<int>> QueryAsync0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Product>> QueryAsync0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
-            // Query, Async, TypedResult, HasParameters, Buffered, Text, KnownParameters
+            // Query, Async, TypedResult, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
             // takes parameter: <anonymous type: DbString Name, int Id>
             // parameter map: Id Name
-            // returns data: int
+            // returns data: global::Foo.Product
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
             global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
             global::System.Diagnostics.Debug.Assert(param is not null);
 
             return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
-                global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).QueryBufferedAsync(param, global::Dapper.RowFactory.Inbuilt.Value<int>()));
+                global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).QueryBufferedAsync(param, RowFactory0.Instance));
 
         }
 
         [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\DbString.input.cs", 24, 30)]
-        internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<int>> QueryAsync1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.Product>> QueryAsync1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
-            // Query, Async, TypedResult, HasParameters, Buffered, Text, KnownParameters
-            // takes parameter: global::Foo.Poco
+            // Query, Async, TypedResult, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
+            // takes parameter: global::Foo.QueryModel
             // parameter map: Id Name
-            // returns data: int
+            // returns data: global::Foo.Product
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
             global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
             global::System.Diagnostics.Debug.Assert(param is not null);
 
             return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
-                global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).QueryBufferedAsync((global::Foo.Poco)param!, global::Dapper.RowFactory.Inbuilt.Value<int>()));
+                global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).QueryBufferedAsync((global::Foo.QueryModel)param!, RowFactory0.Instance));
 
         }
 
@@ -53,6 +53,72 @@ namespace Dapper.AOT // interceptors must be in a known namespace
         }
 
         private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();
+
+        private sealed class RowFactory0 : global::Dapper.RowFactory<global::Foo.Product>
+        {
+            internal static readonly RowFactory0 Instance = new();
+            private RowFactory0() {}
+            public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
+            {
+                for (int i = 0; i < tokens.Length; i++)
+                {
+                    int token = -1;
+                    var name = reader.GetName(columnOffset);
+                    var type = reader.GetFieldType(columnOffset);
+                    switch (NormalizedHash(name))
+                    {
+                        case 2521315361U when NormalizedEquals(name, "productid"):
+                            token = type == typeof(int) ? 0 : 3; // two tokens for right-typed and type-flexible
+                            break;
+                        case 2369371622U when NormalizedEquals(name, "name"):
+                            token = type == typeof(string) ? 1 : 4;
+                            break;
+                        case 1133313085U when NormalizedEquals(name, "productnumber"):
+                            token = type == typeof(string) ? 2 : 5;
+                            break;
+
+                    }
+                    tokens[i] = token;
+                    columnOffset++;
+
+                }
+                return null;
+            }
+            public override global::Foo.Product Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
+            {
+                global::Foo.Product result = new();
+                foreach (var token in tokens)
+                {
+                    switch (token)
+                    {
+                        case 0:
+                            result.ProductId = reader.GetInt32(columnOffset);
+                            break;
+                        case 3:
+                            result.ProductId = GetValue<int>(reader, columnOffset);
+                            break;
+                        case 1:
+                            result.Name = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
+                            break;
+                        case 4:
+                            result.Name = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
+                            break;
+                        case 2:
+                            result.ProductNumber = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
+                            break;
+                        case 5:
+                            result.ProductNumber = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
+                            break;
+
+                    }
+                    columnOffset++;
+
+                }
+                return result;
+
+            }
+
+        }
 
         private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: DbString Name, int Id>
         {
@@ -87,10 +153,10 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        private sealed class CommandFactory1 : CommonCommandFactory<global::Foo.Poco>
+        private sealed class CommandFactory1 : CommonCommandFactory<global::Foo.QueryModel>
         {
             internal static readonly CommandFactory1 Instance = new();
-            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Poco args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.QueryModel args)
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
@@ -107,7 +173,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.Poco args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.QueryModel args)
             {
                 var ps = cmd.Parameters;
                 global::Dapper.Aot.Generated.DbStringHelpers.ConfigureDbStringDbParameter(ps[0], args.Name);

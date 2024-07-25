@@ -8,7 +8,7 @@ public static class Foo
 {
     static async Task SomeCode(DbConnection connection)
     {
-        _ = await connection.QueryAsync<int>("select * from Orders where name = @Name and id = @Id", new
+        _ = await connection.QueryAsync<Product>("select * from Orders where name = @Name and id = @Id", new
         {
             Name = new DbString
             {
@@ -21,7 +21,7 @@ public static class Foo
             Id = 123
         });
 
-        _ = await connection.QueryAsync<int>("select * from Orders where name = @Name and id = @Id", new Poco
+        _ = await connection.QueryAsync<Product>("select * from Orders where name = @Name and id = @Id", new QueryModel
         {
             Name = new DbString
             {
@@ -35,9 +35,16 @@ public static class Foo
         });
     }
 
-    public class Poco
+    public class QueryModel
     {
         public DbString Name { get; set; }
         public int Id { get; set; }
+    }
+
+    public class Product
+    {
+        public int ProductId { get; set; }
+        public string Name { get; set; }
+        public string ProductNumber { get; set; }
     }
 }
