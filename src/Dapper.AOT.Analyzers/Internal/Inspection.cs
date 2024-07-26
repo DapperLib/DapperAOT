@@ -421,6 +421,13 @@ internal static class Inspection
         Cancellation = 1 << 2,
     }
 
+    [Flags]
+    internal enum DapperSpecialType
+    {
+        None = 0,
+        DbString = 1 << 0,
+    }
+
     internal static bool IsCancellationToken(ITypeSymbol? type)
            => type is INamedTypeSymbol
            {
@@ -487,6 +494,24 @@ internal static class Inspection
         public bool IsRowCountHint => (Kind & ElementMemberKind.RowCountHint) != 0;
         public bool IsCancellation => (Kind & ElementMemberKind.Cancellation) != 0;
         public bool HasDbValueAttribute => _dbValue is not null;
+
+        public DapperSpecialType DapperSpecialType 
+        { 
+            get 
+            {
+                if (CodeType is {
+                    Name: "DbString",
+                    TypeKind: TypeKind.Class,
+                    ContainingNamespace:
+                    {
+                        Name: "Dapper",
+                        IsGlobalNamespace: true
+                    }
+                }) return DapperSpecialType.DbString;
+                
+                return DapperSpecialType.None;
+            } 
+        }
 
         public T? TryGetValue<T>(string memberName) where T : struct
             => TryGetAttributeValue(_dbValue, memberName, out T value) ? value : null;
@@ -1096,6 +1121,11 @@ internal static class Inspection
         {
             readerMethod = null;
             return DbType.DateTimeOffset;
+        }
+        if (type.Name == "DbString" && type.ContainingNamespace is { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true })
+        {
+            readerMethod = null;
+            return DbType.String;
         }
         readerMethod = null;
         return null;

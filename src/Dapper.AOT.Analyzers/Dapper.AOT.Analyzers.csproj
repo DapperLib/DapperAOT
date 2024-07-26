@@ -16,9 +16,10 @@
 
     <ItemGroup>
         <Compile Remove="AotGridReader.cs" />
-        <Compile Remove="InterceptsLocationAttribute.cs" />
         <EmbeddedResource Include="AotGridReader.cs" />
-        <EmbeddedResource Include="InterceptsLocationAttribute.cs" />
+        
+        <Compile Remove="InGeneration\*.cs" />
+        <EmbeddedResource Include="InGeneration\*.cs" />
         
         <Compile Update="CodeAnalysis/DapperInterceptorGenerator.*.cs">
             <DependentUpon>DapperInterceptorGenerator.cs</DependentUpon>
