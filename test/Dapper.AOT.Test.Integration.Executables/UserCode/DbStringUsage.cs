@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Linq;
 using Dapper.AOT.Test.Integration.Executables.Models;
 
 namespace Dapper.AOT.Test.Integration.Executables.UserCode;

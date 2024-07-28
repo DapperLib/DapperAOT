@@ -26,5 +26,10 @@ public class DbStringIntegrationTests : InterceptorsIntegratedTestsBase
              name   varchar(40) NOT NULL
         );
         TRUNCATE dbString_test;
+
+        INSERT INTO dbString_test(id, name)
+        VALUES 
+            (1, 'my-string'),
+            (2, 'another-string');
     """);
 }

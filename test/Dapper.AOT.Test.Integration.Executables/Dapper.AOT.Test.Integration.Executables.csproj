@@ -2,9 +2,6 @@
 
     <PropertyGroup>
         <TargetFrameworks>net8.0;net6.0;net48</TargetFrameworks>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        
         <RootNamespace>Dapper.AOT.Test.Integration.Executables</RootNamespace>
     </PropertyGroup>
 
@@ -14,18 +11,19 @@
     </ItemGroup>
 
 	
-	<!-- Copy the UserCode\*.cs files with appended `.user-source-code.` name -->
+	<!-- Copy the UserCode\*.cs files to output also changing the extension to txt -->
 	<ItemGroup>
-		<UserCodeFiles Include="UserCode\[a-zA-Z]+.cs" />
+		<UserCodeFiles Include="UserCode\*.cs" />
 	</ItemGroup>
     <Target Name="CopyUserSourceCode" BeforeTargets="Build">
-        <Copy SourceFiles="@(UserCodeFiles)" DestinationFiles="@(UserCodeFiles->Replace('.', '.user-source-code.'))"/>
+        <Copy SourceFiles="@(UserCodeFiles)" DestinationFiles="@(UserCodeFiles->Replace('.cs', '.txt'))"/>
     </Target>
-
-	<!-- And then copy those (non-compiled) files to output directory --><!--
-	<ItemGroup>
-		<Compile Remove="UserCode\*.user-source-code.cs" />
-		<None Update="UserCode\*.user-source-code.cs" CopyToOutputDirectory="PreserveNewest" />
-	</ItemGroup>-->
+    <ItemGroup>
+        <None Update="UserCode\*.txt" CopyToOutputDirectory="PreserveNewest" />
+        <None Update="UserCode\*.txt">
+            <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.txt', '.cs'))</DependentUpon>
+        </None>
+        <None Remove="UserCode\DbStringUsage.txt" />
+    </ItemGroup>
 
 </Project>
