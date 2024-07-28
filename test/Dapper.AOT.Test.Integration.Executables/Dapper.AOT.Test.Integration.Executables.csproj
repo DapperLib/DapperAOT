@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net6.0;net48</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        
+        <RootNamespace>Dapper.AOT.Test.Integration.Executables</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
+        <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
+    </ItemGroup>
+
+	
+	<!-- Copy the UserCode\*.cs files with appended `.user-source-code.` name -->
+	<ItemGroup>
+		<UserCodeFiles Include="UserCode\[a-zA-Z]+.cs" />
+	</ItemGroup>
+    <Target Name="CopyUserSourceCode" BeforeTargets="Build">
+        <Copy SourceFiles="@(UserCodeFiles)" DestinationFiles="@(UserCodeFiles->Replace('.', '.user-source-code.'))"/>
+    </Target>
+
+	<!-- And then copy those (non-compiled) files to output directory --><!--
+	<ItemGroup>
+		<Compile Remove="UserCode\*.user-source-code.cs" />
+		<None Update="UserCode\*.user-source-code.cs" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>-->
+
+</Project>
