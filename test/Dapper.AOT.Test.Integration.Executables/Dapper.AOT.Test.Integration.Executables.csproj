@@ -3,11 +3,15 @@
     <PropertyGroup>
         <TargetFrameworks>net8.0;net6.0;net48</TargetFrameworks>
         <RootNamespace>Dapper.AOT.Test.Integration.Executables</RootNamespace>
+
+        <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
+
+        <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
     </ItemGroup>
 
 	
@@ -23,7 +27,6 @@
         <None Update="UserCode\*.txt">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.txt', '.cs'))</DependentUpon>
         </None>
-        <None Remove="UserCode\DbStringUsage.txt" />
     </ItemGroup>
 
 </Project>
