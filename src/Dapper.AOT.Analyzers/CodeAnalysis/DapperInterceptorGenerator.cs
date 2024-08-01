@@ -382,10 +382,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             if (_withInterceptionRecording)
             {
+                sb.Append("// record interception for tests assertions").NewLine();
                 sb.Append("global::Dapper.AOT.Test.Integration.Executables.Recording.InterceptorRecorderResolver.Resolve().Record();").NewLine();
+                sb.NewLine();
             }
-            
-            sb.NewLine();
 
             if (flags.HasAny(OperationFlags.GetRowParser))
             {

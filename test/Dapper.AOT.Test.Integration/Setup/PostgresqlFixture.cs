@@ -1,5 +1,5 @@
-﻿using System.Threading.Tasks;
-using Npgsql;
+﻿using Npgsql;
+using System.Threading.Tasks;
 using Testcontainers.PostgreSql;
 
 namespace Dapper.AOT.Test.Integration.Setup;
