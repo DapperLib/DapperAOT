@@ -33,7 +33,7 @@ public class DbStringTests : IntegrationTestsBase
     }
 
     [Fact]
-    public void Test1()
+    public void DbString_BasicUsage_InterceptsAndReturnsExpectedData()
     {
         var result = ExecuteInterceptedUserCode<DbStringUsage, DbStringPoco>(DbConnection);
         

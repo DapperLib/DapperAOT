@@ -83,7 +83,7 @@ public abstract class IntegrationTestsBase
         return (TResult)result!;
     }
     
-    protected SyntaxTree Parse(string filename, string text)
+    private static SyntaxTree Parse(string filename, string text)
     {
         var stringText = SourceText.From(text, Encoding.UTF8);
         return SyntaxFactory.ParseSyntaxTree(stringText, InterceptorSupportedParseOptions, filename);
