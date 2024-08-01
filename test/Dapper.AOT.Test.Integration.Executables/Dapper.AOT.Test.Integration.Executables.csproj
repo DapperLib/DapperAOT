@@ -12,8 +12,7 @@
         <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" />
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
     </ItemGroup>
-
-	
+    
 	<!-- Copy the UserCode\*.cs files to output also changing the extension to txt -->
 	<ItemGroup>
 		<UserCodeFiles Include="UserCode\*.cs" />

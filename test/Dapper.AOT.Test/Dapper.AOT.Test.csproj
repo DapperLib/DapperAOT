@@ -46,8 +46,6 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
-        <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
 
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" />
@@ -57,6 +55,13 @@
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" />
         <PackageReference Include="Testcontainers.PostgreSql" />
     </ItemGroup>
+    
+    <ItemGroup>
+        <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
+        <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
+        <ProjectReference Include="..\Test.Common\Test.Common.csproj" />
+    </ItemGroup>
+    
     <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
       <PackageReference Include="Dapper" />
       <PackageReference Include="Oracle.ManagedDataAccess.Core" />
