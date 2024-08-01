@@ -69,7 +69,7 @@ public abstract class IntegrationTestsBase
         
         var generator = new DapperInterceptorGenerator(withInterceptionRecording: true);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new[] { generator.AsSourceGenerator() }, parseOptions: InterceptorSupportedParseOptions);
-        driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
+        _ = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
         
         var assembly = outputCompilation.CompileToAssembly();
         var type = assembly.GetTypes().Single(t => t.FullName == typeof(TExecutable).FullName);
