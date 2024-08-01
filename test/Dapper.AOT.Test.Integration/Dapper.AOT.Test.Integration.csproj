@@ -29,6 +29,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" />
       <ProjectReference Include="..\Dapper.AOT.Test.Integration.Executables\Dapper.AOT.Test.Integration.Executables.csproj" />
     </ItemGroup>
 

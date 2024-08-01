@@ -1,16 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 using Dapper.AOT.Test.Integration.Executables.Models;
 using Dapper.AOT.Test.Integration.Executables.UserCode;
-using Dapper.AOT.Test.Integration.Helpers;
 using Dapper.AOT.Test.Integration.Setup;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Text;
 using Microsoft.Data.SqlClient;
 
 namespace Dapper.AOT.Test.Integration;
@@ -75,7 +67,7 @@ public class DbStringTests : IntegrationTestsBase
                   }                                        
               """);
 
-        var result = ExecuteInterceptedUserCode<DbStringUsage, DbStringPoco>(dbConnection, [ generatedCode, interceptorsLocationAttributeCode ]);
+        var result = ExecuteInterceptedUserCode<DbStringUsage, DbStringPoco>(dbConnection);
         
         Assert.True(result.Id.Equals(42));
         Assert.True(result.Name.Equals("something", StringComparison.InvariantCultureIgnoreCase));
