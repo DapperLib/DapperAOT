@@ -18,12 +18,23 @@ namespace Dapper.AOT.Test.Integration.Setup;
 public abstract class IntegrationTestsBase
 {
     private const string UserCodeFileName = "UserCode.cs";
-    
     static readonly CSharpParseOptions InterceptorSupportedParseOptions = new CSharpParseOptions(LanguageVersion.Preview)
         .WithFeatures(new[]
         {
             new KeyValuePair<string, string>("InterceptorsPreviewNamespaces", "$(InterceptorsPreviewNamespaces);Dapper.AOT"),
         });
+
+    protected readonly IDbConnection DbConnection;
+
+    protected IntegrationTestsBase(PostgresqlFixture fixture)
+    {
+        DbConnection = fixture.NpgsqlConnection;
+        SetupDatabase(DbConnection);
+    }
+
+    protected virtual void SetupDatabase(IDbConnection dbConnection)
+    {
+    }
     
     protected TResult ExecuteInterceptedUserCode<TExecutable, TResult>(IDbConnection dbConnection)
     {

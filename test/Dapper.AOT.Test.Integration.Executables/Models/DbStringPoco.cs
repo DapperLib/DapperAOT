@@ -2,8 +2,8 @@
 
 public class DbStringPoco
 {
-    public const string TableName = "Product";
+    public const string TableName = "dbStringPoco";
     
-    public int ProductId { get; set; }
+    public int Id { get; set; }
     public string Name { get; set; }
 }

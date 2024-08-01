@@ -15,6 +15,9 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk"/>
         <PackageReference Include="xunit"/>
         <PackageReference Include="xunit.runner.visualstudio"/>
+
+        <PackageReference Include="Testcontainers.PostgreSql" />
+        <PackageReference Include="Npgsql" />
     
         <PackageReference Include="Dapper" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
@@ -26,7 +29,6 @@
     <ItemGroup>
       <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" />
       <ProjectReference Include="..\Dapper.AOT.Test.Integration.Executables\Dapper.AOT.Test.Integration.Executables.csproj" />
-      <ProjectReference Include="..\Test.Common\Test.Common.csproj" />
     </ItemGroup>
 
 </Project>
