@@ -2,7 +2,7 @@
 
 public class DbStringPoco
 {
-    public const string TableName = "dbString_test";
+    public const string TableName = "Product";
     
     public int Id { get; set; }
     public string Name { get; set; }
