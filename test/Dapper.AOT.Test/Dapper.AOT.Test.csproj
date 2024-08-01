@@ -29,15 +29,13 @@
 
 	</ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
         <PackageReference Include="System.ComponentModel.Annotations" Condition="'$(TargetFramework)'=='net48'" />
         <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net6.0'" />
-        <PackageReference Include="Microsoft.Build" VersionOverride="[17.3.2]" Condition="'$(TargetFramework)'=='net6.0'" />
+        <PackageReference Include="Microsoft.Build" VersionOverride="17.10.4" Condition="'$(TargetFramework)'=='net6.0'" />
         <PackageReference Include="Microsoft.Build.Utilities.Core" />
         <PackageReference Include="Npgsql" />
         <PackageReference Include="Oracle.ManagedDataAccess" Condition="'$(TargetFramework)'=='net48'" />
-        <PackageReference Include="Oracle.ManagedDataAccess.Core" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="System.ComponentModel.Annotations" />
         <PackageReference Include="System.Data.Common" />
         <PackageReference Include="System.Data.SqlClient" />
@@ -58,5 +56,9 @@
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Analyzer.Testing.XUnit" />
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" />
         <PackageReference Include="Testcontainers.PostgreSql" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+      <PackageReference Include="Dapper" />
+      <PackageReference Include="Oracle.ManagedDataAccess.Core" />
     </ItemGroup>
 </Project>

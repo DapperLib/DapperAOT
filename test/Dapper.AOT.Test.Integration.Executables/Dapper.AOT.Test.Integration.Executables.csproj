@@ -6,7 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
+        <PackageReference Include="Dapper" Condition="'$(TargetFramework)' == 'net6.0'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
 
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
@@ -25,6 +25,12 @@
         <None Update="UserCode\*.txt">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.txt', '.cs'))</DependentUpon>
         </None>
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+      <PackageReference Include="Dapper" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+      <PackageReference Include="Dapper" />
     </ItemGroup>
 
 </Project>
