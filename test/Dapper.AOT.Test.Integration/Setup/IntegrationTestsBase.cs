@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Dapper.AOT.Test.Integration.Executables;
+using Dapper.AOT.Test.Integration.Executables.Recording;
 using Dapper.AOT.Test.Integration.Helpers;
 using Dapper.CodeAnalysis;
 using Microsoft.CodeAnalysis;
@@ -16,6 +17,8 @@ namespace Dapper.AOT.Test.Integration.Setup;
 
 public abstract class IntegrationTestsBase
 {
+    private const string UserCodeFileName = "UserCode.cs";
+    
     static readonly CSharpParseOptions InterceptorSupportedParseOptions = new CSharpParseOptions(LanguageVersion.Preview)
         .WithFeatures(new[]
         {
@@ -28,7 +31,7 @@ public abstract class IntegrationTestsBase
         
         var inputCompilation = CSharpCompilation.Create(
             assemblyName: "Test.dll",
-            syntaxTrees: [ Parse("UserCode.cs", userSourceCode) ],
+            syntaxTrees: [ Parse(UserCodeFileName, userSourceCode) ],
             references: [
                 // dotnet System.Runtime
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
@@ -50,7 +53,10 @@ public abstract class IntegrationTestsBase
             ],
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var generator = new DapperInterceptorGenerator();
+        var interceptorRecorder = new ExceptedCodeInterceptorRecorder<TExecutable>(UserCodeFileName);
+        InterceptorRecorderResolver.Register(interceptorRecorder);
+        
+        var generator = new DapperInterceptorGenerator(withInterceptionRecording: true);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new[] { generator.AsSourceGenerator() }, parseOptions: InterceptorSupportedParseOptions);
         driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out var diagnostics);
         
@@ -60,6 +66,9 @@ public abstract class IntegrationTestsBase
         var mainMethod = type.GetMethod(nameof(IExecutable<TExecutable>.Execute), BindingFlags.Public | BindingFlags.Instance);
         var result = mainMethod!.Invoke(obj: executableInstance, [ dbConnection ]);
 
+        Assert.True(interceptorRecorder.WasCalled);
+        Assert.True(string.IsNullOrEmpty(interceptorRecorder.Diagnostics), userMessage: interceptorRecorder.Diagnostics);
+        
         return (TResult)result!;
     }
     

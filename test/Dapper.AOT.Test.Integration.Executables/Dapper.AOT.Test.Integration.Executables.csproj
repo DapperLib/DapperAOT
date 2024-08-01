@@ -9,6 +9,7 @@
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)' == 'net6.0'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
 
+        <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" />
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
     </ItemGroup>
 
