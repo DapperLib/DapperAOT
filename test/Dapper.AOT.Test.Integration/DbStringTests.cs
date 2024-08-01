@@ -44,26 +44,26 @@ public class DbStringTests : IntegrationTestsBase
                                               """);
 
         var generatedCode = Parse("AnotherFile.cs", $$"""
-                                                       namespace Dapper.AOT
-                                                       {
-                                                          file static class D
-                                                          {
-                                                              [System.Runtime.CompilerServices.InterceptsLocation(path: "UserCode.cs", lineNumber: 13, columnNumber: 40)]
-                                                              internal static global::System.Collections.Generic.IEnumerable<global::Dapper.AOT.Test.Integration.Executables.Models.DbStringPoco> Query0(
-                                                                    this global::System.Data.IDbConnection cnn,
-                                                                    string sql,
-                                                                    object? param = null,
-                                                                    global::System.Data.IDbTransaction? transaction = null, bool buffered = true, int? commandTimeout = null, global::System.Data.CommandType? commandType = null)
-                                                              {
-                                                                  return new global::System.Collections.Generic.List<global::Dapper.AOT.Test.Integration.Executables.Models.DbStringPoco>()  
-                                                                  {
-                                                                      new global::Dapper.AOT.Test.Integration.Executables.Models.DbStringPoco() { Name = "something" }
-                                                                  };
-                                                              }
-                                                          }  
-                                                          
-                                                       }
-                                                      """);
+            namespace Dapper.AOT
+            {
+              file static class D
+              {
+                  [System.Runtime.CompilerServices.InterceptsLocation(path: "UserCode.cs", lineNumber: 12, columnNumber: 34)]
+                  internal static global::System.Collections.Generic.IEnumerable<global::Dapper.AOT.Test.Integration.Executables.Models.DbStringPoco> Query0(
+                        this global::System.Data.IDbConnection cnn,
+                        string sql,
+                        object? param = null,
+                        global::System.Data.IDbTransaction? transaction = null, bool buffered = true, int? commandTimeout = null, global::System.Data.CommandType? commandType = null)
+                  {
+                      return new global::System.Collections.Generic.List<global::Dapper.AOT.Test.Integration.Executables.Models.DbStringPoco>()  
+                      {
+                          new global::Dapper.AOT.Test.Integration.Executables.Models.DbStringPoco() { Id = 42, Name = "something" }
+                      };
+                  }
+              }  
+              
+            }
+        """);
 
         var interceptorsLocationAttributeCode = Parse("InterceptorsLocationAttribute.cs", $$"""
                   namespace System.Runtime.CompilerServices
@@ -75,7 +75,9 @@ public class DbStringTests : IntegrationTestsBase
                   }                                        
               """);
 
-        var result = ExecuteInterceptedUserCode<DbStringUsage, DbStringPoco>(dbConnection, [ userCode, generatedCode, interceptorsLocationAttributeCode ]);
+        var result = ExecuteInterceptedUserCode<DbStringUsage, DbStringPoco>(dbConnection, [ generatedCode, interceptorsLocationAttributeCode ]);
+        
+        Assert.True(result.Id.Equals(42));
         Assert.True(result.Name.Equals("something", StringComparison.InvariantCultureIgnoreCase));
     }
 }

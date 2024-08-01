@@ -1,8 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Dapper.AOT.Test.Integration.Executables;
 using Dapper.AOT.Test.Integration.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -14,9 +17,12 @@ public abstract class IntegrationTestsBase
 {
     protected TResult ExecuteInterceptedUserCode<TExecutable, TResult>(
         IDbConnection dbConnection,
-        SyntaxTree[] syntaxTrees)
+        IList<SyntaxTree> syntaxTrees)
     {
-
+        var userSourceCode = ReadUserSourceCode<TExecutable>();
+        var userSourceCodeSyntaxTree = Parse("UserCode.cs", userSourceCode);
+        syntaxTrees.Add(userSourceCodeSyntaxTree);
+        
         var compilation = CSharpCompilation.Create(
             assemblyName: "Test.dll",
             syntaxTrees: syntaxTrees,
@@ -25,6 +31,7 @@ public abstract class IntegrationTestsBase
                 MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location), // System.Runtime ?
                 
                 MetadataReference.CreateFromFile(typeof(Dapper.SqlMapper).Assembly.Location), // Dapper
+                MetadataReference.CreateFromFile(typeof(Dapper.CommandFactory).Assembly.Location), // Dapper.AOT
                 MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location), // System.Linq
                 
                 MetadataReference.CreateFromFile(typeof(System.Data.Common.DbConnection).Assembly.Location), // System.Data.Common
@@ -34,9 +41,10 @@ public abstract class IntegrationTestsBase
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         
         var assembly = compilation.CompileToAssembly();
-        var type = assembly.GetTypes().Single(t => t.FullName == "ProgramNamespace.Program");
-        var mainMethod = type.GetMethod("RunCode", BindingFlags.Public | BindingFlags.Static);
-        var result = mainMethod!.Invoke(obj: null, [ dbConnection ]);
+        var type = assembly.GetTypes().Single(t => t.FullName == typeof(TExecutable).FullName);
+        var executableInstance = Activator.CreateInstance(type);
+        var mainMethod = type.GetMethod(nameof(IExecutable<TExecutable>.Execute), BindingFlags.Public | BindingFlags.Instance);
+        var result = mainMethod!.Invoke(obj: executableInstance, [ dbConnection ]);
 
         return (TResult)result!;
     }
@@ -51,5 +59,11 @@ public abstract class IntegrationTestsBase
 
         var stringText = SourceText.From(text, Encoding.UTF8);
         return SyntaxFactory.ParseSyntaxTree(stringText, options, filename);
+    }
+
+    private static string ReadUserSourceCode<TExecutable>()
+    {
+        var userTypeName = typeof(TExecutable).Name;
+        return File.ReadAllText(Path.Combine("UserCode", $"{userTypeName}.txt"));
     }
 }
