@@ -3,8 +3,6 @@
     <PropertyGroup>
         <TargetFrameworks>net8.0;net6.0;net48</TargetFrameworks>
         <RootNamespace>Dapper.AOT.Test.Integration.Executables</RootNamespace>
-
-        <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
     </PropertyGroup>
 
     <ItemGroup>

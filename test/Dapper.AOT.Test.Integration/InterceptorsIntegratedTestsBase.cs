@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using Dapper.AOT.Test.Integration.Executables;
-using Dapper.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -52,19 +51,14 @@ public abstract class InterceptorsIntegratedTestsBase
                 {
                     [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("UserCode.cs", 14, 34)]
                     internal static global::System.Collections.Generic.IEnumerable<global::Dapper.AOT.Test.Integration.Executables.Models.DbStringPoco> Query0(
-                        this global::System.Data.IDbConnection cnn, string sql)
+                        this global::System.Data.IDbConnection cnn,
+                        string sql,
+                        object? param = null,
+                        global::System.Data.IDbTransaction? transaction = null, bool buffered = true, int? commandTimeout = null, global::System.Data.CommandType? commandType = null)
                     {
                         throw new global::System.Exception("this is my test");
             
                         return new System.Collections.Generic.List<global::Dapper.AOT.Test.Integration.Executables.Models.DbStringPoco>();
-                    }
-                    
-                    [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("UserCode.cs", 12, 17)]
-                    internal static string GetSomethingInt()
-                    {
-                        throw new global::System.Exception("this is my test");
-                    
-                        return "not qwe";
                     }
                 }
             }
@@ -74,7 +68,6 @@ public abstract class InterceptorsIntegratedTestsBase
                 // this type is needed by the compiler to implement interceptors - it doesn't need to
                 // come from the runtime itself, though
             
-                // [global::System.Diagnostics.Conditional("DEBUG")] // not needed post-build, so: evaporate
                 [global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true)]
                 sealed file class InterceptsLocationAttribute : global::System.Attribute
                 {
@@ -100,9 +93,6 @@ public abstract class InterceptorsIntegratedTestsBase
         
         // var assembly = Compile(outputCompilation);
         var assembly = Compile(inputCompilation);
-
-        var assemblyAttributes = inputCompilation.Assembly.GetAttributes();
-        var moduleAttributes = assembly.Modules.SelectMany(x => x.CustomAttributes);
         
         var type = assembly.GetTypes().Single(t => t.FullName == typeof(TExecutable).FullName);
         var executableInstance = (IExecutable<TResult>)Activator.CreateInstance(type)!;
@@ -162,32 +152,22 @@ public abstract class InterceptorsIntegratedTestsBase
     
     MetadataReference[] GetTestCompilationMetadataReferences(Type userCodeType) =>
     [
-        // dotnet
-        MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(System.Data.IDbConnection).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(System.Collections.Generic.List<>).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(object).Assembly.Location), // System.Runtime ?
+        MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location), // System.Runtime ?
         
-#if !NET48
-        MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
-#endif
+        MetadataReference.CreateFromFile(typeof(Dapper.SqlMapper).Assembly.Location), // Dapper
+        MetadataReference.CreateFromFile(typeof(DapperAotAttribute).Assembly.Location), // Dapper.AOT
         
-        // external nugets
-        MetadataReference.CreateFromFile(typeof(Dapper.SqlMapper).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location), // System.Linq
+        MetadataReference.CreateFromFile(typeof(System.Data.Common.DbConnection).Assembly.Location), // System.Data.Common
         
-        // user code
-        MetadataReference.CreateFromFile(userCodeType.Assembly.Location),
-        
-        // DAPPER.AOT !
-        MetadataReference.CreateFromFile(Assembly.Load("Dapper.AOT").Location),
+        MetadataReference.CreateFromFile(userCodeType.Assembly.Location), // UserCode
     ];
     
     static CSharpParseOptions InterceptorsEnabledParseOptions 
-        => new CSharpParseOptions().WithFeatures(new[]
-        {
-            new KeyValuePair<string, string>("InterceptorsPreviewNamespaces", "$(InterceptorsPreviewNamespaces);Dapper.AOT;Dapper;Dapper.AOT.Test.Integration.Executables.UserCode"),
-            new KeyValuePair<string, string>("LangVersion", "preview"),
+        => new CSharpParseOptions(LanguageVersion.Preview).WithFeatures(new[]
+        {   
+            new KeyValuePair<string, string>("InterceptorsPreviewNamespaces", "$(InterceptorsPreviewNamespaces);Dapper.AOT"),
         });
     
     class ExpressionParsingException(IEnumerable<string> errors) : Exception(string.Join(Environment.NewLine, errors));

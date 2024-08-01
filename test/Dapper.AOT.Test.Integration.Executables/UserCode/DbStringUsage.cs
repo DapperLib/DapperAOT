@@ -9,19 +9,7 @@ public class DbStringUsage : IExecutable<DbStringPoco>
 {
     public DbStringPoco Execute(IDbConnection connection)
     {
-        var a = GetSomething();
-        return new DbStringPoco()
-        {
-            Id = 1,
-            Name = a
-        };
-        
-        // var results = connection.Query<DbStringPoco>($"select * from {DbStringPoco.TableName}");
-        // return results.First();
-    }
-
-    static string GetSomething()
-    {
-        return "qwe";
+        var results = connection.Query<DbStringPoco>($"select * from {DbStringPoco.TableName}");
+        return results.First();
     }
 }
