@@ -1,30 +1,35 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net8.0;net6.0;net48</TargetFrameworks>
+        <TargetFramework>net8.0</TargetFramework>
         <RootNamespace>Dapper.AOT.Test.Integration</RootNamespace>
+        <Nullable>enable</Nullable>
+        
+
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
-        <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />
-        <ProjectReference Include="..\Dapper.AOT.Test.Integration.Executables\Dapper.AOT.Test.Integration.Executables.csproj" />
-
-        <PackageReference Include="Dapper" Condition="'$(TargetFramework)' == 'net6.0'" />
-        <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
-        
-        <PackageReference Include="Npgsql" />
-        <PackageReference Include="Testcontainers.PostgreSql" />
-
-        <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="xunit" />
-        <PackageReference Include="xunit.runner.visualstudio">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-        </PackageReference>
-
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.XUnit" />
+        <PackageReference Include="coverlet.collector" Version="6.0.0"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0"/>
+        <PackageReference Include="xunit" Version="2.5.3"/>
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3"/>
     </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Dapper" Version="2.1.35" />
+        <!--    <PackageReference Include="Dapper.AOT" Version="1.0.60-g835655b655" />-->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.10.0" />
+        <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Dapper.AOT.Test.Integration.Executables\Dapper.AOT.Test.Integration.Executables.csproj" />
+    </ItemGroup>
+
 </Project>
