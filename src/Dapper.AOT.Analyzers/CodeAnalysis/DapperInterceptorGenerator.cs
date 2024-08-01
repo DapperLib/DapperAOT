@@ -45,6 +45,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     /// </summary>
     /// <note>
     /// It will insert very specific call with known method name.
+    /// Users will not have a reference to inserted assembly code, therefore: don't make it public 
     /// </note>
     internal DapperInterceptorGenerator(bool withInterceptionRecording)
     {
