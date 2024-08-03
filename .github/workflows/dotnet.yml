@@ -42,7 +42,7 @@ jobs:
       run: dotnet test test/Dapper.AOT.Test/Dapper.AOT.Test.csproj --no-build --verbosity normal -c Release -f net6.0 --filter FullyQualifiedName!~Integration
       
     - name: Integration Tests
-      run: dotnet test test/Dapper.AOT.Test.Integration/Dapper.AOT.Test.Integration.csproj --verbosity normal -c Release
+      run: dotnet test test/Dapper.AOT.Test.Integration/Dapper.AOT.Test.Integration.csproj --no-build --verbosity normal -c Release
 
     - name: Pack
       if: ${{ success() && !github.base_ref }}
