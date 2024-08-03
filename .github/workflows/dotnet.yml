@@ -30,16 +30,16 @@ jobs:
         setAllVars: true
 
     - name: Restore dependencies
-      run: dotnet restore Build.csproj
+      run: dotnet restore Dapper.AOT.sln
 
     - name: Purge
       run: del src/Dapper.*/bin/Release/Dapper.*.nupkg
       
     - name: Build
-      run: dotnet build Build.csproj --no-restore -c Release
+      run: dotnet build Dapper.AOT.sln --no-restore -c Release
 
     - name: Test
-      run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net6.0 --filter FullyQualifiedName!~Integration
+      run: dotnet test Dapper.AOT.sln --no-build --verbosity normal -c Release -f net6.0 --filter FullyQualifiedName!~Integration
       
     - name: Integration Tests
       run: dotnet test test/Dapper.AOT.Test.Integration/Dapper.AOT.Test.Integration.csproj --verbosity normal -c Release
