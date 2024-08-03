@@ -10,46 +10,43 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-20.04
+    runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0 # depth is needed for nbgv
-        
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: |
-          6.0.x
-          8.0.x
-        include-prerelease: true
-        
-    - uses: dotnet/nbgv@master
-      with:
-        setAllVars: true
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # depth is needed for nbgv
 
-    - name: Restore dependencies
-      run: dotnet restore Dapper.AOT.sln
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+          include-prerelease: true
 
-    - name: Purge
-      run: del src/Dapper.*/bin/Release/Dapper.*.nupkg
-      
-    - name: Build
-      run: dotnet build Dapper.AOT.sln --no-restore -c Release
+      - uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
 
-    - name: Test
-      run: dotnet test test/Dapper.AOT.Test/Dapper.AOT.Test.csproj --no-build --verbosity normal -c Release -f net6.0 --filter FullyQualifiedName!~Integration
-      
-    - name: Integration Tests
-      run: dotnet test test/Dapper.AOT.Test.Integration/Dapper.AOT.Test.Integration.csproj --no-build --verbosity normal -c Release
+      - name: Restore dependencies
+        run: dotnet restore Build.csproj
 
-    - name: Pack
-      if: ${{ success() && !github.base_ref }}
-      run: dotnet pack src/Dapper.AOT/Dapper.AOT.csproj --no-build --verbosity normal -c Release
+      - name: Purge
+        run: del src/Dapper.*/bin/Release/Dapper.*.nupkg
 
-    - name: Push to MyGet
-      if: ${{ success() && !github.base_ref }}
-      run: dotnet nuget push src/Dapper.*/bin/Release/Dapper.*.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key "$env:MYGETAPIKEY"
-      env:
-        MYGETAPIKEY: ${{ secrets.MYGETAPIKEY }}
+      - name: Build
+        run: dotnet build Build.csproj --no-restore -c Release
+
+      - name: Test
+        run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net6.0 --filter FullyQualifiedName!~Integration
+
+      - name: Pack
+        if: ${{ success() && !github.base_ref }}
+        run: dotnet pack src/Dapper.AOT/Dapper.AOT.csproj --no-build --verbosity normal -c Release
+
+      - name: Push to MyGet
+        if: ${{ success() && !github.base_ref }}
+        run: dotnet nuget push src/Dapper.*/bin/Release/Dapper.*.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key "$env:MYGETAPIKEY"
+        env:
+          MYGETAPIKEY: ${{ secrets.MYGETAPIKEY }}
