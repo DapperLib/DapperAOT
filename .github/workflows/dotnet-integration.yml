@@ -26,10 +26,10 @@ jobs:
           include-prerelease: true      
 
       - name: Build
-        run: dotnet build Dapper.AOT.sln -c Release --verbosity detailed
+        run: dotnet build test/Dapper.AOT.Test.Integration/Dapper.AOT.Test.Integration.csproj -c Debug
 
       - name: '[Debug] Check Files'
         run: ls -R
 
       - name: Integration Tests
-        run: dotnet test test/Dapper.AOT.Test.Integration/Dapper.AOT.Test.Integration.csproj --no-build --verbosity normal -c Release
+        run: dotnet test test/Dapper.AOT.Test.Integration/Dapper.AOT.Test.Integration.csproj --no-build --verbosity normal -c Debug
