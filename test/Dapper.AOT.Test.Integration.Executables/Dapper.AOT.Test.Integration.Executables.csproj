@@ -20,10 +20,9 @@
 	</ItemGroup>
     <Target Name="CopyUserSourceCode" BeforeTargets="Build">
         <Copy SourceFiles="@(UserCodeFiles)" DestinationFiles="@(UserCodeFiles->Replace('.cs', '.txt'))"/>
-
-        <ItemGroup>
-            <None Update="UserCode\*.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-        </ItemGroup>
     </Target>
+    <ItemGroup>
+        <None Update="UserCode\*.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
 
 </Project>

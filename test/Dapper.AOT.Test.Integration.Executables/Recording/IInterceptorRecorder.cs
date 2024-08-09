@@ -10,7 +10,7 @@ public interface IInterceptorRecorder
     /// <summary>
     /// Returns diagnostics of recording
     /// </summary>
-    public string Diagnostics { get; }
+    public string? Diagnostics { get; }
     
     /// <summary>
     /// Is executed in the interception

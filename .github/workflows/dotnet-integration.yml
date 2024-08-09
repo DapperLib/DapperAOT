@@ -26,7 +26,7 @@ jobs:
           include-prerelease: true      
 
       - name: Build
-        run: dotnet build Dapper.AOT.sln -c Release
+        run: dotnet build Dapper.AOT.sln -c Release --verbosity detailed
 
       - name: '[Debug] Check Files'
         run: ls -R
