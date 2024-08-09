@@ -28,7 +28,7 @@ jobs:
       - name: Build
         run: dotnet build Dapper.AOT.sln -c Release
 
-      - name: [Debug] Check Files
+      - name: '[Debug] Check Files'
         run: ls -R
 
       - name: Integration Tests
