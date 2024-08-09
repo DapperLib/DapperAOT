@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net6.0;net48</TargetFrameworks>
+        <RootNamespace>Dapper.AOT.Test.Integration.Executables</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Dapper" Condition="'$(TargetFramework)' == 'net6.0'" />
+        <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
+        <PackageReference Include="Dapper" Condition="'$(TargetFramework)' == 'net8.0'" />
+
+        <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" />
+        <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
+    </ItemGroup>
+    
+	<!-- Copy the UserCode\*.cs files to output also changing the extension to txt -->
+	<ItemGroup>
+		<UserCodeFiles Include="UserCode\*.cs" />
+	</ItemGroup>
+    <Target Name="CopyUserSourceCode" BeforeTargets="Build">
+        <Copy SourceFiles="@(UserCodeFiles)" DestinationFiles="@(UserCodeFiles->Replace('.cs', '.txt'))"/>
+    </Target>
+    <ItemGroup>
+        <Content Update="UserCode\*.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+
+</Project>

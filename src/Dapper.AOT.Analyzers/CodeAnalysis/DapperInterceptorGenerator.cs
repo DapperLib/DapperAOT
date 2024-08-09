@@ -16,7 +16,6 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 using static Dapper.Internal.Inspection;
@@ -26,12 +25,33 @@ namespace Dapper.CodeAnalysis;
 [Generator(LanguageNames.CSharp), DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBase
 {
+    private readonly bool _withInterceptionRecording = false; 
+    
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => DiagnosticsBase.All<Diagnostics>();
 
 #pragma warning disable CS0067 // unused; retaining for now
     public event Action<string>? Log;
 #pragma warning restore CS0067
 
+    /// <summary>
+    /// Creates an interceptor generator for Dapper
+    /// </summary>
+    public DapperInterceptorGenerator()
+    {
+    }
+
+    /// <summary>
+    /// Creates an interceptor generator for Dapper used for Tests.
+    /// </summary>
+    /// <note>
+    /// It will insert very specific call with known method name.
+    /// Users will not have a reference to inserted assembly code, therefore: don't make it public 
+    /// </note>
+    internal DapperInterceptorGenerator(bool withInterceptionRecording)
+    {
+        _withInterceptionRecording = withInterceptionRecording;
+    }
+    
     public override void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var nodes = context.SyntaxProvider.CreateSyntaxProvider(PreFilter, Parse)
@@ -359,6 +379,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
 
             sb.NewLine();
+
+            if (_withInterceptionRecording)
+            {
+                sb.Append("// record interception for tests assertions").NewLine();
+                sb.Append("global::Dapper.AOT.Test.Integration.Executables.Recording.InterceptorRecorderResolver.Resolve().Record();").NewLine();
+                sb.NewLine();
+            }
 
             if (flags.HasAny(OperationFlags.GetRowParser))
             {
