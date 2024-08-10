@@ -4,8 +4,6 @@
         <TargetFramework>net8.0</TargetFramework>
         <RootNamespace>Dapper.AOT.Test.Integration</RootNamespace>
         <Nullable>enable</Nullable>
-        
-
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
     </PropertyGroup>
@@ -29,17 +27,5 @@
       <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" />
       <ProjectReference Include="..\Dapper.AOT.Test.Integration.Executables\Dapper.AOT.Test.Integration.Executables.csproj" />
     </ItemGroup>
-
-    <!-- Copy the UserCode\*.cs files from `Integration.Executables` assembly to output also changing the extension to txt -->
-    <ItemGroup>
-        <UserCodeCs Include="..\Dapper.AOT.Test.Integration.Executables\UserCode\*.cs" />
-        <UserCodeTxtFiles Include="..\Dapper.AOT.Test.Integration.Executables\UserCode\*.txt" />
-    </ItemGroup>
-    <Target Name="CopyUserSourceCode" BeforeTargets="Build">
-        <Copy SourceFiles="@(UserCodeCs)" DestinationFiles="@(UserCodeCs->Replace('.cs', '.txt'))"/>
-    </Target>
-    <Target Name="CopyFiles" AfterTargets="CopyUserSourceCode">
-        <Copy DestinationFolder="$(OutputPath)\UserCode" SourceFiles="@(UserCodeTxtFiles)" />
-    </Target>
 
 </Project>

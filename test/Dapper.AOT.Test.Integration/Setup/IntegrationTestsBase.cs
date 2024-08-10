@@ -92,6 +92,10 @@ public abstract class IntegrationTestsBase
     private static string ReadUserSourceCode<TExecutable>()
     {
         var userTypeName = typeof(TExecutable).Name;
-        return File.ReadAllText(Path.Combine("UserCode", $"{userTypeName}.txt"));
+        
+        // it's very fragile to get user code cs files into output directory (btw we can't remove them from compilation, because we will use them for assertions)
+        // so let's simply get back to test\ dir, and try to find Executables.UserCode from there
+        var testDir = Directory.GetParent(Directory.GetParent(Directory.GetParent(Directory.GetParent(Directory.GetCurrentDirectory())!.FullName)!.FullName)!.FullName);
+        return File.ReadAllText(Path.Combine(testDir!.FullName, "Dapper.AOT.Test.Integration.Executables", "UserCode", $"{userTypeName}.cs"));
     }
 }
