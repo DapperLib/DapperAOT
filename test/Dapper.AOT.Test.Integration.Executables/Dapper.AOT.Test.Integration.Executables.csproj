@@ -22,7 +22,7 @@
         <Copy SourceFiles="@(UserCodeFiles)" DestinationFiles="@(UserCodeFiles->Replace('.cs', '.txt'))"/>
     </Target>
     <ItemGroup>
-        <Content Update="UserCode\*.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+        <Content Update="UserCode\*.txt" CopyToOutputDirectory="Always" />
     </ItemGroup>
 
 </Project>
