@@ -12,17 +12,5 @@
         <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" />
         <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
     </ItemGroup>
-    
-	<!-- Copy the UserCode\*.cs files to output also changing the extension to txt -->
-	<ItemGroup>
-		<UserCodeCs Include="UserCode\*.cs" />
-        <UserCodeTxtFiles Include="UserCode\*.txt" />
-	</ItemGroup>
-    <Target Name="CopyUserSourceCode" BeforeTargets="Build">
-        <Copy SourceFiles="@(UserCodeCs)" DestinationFiles="@(UserCodeCs->Replace('.cs', '.txt'))"/>
-    </Target>
-    <Target Name="CopyFiles" AfterTargets="CopyUserSourceCode">
-        <Copy DestinationFolder="$(OutputPath)\UserCode" SourceFiles="@(UserCodeTxtFiles)" />
-    </Target>
 
 </Project>
