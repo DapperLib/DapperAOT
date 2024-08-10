@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <TargetFrameworks>net8.0;net6.0;net48</TargetFrameworks>
         <RootNamespace>Dapper.AOT.Test.Integration.Executables</RootNamespace>
@@ -16,13 +15,14 @@
     
 	<!-- Copy the UserCode\*.cs files to output also changing the extension to txt -->
 	<ItemGroup>
-		<UserCodeFiles Include="UserCode\*.cs" />
+		<UserCodeCs Include="UserCode\*.cs" />
+        <UserCodeTxtFiles Include="UserCode\*.txt" />
 	</ItemGroup>
     <Target Name="CopyUserSourceCode" BeforeTargets="Build">
-        <Copy SourceFiles="@(UserCodeFiles)" DestinationFiles="@(UserCodeFiles->Replace('.cs', '.txt'))"/>
+        <Copy SourceFiles="@(UserCodeCs)" DestinationFiles="@(UserCodeCs->Replace('.cs', '.txt'))"/>
     </Target>
-    <ItemGroup>
-        <Content Update="UserCode\*.txt" CopyToOutputDirectory="Always" />
-    </ItemGroup>
+    <Target Name="CopyFiles" AfterTargets="CopyUserSourceCode">
+        <Copy DestinationFolder="$(OutputPath)\UserCode" SourceFiles="@(UserCodeTxtFiles)" />
+    </Target>
 
 </Project>
