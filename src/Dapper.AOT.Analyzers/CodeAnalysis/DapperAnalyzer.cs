@@ -191,7 +191,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
 
             // check the types
-            var resultType = invoke.GetResultType(flags);
+            // resultType can be an array, so let's unwrap it to determine actual type
+            var resultType = invoke.GetResultType(flags)?.UnwrapArrayType();
             if (resultType is not null && IdentifyDbType(resultType, out _) is null) // don't warn if handled as an inbuilt
             {
                 var resultMap = MemberMap.CreateForResults(resultType, location);

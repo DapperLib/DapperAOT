@@ -1208,6 +1208,24 @@ internal static class Inspection
     public static bool TryGetConstantValue<T>(IOperation op, out T? value)
             => TryGetConstantValueWithSyntax(op, out value, out _, out _);
 
+    public static ITypeSymbol? UnwrapArrayType(this ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol is not IArrayTypeSymbol arrayTypeSymbol)
+        {
+            return typeSymbol;
+        }
+
+        ITypeSymbol elementType;
+        IArrayTypeSymbol? currentArraySymbol = arrayTypeSymbol;
+        do
+        {
+            elementType = currentArraySymbol.ElementType;
+            currentArraySymbol = elementType as IArrayTypeSymbol;
+        } while (currentArraySymbol is not null);
+
+        return elementType;
+    }
+    
     public static ITypeSymbol? GetResultType(this IInvocationOperation invocation, OperationFlags flags)
     {
         if (flags.HasAny(OperationFlags.TypedResult))
