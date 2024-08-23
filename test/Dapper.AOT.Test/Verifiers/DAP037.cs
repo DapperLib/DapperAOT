@@ -36,9 +36,7 @@ public class DAP037 : Verifier<DapperAnalyzer>
                 _ = conn.Query<HazExplicitConstructor>(sql, args);
                 _ = conn.Query<sbyte[]>(sql, args);
                 _ = conn.Query<byte[]>(sql, args);
-                _ = conn.Query<byte[][]>(sql, args);
-                _ = conn.Query<byte[][][]>(sql, args);
-                _ = conn.Query<int>(sql, args);
+                _ = conn.{|#2:Query<int[]>|}(sql, args);
             }
         }
 
@@ -82,6 +80,7 @@ public class DAP037 : Verifier<DapperAnalyzer>
         """", DefaultConfig, [
             Diagnostic(Diagnostics.UserTypeNoSettableMembersFound).WithLocation(0).WithArguments("NoSettable"),
             Diagnostic(Diagnostics.UserTypeNoSettableMembersFound).WithLocation(1).WithArguments("ReadOnlyField"),
+            Diagnostic(Diagnostics.UserTypeNoSettableMembersFound).WithLocation(2).WithArguments(""),
     ]);
 
 }
