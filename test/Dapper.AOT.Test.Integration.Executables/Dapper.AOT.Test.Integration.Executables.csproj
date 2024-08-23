@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net6.0;net48</TargetFrameworks>
+        <RootNamespace>Dapper.AOT.Test.Integration.Executables</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Dapper" Condition="'$(TargetFramework)' == 'net6.0'" />
+        <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
+        <PackageReference Include="Dapper" Condition="'$(TargetFramework)' == 'net8.0'" />
+
+        <ProjectReference Include="..\..\src\Dapper.AOT.Analyzers\Dapper.AOT.Analyzers.csproj" />
+        <ProjectReference Include="..\..\src\Dapper.AOT\Dapper.AOT.csproj" />
+    </ItemGroup>
+
+</Project>

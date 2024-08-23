@@ -505,7 +505,7 @@ internal static class Inspection
                     ContainingNamespace:
                     {
                         Name: "Dapper",
-                        IsGlobalNamespace: true
+                        ContainingNamespace.IsGlobalNamespace: true
                     }
                 }) return DapperSpecialType.DbString;
                 
