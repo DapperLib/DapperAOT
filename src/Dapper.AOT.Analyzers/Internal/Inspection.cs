@@ -1058,6 +1058,21 @@ internal static class Inspection
             ? type : type.WithNullableAnnotation(NullableAnnotation.None);
     }
 
+    /// <summary>
+    /// There are special types we are allowing user to query,
+    /// which are not handled in the general checks
+    /// </summary>
+    public static bool IsSpecialCaseAllowedResultType(ITypeSymbol? type)
+    {
+        // byte[] or sbyte[] are basically blobs
+        if (type is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte or SpecialType.System_SByte })
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     public static DbType? IdentifyDbType(ITypeSymbol? type, out string? readerMethod)
     {
         if (type is null)
@@ -1207,7 +1222,7 @@ internal static class Inspection
 
     public static bool TryGetConstantValue<T>(IOperation op, out T? value)
             => TryGetConstantValueWithSyntax(op, out value, out _, out _);
-
+    
     public static ITypeSymbol? GetResultType(this IInvocationOperation invocation, OperationFlags flags)
     {
         if (flags.HasAny(OperationFlags.TypedResult))
