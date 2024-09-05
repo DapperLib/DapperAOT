@@ -37,7 +37,8 @@ public class DbStringTests : IntegrationTestsBase
     {
         var result = ExecuteInterceptedUserCode<DbStringUsage, DbStringPoco>(DbConnection);
         
+        Assert.NotNull(result);
         Assert.True(result.Id.Equals(1));
-        Assert.True(result.Name.Equals("my-dbString", StringComparison.InvariantCultureIgnoreCase));
+        Assert.Equal("my-dbString", result.Name);
     }
 }
