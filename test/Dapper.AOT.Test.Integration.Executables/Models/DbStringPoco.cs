@@ -5,5 +5,5 @@ public class DbStringPoco
     public const string TableName = "dbStringPoco";
     
     public int Id { get; set; }
-    public string Name { get; set; }
+    public string? Name { get; set; }
 }
