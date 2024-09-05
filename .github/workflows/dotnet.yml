@@ -23,7 +23,6 @@ jobs:
           dotnet-version: |
             6.0.x
             8.0.x
-          include-prerelease: true
 
       - uses: dotnet/nbgv@master
         with:
