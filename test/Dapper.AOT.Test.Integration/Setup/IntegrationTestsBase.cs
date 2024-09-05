@@ -12,6 +12,7 @@ using Dapper.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.Data.SqlClient;
 
 namespace Dapper.AOT.Test.Integration.Setup;
 
@@ -28,6 +29,8 @@ public abstract class IntegrationTestsBase
 
     protected IntegrationTestsBase(PostgresqlFixture fixture)
     {
+        DbConnection = new SqlConnection() // my local test 
+        
         DbConnection = fixture.NpgsqlConnection;
         SetupDatabase(DbConnection);
     }
