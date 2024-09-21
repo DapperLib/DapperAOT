@@ -29,8 +29,6 @@ public abstract class IntegrationTestsBase
 
     protected IntegrationTestsBase(PostgresqlFixture fixture)
     {
-        DbConnection = new SqlConnection() // my local test 
-        
         DbConnection = fixture.NpgsqlConnection;
         SetupDatabase(DbConnection);
     }

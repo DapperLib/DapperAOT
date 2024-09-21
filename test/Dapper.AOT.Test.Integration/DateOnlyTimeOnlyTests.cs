@@ -37,6 +37,7 @@ public class DateOnlyTimeOnlyTests : IntegrationTestsBase
     public void DateOnly_BasicUsage_InterceptsAndReturnsExpectedData()
     {
         var result = ExecuteInterceptedUserCode<DateOnlyUsage, DateOnlyTimeOnlyPoco>(DbConnection);
-        Assert.True(result.Id.Equals(1));
+        Assert.True(result.Id.Equals(1)); 
+        Assert.True(result.Date.Equals(DateOnlyTimeOnlyPoco.SpecificDate));
     }
 }
