@@ -1,25 +1,17 @@
 ﻿using System;
+using System.Data;
+using System.Data.Common;
 using Dapper.Internal;
 using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
 
 [Collection(SharedPostgresqlClient.Collection)]
-public class DateOnlyTests
+public class DateOnlyTimeOnlyPostgreSqlTests : DateOnlyTimeOnlyTests
 {
-    static DateTime TimeStampConst = new DateTime(year: 2020, month: 2, day: 2, hour: 2, minute: 2, second: 2, kind: DateTimeKind.Utc);
-
-#if NET6_0_OR_GREATER
-    static DateOnly DateOnlyConst = new DateOnly(year: 2021, month: 1, day: 1);
-    static TimeOnly TimeOnlyConst = new TimeOnly(hour: 3, minute: 3, second: 3);
-#endif
-
-    private PostgresqlFixture _fixture;
-
-    public DateOnlyTests(PostgresqlFixture fixture)
-    {
-        _fixture = fixture;
-        fixture.NpgsqlConnection.Execute($"""
+    public DateOnlyTimeOnlyPostgreSqlTests(PostgresqlFixture postgresqlFixture) : base(
+        postgresqlFixture.NpgsqlConnection,
+        $"""
             CREATE TABLE IF NOT EXISTS date_only_table(
                  type_timestamp timestamp,
                  type_date date,
@@ -29,13 +21,55 @@ public class DateOnlyTests
 
             INSERT INTO date_only_table (type_timestamp, type_date, type_time)
             VALUES ('{TimeStampConst.ToString("yyyy-MM-dd HH:mm:ss")}', '2021-01-01', '03:03:03');
-         """);
+         """)
+    {
+    }
+}
+
+[Collection(SharedMsSqlClient.Collection)]
+public class DateOnlyTimeOnlyMsSqlTests : DateOnlyTimeOnlyTests
+{
+    public DateOnlyTimeOnlyMsSqlTests(MsSqlFixture msSqlFixture) : base(
+        msSqlFixture.MsSqlConnection, 
+        $"""
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='date_only_table' and xtype='U')
+            BEGIN
+                CREATE TABLE date_only_table(
+                     type_timestamp datetime,
+                     type_date date,
+                     type_time time
+                );
+            END;
+            TRUNCATE TABLE date_only_table;
+                
+            INSERT INTO date_only_table (type_timestamp, type_date, type_time)
+            VALUES ('2020-02-02 02:02:02', '2021-01-01', '03:03:03');
+        """)
+    {
+    }
+}
+
+public abstract class DateOnlyTimeOnlyTests
+{
+    protected static DateTime TimeStampConst = new DateTime(year: 2020, month: 2, day: 2, hour: 2, minute: 2, second: 2, kind: DateTimeKind.Utc);
+
+#if NET6_0_OR_GREATER
+    static DateOnly DateOnlyConst = new DateOnly(year: 2021, month: 1, day: 1);
+    static TimeOnly TimeOnlyConst = new TimeOnly(hour: 3, minute: 3, second: 3);
+#endif
+
+    readonly IDbConnection _dbConnection;
+
+    public DateOnlyTimeOnlyTests(IDbConnection dbConnection, string initSql)
+    {
+        _dbConnection = dbConnection;
+        _dbConnection.Execute(initSql);
     }   
     
     [Fact]
     public void ReadTimestamp()
     {
-        using var cmd = _fixture.NpgsqlConnection.CreateCommand();
+        using var cmd = _dbConnection.CreateCommand();
         cmd.CommandText = "select type_timestamp from date_only_table";
         using var reader = cmd.ExecuteReader();
 
@@ -61,7 +95,7 @@ public class DateOnlyTests
     [Fact]
     public void ReadDateOnly()
     {
-        using var cmd = _fixture.NpgsqlConnection.CreateCommand();
+        using var cmd = _dbConnection.CreateCommand();
         cmd.CommandText = "select type_date from date_only_table";
         using var reader = cmd.ExecuteReader();
 
@@ -90,7 +124,7 @@ public class DateOnlyTests
     [Fact]
     public void ReadTimeOnly()
     {
-        using var cmd = _fixture.NpgsqlConnection.CreateCommand();
+        using var cmd = _dbConnection.CreateCommand();
         cmd.CommandText = "select type_time from date_only_table";
         using var reader = cmd.ExecuteReader();
 

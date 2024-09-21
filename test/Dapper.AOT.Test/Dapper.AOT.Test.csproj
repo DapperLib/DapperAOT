@@ -56,6 +56,7 @@
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Analyzer.Testing.XUnit" />
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" />
         <PackageReference Include="Testcontainers.PostgreSql" />
+		<PackageReference Include="Testcontainers.MsSql" />
     </ItemGroup>
     
     <ItemGroup>
