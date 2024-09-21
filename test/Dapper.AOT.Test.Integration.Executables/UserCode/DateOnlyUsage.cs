@@ -10,13 +10,7 @@ public class DateOnlyUsage : IExecutable<DateOnlyTimeOnlyPoco>
 {
     public DateOnlyTimeOnlyPoco Execute(IDbConnection connection)
     {
-        var results = connection.Query<DateOnlyTimeOnlyPoco>(
-            $"select * from {DateOnlyTimeOnlyPoco.TableName} where dateOnly = @date",
-            new
-            {
-                date = DateOnlyTimeOnlyPoco.SpecificDate
-            });
-        
+        var results = connection.Query<DateOnlyTimeOnlyPoco>($"select * from {DateOnlyTimeOnlyPoco.TableName}");
         return results.First();
     }
 }

@@ -17,19 +17,17 @@ public class DateOnlyTimeOnlyTests : IntegrationTestsBase
     {
         base.SetupDatabase(dbConnection);
 
-        var date = $"{DateOnlyTimeOnlyPoco.SpecificDate.Year}-{DateOnlyTimeOnlyPoco.SpecificDate.Month:2}-{DateOnlyTimeOnlyPoco.SpecificDate.Day:2}";
-        
         dbConnection.Execute($"""
             CREATE TABLE IF NOT EXISTS {DateOnlyTimeOnlyPoco.TableName}(
               id     integer PRIMARY KEY,
-              dateOnly DATE,
-              timeOnly TIME
+              date DATE,
+              time TIME
             );
 
             TRUNCATE {DateOnlyTimeOnlyPoco.TableName};
 
-            INSERT INTO {DateOnlyTimeOnlyPoco.TableName} (id, dateOnly, timeOnly)
-            VALUES (1, '{date}', current_timestamp)
+            INSERT INTO {DateOnlyTimeOnlyPoco.TableName} (id, date, time)
+            VALUES (1, '{DateOnlyTimeOnlyPoco.SpecificDate.ToString("yyyy-MM-dd")}', '{DateOnlyTimeOnlyPoco.SpecificTime.ToString("HH:mm:ss")}')
         """);
     }
 
@@ -37,7 +35,26 @@ public class DateOnlyTimeOnlyTests : IntegrationTestsBase
     public void DateOnly_BasicUsage_InterceptsAndReturnsExpectedData()
     {
         var result = ExecuteInterceptedUserCode<DateOnlyUsage, DateOnlyTimeOnlyPoco>(DbConnection);
-        Assert.True(result.Id.Equals(1)); 
-        Assert.True(result.Date.Equals(DateOnlyTimeOnlyPoco.SpecificDate));
+        Assert.Equal(1, result.Id);
+        Assert.Equal(DateOnlyTimeOnlyPoco.SpecificDate, result.Date);
+        Assert.Equal(DateOnlyTimeOnlyPoco.SpecificTime, result.Time);
+    }
+
+    [Fact]
+    public void DateOnly_WithDateFilter_InterceptsAndReturnsExpectedData()
+    {
+        var result = ExecuteInterceptedUserCode<DateOnlyUsageWithDateFilter, DateOnlyTimeOnlyPoco>(DbConnection);
+        Assert.Equal(1, result.Id);
+        Assert.Equal(DateOnlyTimeOnlyPoco.SpecificDate, result.Date);
+        Assert.Equal(DateOnlyTimeOnlyPoco.SpecificTime, result.Time);
+    }
+
+    [Fact]
+    public void DateOnly_WithTimeFilter_InterceptsAndReturnsExpectedData()
+    {
+        var result = ExecuteInterceptedUserCode<DateOnlyUsageWithTimeFilter, DateOnlyTimeOnlyPoco>(DbConnection);
+        Assert.Equal(1, result.Id);
+        Assert.Equal(DateOnlyTimeOnlyPoco.SpecificDate, result.Date);
+        Assert.Equal(DateOnlyTimeOnlyPoco.SpecificTime, result.Time);
     }
 }
