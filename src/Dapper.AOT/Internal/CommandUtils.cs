@@ -194,6 +194,12 @@ internal static class CommandUtils
             }
             else if (typeof(T) == typeof(TimeOnly?))
             {
+                if (value is TimeSpan timeSpan)
+                {
+                    var fromSpan = TimeOnly.FromTimeSpan(timeSpan);
+                    return Unsafe.As<TimeOnly, T>(ref fromSpan);
+                }
+
                 DateTime? t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
                 TimeOnly? timeOnly = t is null ? null : TimeOnly.FromDateTime(t.Value);
                 return Unsafe.As<TimeOnly?, T>(ref timeOnly);

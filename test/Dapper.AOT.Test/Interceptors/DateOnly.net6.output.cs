@@ -3,11 +3,11 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\DateOnly.input.cs", 12, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\DateOnly.net6.input.cs", 12, 30)]
         internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.User>> QueryAsync0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
-            // takes parameter: <anonymous type:  BirthDate>
+            // takes parameter: <anonymous type: DateOnly BirthDate>
             // parameter map: BirthDate
             // returns data: global::Foo.User
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
@@ -19,7 +19,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\DateOnly.input.cs", 17, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\DateOnly.net6.input.cs", 17, 30)]
         internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.User>> QueryAsync1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
@@ -74,7 +74,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                             token = type == typeof(string) ? 1 : 4;
                             break;
                         case 4237030186U when NormalizedEquals(name, "birthdate"):
-                            token = type == typeof(DateOnly) ? 2 : 5;
+                            token = type == typeof(global::System.DateOnly) ? 2 : 5;
                             break;
 
                     }
@@ -104,10 +104,10 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                             result.Name = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
                             break;
                         case 2:
-                            result.BirthDate = reader.IsDBNull(columnOffset) ? (DateOnly?)null : reader.GetFieldValue<DateOnly>(columnOffset);
+                            result.BirthDate = reader.GetFieldValue<global::System.DateOnly>(columnOffset);
                             break;
                         case 5:
-                            result.BirthDate = reader.IsDBNull(columnOffset) ? (DateOnly?)null : GetValue<DateOnly>(reader, columnOffset);
+                            result.BirthDate = GetValue<global::System.DateOnly>(reader, columnOffset);
                             break;
 
                     }
@@ -120,12 +120,12 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type:  BirthDate>
+        private sealed class CommandFactory0 : CommonCommandFactory<object?> // <anonymous type: DateOnly BirthDate>
         {
             internal static readonly CommandFactory0 Instance = new();
             public override void AddParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
-                var typed = Cast(args, static () => new { BirthDate = default()! }); // expected shape
+                var typed = Cast(args, static () => new { BirthDate = default(global::System.DateOnly) }); // expected shape
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
                 p = cmd.CreateParameter();
@@ -137,7 +137,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             }
             public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
-                var typed = Cast(args, static () => new { BirthDate = default()! }); // expected shape
+                var typed = Cast(args, static () => new { BirthDate = default(global::System.DateOnly) }); // expected shape
                 var ps = cmd.Parameters;
                 ps[0].Value = AsValue(typed.BirthDate);
 
@@ -154,17 +154,17 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 global::System.Data.Common.DbParameter p;
                 p = cmd.CreateParameter();
                 p.ParameterName = "BirthDate";
-                global::Dapper.Aot.Generated.DbStringHelpers.ConfigureDbStringDbParameter(p, args.BirthDate);
+                p.Direction = global::System.Data.ParameterDirection.Input;
+                p.Value = AsValue(args.BirthDate);
                 ps.Add(p);
 
             }
             public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.QueryModel args)
             {
                 var ps = cmd.Parameters;
-                global::Dapper.Aot.Generated.DbStringHelpers.ConfigureDbStringDbParameter(ps[0], args.BirthDate);
+                ps[0].Value = AsValue(args.BirthDate);
 
             }
-            public override bool CanPrepare => true;
 
         }
 
@@ -185,50 +185,6 @@ namespace System.Runtime.CompilerServices
             _ = path;
             _ = lineNumber;
             _ = columnNumber;
-        }
-    }
-}
-namespace Dapper.Aot.Generated
-{
-    /// <summary>
-    /// Contains helpers to properly handle <see href="https://github.com/DapperLib/Dapper/blob/main/Dapper/DbString.cs"/>
-    /// </summary>
-#if !DAPPERAOT_INTERNAL
-    file
-#endif
-    static class DbStringHelpers
-    {
-        public static void ConfigureDbStringDbParameter(
-            global::System.Data.Common.DbParameter dbParameter,
-            global::Dapper.DbString? dbString)
-        {
-            if (dbString is null)
-            {
-                dbParameter.Value = global::System.DBNull.Value;
-                return;
-            }
-
-            // repeating logic from Dapper:
-            // https://github.com/DapperLib/Dapper/blob/52160dc44699ec7eb5ad57d0dddc6ded4662fcb9/Dapper/DbString.cs#L71
-            if (dbString.Length == -1 && dbString.Value is not null && dbString.Value.Length <= global::Dapper.DbString.DefaultLength)
-            {
-                dbParameter.Size = global::Dapper.DbString.DefaultLength;
-            }
-            else
-            {
-                dbParameter.Size = dbString.Length;
-            }
-
-            dbParameter.DbType = dbString switch
-            {
-                { IsAnsi: true, IsFixedLength: true } => global::System.Data.DbType.AnsiStringFixedLength,
-                { IsAnsi: true, IsFixedLength: false } => global::System.Data.DbType.AnsiString,
-                { IsAnsi: false, IsFixedLength: true } => global::System.Data.DbType.StringFixedLength,
-                { IsAnsi: false, IsFixedLength: false } => global::System.Data.DbType.String,
-                _ => dbParameter.DbType
-            };
-
-            dbParameter.Value = dbString.Value as object ?? global::System.DBNull.Value;
         }
     }
 }
