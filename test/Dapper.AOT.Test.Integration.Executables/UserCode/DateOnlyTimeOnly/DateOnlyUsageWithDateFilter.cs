@@ -3,19 +3,19 @@ using System.Data;
 using System.Linq;
 using Dapper.AOT.Test.Integration.Executables.Models;
 
-namespace Dapper.AOT.Test.Integration.Executables.UserCode;
+namespace Dapper.AOT.Test.Integration.Executables.UserCode.DateOnlyTimeOnly;
 
 [DapperAot]
-public class DateOnlyUsageWithTimeFilter : IExecutable<DateOnlyTimeOnlyPoco>
+public class DateOnlyUsageWithDateFilter : IExecutable<DateOnlyTimeOnlyPoco>
 {
     public DateOnlyTimeOnlyPoco Execute(IDbConnection connection)
     {
         var results = connection.Query<DateOnlyTimeOnlyPoco>(
             $"""
                 select * from {DateOnlyTimeOnlyPoco.TableName}
-                where time = @time
+                where date = @date
             """,
-            new { time = DateOnlyTimeOnlyPoco.SpecificTime }
+            new { date = DateOnlyTimeOnlyPoco.SpecificDate }
         );
 
         return results.First();

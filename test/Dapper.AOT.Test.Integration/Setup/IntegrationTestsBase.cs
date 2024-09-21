@@ -62,6 +62,7 @@ public abstract class IntegrationTestsBase
                 
                 // Additional stuff required by Dapper.AOT generators
                 MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location), // System.Collections
+                MetadataReference.CreateFromFile(Assembly.Load("System.Collections.Immutable").Location), // System.Collections.Immutable
             ],
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 

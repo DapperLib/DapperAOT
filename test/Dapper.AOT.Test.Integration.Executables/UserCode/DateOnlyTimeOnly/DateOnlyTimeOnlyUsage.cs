@@ -3,10 +3,10 @@ using System.Data;
 using System.Linq;
 using Dapper.AOT.Test.Integration.Executables.Models;
 
-namespace Dapper.AOT.Test.Integration.Executables.UserCode;
+namespace Dapper.AOT.Test.Integration.Executables.UserCode.DateOnlyTimeOnly;
 
 [DapperAot]
-public class DateOnlyUsage : IExecutable<DateOnlyTimeOnlyPoco>
+public class DateOnlyTimeOnlyUsage : IExecutable<DateOnlyTimeOnlyPoco>
 {
     public DateOnlyTimeOnlyPoco Execute(IDbConnection connection)
     {
