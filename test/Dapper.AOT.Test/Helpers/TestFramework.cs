@@ -6,23 +6,23 @@ namespace Dapper.AOT.Test.Helpers
 {
     internal static class TestFramework
     {
-        public static ISet<string> NetVersions 
-            = ((NET[])Enum.GetValues(typeof(NET)))
+        public static readonly ISet<string> NetVersions 
+            = ((Net[])Enum.GetValues(typeof(Net)))
             .Select(static x => x.ToString())
             .ToHashSet();
 
-            public static NET DetermineNetVersion()
+            public static Net DetermineNetVersion()
         {
 #if NET6_0_OR_GREATER
-            return NET.net6;
+            return Net.Net6;
 #endif
-            return NET.net48;
+            return Net.Net48;
         }
 
-        public enum NET
+        public enum Net
         {
-            net48,
-            net6
+            Net48,
+            Net6
         }
     }
 }

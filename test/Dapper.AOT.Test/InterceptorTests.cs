@@ -28,7 +28,7 @@ public class InterceptorTests : GeneratorTestBase
                 if (TestFramework.NetVersions.Contains(fileNetVersionStr))
                 {
                     // it has to be the same or greater version
-                    var fileNetVersion = (TestFramework.NET)Enum.Parse(typeof(TestFramework.NET), fileNetVersionStr);
+                    var fileNetVersion = (TestFramework.Net)Enum.Parse(typeof(TestFramework.Net), fileNetVersionStr);
                     if (currentNetVersion < fileNetVersion)
                     {
                         // skip if current version is lower than specified in the input file name
