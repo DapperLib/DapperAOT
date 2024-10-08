@@ -31,7 +31,11 @@ namespace Dapper.Internal
         public void Dispose()
         {
             Return();
-            Reader?.Dispose();
+            if (Reader is not null)
+            {
+                commandState.CancelCommand();
+                Reader.Dispose();
+            }
             commandState.Dispose();
         }
 

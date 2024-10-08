@@ -37,6 +37,8 @@ namespace Dapper.Internal
         [MemberNotNull(nameof(Command))]
         public Task<DbDataReader> ExecuteReaderAsync(DbCommand command, CommandBehavior flags, CancellationToken cancellationToken)
         {
+            flags &= ~(CommandBehavior.SingleResult | CommandBehavior.SingleRow); // correctness; these can mask trailing error data
+
             var pending = OnBeforeExecuteAsync(command, cancellationToken);
             return pending.IsCompletedSuccessfully() ? command.ExecuteReaderAsync(flags, cancellationToken)
                 : Awaited(pending, command, flags, cancellationToken);
@@ -110,6 +112,19 @@ namespace Dapper.Internal
             {
                 await pending;
                 return await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+        }
+
+        public void CancelCommand()
+        {
+            try
+            {
+                Command?.Cancel();
+            }
+            catch (Exception ex)
+            {
+                // do not lose any existing exception
+                Debug.WriteLine(ex.Message);
             }
         }
 

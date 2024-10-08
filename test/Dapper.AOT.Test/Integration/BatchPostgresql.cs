@@ -7,7 +7,7 @@ namespace Dapper.AOT.Test.Integration;
 [Collection(SharedPostgresqlClient.Collection)]
 public class BatchPostgresql
 {
-    private PostgresqlFixture _fixture;
+    private readonly PostgresqlFixture _fixture;
 
     public BatchPostgresql(PostgresqlFixture fixture)
     {

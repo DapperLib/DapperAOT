@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -28,6 +29,8 @@ namespace Dapper.Internal
         [MemberNotNull(nameof(Command))]
         public DbDataReader ExecuteReader(DbCommand command, CommandBehavior flags)
         {
+            flags &= (CommandBehavior.SingleResult | CommandBehavior.SingleRow); // correctness; these can mask trailing error data
+
             OnBeforeExecute(command);
             return command.ExecuteReader(flags);
         }
@@ -56,6 +59,19 @@ namespace Dapper.Internal
         {
             OnBeforeExecute(command);
             return command.ExecuteNonQuery();
+        }
+
+        public void CancelCommand()
+        {
+            try
+            {
+                Command?.Cancel();
+            }
+            catch (Exception ex)
+            {
+                // do not lose any existing exception
+                Debug.WriteLine(ex.Message);
+            }
         }
 
         public void Dispose()

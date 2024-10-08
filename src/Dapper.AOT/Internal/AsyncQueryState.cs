@@ -82,6 +82,8 @@ namespace Dapper.Internal
             Return();
             if (Reader is not null)
             {
+                CancelCommand();
+
 #if NETCOREAPP3_1_OR_GREATER
                 var pending = Reader.DisposeAsync();
                 if (pending.IsCompletedSuccessfully)
@@ -98,11 +100,14 @@ namespace Dapper.Internal
             }
             return base.DisposeAsync();
         }
+
+#if NETCOREAPP3_1_OR_GREATER
         private async ValueTask DisposeAsync(ValueTask pending)
         {
             await pending;
             await base.DisposeAsync();
         }
+#endif
 
         public override void Dispose()
         {
