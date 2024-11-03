@@ -63,10 +63,23 @@ public abstract class CommandFactory
     private static readonly object s_BoxedTrue = true, s_BoxedFalse = false;
 
     /// <summary>
+    /// Parse an enum of type <typeparamref name="T"/>
+    /// </summary>
+    public static T ParseEnum<T>(string value, bool ignoreCase = false)
+        where T : struct, Enum
+    {
+#if NETCOREAPP3_1_OR_GREATER
+        return Enum.Parse<T>(value, ignoreCase);
+#else
+        return (T)Enum.Parse(typeof(T), value, ignoreCase);
+#endif
+    }
+
+    /// <summary>
     /// Wrap a value for use in an ADO.NET parameter
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static object AsValue(int value)
+    protected internal static object AsValue(int value)
         => value >= -1 && value <= 10 ? s_BoxedInt32[value + 1] : value;
 
     /// <summary>
@@ -101,7 +114,7 @@ public abstract class CommandFactory
     /// Wrap a value for use in an ADO.NET parameter
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static object AsValue(object? value)
+    protected internal static object AsValue(object? value)
         => value ?? DBNull.Value;
 
 

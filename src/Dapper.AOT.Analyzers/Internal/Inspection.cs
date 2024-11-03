@@ -154,14 +154,37 @@ internal static class Inspection
                 ContainingNamespace.IsGlobalNamespace: true
             }
         };
+    public static bool IsDataAnnotationsAttribute(AttributeData attrib)
+        => attrib.AttributeClass is
+        {
+            // System.ComponentModel.DataAnnotations.Schema
+            ContainingNamespace:
+            {
+                Name: "Schema",
+                ContainingNamespace:
+                {
+                    Name: "DataAnnotations",
+                    ContainingNamespace:
+                    {
+                        Name: "ComponentModel",
+                        ContainingNamespace:
+                        {
+                            Name: "System",
+                            ContainingNamespace.IsGlobalNamespace: true,
+                        }
+                    },
+                },
+            },
+        };
 
-    public static AttributeData? GetAttribute(ISymbol? symbol, string attributeName)
+    public static AttributeData? GetAttribute(ISymbol? symbol, string attributeName, Func<AttributeData, bool> qualifier)
     {
         if (symbol is not null)
         {
             foreach (var attrib in symbol.GetAttributes())
             {
-                if (attrib.AttributeClass!.Name == attributeName)
+                if (attrib.AttributeClass!.Name == attributeName
+                    && qualifier(attrib))
                 {
                     return attrib;
                 }
@@ -171,20 +194,7 @@ internal static class Inspection
         return null;
     }
 
-    public static AttributeData? GetDapperAttribute(ISymbol? symbol, string attributeName)
-    {
-        if (symbol is not null)
-        {
-            foreach (var attrib in symbol.GetAttributes())
-            {
-                if (IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == attributeName)
-                {
-                    return attrib;
-                }
-            }
-        }
-        return null;
-    }
+    public static AttributeData? GetDapperAttribute(ISymbol? symbol, string attributeName) => GetAttribute(symbol, attributeName, static a => IsDapperAttribute(a));
 
     public static bool IsMissingOrObjectOrDynamic(ITypeSymbol? type) => type is null || type.SpecialType == SpecialType.System_Object || type.TypeKind == TypeKind.Dynamic;
 
@@ -412,12 +422,20 @@ internal static class Inspection
     }
 
     [Flags]
-    public enum ElementMemberKind
+    public enum ElementMemberKind : byte
     {
         None = 0,
         RowCount = 1 << 0,
         RowCountHint = 1 << 1,
     }
+
+    public enum TypeHandlerKind : byte
+    {
+        None = 0,
+        Auto = 1,
+        User = 2,
+    }
+
     public readonly struct ElementMember
     {
         public Location[]? AsAdditionalLocations(string? attributeName = null, bool allowNonDapperLocations = false)
@@ -427,11 +445,29 @@ internal static class Inspection
         }
 
         private readonly AttributeData? _dbValue;
+        public TypeHandlerKind GetTypeHandler(out ITypeSymbol? userTypeHandler)
+        {
+            var specific = Inspection.GetAttribute(Member, Types.TypeHandlerAttribute,
+                a => a.AttributeClass is INamedTypeSymbol { Arity: 1 } && Inspection.IsDapperAttribute(a));
+            if (specific is INamedTypeSymbol { Arity: 1 } named)
+            {
+                userTypeHandler = named.TypeArguments[0];
+                return TypeHandlerKind.User;
+            }
+            userTypeHandler = null;
+            if (CodeType is { TypeKind: TypeKind.Enum})
+            {
+                return TypeHandlerKind.Auto;
+            }
+            if (IsDapperAttribute)
+            return TypeHandlerKind.None;
+        }
+
         public readonly ColumnAttributeData ColumnAttributeData { get; } = ColumnAttributeData.Default;
         public string DbName
         {
             get
-            {      
+            {
                 if (TryGetAttributeValue(_dbValue, "Name", out string? name) && !string.IsNullOrWhiteSpace(name))
                 {
                     // priority 1: [DbValue] attribute
@@ -554,7 +590,7 @@ internal static class Inspection
             }
             return null;
         }
-        public Location? GetLocation(string? attributeName = null, bool allowNonDapperLocations = false)
+        public Location? GetLocation(string? attributeName = null, bool allowNonDapperLocations = false, Func<AttributeData, bool>? qualifier = null)
         {
             if (attributeName is null)
             {
@@ -562,7 +598,7 @@ internal static class Inspection
             }
 
             var result = allowNonDapperLocations
-                ? GetAttribute(Member, attributeName)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation()
+                ? GetAttribute(Member, attributeName, qualifier ?? (static a => IsDapperAttribute(a)))?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation()
                 : GetDapperAttribute(Member, attributeName)?.ApplicationSyntaxReference?.GetSyntax()?.GetLocation();
 
             return result ?? GetLocation();
@@ -869,7 +905,8 @@ internal static class Inspection
 
             (ColumnAttributeData.ColumnAttributeState state, string? columnName) ParseColumnAttributeState()
             {
-                var columnAttribute = GetAttribute(member, Types.ColumnAttribute);
+                var columnAttribute = GetAttribute(member, Types.ColumnAttribute,
+                    static a => IsDataAnnotationsAttribute(a));
                 if (columnAttribute is null) return (ColumnAttributeData.ColumnAttributeState.NotSpecified, null);
 
                 if (TryGetAttributeValue(columnAttribute, "name", out string? name) && !string.IsNullOrWhiteSpace(name))

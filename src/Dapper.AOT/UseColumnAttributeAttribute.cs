@@ -3,7 +3,7 @@
 namespace Dapper
 {
     /// <summary>
-    /// Specifies whether to use [System.ComponentModel.DataAnnotations.Schema.ColumnAttribute] for additional behavioral configuration
+    /// Specifies whether to use [System.ComponentModel.DataAnnotations.Schema.ColumnAttribute] for additional behavioural configuration
     /// </summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
     public class UseColumnAttributeAttribute : Attribute

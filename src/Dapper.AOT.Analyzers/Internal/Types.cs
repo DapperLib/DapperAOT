@@ -19,5 +19,6 @@ internal static class Types
         SqlMapper = nameof(SqlMapper),
         SqlAttribute = nameof(SqlAttribute),
         ExplicitConstructorAttribute = nameof(ExplicitConstructorAttribute),
-        BatchSizeAttribute = nameof(BatchSizeAttribute);
+        BatchSizeAttribute = nameof(BatchSizeAttribute),
+        TypeHandlerAttribute = nameof(TypeHandlerAttribute);
 }
