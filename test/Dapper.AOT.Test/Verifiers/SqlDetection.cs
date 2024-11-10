@@ -184,7 +184,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         {
             static void Main()
             {
-        using var conn = new SqlConnection("my connection string here");
+                using var conn = new SqlConnection("my connection string here");
         string name = "abc";
         conn.{|#0:Execute|}("""
             select Id, Name, Age
@@ -200,7 +200,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             age = 24,
         });
 
-        using var cmd = new SqlCommand("should ' verify this too", conn);
+        using var cmd = new SqlCommand("should {|#3:|}' verify this too", conn);
         cmd.CommandText = """
             select Id, Name, Age
             from Users
@@ -217,6 +217,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         Diagnostic(DapperAnalyzer.Diagnostics.ExecuteCommandWithQuery).WithLocation(0),
         Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(1),
         Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2),
+        Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(3).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.")
     ], SqlSyntax.General, refDapperAot: false);
 
     [Fact]

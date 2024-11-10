@@ -2,6 +2,7 @@
 using Dapper.Internal.Roslyn;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using System;
@@ -35,8 +36,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         // per-run state (in particular, so we can have "first time only" diagnostics)
         var state = new AnalyzerState(context);
 
-        // respond to method usages
-        context.RegisterOperationAction(state.OnOperation, OperationKind.Invocation, OperationKind.SimpleAssignment);
+        context.RegisterOperationAction(state.OnOperation, 
+            OperationKind.Invocation, // for Dapper method invocations
+            OperationKind.SimpleAssignment, // for assignments of query
+            OperationKind.VariableDeclaration // for instantiating Command objects
+        );
 
         // final actions
         context.RegisterCompilationEndAction(state.OnCompilationEndAction);
@@ -111,8 +115,9 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             try
             {
                 // we'll look for:
-                // method calls with a parameter called "sql" or marked [Sql]
-                // property assignments to "CommandText"
+                // - method calls with a parameter called "sql" or marked [Sql]
+                // - property assignments to "CommandText"
+                // - allocation of SqlCommand (i.e. `new SqlCommand(queryString, ...)` )
                 switch (ctx.Operation.Kind)
                 {
                     case OperationKind.Invocation when ctx.Operation is IInvocationOperation invoke:
@@ -155,6 +160,39 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                                 ValidatePropertyUsage(ctx, assignment.Value, false);
                             }
                         }
+                        break;
+                    case OperationKind.VariableDeclaration when ctx.Operation is IVariableDeclarationOperation variableDeclarationOperation
+                        && variableDeclarationOperation.Declarators.FirstOrDefault() is { } declarator
+                        && declarator.Initializer?.Value is IObjectCreationOperation objectCreationOperation:
+
+                        var ctor = objectCreationOperation.Constructor;
+                        var receiverType = ctor?.ReceiverType;
+
+                        if (ctor is not null && receiverType is
+                            {
+                                Name: "SqlCommand",
+                                ContainingNamespace:
+                                {
+                                    Name: "SqlClient",
+                                    ContainingNamespace:
+                                    {
+                                        Name: "Data",
+                                        ContainingNamespace:
+                                        {
+                                            Name: "Microsoft",
+                                            ContainingNamespace.IsGlobalNamespace: true
+                                        }
+                                    }
+                                }
+                            })
+                        {
+                            var sqlParam = ctor.Parameters.FirstOrDefault();
+                            if (sqlParam is not null && sqlParam.Type.SpecialType == SpecialType.System_String && sqlParam.Name == "cmdText")
+                            {
+                                ValidateParameterUsage(ctx, objectCreationOperation.Arguments.First(), sqlUsage: objectCreationOperation);
+                            }
+                        }
+
                         break;
                 }
             }
@@ -327,11 +365,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        private void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource)
+        private void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource, IOperation sqlUsage = null)
         {
             // TODO: check other parameters for special markers like command type?
             var flags = SqlParseInputFlags.None;
-            ValidateSql(ctx, sqlSource, flags, SqlParameters.None);
+            ValidateSql(ctx, sqlSource, flags, SqlParameters.None, sqlUsageOperation: sqlUsage);
         }
 
         private void ValidatePropertyUsage(in OperationAnalysisContext ctx, IOperation sqlSource, bool isCommand)
@@ -372,12 +410,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
 
         private void ValidateSql(in OperationAnalysisContext ctx, IOperation sqlSource, SqlParseInputFlags flags,
-            ImmutableArray<SqlParameter> parameters, Location? location = null)
+            ImmutableArray<SqlParameter> parameters, Location? location = null, IOperation sqlUsageOperation = null)
         {
             var parseState = new ParseState(ctx);
 
             // should we consider this as a syntax we can handle?
-            var syntax = IdentifySqlSyntax(parseState, ctx.Operation, out var caseSensitive) ?? DefaultSqlSyntax ?? SqlSyntax.General;
+            var syntax = IdentifySqlSyntax(parseState, sqlUsageOperation ?? ctx.Operation, out var caseSensitive) ?? DefaultSqlSyntax ?? SqlSyntax.General;
             switch (syntax)
             {
                 case SqlSyntax.SqlServer:
