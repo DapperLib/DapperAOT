@@ -346,7 +346,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        private void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource, IOperation sqlUsage = null)
+        private void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource, IOperation? sqlUsage = null)
         {
             // TODO: check other parameters for special markers like command type?
             var flags = SqlParseInputFlags.None;
@@ -391,7 +391,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
 
         private void ValidateSql(in OperationAnalysisContext ctx, IOperation sqlSource, SqlParseInputFlags flags,
-            ImmutableArray<SqlParameter> parameters, Location? location = null, IOperation sqlUsageOperation = null)
+            ImmutableArray<SqlParameter> parameters, Location? location = null, IOperation? sqlUsageOperation = null)
         {
             var parseState = new ParseState(ctx);
 

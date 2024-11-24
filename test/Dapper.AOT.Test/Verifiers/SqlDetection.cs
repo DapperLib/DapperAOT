@@ -185,31 +185,31 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             static void Main()
             {
                 using var conn = new SqlConnection("my connection string here");
-        string name = "abc";
-        conn.{|#0:Execute|}("""
-            select Id, Name, Age
-            from Users
-            where Id = @id
-            and Name = @name
-            and Age = @age
-            and Something = {|#1:null|}
-            """, new
-        {
-            name,
-            id = 42,
-            age = 24,
-        });
+                string name = "abc";
+                conn.{|#0:Execute|}("""
+                    select Id, Name, Age
+                    from Users
+                    where Id = @id
+                    and Name = @name
+                    and Age = @age
+                    and Something = {|#1:null|}
+                    """, new
+                {
+                    name,
+                    id = 42,
+                    age = 24,
+                });
 
-        using var cmd = new SqlCommand("should {|#3:|}' verify this too", conn);
-        cmd.CommandText = """
-            select Id, Name, Age
-            from Users
-            where Id = @id
-            and Name = @name
-            and Age = @age
-            and Something = {|#2:null|}
-            """;
-        cmd.ExecuteNonQuery();
+                using var cmd = new SqlCommand("should {|#3:|}' verify this too", conn);
+                cmd.CommandText = """
+                    select Id, Name, Age
+                    from Users
+                    where Id = @id
+                    and Name = @name
+                    and Age = @age
+                    and Something = {|#2:null|}
+                    """;
+                cmd.ExecuteNonQuery();
             }
         }
 """", [], [
