@@ -276,7 +276,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             and Age = @age
             and Something = {|#1:null|}", New With {name, .id = 42, .age = 24 })
 
-                    Using cmd As New SqlCommand("should ' verify this too", conn)
+                    Using cmd As New SqlCommand("should {|#3:|}' verify this too", conn)
                         cmd.CommandText = "
             select Id, Name, Age
             from Users
@@ -292,6 +292,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
 """, [], [
         Diagnostic(DapperAnalyzer.Diagnostics.ExecuteCommandWithQuery).WithLocation(0),
         Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(1),
-        Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2)
+        Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2),
+        Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(3).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.")
     ], SqlSyntax.General, refDapperAot: false);
 }
