@@ -220,6 +220,46 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(3).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.")
     ], SqlSyntax.General, refDapperAot: false);
 
+    [Theory]
+    [InlineData("Microsoft.Data.SqlClient")]
+    [InlineData("System.Data.SqlClient")]
+    public Task SqlClientCommandReportsParseError(string @namespace) => CSVerifyAsync($$""""
+        using {{@namespace}};
+        using Dapper;
+
+        static class Program
+        {
+            static void Main()
+            {
+                using var conn = new {{@namespace}}.SqlConnection("my connection string here");
+                using var cmd = new {{@namespace}}.SqlCommand("should {|#0:|}' verify this too", conn);
+                cmd.ExecuteNonQuery();
+            }
+        }
+    """", [], [ Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(0).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.") ], SqlSyntax.General, refDapperAot: false);
+
+    [Theory]
+    [InlineData("Microsoft.Data.SqlClient")]
+    [InlineData("System.Data.SqlClient")]
+    public Task SqlClientCommandInlineCreationReportsParseError(string @namespace) => CSVerifyAsync($$""""
+        using {{@namespace}};
+        using Dapper;
+
+        static class Program
+        {
+            static void Main()
+            {
+                using var conn = new {{@namespace}}.SqlConnection("my connection string here");
+                RunCommand(new {{@namespace}}.SqlCommand("should {|#0:|}' verify this too", conn));
+            }
+
+            static void RunCommand({{@namespace}}.SqlCommand cmd)
+            {
+                cmd.ExecuteNonQuery();
+            }
+        }
+    """", [], [Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(0).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.")], SqlSyntax.General, refDapperAot: false);
+
     [Fact]
     public Task VBSmokeTestVanilla() => VBVerifyAsync("""
         Imports Dapper

@@ -146,6 +146,24 @@ internal static class Inspection
         return false;
     }
 
+    public static bool IsSqlClient(ITypeSymbol? typeSymbol) => typeSymbol is
+    {
+        Name: "SqlCommand",
+        ContainingNamespace:
+        {
+            Name: "SqlClient",
+            ContainingNamespace:
+            {
+                Name: "Data",
+                ContainingNamespace:
+                {
+                    Name: "Microsoft" or "System", // either Microsoft.Data.SqlClient or System.Data.SqlClient
+                    ContainingNamespace.IsGlobalNamespace: true
+                }
+            }
+        }
+    };
+
     public static bool IsDapperAttribute(AttributeData attrib)
         => attrib.AttributeClass is
         {

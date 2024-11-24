@@ -2,7 +2,6 @@
 using Dapper.Internal.Roslyn;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using System;
@@ -39,7 +38,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         context.RegisterOperationAction(state.OnOperation, 
             OperationKind.Invocation, // for Dapper method invocations
             OperationKind.SimpleAssignment, // for assignments of query
-            OperationKind.VariableDeclaration // for instantiating Command objects
+            OperationKind.ObjectCreation // for instantiating Command objects
         );
 
         // final actions
@@ -161,30 +160,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                             }
                         }
                         break;
-                    case OperationKind.VariableDeclaration when ctx.Operation is IVariableDeclarationOperation variableDeclarationOperation
-                        && variableDeclarationOperation.Declarators.FirstOrDefault() is { } declarator
-                        && declarator.Initializer?.Value is IObjectCreationOperation objectCreationOperation:
+                    case OperationKind.ObjectCreation when ctx.Operation is IObjectCreationOperation objectCreationOperation:
 
                         var ctor = objectCreationOperation.Constructor;
                         var receiverType = ctor?.ReceiverType;
 
-                        if (ctor is not null && receiverType is
-                            {
-                                Name: "SqlCommand",
-                                ContainingNamespace:
-                                {
-                                    Name: "SqlClient",
-                                    ContainingNamespace:
-                                    {
-                                        Name: "Data",
-                                        ContainingNamespace:
-                                        {
-                                            Name: "Microsoft",
-                                            ContainingNamespace.IsGlobalNamespace: true
-                                        }
-                                    }
-                                }
-                            })
+                        if (ctor is not null && IsSqlClient(receiverType))
                         {
                             var sqlParam = ctor.Parameters.FirstOrDefault();
                             if (sqlParam is not null && sqlParam.Type.SpecialType == SpecialType.System_String && sqlParam.Name == "cmdText")
