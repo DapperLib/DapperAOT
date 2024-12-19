@@ -1,6 +1,5 @@
 ﻿#if NET6_0_OR_GREATER
 
-using System.Drawing;
 using Xunit;
 using static Dapper.Command;
 
@@ -28,15 +27,10 @@ public class SqlBuilderTests
             where Id=@id and Region=@region
             """, finalSql);
 
-        var p = sql.Parameters[0];
-        Assert.Equal("@id", p.Name);
-        Assert.Equal(42, p.Value);
-        Assert.Equal(0, p.Size);
-
-        p = sql.Parameters[1];
-        Assert.Equal("@region", p.Name);
-        Assert.Equal("North", p.Value);
-        Assert.Equal(0, p.Size);
+        Assert.Equal([
+            new Parameter("@id", 42),
+            new Parameter("@region", "North")
+            ], sql.Parameters.ToArray());
 
         var sqlCopy = sql.GetSql();
 #if NET9_0_OR_GREATER

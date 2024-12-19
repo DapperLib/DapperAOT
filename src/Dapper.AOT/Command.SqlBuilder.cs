@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Data.SqlTypes;
 using System.Globalization;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
@@ -83,16 +84,18 @@ public readonly partial struct Command
         [UnsafeAccessor(UnsafeAccessorKind.Method)]
         private static extern partial void Clear(ref DefaultInterpolatedStringHandler handler);
 #else
-    private static partial void Clear(ref DefaultInterpolatedStringHandler handler)
-    {
-        throw new NotImplementedException("TODO");
-    }
+        // old-school "UnsafeAccessor"
+        private static partial void Clear(ref DefaultInterpolatedStringHandler handler)
+            => s_clear(ref handler);
 
-    private static partial ReadOnlySpan<char> GetText(ref DefaultInterpolatedStringHandler handler)
-    {
-        throw new NotImplementedException("TODO");
-    }
+        private static partial ReadOnlySpan<char> GetText(ref DefaultInterpolatedStringHandler handler)
+            => s_getText(ref handler);
 
+        private delegate ReadOnlySpan<char> GetTextSignature(ref DefaultInterpolatedStringHandler handler);
+        private static readonly GetTextSignature s_getText = (GetTextSignature)typeof(DefaultInterpolatedStringHandler).GetMethod("get_Text", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!.CreateDelegate(typeof(GetTextSignature));
+
+        private delegate void ClearSignature(ref DefaultInterpolatedStringHandler handler);
+        private static readonly ClearSignature s_clear = (ClearSignature)typeof(DefaultInterpolatedStringHandler).GetMethod("Clear", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!.CreateDelegate(typeof(ClearSignature));
 #endif
 
         private bool IsParameter(out char prefix)
