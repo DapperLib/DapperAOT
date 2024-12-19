@@ -9,6 +9,34 @@ namespace Dapper.AOT.Test;
 
 public class SqlBuilderTests
 {
+    /*
+     note: these tests are to check behaviour; actual real-world usage would be more like:
+
+     int rows = conn.Command($"""
+           update Customers
+           set Balance = Balance + @{delta}, -- will be called @delta
+               Something = @{foo + 2} -- will auto-generate a name such as @p1
+           where Id = @{id} -- will be called @id
+           """).Execute();
+
+     var data = conn.Command($"""
+           select *
+           from Customers
+           where Region=@{region}
+           and Manager=@{manager}
+           """).QueryBuffered<Customer>();
+
+    note on QueryBuffered<T>; Query<T> still exists; this is just more explicit and returns
+    a List<T> instead of IEnumerable<T>
+
+    TODO: have an analyzer spot injection risks e.g. Manager={manager}
+          and raise a warning; this is *permitted*, but it'll advise you to use parameters
+          (obviously not just TSQL parameter syntax is detected)
+
+    Requires at least .NET 6 (for the custom interpolated string handler support), with later
+    runtimes providing an incrementally better experience.
+    */
+
     [Fact]
     public void BasicSqlInterpolated()
     {
