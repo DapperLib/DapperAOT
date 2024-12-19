@@ -66,7 +66,7 @@ public abstract class CommandFactory
     /// Wrap a value for use in an ADO.NET parameter
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static object AsValue(int value)
+    protected internal static object AsValue(int value)
         => value >= -1 && value <= 10 ? s_BoxedInt32[value + 1] : value;
 
     /// <summary>
@@ -80,7 +80,7 @@ public abstract class CommandFactory
     /// Wrap a value for use in an ADO.NET parameter
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static object AsValue(bool value)
+    protected internal static object AsValue(bool value)
         => value ? s_BoxedTrue : s_BoxedFalse;
 
     /// <summary>
@@ -94,7 +94,7 @@ public abstract class CommandFactory
     /// Wrap a value for use in an ADO.NET parameter
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static object AsValue<T>(T? value) where T : struct
+    protected internal static object AsValue<T>(T? value) where T : struct
         => value.HasValue ? AsValue(value.GetValueOrDefault()) : DBNull.Value;
 
     /// <summary>
