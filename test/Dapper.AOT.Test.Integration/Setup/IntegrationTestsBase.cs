@@ -77,7 +77,7 @@ public abstract class IntegrationTestsBase
         var assembly = outputCompilation.CompileToAssembly();
         var type = assembly.GetTypes().Single(t => t.FullName == typeof(TExecutable).FullName);
         var executableInstance = Activator.CreateInstance(type);
-        var mainMethod = type.GetMethod(nameof(IExecutable<TExecutable>.Execute), BindingFlags.Public | BindingFlags.Instance);
+        var mainMethod = type.GetMethod(nameof(IExecutable<>.Execute), BindingFlags.Public | BindingFlags.Instance);
         var result = mainMethod!.Invoke(obj: executableInstance, [ dbConnection ]);
 
         Assert.True(interceptorRecorder.WasCalled, userMessage: "No interception code invoked");

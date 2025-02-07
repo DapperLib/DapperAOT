@@ -5,6 +5,8 @@ using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Dapper;
 
@@ -174,7 +176,7 @@ public readonly struct UnifiedCommand
         }
     }
 
-    internal void PostProcess<T>(IEnumerable<T> source, CommandFactory<T> commandFactory)
+    internal void PostProcess<T>(IReadOnlyCollection<T> source, CommandFactory<T> commandFactory)
     {
         int i = 0;
         var commands = AssertBatchCommands;
@@ -222,6 +224,58 @@ public readonly struct UnifiedCommand
         dbCommand?.Dispose();
 #if NET6_0_OR_GREATER
         batch?.Dispose();
+#endif
+    }
+
+    private DbConnection? Connection
+    {
+        get =>
+#if NET6_0_OR_GREATER
+                batch?.Connection ??
+#endif
+            dbCommand?.Connection;
+    }
+
+    internal bool OpenIfRequired()
+    {
+        if (Connection is { } conn && conn.State != ConnectionState.Open)
+        {
+            conn.Open();
+            return true;
+        }
+        return false;
+    }
+
+    internal void Close() => Connection?.Close();
+
+    internal ValueTask<bool> OpenIfRequiredAsync(CancellationToken cancellationToken)
+    {
+        if (Connection is { } conn && conn.State != ConnectionState.Open)
+        {
+            var pending = conn.OpenAsync(cancellationToken);
+#if NET6_0_OR_GREATER
+            return pending.IsCompletedSuccessfully
+#else
+            return pending.Status == TaskStatus.RanToCompletion
+#endif
+                ? new(true) : AwaitedAsync(pending);
+        }
+        return new(false);
+
+        static async ValueTask<bool> AwaitedAsync(Task pending)
+        {
+            await pending.ConfigureAwait(false);
+            return false;
+        }
+    }
+
+    internal Task CloseAsync()
+    {
+#if NET6_0_OR_GREATER
+        return Connection?.CloseAsync() ?? Task.CompletedTask;
+#else
+        Connection?.Close();
+        return Task.CompletedTask;
 #endif
     }
 }

@@ -211,76 +211,125 @@ partial struct Command<TArgs>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool UseBatch(int batchSize) => batchSize != 0 && connection is { CanCreateBatch: true };
 
-    private DbBatchCommand AddCommand(ref UnifiedCommand state, TArgs args)
+    private DbBatchCommand AddCommand(ref UnifiedCommand state, TArgs args, List<TArgs>? buffer = null)
     {
         var cmd = state.UnsafeCreateNewCommand();
         commandFactory.Initialize(state, sql, commandType, args);
         state.AssertBatchCommands.Add(cmd);
+        buffer?.Add(args);
         return cmd;
+    }
+
+    private const int FLAG_CloseConnection = 1 << 0;
+    private static void OnBeforeExecute(in UnifiedCommand state, ref int flags)
+    {
+        if (state.OpenIfRequired())
+        {
+            flags |= FLAG_CloseConnection;
+        }
+    }
+    private static void OnCleanup(in UnifiedCommand state, int flags)
+    {
+        if ((flags & FLAG_CloseConnection) != 0)
+        {
+            state.Close();
+        }
+        state.Cleanup();
     }
 
     private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize) // TODO: sub-batching
     {
-        Debug.Assert(source.Length > 1);
-        UnifiedCommand batch = default;
-        bool closeConnection = false;
+        var batch = CreateBatch(source);
+        return ExecuteMultiBatchCore(batch, source);
+    }
+
+    private UnifiedCommand CreateBatch(IEnumerable<TArgs> source, out IReadOnlyCollection<TArgs>? postProcess)
+    {
+        var iter = source.GetEnumerator();
         try
         {
-            foreach (var arg in source)
+            if (!iter.MoveNext())
             {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
-                AddCommand(ref batch, arg);
-            }
-            if (!batch.HasBatch) return 0;
-
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-                closeConnection = true;
+                postProcess = null;
+                return default;
             }
 
-            var result = batch.AssertBatch.ExecuteNonQuery();
-
+            postProcess = null;
+            List<TArgs>? buffer = null;
             if (commandFactory.RequirePostProcess)
             {
-                batch.PostProcess(source, commandFactory);
+                postProcess = source as IReadOnlyCollection<TArgs> ?? (buffer = new());
             }
-            return result;
+
+            UnifiedCommand batch = new(connection.CreateBatch());
+            do
+            {
+                AddCommand(ref batch, iter.Current, buffer);
+            }
+            while (iter.MoveNext());
+            return batch;
         }
         finally
         {
-            if (closeConnection)
-            {
-                connection.Close();
-            }
-            batch.Cleanup();
+            iter.Dispose();
         }
+    }
+
+    private UnifiedCommand CreateBatch(ReadOnlySpan<TArgs> source)
+    {
+        if (source.IsEmpty)
+        {
+            return default;
+        }
+
+        UnifiedCommand batch = new(connection.CreateBatch());
+        foreach (var value in source)
+        {
+            AddCommand(ref batch, value);
+        }
+        return batch;
     }
 
     private int ExecuteMultiBatch(IEnumerable<TArgs> source, int batchSize) // TODO: sub-batching
     {
-        if (commandFactory.RequirePostProcess)
+        var batch = CreateBatch(source, out var postProcess);
+        return ExecuteMultiBatchCore(batch, postProcess);
+    }
+    private int ExecuteMultiBatchCore(in UnifiedCommand batch, IReadOnlyCollection<TArgs>? postProcess)
+    {
+        if (!batch.HasBatch)
         {
-            // try to ensure it is repeatable
-            source = (source as IReadOnlyCollection<TArgs>) ?? source.ToList();
+            return 0;
         }
 
-        UnifiedCommand batch = default;
-        bool closeConnection = false;
+        int flags = 0;
         try
         {
-            foreach (var arg in source)
-            {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
-                AddCommand(ref batch, arg);
-            }
-            if (!batch.HasBatch) return 0;
+            OnBeforeExecute(in batch, ref flags);
 
-            if (connection.State != ConnectionState.Open)
+            var result = batch.AssertBatch.ExecuteNonQuery();
+            if (postProcess is not null)
             {
-                connection.Open();
-                closeConnection = true;
+                batch.PostProcess(postProcess, commandFactory);
             }
+            return result;
+        }
+        finally
+        {
+            OnCleanup(in batch, flags);
+        }
+    }
+    private int ExecuteMultiBatchCore(in UnifiedCommand batch, ReadOnlySpan<TArgs> source)
+    {
+        if (!batch.HasBatch)
+        {
+            return 0;
+        }
+
+        int flags = 0;
+        try
+        {
+            OnBeforeExecute(in batch, ref flags);
 
             var result = batch.AssertBatch.ExecuteNonQuery();
             if (commandFactory.RequirePostProcess)
@@ -291,11 +340,7 @@ partial struct Command<TArgs>
         }
         finally
         {
-            if (closeConnection)
-            {
-                connection.Close();
-            }
-            batch.Cleanup();
+            OnCleanup(in batch, flags);
         }
     }
 #endif
@@ -410,12 +455,57 @@ partial struct Command<TArgs>
         };
     }
 
+#if NET6_0_OR_GREATER
+    private static ValueTask<int> OnBeforeExecuteAsync(in UnifiedCommand state, int flags, CancellationToken cancellationToken)
+    {
+        var pending = state.OpenIfRequiredAsync(cancellationToken);
+        if (!pending.IsCompletedSuccessfully)
+        {
+            return AwaitedAsync(flags, pending);
+        }
+
+        if (pending.GetAwaiter().GetResult())
+        {
+            flags |= FLAG_CloseConnection;
+        }
+        return new(flags);
+
+        static async ValueTask<int> AwaitedAsync(int flags, ValueTask<bool> pending)
+        {
+            if (await pending.ConfigureAwait(false))
+            {
+                flags |= FLAG_CloseConnection;
+            }
+            return flags;
+        }
+    }
+    private static Task OnCleanupAsync(in UnifiedCommand state, int flags)
+    {
+        if ((flags & FLAG_CloseConnection) != 0)
+        {
+            var pending = state.CloseAsync();
+            if (!pending.IsCompletedSuccessfully)
+            {
+                return AwaitedAsync(state, pending);
+            }
+        }
+        state.Cleanup();
+        return Task.CompletedTask;
+
+        static async Task AwaitedAsync(UnifiedCommand state, Task pending)
+        {
+            await pending.ConfigureAwait(false);
+            state.Cleanup();
+        }
+    }
+#endif
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Task<int> ExecuteMultiAsync(ReadOnlyMemory<TArgs> source, int batchSize, CancellationToken cancellationToken)
     {
-//#if NET6_0_OR_GREATER
-//        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
-//#endif
+#if NET6_0_OR_GREATER
+        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
+#endif
         return ExecuteMultiSequentialAsync(source, cancellationToken);
     }
 
@@ -502,9 +592,9 @@ partial struct Command<TArgs>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Task<int> ExecuteMultiAsync(IEnumerable<TArgs> source, int batchSize, CancellationToken cancellationToken)
     {
-//#if NET6_0_OR_GREATER
-//        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
-//#endif
+#if NET6_0_OR_GREATER
+        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, batchSize, cancellationToken);
+#endif
         return ExecuteMultiSequentialAsync(source, cancellationToken);
     }
 
@@ -551,7 +641,7 @@ partial struct Command<TArgs>
     private Task<int> ExecuteMultiAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken)
     {
 #if NET6_0_OR_GREATER
-        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source, offset, count, batchSize, cancellationToken);
+        if (UseBatch(batchSize)) return ExecuteMultiBatchAsync(source.AsMemory(offset, count), batchSize, cancellationToken);
 #endif
         return ExecuteMultiSequentialAsync(source, offset, count, cancellationToken);
     }
@@ -591,31 +681,63 @@ partial struct Command<TArgs>
     }
 
 #if NET6_0_OR_GREATER
-    private async Task<int> ExecuteMultiBatchAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken) // TODO: sub-batching
+    private Task<int> ExecuteMultiBatchAsync(ReadOnlyMemory<TArgs> source, int batchSize, CancellationToken cancellationToken) // TODO: sub-batching
     {
-        Debug.Assert(source.Length > 1);
-        UnifiedCommand batch = default;
-        var end = offset + count;
+        var batch = CreateBatch(source.Span);
+        return ExecuteMultiBatchCoreAsync(batch, source, cancellationToken);
+    }
+
+    private Task<int> ExecuteMultiBatchAsync(IEnumerable<TArgs> source, int batchSize, CancellationToken cancellationToken) // TODO: sub-batching
+    {
+        var batch = CreateBatch(source, out var postProcess);
+        return ExecuteMultiBatchCoreAsync(batch, postProcess, cancellationToken);
+    }
+
+    private async Task<int> ExecuteMultiBatchCoreAsync(UnifiedCommand batch, IReadOnlyCollection<TArgs>? postProcess, CancellationToken cancellationToken)
+    {
+        if (!batch.HasBatch)
+        {
+            return 0;
+        }
+        int flags = 0;
         try
         {
-            for (int i = offset ; i < end; i++)
-            {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
-                AddCommand(ref batch, source[i]);
-            }
-            if (!batch.HasBatch) return 0;
-
+            flags = await OnBeforeExecuteAsync(in batch, flags, cancellationToken);
             var result = await batch.AssertBatch.ExecuteNonQueryAsync(cancellationToken);
 
-            if (commandFactory.RequirePostProcess)
+            if (postProcess is not null)
             {
-                batch.PostProcess(new ReadOnlySpan<TArgs>(source, offset, count), commandFactory);
+                batch.PostProcess(postProcess, commandFactory);
             }
             return result;
         }
         finally
         {
-            batch.Cleanup();
+            await OnCleanupAsync(in batch, flags);
+        }
+    }
+
+    private async Task<int> ExecuteMultiBatchCoreAsync(UnifiedCommand batch, ReadOnlyMemory<TArgs> source, CancellationToken cancellationToken)
+    {
+        if (!batch.HasBatch)
+        {
+            return 0;
+        }
+        int flags = 0;
+        try
+        {
+            flags = await OnBeforeExecuteAsync(in batch, flags, cancellationToken);
+            var result = await batch.AssertBatch.ExecuteNonQueryAsync(cancellationToken);
+
+            if (commandFactory.RequirePostProcess)
+            {
+                batch.PostProcess(source.Span, commandFactory);
+            }
+            return result;
+        }
+        finally
+        {
+            await OnCleanupAsync(in batch, flags);
         }
     }
 #endif
