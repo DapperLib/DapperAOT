@@ -1,4 +1,4 @@
-﻿using Dapper.TestCommon;
+﻿using Dapper.AOT.Test.TestCommon;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using System;
@@ -67,7 +67,7 @@ namespace Dapper.AOT.Test
             ShowDiagnostics("Input code", inputCompilation, diagnosticsTo, "CS8795", "CS1701", "CS1702");
 
             // Create the driver that will control the generation, passing in our generator
-            GeneratorDriver driver = CSharpGeneratorDriver.Create(new[] { generator.AsSourceGenerator() }, parseOptions: RoslynTestHelpers.ParseOptionsLatestLangVer);
+            GeneratorDriver driver = CSharpGeneratorDriver.Create([generator.AsSourceGenerator()], parseOptions: RoslynTestHelpers.ParseOptionsLatestLangVer);
 
             // Run the generation pass
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)
@@ -79,7 +79,7 @@ namespace Dapper.AOT.Test
                 if (result.Exception is not null) throw result.Exception;
             }
 
-            var dn = Normalize(diagnostics, Array.Empty<string>());
+            var dn = Normalize(diagnostics, []);
             if (dn.Any())
             {
                 Output($"Generator produced {dn.Count} diagnostics:");
@@ -131,11 +131,11 @@ namespace Dapper.AOT.Test
             }
         }
 
-        static List<Diagnostic> Normalize(ImmutableArray<Diagnostic> diagnostics, string[] ignore) => (
+        static List<Diagnostic> Normalize(ImmutableArray<Diagnostic> diagnostics, string[] ignore) => [..
             from d in diagnostics
             where !ignore.Contains(d.Id)
             let loc = d.Location
             orderby loc.SourceTree?.FilePath, loc.SourceSpan.Start, d.Id, d.ToString()
-            select d).ToList();
+            select d];
     }
 }

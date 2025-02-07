@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using System.Data.Common;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using Xunit;
 
 namespace Dapper.AOT.Test.InGeneration
@@ -30,6 +30,6 @@ namespace Dapper.AOT.Test.InGeneration
             Assert.Equal(expectedDbType, param.DbType);
         }
 
-        DbParameter CreateDbParameter() => new SqlParameter();
+        private static SqlParameter CreateDbParameter() => new();
     }
 }

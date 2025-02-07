@@ -3,10 +3,11 @@ using Microsoft.CodeAnalysis;
 using Xunit;
 using System.Linq;
 using Microsoft.CodeAnalysis.Operations;
-using Dapper.TestCommon;
+using Dapper.AOT.Test.TestCommon;
+using Dapper.Internal.Roslyn;
 using static Dapper.Internal.Inspection;
 
-namespace Dapper.Internal.Roslyn
+namespace Dapper.AOT.Test.Internal.Roslyn
 {
     public class TypeSymbolExtensionsTests
     {

@@ -14,7 +14,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
-namespace Dapper.TestCommon;
+namespace Dapper.AOT.Test.TestCommon;
 
 internal static class RoslynTestHelpers
 {
@@ -43,12 +43,12 @@ internal static class RoslynTestHelpers
         "RELEASE",
 #endif
     })
-    .WithFeatures(new[] { DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair });
+    .WithFeatures([DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair]);
 
     public static Compilation CreateCompilation(string source, string name, string fileName)
        => CSharpCompilation.Create(name,
-           syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source, ParseOptionsLatestLangVer).WithFilePath(fileName) },
-           references: new[] {
+           syntaxTrees: [CSharpSyntaxTree.ParseText(source, ParseOptionsLatestLangVer).WithFilePath(fileName)],
+           references: [
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
 #if !NET48
                    MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
@@ -59,7 +59,9 @@ internal static class RoslynTestHelpers
 #endif
                    MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(DbConnection).Assembly.Location),
+#pragma warning disable CS0618
                    MetadataReference.CreateFromFile(typeof(System.Data.SqlClient.SqlConnection).Assembly.Location),
+#pragma warning restore CS0618
                    MetadataReference.CreateFromFile(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(OracleConnection).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(ValueTask<int>).Assembly.Location),
@@ -75,6 +77,6 @@ internal static class RoslynTestHelpers
                    MetadataReference.CreateFromFile(typeof(SqlMapper).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(DynamicAttribute).Assembly.Location),
                    MetadataReference.CreateFromFile(typeof(IValidatableObject).Assembly.Location),
-           },
+           ],
            options: new CSharpCompilationOptions(OutputKind.ConsoleApplication, allowUnsafe: true));
 }

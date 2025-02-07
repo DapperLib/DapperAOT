@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFrameworks>net6.0;net48</TargetFrameworks>
+        <TargetFrameworks>net8.0;net48;net9.0</TargetFrameworks>
         <NoWarn>$(NoWarn);IDE0042;CS8002;CA1816</NoWarn>
         <RootNamespace>Dapper.AOT.Test</RootNamespace>
         <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
@@ -23,19 +23,17 @@
         <None Update="**/*.output.netfx.*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output.netfx', '.input.cs'))</DependentUpon>
         </None>
-		<None Update="**/*DAP*.*.cs*">
-			<DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.VB.cs', '.cs'))</DependentUpon>
-		</None>
+        <None Update="**/*DAP*.*.cs*">
+            <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.VB.cs', '.cs'))</DependentUpon>
+        </None>
 
-	</ItemGroup>
+    </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
-        <PackageReference Include="System.ComponentModel.Annotations" Condition="'$(TargetFramework)'=='net48'" />
-        <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net6.0'" />
-        <PackageReference Include="Microsoft.Build" VersionOverride="17.10.4" Condition="'$(TargetFramework)'=='net6.0'" />
+        <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net8.0'" />
+        <PackageReference Include="Microsoft.Build" VersionOverride="17.11.4" Condition="'$(TargetFramework)'=='net8.0'" />
         <PackageReference Include="Microsoft.Build.Utilities.Core" />
-        <PackageReference Include="Npgsql" />
         <PackageReference Include="Oracle.ManagedDataAccess" Condition="'$(TargetFramework)'=='net48'" />
         <PackageReference Include="Oracle.ManagedDataAccess.Core" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="System.ComponentModel.Annotations" />
@@ -48,7 +46,6 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
-
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" />
@@ -56,9 +53,16 @@
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Analyzer.Testing.XUnit" />
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" />
         <PackageReference Include="Testcontainers.PostgreSql" />
-		<PackageReference Include="Testcontainers.MsSql" />
+        <PackageReference Include="Testcontainers.MsSql" />
     </ItemGroup>
-    
+
+    <ItemGroup Condition="'$(TargetFramework)'!='net48'">
+        <PackageReference Include="Npgsql" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)'=='net48'">
+        <PackageReference Include="Npgsql" VersionOverride="8.0.6" />
+    </ItemGroup>
+
     <ItemGroup>
         <ProjectReference Include="../../src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
         <ProjectReference Include="../../src/Dapper.AOT/Dapper.AOT.csproj" />

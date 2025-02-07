@@ -12,6 +12,7 @@ using Microsoft.CodeAnalysis.VisualBasic;
 using Microsoft.CodeAnalysis.VisualBasic.Testing;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -101,7 +102,9 @@ public abstract class Verifier
         {
             test.TestState.AdditionalReferences.Add(typeof(DapperAotAttribute).Assembly);
         }
+#pragma warning disable CS0618
         test.TestState.AdditionalReferences.Add(typeof(System.Data.SqlClient.SqlConnection).Assembly);
+#pragma warning restore CS0618
         test.TestState.AdditionalReferences.Add(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly);
         test.TestState.AdditionalReferences.Add(typeof(System.ComponentModel.DataAnnotations.Schema.ColumnAttribute).Assembly);
         if (transforms is not null)
