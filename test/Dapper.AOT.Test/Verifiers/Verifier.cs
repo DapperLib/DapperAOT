@@ -12,6 +12,7 @@ using Microsoft.CodeAnalysis.VisualBasic;
 using Microsoft.CodeAnalysis.VisualBasic.Testing;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -77,6 +78,10 @@ public abstract class Verifier
         }
 #if NETFRAMEWORK
         test.ReferenceAssemblies = ReferenceAssemblies.NetFramework.Net472.Default;
+#elif NET9_0_OR_GREATER
+        test.ReferenceAssemblies = new ReferenceAssemblies("net9.0",
+            new PackageIdentity("Microsoft.NETCore.App.Ref", "9.0.0"),
+            Path.Combine("ref", "net9.0"));
 #elif NET8_0_OR_GREATER
         test.ReferenceAssemblies = new ReferenceAssemblies("net8.0",
             new PackageIdentity("Microsoft.NETCore.App.Ref", "8.0.0"),
@@ -101,7 +106,9 @@ public abstract class Verifier
         {
             test.TestState.AdditionalReferences.Add(typeof(DapperAotAttribute).Assembly);
         }
+#pragma warning disable CS0618
         test.TestState.AdditionalReferences.Add(typeof(System.Data.SqlClient.SqlConnection).Assembly);
+#pragma warning restore CS0618
         test.TestState.AdditionalReferences.Add(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly);
         test.TestState.AdditionalReferences.Add(typeof(System.ComponentModel.DataAnnotations.Schema.ColumnAttribute).Assembly);
         if (transforms is not null)
@@ -122,7 +129,8 @@ public abstract class Verifier
     private static readonly SourceText AssumeSqlServer = CreateEditorConfig(SqlSyntax.SqlServer, SqlParseInputFlags.None);
 
     protected static readonly Func<Solution, ProjectId, Solution> InterceptorsEnabled = WithFeatures(
-        DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair
+        DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair,
+        DapperInterceptorGenerator.FeatureKeys.InterceptorsNamespacePair
     );
 
     protected static readonly Func<Solution, ProjectId, Solution> CSharpPreview = WithCSharpLanguageVersion(Microsoft.CodeAnalysis.CSharp.LanguageVersion.Preview);

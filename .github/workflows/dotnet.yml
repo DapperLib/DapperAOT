@@ -23,6 +23,7 @@ jobs:
           dotnet-version: |
             6.0.x
             8.0.x
+            9.0.x
 
       - uses: dotnet/nbgv@master
         with:
@@ -37,8 +38,11 @@ jobs:
       - name: Build
         run: dotnet build Build.csproj --no-restore -c Release
 
-      - name: Test
-        run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net6.0 --filter FullyQualifiedName!~Integration
+      - name: Test .NET 8
+        run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net8.0 --filter FullyQualifiedName!~Integration
+
+      - name: Test .NET 9
+        run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net9.0 --filter FullyQualifiedName!~Integration
 
       - name: Pack
         if: ${{ success() && !github.base_ref }}

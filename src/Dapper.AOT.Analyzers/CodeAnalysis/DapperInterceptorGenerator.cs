@@ -212,9 +212,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     internal static class FeatureKeys
     {
-        public const string InterceptorsPreviewNamespaces = nameof(InterceptorsPreviewNamespaces),
+        public const string InterceptorsNamespaces = nameof(InterceptorsNamespaces),
+            InterceptorsPreviewNamespaces = nameof(InterceptorsPreviewNamespaces),
             CodegenNamespace = "Dapper.AOT";
         public static KeyValuePair<string, string> InterceptorsPreviewNamespacePair => new(InterceptorsPreviewNamespaces, CodegenNamespace);
+        public static KeyValuePair<string, string> InterceptorsNamespacePair => new(InterceptorsNamespaces, CodegenNamespace);
     }
 
     private static bool CheckPrerequisites(in GenerateState ctx)

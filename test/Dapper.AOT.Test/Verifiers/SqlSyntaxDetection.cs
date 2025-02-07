@@ -28,11 +28,11 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
         }
         """, DefaultConfig, [
             Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-            .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."),
+            .WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'."),
             Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-            .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
+            .WithLocation(1).WithArguments(46010, "Incorrect syntax near '222'."),
             Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-            .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
+            .WithLocation(2).WithArguments(46010, "Incorrect syntax near '333'."),
         ], SqlSyntax.SqlServer);
 
     [Fact]
@@ -57,9 +57,9 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
         }
         """, DefaultConfig, [
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-        .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
+        .WithLocation(1).WithArguments(46010, "Incorrect syntax near '222'."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-        .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
+        .WithLocation(2).WithArguments(46010, "Incorrect syntax near '333'."),
     ], SqlSyntax.General);
 
     [Fact]
@@ -87,11 +87,11 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
         }
         """, DefaultConfig, [
             Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-            .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."),
+            .WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'."),
             Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-            .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
+            .WithLocation(1).WithArguments(46010, "Incorrect syntax near '222'."),
             Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-            .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
+            .WithLocation(2).WithArguments(46010, "Incorrect syntax near '333'."),
         ], SqlSyntax.General);
 
     [Fact]
@@ -116,11 +116,11 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
         }
         """, DefaultConfig, [
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-        .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."),
+        .WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-        .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
+        .WithLocation(1).WithArguments(46010, "Incorrect syntax near '222'."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-        .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
+        .WithLocation(2).WithArguments(46010, "Incorrect syntax near '333'."),
     ], SqlSyntax.General);
 
     [Fact]
@@ -148,11 +148,11 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
         }
         """, DefaultConfig, [
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-        .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."),
+        .WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-        .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
+        .WithLocation(1).WithArguments(46010, "Incorrect syntax near '222'."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-        .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
+        .WithLocation(2).WithArguments(46010, "Incorrect syntax near '333'."),
     ], SqlSyntax.General);
 
     [Fact]
@@ -177,11 +177,11 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
         }
         """, DefaultConfig, [
     Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-    .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."),
+    .WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'."),
     Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-    .WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
+    .WithLocation(1).WithArguments(46010, "Incorrect syntax near '222'."),
     Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-    .WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
+    .WithLocation(2).WithArguments(46010, "Incorrect syntax near '333'."),
 ], SqlSyntax.General);
 
     [Fact]
@@ -206,11 +206,11 @@ public class SqlSyntaxDetection : Verifier<DapperAnalyzer>
         }
         """, DefaultConfig, [
 Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-.WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."),
+.WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'."),
 Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-.WithLocation(1).WithArguments(46010, "Incorrect syntax near 222."),
+.WithLocation(1).WithArguments(46010, "Incorrect syntax near '222'."),
 Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-.WithLocation(2).WithArguments(46010, "Incorrect syntax near 333."),
+.WithLocation(2).WithArguments(46010, "Incorrect syntax near '333'."),
 ], SqlSyntax.General);
 
 

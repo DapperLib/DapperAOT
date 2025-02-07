@@ -1,40 +1,40 @@
 <Project>
     <!--<Import Project="$([MSBuild]::GetPathOfFileAbove(Directory.Packages.props, $(MSBuildThisFileDirectory)..))" />..-->
     <ItemGroup>
-        <PackageVersion Include="BenchmarkDotNet" Version="0.13.10" />
+        <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
         <PackageVersion Include="FastMember" Version="1.5.0" />
-        <PackageVersion Include="Dapper" Version="2.1.21" />
-        <PackageVersion Include="Dapper.AOT" Version="1.0.14" />
-        <PackageVersion Include="Dapper.StrongName" Version="2.1.21" />
-        <PackageVersion Include="Nerdbank.GitVersioning" Version="3.6.133" />
-        <PackageVersion Include="Npgsql" Version="7.0.6" />
-        <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
-        <PackageVersion Include="Microsoft.Build" Version="17.7.2" />
-        <PackageVersion Include="Microsoft.Build.Utilities.Core" Version="17.7.2" />
+        <PackageVersion Include="Dapper" Version="2.1.66" />
+        <PackageVersion Include="Dapper.AOT" Version="1.0.31" />
+        <PackageVersion Include="Dapper.StrongName" Version="2.1.66" />
+        <PackageVersion Include="Nerdbank.GitVersioning" Version="3.7.115" />
+        <PackageVersion Include="Npgsql" Version="9.0.2" />
+        <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.1" />
+        <PackageVersion Include="Microsoft.Build" Version="17.12.6" />
+        <PackageVersion Include="Microsoft.Build.Utilities.Core" Version="17.12.6" />
         <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" Version="1.1.1" />
         <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.XUnit" Version="1.1.1" />
-        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.10.0" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
         <!-- 4.8 would be nice, but: let's try to offer down-level compiler support -->
         <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="[4.4.0]" />
         <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Analyzer.Testing.XUnit" Version="1.1.1" />
         <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" Version="1.1.1" />
         <!-- 4.8 would be nice, but: let's try to offer down-level compiler support -->
         <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="[4.4.0]" />
-        <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.1.2" />
-        <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
-        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-        <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" />
-        <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="161.8910.0" />
-        <PackageVersion Include="Oracle.ManagedDataAccess" Version="21.12.0" />
-        <PackageVersion Include="Oracle.ManagedDataAccess.Core" Version="3.21.120" />
-        <PackageVersion Include="System.Collections.Immutable" Version="8.0.0" />
+        <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.0.1" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.1" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.1" />
+        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+        <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
+        <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.23.0" />
+        <PackageVersion Include="Oracle.ManagedDataAccess" Version="23.7.0" />
+        <PackageVersion Include="Oracle.ManagedDataAccess.Core" Version="23.7.0" />
+        <PackageVersion Include="System.Collections.Immutable" Version="9.0.1" />
         <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
         <PackageVersion Include="System.Data.Common" Version="4.3.0" />
-        <PackageVersion Include="System.Data.SqlClient" Version="4.8.5" />
-        <PackageVersion Include="System.Memory" Version="4.5.5" />
-        <PackageVersion Include="Testcontainers.MsSql" Version="3.10.0" />
-        <PackageVersion Include="Testcontainers.PostgreSql" Version="3.6.0" />
+        <PackageVersion Include="System.Data.SqlClient" Version="4.9.0" />
+        <PackageVersion Include="System.Memory" Version="4.6.0" />
+        <PackageVersion Include="Testcontainers.MsSql" Version="4.1.0" />
+        <PackageVersion Include="Testcontainers.PostgreSql" Version="4.1.0" />
         <!-- these are bound by Microsoft.CodeAnalysis.CSharp.*.Testing.XUnit -->
         <PackageVersion Include="xunit" Version="[2.3.0]" />
         <PackageVersion Include="xunit.runner.visualstudio" Version="[2.3.0]" />

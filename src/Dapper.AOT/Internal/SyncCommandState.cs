@@ -38,7 +38,7 @@ namespace Dapper.Internal
             Debug.Assert(command?.Connection is not null);
             Command = command!;
             connection = command!.Connection;
-            
+
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
