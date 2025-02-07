@@ -78,6 +78,10 @@ public abstract class Verifier
         }
 #if NETFRAMEWORK
         test.ReferenceAssemblies = ReferenceAssemblies.NetFramework.Net472.Default;
+#elif NET9_0_OR_GREATER
+        test.ReferenceAssemblies = new ReferenceAssemblies("net9.0",
+            new PackageIdentity("Microsoft.NETCore.App.Ref", "9.0.0"),
+            Path.Combine("ref", "net9.0"));
 #elif NET8_0_OR_GREATER
         test.ReferenceAssemblies = new ReferenceAssemblies("net8.0",
             new PackageIdentity("Microsoft.NETCore.App.Ref", "8.0.0"),
