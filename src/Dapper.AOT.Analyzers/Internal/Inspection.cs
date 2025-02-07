@@ -146,6 +146,24 @@ internal static class Inspection
         return false;
     }
 
+    public static bool IsSqlClient(ITypeSymbol? typeSymbol) => typeSymbol is
+    {
+        Name: "SqlCommand",
+        ContainingNamespace:
+        {
+            Name: "SqlClient",
+            ContainingNamespace:
+            {
+                Name: "Data",
+                ContainingNamespace:
+                {
+                    Name: "Microsoft" or "System", // either Microsoft.Data.SqlClient or System.Data.SqlClient
+                    ContainingNamespace.IsGlobalNamespace: true
+                }
+            }
+        }
+    };
+
     public static bool IsDapperAttribute(AttributeData attrib)
         => attrib.AttributeClass is
         {
@@ -1423,6 +1441,26 @@ internal static class Inspection
                 {
                     var current = ns;
                     if (type.Name == candidate.Command
+                        && AssertAndAscend(ref current, candidate.Namespace0)
+                        && AssertAndAscend(ref current, candidate.Namespace1)
+                        && AssertAndAscend(ref current, candidate.Namespace2))
+                    {
+                        return candidate.Syntax;
+                    }
+                }
+            }
+        }
+        else if (op is IObjectCreationOperation objectCreationOp)
+        {
+            var ctorTypeNamespace = objectCreationOp.Type?.ContainingNamespace;
+            var ctorTypeName = objectCreationOp.Type?.Name;
+
+            if (ctorTypeNamespace is not null && ctorTypeName is not null)
+            {
+                foreach (var candidate in KnownConnectionTypes)
+                {
+                    var current = ctorTypeNamespace;
+                    if (ctorTypeName == candidate.Command
                         && AssertAndAscend(ref current, candidate.Namespace0)
                         && AssertAndAscend(ref current, candidate.Namespace1)
                         && AssertAndAscend(ref current, candidate.Namespace2))

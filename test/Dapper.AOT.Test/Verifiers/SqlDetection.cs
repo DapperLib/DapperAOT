@@ -184,32 +184,32 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         {
             static void Main()
             {
-        using var conn = new SqlConnection("my connection string here");
-        string name = "abc";
-        conn.{|#0:Execute|}("""
-            select Id, Name, Age
-            from Users
-            where Id = @id
-            and Name = @name
-            and Age = @age
-            and Something = {|#1:null|}
-            """, new
-        {
-            name,
-            id = 42,
-            age = 24,
-        });
+                using var conn = new SqlConnection("my connection string here");
+                string name = "abc";
+                conn.{|#0:Execute|}("""
+                    select Id, Name, Age
+                    from Users
+                    where Id = @id
+                    and Name = @name
+                    and Age = @age
+                    and Something = {|#1:null|}
+                    """, new
+                {
+                    name,
+                    id = 42,
+                    age = 24,
+                });
 
-        using var cmd = new SqlCommand("should ' verify this too", conn);
-        cmd.CommandText = """
-            select Id, Name, Age
-            from Users
-            where Id = @id
-            and Name = @name
-            and Age = @age
-            and Something = {|#2:null|}
-            """;
-        cmd.ExecuteNonQuery();
+                using var cmd = new SqlCommand("should {|#3:|}' verify this too", conn);
+                cmd.CommandText = """
+                    select Id, Name, Age
+                    from Users
+                    where Id = @id
+                    and Name = @name
+                    and Age = @age
+                    and Something = {|#2:null|}
+                    """;
+                cmd.ExecuteNonQuery();
             }
         }
 """", [], [
@@ -217,7 +217,48 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         Diagnostic(DapperAnalyzer.Diagnostics.ExecuteCommandWithQuery).WithLocation(0),
         Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(1),
         Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2),
+        Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(3).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.")
     ], SqlSyntax.General, refDapperAot: false);
+
+    [Theory]
+    [InlineData("Microsoft.Data.SqlClient")]
+    [InlineData("System.Data.SqlClient")]
+    public Task SqlClientCommandReportsParseError(string @namespace) => CSVerifyAsync($$""""
+        using {{@namespace}};
+        using Dapper;
+
+        static class Program
+        {
+            static void Main()
+            {
+                using var conn = new {{@namespace}}.SqlConnection("my connection string here");
+                using var cmd = new {{@namespace}}.SqlCommand("should {|#0:|}' verify this too", conn);
+                cmd.ExecuteNonQuery();
+            }
+        }
+    """", [], [ Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(0).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.") ], SqlSyntax.General, refDapperAot: false);
+
+    [Theory]
+    [InlineData("Microsoft.Data.SqlClient")]
+    [InlineData("System.Data.SqlClient")]
+    public Task SqlClientCommandInlineCreationReportsParseError(string @namespace) => CSVerifyAsync($$""""
+        using {{@namespace}};
+        using Dapper;
+
+        static class Program
+        {
+            static void Main()
+            {
+                using var conn = new {{@namespace}}.SqlConnection("my connection string here");
+                RunCommand(new {{@namespace}}.SqlCommand("should {|#0:|}' verify this too", conn));
+            }
+
+            static void RunCommand({{@namespace}}.SqlCommand cmd)
+            {
+                cmd.ExecuteNonQuery();
+            }
+        }
+    """", [], [Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(0).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.")], SqlSyntax.General, refDapperAot: false);
 
     [Fact]
     public Task VBSmokeTestVanilla() => VBVerifyAsync("""
@@ -235,7 +276,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             and Age = @age
             and Something = {|#1:null|}", New With {name, .id = 42, .age = 24 })
 
-                    Using cmd As New SqlCommand("should ' verify this too", conn)
+                    Using cmd As New SqlCommand("should {|#3:|}' verify this too", conn)
                         cmd.CommandText = "
             select Id, Name, Age
             from Users
@@ -251,6 +292,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
 """, [], [
         Diagnostic(DapperAnalyzer.Diagnostics.ExecuteCommandWithQuery).WithLocation(0),
         Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(1),
-        Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2)
+        Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2),
+        Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(3).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.")
     ], SqlSyntax.General, refDapperAot: false);
 }
