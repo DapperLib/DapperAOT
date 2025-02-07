@@ -33,6 +33,7 @@
         <PackageVersion Include="System.Data.Common" Version="4.3.0" />
         <PackageVersion Include="System.Data.SqlClient" Version="4.8.5" />
         <PackageVersion Include="System.Memory" Version="4.5.5" />
+        <PackageVersion Include="Testcontainers.MsSql" Version="3.10.0" />
         <PackageVersion Include="Testcontainers.PostgreSql" Version="3.6.0" />
         <!-- these are bound by Microsoft.CodeAnalysis.CSharp.*.Testing.XUnit -->
         <PackageVersion Include="xunit" Version="[2.3.0]" />

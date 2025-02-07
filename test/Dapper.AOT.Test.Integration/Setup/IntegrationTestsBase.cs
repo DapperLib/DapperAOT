@@ -12,6 +12,7 @@ using Dapper.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.Data.SqlClient;
 
 namespace Dapper.AOT.Test.Integration.Setup;
 
@@ -61,6 +62,7 @@ public abstract class IntegrationTestsBase
                 
                 // Additional stuff required by Dapper.AOT generators
                 MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location), // System.Collections
+                MetadataReference.CreateFromFile(Assembly.Load("System.Collections.Immutable").Location), // System.Collections.Immutable
             ],
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
@@ -77,8 +79,8 @@ public abstract class IntegrationTestsBase
         var mainMethod = type.GetMethod(nameof(IExecutable<TExecutable>.Execute), BindingFlags.Public | BindingFlags.Instance);
         var result = mainMethod!.Invoke(obj: executableInstance, [ dbConnection ]);
 
-        Assert.True(interceptorRecorder.WasCalled);
-        Assert.True(string.IsNullOrEmpty(interceptorRecorder.Diagnostics), userMessage: interceptorRecorder.Diagnostics);
+        Assert.True(interceptorRecorder.WasCalled, userMessage: "No interception code invoked");
+        Assert.True(string.IsNullOrEmpty(interceptorRecorder.Diagnostics), userMessage: $"Expected no diagnostics from interceptorRecorder. Actual: {interceptorRecorder.Diagnostics}");
         
         return (TResult)result!;
     }
@@ -96,6 +98,14 @@ public abstract class IntegrationTestsBase
         // it's very fragile to get user code cs files into output directory (btw we can't remove them from compilation, because we will use them for assertions)
         // so let's simply get back to test\ dir, and try to find Executables.UserCode from there
         var testDir = Directory.GetParent(Directory.GetParent(Directory.GetParent(Directory.GetParent(Directory.GetCurrentDirectory())!.FullName)!.FullName)!.FullName);
-        return File.ReadAllText(Path.Combine(testDir!.FullName, "Dapper.AOT.Test.Integration.Executables", "UserCode", $"{userTypeName}.cs"));
+
+        var sourceCodeFile = Directory
+            .GetFiles(
+                path: Path.Combine(testDir!.FullName, "Dapper.AOT.Test.Integration.Executables", "UserCode"), 
+                searchPattern: $"{userTypeName}.cs",
+                searchOption: SearchOption.AllDirectories)
+            .First();
+
+        return File.ReadAllText(sourceCodeFile);
     }
 }
