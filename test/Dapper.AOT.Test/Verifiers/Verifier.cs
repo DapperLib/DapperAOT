@@ -125,7 +125,8 @@ public abstract class Verifier
     private static readonly SourceText AssumeSqlServer = CreateEditorConfig(SqlSyntax.SqlServer, SqlParseInputFlags.None);
 
     protected static readonly Func<Solution, ProjectId, Solution> InterceptorsEnabled = WithFeatures(
-        DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair
+        DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair,
+        DapperInterceptorGenerator.FeatureKeys.InterceptorsNamespacePair
     );
 
     protected static readonly Func<Solution, ProjectId, Solution> CSharpPreview = WithCSharpLanguageVersion(Microsoft.CodeAnalysis.CSharp.LanguageVersion.Preview);

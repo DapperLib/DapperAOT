@@ -43,7 +43,9 @@ internal static class RoslynTestHelpers
         "RELEASE",
 #endif
     })
-    .WithFeatures([DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair]);
+    .WithFeatures([
+        DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair,
+        DapperInterceptorGenerator.FeatureKeys.InterceptorsNamespacePair]);
 
     public static Compilation CreateCompilation(string source, string name, string fileName)
        => CSharpCompilation.Create(name,

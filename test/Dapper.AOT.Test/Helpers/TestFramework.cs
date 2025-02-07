@@ -13,11 +13,15 @@ namespace Dapper.AOT.Test.Helpers
             Enum.GetValues<Net>()
 #endif
             .Select(static x => x.ToString())
-            .ToHashSet();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             public static Net DetermineNetVersion()
         {
-#if NET6_0_OR_GREATER
+#if NET9_0_OR_GREATER
+            return Net.Net9;
+#elif NET8_0_OR_GREATER
+            return Net.Net8;
+#elif NET6_0_OR_GREATER
             return Net.Net6;
 #else
             return Net.Net48;
@@ -27,7 +31,9 @@ namespace Dapper.AOT.Test.Helpers
         public enum Net
         {
             Net48,
-            Net6
+            Net6,
+            Net8,
+            Net9,
         }
     }
 }

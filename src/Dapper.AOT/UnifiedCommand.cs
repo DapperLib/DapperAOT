@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Dapper;
@@ -16,8 +18,8 @@ namespace Dapper;
 #pragma warning restore IDE0079
 
 public readonly struct UnifiedCommand
-
 {
+
     /// <summary>
     /// The <see cref="System.Data.Common.DbCommand"/> associated with the current operation; this may be <c>null</c> for batch commands.
     /// </summary>

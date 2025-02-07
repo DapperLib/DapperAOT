@@ -23,6 +23,7 @@ public abstract class IntegrationTestsBase
         .WithFeatures(new[]
         {
             new KeyValuePair<string, string>("InterceptorsPreviewNamespaces", "$(InterceptorsPreviewNamespaces);Dapper.AOT"),
+            new KeyValuePair<string, string>("InterceptorsNamespaces", "$(InterceptorsNamespaces);Dapper.AOT"),
         });
 
     protected readonly IDbConnection DbConnection;
