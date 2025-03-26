@@ -391,7 +391,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             if (flags.HasAny(OperationFlags.GetRowParser))
             {
-                WriteGetRowParser(sb, resultType, readers);
+                WriteGetRowParser(sb, resultType, readers, grp.Key.AdditionalCommandState?.StrictBind ?? default);
             }
             else if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
             {
@@ -449,9 +449,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
         sb.NewLine();
 
-        foreach (var pair in readers)
+        foreach (var tuple in readers)
         {
-            WriteRowFactory(ctx, sb, pair.Type, pair.Index);
+            WriteRowFactory(ctx, sb, tuple.Type, tuple.Index, tuple.StrictBind, null /* TODO */);
         }
 
         foreach (var tuple in factories)
@@ -468,9 +468,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, ctx.Nodes.Length, methodIndex, factories.Count(), readers.Count()));
     }
 
-    private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers)
+    private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers, ImmutableArray<string> strictBind)
     {
-        sb.Append("return ").AppendReader(resultType, readers)
+        sb.Append("return ").AppendReader(resultType, readers, strictBind)
             .Append(".GetRowParser(reader, startIndex, length, returnNullIfFirstMissing);").NewLine();
     }
 
@@ -732,7 +732,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index)
+    private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index, ImmutableArray<string> strictBind, Location? location)
     {
         var map = MemberMap.CreateForResults(type);
         if (map is null) return;
@@ -761,7 +761,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         WriteRowFactoryHeader();
 
         WriteTokenizeMethod();
-        WriteReadMethod();
+        WriteReadMethod(context);
 
         WriteRowFactoryFooter();
 
@@ -780,31 +780,57 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         void WriteTokenizeMethod()
         {
             sb.Append("public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
-            sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
-                .Append("int token = -1;").NewLine()
-                .Append("var name = reader.GetName(columnOffset);").NewLine()
-                .Append("var type = reader.GetFieldType(columnOffset);").NewLine()
-                .Append("switch (NormalizedHash(name))").Indent().NewLine();
-
-            int token = 0;
-            foreach (var member in members)
+            if (strictBind.IsDefault) // don't emit any tokens for strict binding
             {
-                var dbName = member.DbName;
-                sb.Append("case ").Append(StringHashing.NormalizedHash(dbName))
-                    .Append(" when NormalizedEquals(name, ")
-                    .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine()
-                    .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(token)
-                    .Append(" : ").Append(token + map.Members.Length).Append(";")
-                    .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
-                    .Append("break;").Outdent(false).NewLine();
-                token++;
+                sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
+                    .Append("int token = -1;").NewLine()
+                    .Append("var name = reader.GetName(columnOffset);").NewLine()
+                    .Append("var type = reader.GetFieldType(columnOffset);").NewLine()
+                    .Append("switch (NormalizedHash(name))").Indent().NewLine();
+
+                int token = 0;
+                foreach (var member in members)
+                {
+                    var dbName = member.DbName;
+                    sb.Append("case ").Append(StringHashing.NormalizedHash(dbName))
+                        .Append(" when NormalizedEquals(name, ")
+                        .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine()
+                        .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(token)
+                        .Append(" : ").Append(token + map.Members.Length).Append(";")
+                        .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
+                        .Append("break;").Outdent(false).NewLine();
+                    token++;
+                }
+                sb.Outdent().NewLine()
+                    .Append("tokens[i] = token;").NewLine()
+                    .Append("columnOffset++;").NewLine()
+                    .Outdent().NewLine();
             }
-            sb.Outdent().NewLine()
-                .Append("tokens[i] = token;").NewLine()
-                .Append("columnOffset++;").NewLine();
-            sb.Outdent().NewLine().Append("return null;").Outdent().NewLine();
+            else
+            {
+                sb.Append("// strict-bind: ");
+                for (int i = 0; i < strictBind.Length; i++)
+                {
+                    if (i != 0) sb.Append(", ");
+                    var name = strictBind[i];
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        sb.Append("(n/a)");
+                    }
+                    else if (CompiledRegex.SimpleName.IsMatch(name))
+                    {
+                        sb.Append(name);
+                    }
+                    else
+                    {
+                        sb.Append("'").Append(name).Append("'");
+                    }
+                }
+                sb.NewLine().Append("global::System.Diagnostics.Debug.Assert(tokens.Length == ").Append(strictBind.Length).Append(""", "Strict-bind column count mismatch");""").NewLine();
+            }
+            sb.Append("return null;").Outdent().NewLine();
         }
-        void WriteReadMethod()
+        void WriteReadMethod(in GenerateState context)
         {
             const string DeferredConstructionVariableName = "value";
 
@@ -852,47 +878,63 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     ? type.WithNullableAnnotation(NullableAnnotation.None) : type).Append(" result = new();").NewLine();
             }
 
-            sb.Append("foreach (var token in tokens)").Indent().NewLine()
-            .Append("switch (token)").Indent().NewLine();
+            ImmutableArray<ElementMember> readMembers;
+            if (strictBind.IsDefault)
+            {
+                readMembers = members; // try to parse everything
+                sb.Append("foreach (var token in tokens)");
+            }
+            else
+            {
+                readMembers = MapStrictBind(context, members, strictBind, location);
+                sb.Append("for (int token = 0; token < tokens.Length; token++) // strict-bind");
+            }
+            sb.Indent().NewLine().Append("switch (token)").Indent().NewLine();
 
             token = 0;
-            foreach (var member in members)
+            foreach (var member in readMembers)
             {
-                var memberType = member.CodeType;
-
-                member.GetDbType(out var readerMethod);
-                var nullCheck = Inspection.CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
-                sb.Append("case ").Append(token).Append(":").NewLine().Indent(false);
-
-                // write `result.X = ` or `member0 = `
-                if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
-                else sb.Append("result.").Append(member.CodeName);
-                sb.Append(" = ");
-
-                sb.Append(nullCheck);
-                if (readerMethod is null)
+                if (member.Member is not null) // exclude non-mapped bindings
                 {
-                    sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                    var memberType = member.CodeType;
+
+                    member.GetDbType(out var readerMethod);
+                    var nullCheck = Inspection.CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
+                    sb.Append("case ").Append(token).Append(":").NewLine().Indent(false);
+
+                    // write `result.X = ` or `member0 = `
+                    if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
+                    else sb.Append("result.").Append(member.CodeName);
+                    sb.Append(" = ");
+
+                    sb.Append(nullCheck);
+                    if (readerMethod is null)
+                    {
+                        sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                    }
+                    else
+                    {
+                        sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
+                    }
+
+
+                    sb.NewLine().Append("break;").NewLine().Outdent(false);
+
+                    if (strictBind.IsDefault) // type-forgiving version; only emitted when not using strict-bind
+                    {
+                        sb.Append("case ").Append(token + map.Members.Length).Append(":").NewLine().Indent(false);
+
+                        // write `result.X = ` or `member0 = `
+                        if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
+                        else sb.Append("result.").Append(member.CodeName);
+
+                        sb.Append(" = ")
+                            .Append(nullCheck)
+                            .Append("GetValue<")
+                            .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
+                            .Append("break;").NewLine().Outdent(false);
+                    }
                 }
-                else
-                {
-                    sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
-                }
-
-
-                sb.NewLine().Append("break;").NewLine().Outdent(false)
-                    .Append("case ").Append(token + map.Members.Length).Append(":").NewLine().Indent(false);
-
-                // write `result.X = ` or `member0 = `
-                if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
-                else sb.Append("result.").Append(member.CodeName);
-
-                sb.Append(" = ")
-                    .Append(nullCheck)
-                    .Append("GetValue<")
-                    .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
-                    .Append("break;").NewLine().Outdent(false);
-
                 token++;
             }
 
@@ -976,6 +1018,46 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb.Append("return result;").NewLine().Outdent().NewLine();
             }
         }
+    }
+
+    private static ImmutableArray<ElementMember> MapStrictBind(in GenerateState state, ImmutableArray<ElementMember> members, ImmutableArray<string> strictBind, Location? location)
+    {
+        if (strictBind.IsDefault) return members; // not bound
+
+        var result = ImmutableArray.CreateBuilder<ElementMember>(strictBind.Length);
+        foreach (var seek in strictBind)
+        {
+            ElementMember found = default;
+            if (!string.IsNullOrWhiteSpace(seek))
+            {
+                foreach (var member in members)
+                {
+                    if (member.CodeName == seek)
+                    {
+                        found = member;
+                        break;
+                    }
+                }
+                if (found.Member is null)
+                {
+                    var normalizedSeek = StringHashing.Normalize(seek);
+                    foreach (var member in members)
+                    {
+                        if (StringHashing.NormalizedEquals(member.CodeName, normalizedSeek))
+                        {
+                            found = member;
+                            break;
+                        }
+                    }
+                }
+                if (found.Member is null)
+                {
+                    state.ReportDiagnostic(Diagnostic.Create(DapperAnalyzer.Diagnostics.BoundMemberNotFound, location, seek));
+                }
+            }
+            result.Add(found);
+        }
+        return result.ToImmutable();
     }
 
     [Flags]

@@ -4,6 +4,7 @@ using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
@@ -144,6 +145,44 @@ internal static class Inspection
         }
         exists = false;
         return false;
+    }
+
+    public static ImmutableArray<string> ParseStrictBindColumns(AttributeData attrib)
+    {
+        ImmutableArray<string> result = default;
+        if (attrib is not null && attrib.ConstructorArguments.Length == 1
+            && attrib.ConstructorArguments[0].Kind == TypedConstantKind.Array)
+        {
+            var columnNames = attrib.ConstructorArguments[0].Values.AsSpan();
+            var arr = ArrayPool<string>.Shared.Rent(columnNames.Length);
+            bool fail = false;
+            for (int i = 0; i < columnNames.Length; i++)
+            {
+                if (columnNames[i].Kind != TypedConstantKind.Primitive)
+                {
+                    fail = true;
+                }
+                else
+                {
+                    switch (columnNames[i].Value)
+                    {
+                        case null:
+                            arr[i] = "";
+                            break;
+                        case string s when s.IndexOf('\x03') < 0:
+                            arr[i] = s;
+                            break;
+                        default:
+                            fail = true;
+                            break;
+                    }
+                }
+                if (fail) break;
+            }
+            if (!fail) result = ImmutableArray.Create<string>(arr, 0, columnNames.Length);
+            ArrayPool<string?>.Shared.Return(arr);
+        }
+        return result;
     }
 
     public static bool IsSqlClient(ITypeSymbol? typeSymbol) => typeSymbol is
@@ -1541,6 +1580,6 @@ enum OperationFlags
     KnownParameters = 1 << 21,
     QueryMultiple = 1 << 22,
     GetRowParser = 1 << 23,
-
+    StrictBind = 1 << 24,
     NotAotSupported = 1 << 31,
 }

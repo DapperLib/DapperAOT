@@ -665,6 +665,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
+        if (flags.HasAll(OperationFlags.BindResultsByName) && GetClosestDapperAttribute(ctx, op, Types.StrictBindAttribute) is not null)
+        {
+            flags |= OperationFlags.StrictBind;
+        }
+
+
         if (exitFirstFailure && flags.HasAny(OperationFlags.DoNotGenerate))
         {
             resultType = null;
@@ -775,6 +781,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
+        ImmutableArray<string> strictBind = default;
         int? batchSize = null;
         foreach (var attrib in methodAttribs)
         {
@@ -813,6 +820,9 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                             batchSize = batchTmp;
                         }
                         break;
+                    case Types.StrictBindAttribute:
+                        strictBind = ParseStrictBindColumns(attrib);
+                        break;
                 }
             }
         }
@@ -841,8 +851,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
 
 
-        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null
-            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps);
+        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && strictBind.IsDefault
+            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps, strictBind);
     }
 
     static void ValidateParameters(MemberMap? parameters, OperationFlags flags, Action<Diagnostic> onDiagnostic)

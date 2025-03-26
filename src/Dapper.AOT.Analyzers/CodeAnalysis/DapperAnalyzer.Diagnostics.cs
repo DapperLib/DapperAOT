@@ -56,6 +56,7 @@ partial class DapperAnalyzer
         AmbiguousProperties = LibraryWarning("DAP046", "Ambiguous properties", "Properties have same name '{0}' after normalization and can be conflated"),
         AmbiguousFields = LibraryWarning("DAP047", "Ambiguous fields", "Fields have same name '{0}' after normalization and can be conflated"),
         MoveFromDbString = LibraryWarning("DAP048", "Move from DbString to DbValue", "DbString achieves the same as [DbValue] does. Use it instead."),
+        BoundMemberNotFound = LibraryError("DAP049", "Bound member not found", "The bound member '{0}' was not found"),
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),
@@ -103,7 +104,6 @@ partial class DapperAnalyzer
         ConcatenatedStringSqlExpression = SqlWarning("DAP242", "Concatenated string usage", "Data values should not be concatenated into SQL string - use parameters instead"),
         InvalidDatepartToken = SqlWarning("DAP243", "Valid datepart token expected", "Date functions require a recognized datepart argument"),
         SelectAggregateMismatch = SqlWarning("DAP244", "SELECT aggregate mismatch", "SELECT has mixture of aggregate and non-aggregate expressions"),
-        PseudoPositionalParameter = SqlError("DAP245", "Avoid SQL pseudo-positional parameter", "It is more like Dapper will incorrectly treat this literal as a pseudo-positional parameter")
-        ;
+        PseudoPositionalParameter = SqlError("DAP245", "Avoid SQL pseudo-positional parameter", "It is more like Dapper will incorrectly treat this literal as a pseudo-positional parameter");
     }
 }

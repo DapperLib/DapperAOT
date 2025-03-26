@@ -92,7 +92,7 @@ public sealed partial class DapperInterceptorGenerator
                         break;
                 }
             }
-            sb.AppendReader(resultType, readers);
+            sb.AppendReader(resultType, readers, additionalCommandState?.StrictBind ?? default);
         }
         else if (flags.HasAny(OperationFlags.Execute))
         {
