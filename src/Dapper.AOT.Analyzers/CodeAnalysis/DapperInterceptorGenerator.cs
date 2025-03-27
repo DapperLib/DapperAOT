@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
@@ -271,6 +272,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         bool allowUnsafe = ctx.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
+            .Append("#pragma warning disable IDE0078 // unnecessary suppression is necessary").NewLine()
+            .Append("#pragma warning disable CS9270 // SDK-dependent change to interceptors usage").NewLine()
             .Append("namespace ").Append(FeatureKeys.CodegenNamespace).Append(" // interceptors must be in a known namespace").Indent().NewLine()
             .Append("file static class DapperGeneratedInterceptors").Indent().NewLine();
         int methodIndex = 0, callSiteCount = 0;
@@ -391,7 +394,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             if (flags.HasAny(OperationFlags.GetRowParser))
             {
-                WriteGetRowParser(sb, resultType, readers);
+                WriteGetRowParser(sb, resultType, readers, grp.Key.Flags, grp.Key.AdditionalCommandState?.QueryColumns ?? default);
             }
             else if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
             {
@@ -449,9 +452,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
         sb.NewLine();
 
-        foreach (var pair in readers)
+        foreach (var tuple in readers)
         {
-            WriteRowFactory(ctx, sb, pair.Type, pair.Index);
+            WriteRowFactory(ctx, sb, tuple.Type, tuple.Index, tuple.Flags, tuple.QueryColumns, null /* TODO */);
         }
 
         foreach (var tuple in factories)
@@ -468,9 +471,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, ctx.Nodes.Length, methodIndex, factories.Count(), readers.Count()));
     }
 
-    private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers)
+    private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers, OperationFlags flags, ImmutableArray<string> queryColumns)
     {
-        sb.Append("return ").AppendReader(resultType, readers)
+        sb.Append("return ").AppendReader(resultType, readers, flags, queryColumns)
             .Append(".GetRowParser(reader, startIndex, length, returnNullIfFirstMissing);").NewLine();
     }
 
@@ -484,7 +487,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             sb.Append(" // ").Append(type); // give the reader a clue
         }
         sb.Indent().NewLine();
-
 
         switch (cacheCount)
         {
@@ -732,12 +734,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index)
+    private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index, OperationFlags flags, ImmutableArray<string> queryColumns, Location? location)
     {
-        var map = MemberMap.CreateForResults(type);
+        var map = MemberMap.CreateForResults(type, location);
         if (map is null) return;
 
-        var members = map.Members;
+        var members = map.MapQueryColumns(queryColumns);
 
         if (members.IsDefaultOrEmpty && map.Constructor is null && map.FactoryMethod is null)
         {
@@ -761,15 +763,45 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         WriteRowFactoryHeader();
 
         WriteTokenizeMethod();
-        WriteReadMethod();
+        WriteReadMethod(context);
 
         WriteRowFactoryFooter();
 
         void WriteRowFactoryHeader()
         {
             sb.Append("private sealed class RowFactory").Append(index).Append(" : global::Dapper.RowFactory").Append("<").Append(type).Append(">")
-            .Indent().NewLine()
-            .Append("internal static readonly RowFactory").Append(index).Append(" Instance = new();").NewLine()
+            .Indent().NewLine();
+            if (location is not null)
+            {
+                sb.Append("// specific to ").Append(location.ToString());
+            }
+            if (flags != 0)
+            {
+                sb.Append("// flags: ").Append(flags.ToString()).NewLine();
+            }
+            if (!queryColumns.IsDefault)
+            {
+                sb.Append("// query columns: ");
+                for (int i = 0; i < queryColumns.Length; i++)
+                {
+                    if (i != 0) sb.Append(", ");
+                    var name = queryColumns[i];
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        sb.Append("(n/a)");
+                    }
+                    else if (CompiledRegex.SimpleName.IsMatch(name))
+                    {
+                        sb.Append(name);
+                    }
+                    else
+                    {
+                        sb.Append("'").Append(name).Append("'");
+                    }
+                }
+                sb.NewLine();
+            }
+            sb.Append("internal static readonly RowFactory").Append(index).Append(" Instance = new();").NewLine()
             .Append("private RowFactory").Append(index).Append("() {}").NewLine();
         }
         void WriteRowFactoryFooter()
@@ -780,31 +812,71 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         void WriteTokenizeMethod()
         {
             sb.Append("public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
-            sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
-                .Append("int token = -1;").NewLine()
-                .Append("var name = reader.GetName(columnOffset);").NewLine()
-                .Append("var type = reader.GetFieldType(columnOffset);").NewLine()
-                .Append("switch (NormalizedHash(name))").Indent().NewLine();
-
-            int token = 0;
-            foreach (var member in members)
+            if (queryColumns.IsDefault) // need to apply full map
             {
-                var dbName = member.DbName;
-                sb.Append("case ").Append(StringHashing.NormalizedHash(dbName))
-                    .Append(" when NormalizedEquals(name, ")
-                    .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine()
-                    .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(token)
-                    .Append(" : ").Append(token + map.Members.Length).Append(";")
-                    .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "").NewLine()
-                    .Append("break;").Outdent(false).NewLine();
-                token++;
+                sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
+                    .Append("int token = -1;").NewLine()
+                    .Append("var name = reader.GetName(columnOffset);").NewLine()
+                    .Append("var type = reader.GetFieldType(columnOffset);").NewLine()
+                    .Append("switch (NormalizedHash(name))").Indent().NewLine();
+
+                int token = 0;
+                foreach (var member in members)
+                {
+                    if (member.IsMapped)
+                    {
+                        var dbName = member.DbName;
+                        sb.Append("case ").Append(StringHashing.NormalizedHash(dbName))
+                            .Append(" when NormalizedEquals(name, ")
+                            .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine();
+                        if (flags.HasAny(OperationFlags.StrictTypes))
+                        {
+                            sb.Append("token = ").Append(token).Append(";").Append(token == 0 ? " // note: strict types" : "");
+                        }
+                        else
+                        {
+                            sb.Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(token)
+                            .Append(" : ").Append(token + map.Members.Length).Append(";")
+                            .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "");
+                        }
+                        sb.NewLine().Append("break;").Outdent(false).NewLine();
+                    }
+                    token++;
+                }
+                sb.Outdent().NewLine()
+                    .Append("tokens[i] = token;").NewLine()
+                    .Append("columnOffset++;").NewLine()
+                    .Outdent().NewLine();
             }
-            sb.Outdent().NewLine()
-                .Append("tokens[i] = token;").NewLine()
-                .Append("columnOffset++;").NewLine();
-            sb.Outdent().NewLine().Append("return null;").Outdent().NewLine();
+            else
+            {
+                sb.Append("global::System.Diagnostics.Debug.Assert(tokens.Length >= ").Append(queryColumns.Length).Append(""", "Query columns count mismatch");""").NewLine();
+                if (flags.HasAny(OperationFlags.StrictTypes))
+                {
+                    sb.Append("// (no mapping applied for strict types and pre-defined columns)").NewLine();
+                }
+                else
+                {
+                    sb.Append("// pre-defined columns, but still needs type map").NewLine();
+                    sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
+                        .Append("var type = reader.GetFieldType(columnOffset);").NewLine()
+                        .Append("tokens[i] = i switch").Indent().NewLine();
+                    for (int i = 0; i < members.Length;i++)
+                    {
+                        var member = members[i];
+                        if (member.IsMapped)
+                        {
+                            sb.Append(i).Append(" => type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(i)
+                                .Append(" : ").Append(i + map.Members.Length).Append(",").NewLine();
+                        }
+                    }
+                    sb.Append("_ => -1,").Outdent().Append(";").Outdent().NewLine();
+                }
+            }
+
+            sb.Append("return null;").Outdent().NewLine();
         }
-        void WriteReadMethod()
+        void WriteReadMethod(in GenerateState context)
         {
             const string DeferredConstructionVariableName = "value";
 
@@ -823,25 +895,27 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
                 foreach (var member in members)
                 {
-                    var variableName = DeferredConstructionVariableName + token;
-
-                    if (Inspection.CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
-                    else sb.Append(CodeWriter.GetTypeName(member.CodeType));
-
-                    sb.Append(' ').Append(variableName).Append(" = default")
-                        // if "default" will violate NRT: add a !
-                        .Append(member.CodeType.IsReferenceType && member.CodeType.NullableAnnotation == NullableAnnotation.NotAnnotated ? "!" : "")
-                        .Append(";").NewLine();
-                    
-                    if (useConstructorDeferred && member.ConstructorParameterOrder is not null)
+                    if (member.IsMapped)
                     {
-                        deferredMethodArgumentsOrdered.Add(member.ConstructorParameterOrder.Value, variableName);
-                    }
-                    else if (useFactoryMethodDeferred && member.FactoryMethodParameterOrder is not null)
-                    {
-                        deferredMethodArgumentsOrdered.Add(member.FactoryMethodParameterOrder.Value, variableName);
-                    }
+                        var variableName = DeferredConstructionVariableName + token;
 
+                        if (Inspection.CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
+                        else sb.Append(CodeWriter.GetTypeName(member.CodeType));
+
+                        sb.Append(' ').Append(variableName).Append(" = default")
+                            // if "default" will violate NRT: add a !
+                            .Append(member.CodeType.IsReferenceType && member.CodeType.NullableAnnotation == NullableAnnotation.NotAnnotated ? "!" : "")
+                            .Append(";").NewLine();
+
+                        if (useConstructorDeferred && member.ConstructorParameterOrder is not null)
+                        {
+                            deferredMethodArgumentsOrdered.Add(member.ConstructorParameterOrder.Value, variableName);
+                        }
+                        else if (useFactoryMethodDeferred && member.FactoryMethodParameterOrder is not null)
+                        {
+                            deferredMethodArgumentsOrdered.Add(member.FactoryMethodParameterOrder.Value, variableName);
+                        }
+                    }
                     token++;
                 }
             }
@@ -852,47 +926,63 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     ? type.WithNullableAnnotation(NullableAnnotation.None) : type).Append(" result = new();").NewLine();
             }
 
-            sb.Append("foreach (var token in tokens)").Indent().NewLine()
-            .Append("switch (token)").Indent().NewLine();
+            if (!queryColumns.IsDefault && flags.HasAny(OperationFlags.StrictTypes))
+            {
+                // no mapping involved - simple ordinal iteration
+                sb.Append("int lim = global::System.Math.Min(tokens.Length, ").Append(queryColumns.Length).Append(");").NewLine()
+                    .Append("for (int token = 0; token < lim; token++) // query-columns predefined");
+            }
+            else
+            {
+                sb.Append("foreach (var token in tokens)");
+            }
+            sb.Indent().NewLine().Append("switch (token)").Indent().NewLine();
 
             token = 0;
             foreach (var member in members)
             {
-                var memberType = member.CodeType;
-
-                member.GetDbType(out var readerMethod);
-                var nullCheck = Inspection.CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
-                sb.Append("case ").Append(token).Append(":").NewLine().Indent(false);
-
-                // write `result.X = ` or `member0 = `
-                if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
-                else sb.Append("result.").Append(member.CodeName);
-                sb.Append(" = ");
-
-                sb.Append(nullCheck);
-                if (readerMethod is null)
+                if (member.IsMapped)
                 {
-                    sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                    var memberType = member.CodeType;
+
+                    member.GetDbType(out var readerMethod);
+                    var nullCheck = Inspection.CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
+                    sb.Append("case ").Append(token).Append(":").NewLine().Indent(false);
+
+                    // write `result.X = ` or `member0 = `
+                    if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
+                    else sb.Append("result.").Append(member.CodeName);
+                    sb.Append(" = ");
+
+                    sb.Append(nullCheck);
+                    if (readerMethod is null)
+                    {
+                        sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                    }
+                    else
+                    {
+                        sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
+                    }
+
+
+                    sb.NewLine().Append("break;").NewLine().Outdent(false);
+
+                    // optionally emit type-forgiving version
+                    if (!flags.HasAny(OperationFlags.StrictTypes))
+                    {
+                        sb.Append("case ").Append(token + map.Members.Length).Append(":").NewLine().Indent(false);
+
+                        // write `result.X = ` or `member0 = `
+                        if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
+                        else sb.Append("result.").Append(member.CodeName);
+
+                        sb.Append(" = ")
+                            .Append(nullCheck)
+                            .Append("GetValue<")
+                            .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
+                            .Append("break;").NewLine().Outdent(false);
+                    }
                 }
-                else
-                {
-                    sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
-                }
-
-
-                sb.NewLine().Append("break;").NewLine().Outdent(false)
-                    .Append("case ").Append(token + map.Members.Length).Append(":").NewLine().Indent(false);
-
-                // write `result.X = ` or `member0 = `
-                if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
-                else sb.Append("result.").Append(member.CodeName);
-
-                sb.Append(" = ")
-                    .Append(nullCheck)
-                    .Append("GetValue<")
-                    .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
-                    .Append("break;").NewLine().Outdent(false);
-
                 token++;
             }
 
@@ -952,8 +1042,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     foreach (var member in members)
                     {
                         token++;
-                        if (member.ConstructorParameterOrder is not null) continue; // already used in constructor arguments
-                        sb.Append(member.CodeName).Append(" = ").Append(DeferredConstructionVariableName).Append(token).Append(',').NewLine();
+                        if (member.IsMapped)
+                        {
+                            if (member.ConstructorParameterOrder is not null) continue; // already used in constructor arguments
+                            sb.Append(member.CodeName).Append(" = ").Append(DeferredConstructionVariableName).Append(token).Append(',').NewLine();
+                        }
                     }
                     sb.Outdent(withScope: false).Append("}");
                 }
@@ -1025,6 +1118,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var member in memberMap.Members)
         {
+            if (!member.IsMapped) continue;
+
             if (member.IsCancellation)
             {
                 if (mode == WriteArgsMode.GetCancellationToken)

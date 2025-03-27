@@ -1,4 +1,6 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Dapper.CodeAnalysis;
+using Microsoft.CodeAnalysis;
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using static Dapper.Internal.Inspection;
@@ -72,7 +74,7 @@ internal sealed class MemberMap
                     Constructor = constructor;
                     break;
             }
-            
+
             switch (ChooseFactoryMethod(ElementType, out var factoryMethod))
             {
                 case FactoryMethodResult.SuccessSingleExplicit:
@@ -81,6 +83,42 @@ internal sealed class MemberMap
             }
         }
         Members = GetMembers(forParameters, ElementType, Constructor, FactoryMethod);
+    }
+
+    public ImmutableArray<ElementMember> MapQueryColumns(ImmutableArray<string> queryColumns)
+    {
+        if (queryColumns.IsDefault) return Members; // not bound
+
+        var result = ImmutableArray.CreateBuilder<ElementMember>(queryColumns.Length);
+        foreach (var seek in queryColumns)
+        {
+            ElementMember found = default;
+            if (!string.IsNullOrWhiteSpace(seek))
+            {
+                foreach (var member in Members) // look for direct match
+                {
+                    if (string.Equals(member.CodeName, seek, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        found = member;
+                        break;
+                    }
+                }
+                if (found.Member is null) // additional underscore-etc deviation
+                {
+                    var normalizedSeek = StringHashing.Normalize(seek); // note: should already *be* normalized, but: be sure
+                    foreach (var member in Members)
+                    {
+                        if (StringHashing.NormalizedEquals(member.CodeName, normalizedSeek))
+                        {
+                            found = member;
+                            break;
+                        }
+                    }
+                }
+            }
+            result.Add(found);
+        }
+        return result.ToImmutable();
     }
 
     static bool IsDynamicParameters(ITypeSymbol? type)
