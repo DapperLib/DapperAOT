@@ -1,29 +1,41 @@
 ﻿using Dapper;
-using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
 
 [module: DapperAot]
-
 public static class Foo
 {
-    [StrictBind("X", null, "Z", "", "Y"), CacheCommand(true)]
-    static async Task SomeCode(DbConnection connection, string bar, bool isBuffered)
-    {
-        var obj = new { Foo = 12, bar };
-        _ = connection.Query<Customer>("def");
-        _ = connection.Query<Customer>("def", obj);
-        _ = connection.Query<Customer>("def", obj, buffered: isBuffered);
-        _ = connection.Query<Customer>("def", buffered: false, commandType: CommandType.StoredProcedure);
-        _ = connection.Query<Customer>("def @Foo", obj, buffered: true, commandType: CommandType.Text);
+    [QueryColumns("X", null, "Z", "", "Y")]
+    static Task<Customer> SomeCode1(DbConnection connection, string bar, bool isBuffered)
+        => connection.QuerySingleAsync<Customer>("select 1,2,3,4,5");
 
-        _ = await connection.QueryAsync<Customer>("def");
-        _ = await connection.QueryAsync<Customer>("def", obj);
-#if !NETFRAMEWORK
-        await foreach (var item in connection.QueryUnbufferedAsync<Customer>("def", commandType: CommandType.StoredProcedure)) { }
-        await foreach (var item in connection.QueryUnbufferedAsync<Customer>("def @Foo", obj, commandType: CommandType.Text)) { }
-#endif
-    }
+    [QueryColumns("X", null, "Z", "", "Y")] // should be shared with 1
+    static Task<Customer> SomeCode2(DbConnection connection, string bar, bool isBuffered)
+        => connection.QuerySingleAsync<Customer>("select 1,2,3,4,5");
+
+    [QueryColumns("X", null, "Z", "", "Y"), StrictTypes]
+    static Task<Customer> SomeCode3(DbConnection connection, string bar, bool isBuffered)
+        => connection.QuerySingleAsync<Customer>("select 1,2,3,4,5");
+
+    [QueryColumns("X", null, "Z", "", "Y"), StrictTypes] // should be shared with 3
+    static Task<Customer> SomeCode4(DbConnection connection, string bar, bool isBuffered)
+        => connection.QuerySingleAsync<Customer>("select 1,2,3,4,5");
+
+    [StrictTypes]
+    static Task<Customer> SomeCode5(DbConnection connection, string bar, bool isBuffered)
+        => connection.QuerySingleAsync<Customer>("select 1,2,3,4,5");
+
+    [StrictTypes] // should be shared with 5
+    static Task<Customer> SomeCode6(DbConnection connection, string bar, bool isBuffered)
+        => connection.QuerySingleAsync<Customer>("select 1,2,3,4,5");
+
+    static Task<Customer> SomeCode7(DbConnection connection, string bar, bool isBuffered)
+        => connection.QuerySingleAsync<Customer>("select 1,2,3,4,5");
+
+    // should be shared with 7
+    static Task<Customer> SomeCode8(DbConnection connection, string bar, bool isBuffered)
+        => connection.QuerySingleAsync<Customer>("select 1,2,3,4,5");
+
     public class Customer
     {
         public int X { get; set; }

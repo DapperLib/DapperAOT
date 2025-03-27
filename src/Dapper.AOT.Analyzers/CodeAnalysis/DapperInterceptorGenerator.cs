@@ -391,7 +391,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             if (flags.HasAny(OperationFlags.GetRowParser))
             {
-                WriteGetRowParser(sb, resultType, readers, grp.Key.AdditionalCommandState?.StrictBind ?? default);
+                WriteGetRowParser(sb, resultType, readers, grp.Key.AdditionalCommandState?.QueryColumns ?? default);
             }
             else if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
             {
@@ -451,7 +451,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var tuple in readers)
         {
-            WriteRowFactory(ctx, sb, tuple.Type, tuple.Index, tuple.StrictBind, null /* TODO */);
+            WriteRowFactory(ctx, sb, tuple.Type, tuple.Index, tuple.QueryColumns, null /* TODO */);
         }
 
         foreach (var tuple in factories)
@@ -468,9 +468,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, ctx.Nodes.Length, methodIndex, factories.Count(), readers.Count()));
     }
 
-    private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers, ImmutableArray<string> strictBind)
+    private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers, ImmutableArray<string> queryColumns)
     {
-        sb.Append("return ").AppendReader(resultType, readers, strictBind)
+        sb.Append("return ").AppendReader(resultType, readers, queryColumns)
             .Append(".GetRowParser(reader, startIndex, length, returnNullIfFirstMissing);").NewLine();
     }
 
@@ -732,7 +732,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index, ImmutableArray<string> strictBind, Location? location)
+    private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index, ImmutableArray<string> queryColumns, Location? location)
     {
         var map = MemberMap.CreateForResults(type);
         if (map is null) return;
@@ -780,7 +780,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         void WriteTokenizeMethod()
         {
             sb.Append("public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)").Indent().NewLine();
-            if (strictBind.IsDefault) // don't emit any tokens for strict binding
+            if (queryColumns.IsDefault) // don't emit any tokens for strict binding
             {
                 sb.Append("for (int i = 0; i < tokens.Length; i++)").Indent().NewLine()
                     .Append("int token = -1;").NewLine()
@@ -808,11 +808,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             else
             {
-                sb.Append("// strict-bind: ");
-                for (int i = 0; i < strictBind.Length; i++)
+                sb.Append("// query columns: ");
+                for (int i = 0; i < queryColumns.Length; i++)
                 {
                     if (i != 0) sb.Append(", ");
-                    var name = strictBind[i];
+                    var name = queryColumns[i];
                     if (string.IsNullOrWhiteSpace(name))
                     {
                         sb.Append("(n/a)");
@@ -826,7 +826,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         sb.Append("'").Append(name).Append("'");
                     }
                 }
-                sb.NewLine().Append("global::System.Diagnostics.Debug.Assert(tokens.Length == ").Append(strictBind.Length).Append(""", "Strict-bind column count mismatch");""").NewLine();
+                sb.NewLine().Append("global::System.Diagnostics.Debug.Assert(tokens.Length >= ").Append(queryColumns.Length).Append(""", "Query columns count mismatch");""").NewLine();
             }
             sb.Append("return null;").Outdent().NewLine();
         }
@@ -879,15 +879,16 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
 
             ImmutableArray<ElementMember> readMembers;
-            if (strictBind.IsDefault)
+            if (queryColumns.IsDefault)
             {
                 readMembers = members; // try to parse everything
                 sb.Append("foreach (var token in tokens)");
             }
             else
             {
-                readMembers = MapStrictBind(context, members, strictBind, location);
-                sb.Append("for (int token = 0; token < tokens.Length; token++) // strict-bind");
+                readMembers = MapQueryColumns(context, members, queryColumns, location);
+                sb.Append("int lim = global::System.Math.Min(tokens.Length, ").Append(queryColumns.Length).Append(");").NewLine()
+                    .Append("for (int token = 0; token < lim; token++) // query-columns predefined");
             }
             sb.Indent().NewLine().Append("switch (token)").Indent().NewLine();
 
@@ -920,7 +921,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
                     sb.NewLine().Append("break;").NewLine().Outdent(false);
 
-                    if (strictBind.IsDefault) // type-forgiving version; only emitted when not using strict-bind
+                    if (queryColumns.IsDefault) // type-forgiving version; only emitted when not using strict-bind
                     {
                         sb.Append("case ").Append(token + map.Members.Length).Append(":").NewLine().Indent(false);
 
@@ -1020,27 +1021,27 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private static ImmutableArray<ElementMember> MapStrictBind(in GenerateState state, ImmutableArray<ElementMember> members, ImmutableArray<string> strictBind, Location? location)
+    private static ImmutableArray<ElementMember> MapQueryColumns(in GenerateState state, ImmutableArray<ElementMember> members, ImmutableArray<string> queryColumns, Location? location)
     {
-        if (strictBind.IsDefault) return members; // not bound
+        if (queryColumns.IsDefault) return members; // not bound
 
-        var result = ImmutableArray.CreateBuilder<ElementMember>(strictBind.Length);
-        foreach (var seek in strictBind)
+        var result = ImmutableArray.CreateBuilder<ElementMember>(queryColumns.Length);
+        foreach (var seek in queryColumns)
         {
             ElementMember found = default;
             if (!string.IsNullOrWhiteSpace(seek))
             {
-                foreach (var member in members)
+                foreach (var member in members) // look for direct match
                 {
-                    if (member.CodeName == seek)
+                    if (string.Equals(member.CodeName, seek, StringComparison.InvariantCultureIgnoreCase))
                     {
                         found = member;
                         break;
                     }
                 }
-                if (found.Member is null)
+                if (found.Member is null) // additional underscore-etc deviation
                 {
-                    var normalizedSeek = StringHashing.Normalize(seek);
+                    var normalizedSeek = StringHashing.Normalize(seek); // note: should already *be* normalized, but: be sure
                     foreach (var member in members)
                     {
                         if (StringHashing.NormalizedEquals(member.CodeName, normalizedSeek))
