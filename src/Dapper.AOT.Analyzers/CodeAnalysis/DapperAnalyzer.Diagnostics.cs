@@ -56,7 +56,7 @@ partial class DapperAnalyzer
         AmbiguousProperties = LibraryWarning("DAP046", "Ambiguous properties", "Properties have same name '{0}' after normalization and can be conflated"),
         AmbiguousFields = LibraryWarning("DAP047", "Ambiguous fields", "Fields have same name '{0}' after normalization and can be conflated"),
         MoveFromDbString = LibraryWarning("DAP048", "Move from DbString to DbValue", "DbString achieves the same as [DbValue] does. Use it instead."),
-        BoundMemberNotFound = LibraryError("DAP049", "Bound member not found", "The bound member '{0}' was not found"),
+        UnableToBindQueryColumns = LibraryError("DAP049", "Unable to bind query columns", "Something went terribly wrong"),
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),

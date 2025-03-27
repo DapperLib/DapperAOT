@@ -10,6 +10,7 @@ using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 
@@ -147,7 +148,7 @@ internal static class Inspection
         return false;
     }
 
-    public static ImmutableArray<string> ParseQueryColumns(AttributeData attrib)
+    public static ImmutableArray<string> ParseQueryColumns(AttributeData attrib, Action<Diagnostic>? reportDiagnostic, Location? location)
     {
         ImmutableArray<string> result = default;
         if (attrib is not null && attrib.ConstructorArguments.Length == 1
@@ -179,7 +180,14 @@ internal static class Inspection
                 }
                 if (fail) break;
             }
-            if (!fail) result = ImmutableArray.Create<string>(arr, 0, columnNames.Length);
+            if (fail)
+            {
+                reportDiagnostic?.Invoke(Diagnostic.Create(DapperAnalyzer.Diagnostics.UnableToBindQueryColumns, location));
+            }
+            else
+            {
+                result = ImmutableArray.Create<string>(arr, 0, columnNames.Length);
+            }
             ArrayPool<string?>.Shared.Return(arr);
         }
         return result;
@@ -532,10 +540,15 @@ internal static class Inspection
                 return CodeName;
             }
         }
-        public string CodeName => Member.Name;
-        public ISymbol Member { get; }
-        public ITypeSymbol CodeType => Member switch
+        public string CodeName => Member?.Name ?? "";
+        public ISymbol? Member { get; }
+
+        [MemberNotNullWhen(true, nameof(Member), nameof(CodeType))]
+        public bool IsMapped => Member is not null;
+
+        public ITypeSymbol? CodeType => Member switch
         {
+            null => null,
             IPropertySymbol prop => prop.Type,
             _ => ((IFieldSymbol)Member).Type,
         };
@@ -545,7 +558,7 @@ internal static class Inspection
 
         public ElementMemberKind Kind { get; }
 
-        public SymbolKind SymbolKind => Member.Kind;
+        public SymbolKind SymbolKind => Member?.Kind ?? SymbolKind.ErrorType;
 
         public bool IsRowCount => (Kind & ElementMemberKind.RowCount) != 0;
         public bool IsRowCountHint => (Kind & ElementMemberKind.RowCountHint) != 0;
@@ -654,20 +667,23 @@ internal static class Inspection
 
         public Location? GetLocation()
         {
-            // `ISymbol.Locations` gives the best location of member
-            // (i.e. for property it will be NAME of an element without modifiers \ getters and setters),
-            // but it also returns implicitly defined members -> so we need to double check if that can be used
-            if (Member.Locations.Length > 0)
+            if (Member is not null)
             {
-                var sourceLocation = Member.Locations.FirstOrDefault(loc => loc.IsInSource);
-                if (sourceLocation is not null) return sourceLocation;
-            }
-
-            foreach (var node in Member.DeclaringSyntaxReferences)
-            {
-                if (node.GetSyntax().GetLocation() is { } loc)
+                // `ISymbol.Locations` gives the best location of member
+                // (i.e. for property it will be NAME of an element without modifiers \ getters and setters),
+                // but it also returns implicitly defined members -> so we need to double check if that can be used
+                if (Member.Locations.Length > 0)
                 {
-                    return loc;
+                    var sourceLocation = Member.Locations.FirstOrDefault(loc => loc.IsInSource);
+                    if (sourceLocation is not null) return sourceLocation;
+                }
+
+                foreach (var node in Member.DeclaringSyntaxReferences)
+                {
+                    if (node.GetSyntax().GetLocation() is { } loc)
+                    {
+                        return loc;
+                    }
                 }
             }
             return null;
@@ -687,7 +703,7 @@ internal static class Inspection
         }
     }
 
-    internal struct ColumnAttributeData
+    internal readonly struct ColumnAttributeData
     {
         public UseColumnAttributeState UseColumnAttribute { get; }
         public ColumnAttributeState ColumnAttribute { get; }

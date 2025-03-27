@@ -215,14 +215,15 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
             bool allowUnsafe = compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
             if (allowUnsafe)
             {
-                _sb.Append("#nullable enable").NewLine();
+                _sb.Append("#nullable enable").NewLine()
+                    .Append("#pragma warning disable IDE0078 // unnecessary suppression is necessary").NewLine()
+                    .Append("#pragma warning disable CS9270 // SDK-dependent change to interceptors usage").NewLine();
             }
         }
 
         public void WriteInterceptorsClass(Action innerWriter)
         {
-            _sb.Append("#nullable enable").NewLine()
-                .Append("namespace ").Append(FeatureKeys.CodegenNamespace)
+            _sb.Append("namespace ").Append(FeatureKeys.CodegenNamespace)
                 .Append(" // interceptors must be in a known namespace").Indent().NewLine()
                 .Append("file static class DapperTypeAccessorGeneratedInterceptors").Indent().NewLine();
             innerWriter();

@@ -1,5 +1,6 @@
 #nullable enable
-#nullable enable
+#pragma warning disable IDE0078 // unnecessary suppression is necessary
+#pragma warning disable CS9270 // SDK-dependent change to interceptors usage
 namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperTypeAccessorGeneratedInterceptors

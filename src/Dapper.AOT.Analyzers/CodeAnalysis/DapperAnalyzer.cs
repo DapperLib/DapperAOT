@@ -665,7 +665,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        if (flags.HasFlag(OperationFlags.Query) && (IsEnabled(ctx, op, Types.StrictTypesAttribute, out _)))
+        if (flags.HasAny(OperationFlags.Query) && (IsEnabled(ctx, op, Types.StrictTypesAttribute, out _)))
         {
             flags |= OperationFlags.StrictTypes;
         }
@@ -762,17 +762,20 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
                     if (reportDiagnostic is not null)
                     {
-                        foreach (var attrib in member.Member.GetAttributes())
+                        if (member.IsMapped)
                         {
-                            switch (attrib.AttributeClass!.Name)
+                            foreach (var attrib in member.Member.GetAttributes())
                             {
-                                case Types.RowCountHintAttribute:
-                                    if (attrib.ConstructorArguments.Length != 0)
-                                    {
-                                        reportDiagnostic.Invoke(Diagnostic.Create(Diagnostics.RowCountHintShouldNotSpecifyValue,
-                                            attrib.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? location));
-                                    }
-                                    break;
+                                switch (attrib.AttributeClass!.Name)
+                                {
+                                    case Types.RowCountHintAttribute:
+                                        if (attrib.ConstructorArguments.Length != 0)
+                                        {
+                                            reportDiagnostic.Invoke(Diagnostic.Create(Diagnostics.RowCountHintShouldNotSpecifyValue,
+                                                attrib.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? location));
+                                        }
+                                        break;
+                                }
                             }
                         }
                     }
@@ -820,7 +823,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                         }
                         break;
                     case Types.QueryColumnsAttribute:
-                        queryColumns = ParseQueryColumns(attrib);
+                        queryColumns = ParseQueryColumns(attrib, reportDiagnostic, location);
                         break;
                 }
             }
@@ -851,7 +854,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
 
         return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && queryColumns.IsDefault
-            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps, queryColumns);
+            ? null : new(rowCountHint, rowCountHintMember?.Member?.Name, batchSize, cmdProps, queryColumns);
     }
 
     static void ValidateParameters(MemberMap? parameters, OperationFlags flags, Action<Diagnostic> onDiagnostic)

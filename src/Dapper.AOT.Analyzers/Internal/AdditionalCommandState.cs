@@ -110,7 +110,7 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
         && BatchSize == other.BatchSize
         && RowCountHintMemberName == other.RowCountHintMemberName
         && ((CommandProperties.IsDefaultOrEmpty && other.CommandProperties.IsDefaultOrEmpty) || Equals(CommandProperties, other.CommandProperties))
-        && QueryColumns.Equals(other.QueryColumns);
+        && Equals(QueryColumns, other.QueryColumns);
 
     private static bool Equals(in ImmutableArray<CommandProperty> x, in ImmutableArray<CommandProperty> y)
     {
@@ -146,9 +146,34 @@ internal sealed class AdditionalCommandState : IEquatable<AdditionalCommandState
         return value;
     }
 
+    internal static bool Equals(in ImmutableArray<string> x, in ImmutableArray<string> y)
+    {
+        if (x.IsDefaultOrEmpty)
+        {
+            return x.IsDefault ? y.IsDefault : y.IsEmpty;
+        }
+        if (y.IsDefaultOrEmpty || x.Length != y.Length)
+        {
+            return false;
+        }
+        return x.AsSpan().SequenceEqual(y.AsSpan());
+    }
+
+    internal static int GetHashCode(in ImmutableArray<string> x)
+    {
+        if (x.IsDefaultOrEmpty) return x.IsDefault ? -1 : 0;
+
+        int value = x.Length;
+        foreach (string xVal in x.AsSpan())
+        {
+            value = (value * -42) + xVal.GetHashCode();
+        }
+        return value;
+    }
+
     public override int GetHashCode()
         => (RowCountHint + BatchSize.GetValueOrDefault()
         + (RowCountHintMemberName is null ? 0 : RowCountHintMemberName.GetHashCode()))
         ^ (CommandProperties.IsDefaultOrEmpty ? 0 : GetHashCode(in CommandProperties))
-        ^ QueryColumns.GetHashCode();
+        ^ GetHashCode(QueryColumns);
 }

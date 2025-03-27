@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 [module: DapperAot]
 public static class Foo
 {
-    [QueryColumns("X", null, "Z", "", "Y")]
+    [QueryColumns(nameof(Customer.X), null, nameof(Customer.Z), "", nameof(Customer.Y))]
     static Task<Customer> SomeCode1(DbConnection connection, string bar, bool isBuffered)
         => connection.QuerySingleAsync<Customer>("select 1,2,3,4,5");
 
