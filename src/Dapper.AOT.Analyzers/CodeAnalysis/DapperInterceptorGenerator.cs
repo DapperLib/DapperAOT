@@ -579,7 +579,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (additionalCommandState is not null && additionalCommandState.HasCommandProperties)
             {
                 sb.Indent()
-                    .NewLine().Append("var cmd = TryReuse(ref Storage, sql, commandType, args);")
+                    .NewLine().Append("var cmd = TryReuseThreadStatic(ref Storage, sql, commandType, args, _cmdPool);")
                     .NewLine().Append("if (cmd is null)").Indent()
                     .NewLine().Append("cmd = base.GetCommand(connection, sql, commandType, args);");
                 WriteCommandProperties(ctx, sb, "cmd", additionalCommandState.CommandProperties);
@@ -587,22 +587,26 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             else
             {
-                sb.Indent(false).NewLine().Append(" => TryReuse(ref Storage, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false);
+                sb.Indent(false).NewLine().Append(" => TryReuseThreadStatic(ref Storage, sql, commandType, args, _cmdPool) ?? base.GetCommand(connection, sql, commandType, args);").Outdent(false);
             }
-            sb.NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);").NewLine();
+            sb.NewLine().NewLine().Append("public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycleThreadStatic(ref Storage, command, _cmdPool);").NewLine();
 
             if (cacheCount == 1)
             {
+                sb.Append("private static readonly DbCommandCache _cmdPool = new();").NewLine();
+                sb.Append("[global::System.ThreadStatic] // note this works correctly with ref").NewLine();
                 sb.Append("private static global::System.Data.Common.DbCommand? Storage;").NewLine();
             }
             else
             {
+                sb.Append("private readonly DbCommandCache _cmdPool = new(); // note: per cache instance").NewLine();
                 sb.Append("protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}").NewLine().NewLine();
 
                 for (int i = 0; i < cacheCount; i++)
                 {
                     sb.Append("internal sealed class Cached").Append(i).Append(" : CommandFactory").Append(index).Indent().NewLine()
                         .Append("protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;").NewLine()
+                        .Append("[global::System.ThreadStatic] // note this works correctly with ref-return").NewLine()
                         .Append("private static global::System.Data.Common.DbCommand? s_Storage;").NewLine()
                         .Outdent().NewLine();
                 }
