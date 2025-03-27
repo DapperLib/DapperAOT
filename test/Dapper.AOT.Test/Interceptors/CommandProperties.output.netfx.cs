@@ -199,7 +199,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,
                 string sql, global::System.Data.CommandType commandType, object? args)
             {
-                var cmd = TryReuse(ref Storage, sql, commandType, args);
+                var cmd = TryReuseThreadStatic(ref Storage, sql, commandType, args, _cmdPool);
                 if (cmd is null)
                 {
                     cmd = base.GetCommand(connection, sql, commandType, args);
@@ -212,7 +212,9 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 return cmd;
             }
 
-            public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);
+            public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycleThreadStatic(ref Storage, command, _cmdPool);
+            private readonly DbCommandCache _cmdPool = new();
+            [global::System.ThreadStatic] // note this works correctly with ref
             private static global::System.Data.Common.DbCommand? Storage;
 
         }
@@ -256,7 +258,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection,
                 string sql, global::System.Data.CommandType commandType, object? args)
             {
-                var cmd = TryReuse(ref Storage, sql, commandType, args);
+                var cmd = TryReuseThreadStatic(ref Storage, sql, commandType, args, _cmdPool);
                 if (cmd is null)
                 {
                     cmd = base.GetCommand(connection, sql, commandType, args);
@@ -269,18 +271,21 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 return cmd;
             }
 
-            public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycle(ref Storage, command);
+            public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycleThreadStatic(ref Storage, command, _cmdPool);
+            private readonly DbCommandCache _cmdPool = new();
             protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}
 
             internal sealed class Cached0 : CommandFactory1
             {
                 protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;
+                [global::System.ThreadStatic] // note this works correctly with ref-return
                 private static global::System.Data.Common.DbCommand? s_Storage;
 
             }
             internal sealed class Cached1 : CommandFactory1
             {
                 protected override ref global::System.Data.Common.DbCommand? Storage => ref s_Storage;
+                [global::System.ThreadStatic] // note this works correctly with ref-return
                 private static global::System.Data.Common.DbCommand? s_Storage;
 
             }
