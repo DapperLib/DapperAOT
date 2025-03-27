@@ -213,7 +213,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             }
 
             public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycleThreadStatic(ref Storage, command, _cmdPool);
-            private readonly DbCommandCache _cmdPool = new();
+            private static readonly DbCommandCache _cmdPool = new();
             [global::System.ThreadStatic] // note this works correctly with ref
             private static global::System.Data.Common.DbCommand? Storage;
 
@@ -272,7 +272,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             }
 
             public override bool TryRecycle(global::System.Data.Common.DbCommand command) => TryRecycleThreadStatic(ref Storage, command, _cmdPool);
-            private readonly DbCommandCache _cmdPool = new();
+            private readonly DbCommandCache _cmdPool = new(); // note: per cache instance
             protected abstract ref global::System.Data.Common.DbCommand? Storage {get;}
 
             internal sealed class Cached0 : CommandFactory1
