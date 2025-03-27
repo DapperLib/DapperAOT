@@ -665,11 +665,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        if (flags.HasAll(OperationFlags.BindResultsByName) && GetClosestDapperAttribute(ctx, op, Types.StrictBindAttribute) is not null)
+        if (flags.HasFlag(OperationFlags.Query) && (IsEnabled(ctx, op, Types.StrictTypesAttribute, out _)))
         {
-            flags |= OperationFlags.StrictBind;
+            flags |= OperationFlags.StrictTypes;
         }
-
 
         if (exitFirstFailure && flags.HasAny(OperationFlags.DoNotGenerate))
         {
@@ -781,7 +780,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        ImmutableArray<string> strictBind = default;
+        ImmutableArray<string> queryColumns = default;
         int? batchSize = null;
         foreach (var attrib in methodAttribs)
         {
@@ -820,8 +819,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                             batchSize = batchTmp;
                         }
                         break;
-                    case Types.StrictBindAttribute:
-                        strictBind = ParseStrictBindColumns(attrib);
+                    case Types.QueryColumnsAttribute:
+                        queryColumns = ParseQueryColumns(attrib);
                         break;
                 }
             }
@@ -851,8 +850,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
 
 
-        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && strictBind.IsDefault
-            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps, strictBind);
+        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && queryColumns.IsDefault
+            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps, queryColumns);
     }
 
     static void ValidateParameters(MemberMap? parameters, OperationFlags flags, Action<Diagnostic> onDiagnostic)

@@ -147,7 +147,7 @@ internal static class Inspection
         return false;
     }
 
-    public static ImmutableArray<string> ParseStrictBindColumns(AttributeData attrib)
+    public static ImmutableArray<string> ParseQueryColumns(AttributeData attrib)
     {
         ImmutableArray<string> result = default;
         if (attrib is not null && attrib.ConstructorArguments.Length == 1
@@ -170,7 +170,7 @@ internal static class Inspection
                             arr[i] = "";
                             break;
                         case string s when s.IndexOf('\x03') < 0:
-                            arr[i] = s;
+                            arr[i] = string.IsNullOrWhiteSpace(s) ? "" : StringHashing.Normalize(s);
                             break;
                         default:
                             fail = true;
@@ -1580,6 +1580,6 @@ enum OperationFlags
     KnownParameters = 1 << 21,
     QueryMultiple = 1 << 22,
     GetRowParser = 1 << 23,
-    StrictBind = 1 << 24,
+    StrictTypes = 1 << 24,
     NotAotSupported = 1 << 31,
 }
