@@ -6,7 +6,7 @@ We're going to assume that you already have existing C# or VB code that uses [`D
 Dapper.AOT offers two new tools:
 
 - [`Dapper.Advisor`](https://www.nuget.org/packages/Dapper.Advisor) which offers guidance on your Dapper usage (but does not change how anything works); this works with VB and C#
-- [`Dapper.AOT`](https://www.nuget.org/packages/Dapper.Advisor) which includes everything from `Dapper.Advisor` but which also includes build-time code-generation
+- [`Dapper.AOT`](https://www.nuget.org/packages/Dapper.AOT) which includes everything from `Dapper.Advisor` but which also includes build-time code-generation
   and some runtime library code that allows your Dapper code to work in an AOT (see below) way; this works with C# only
 
 ## What is AOT?
