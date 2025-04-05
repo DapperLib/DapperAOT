@@ -23,7 +23,9 @@ public class DAP036 : Verifier<DapperAnalyzer>
                 _ = conn.Query<MultipleImplicit>("storedproc");
 
                 _ = conn.Query<RecordClass>("storedproc");
+                _ = conn.Query<RecordClassWithMultipleConstructors>("storedproc");
                 _ = conn.Query<RecordStruct>("storedproc");
+                _ = conn.Query<RecordStructWithMultipleConstructors>("storedproc");
                 _ = conn.Query<ReadOnlyRecordStruct>("storedproc");
             }
 
@@ -51,7 +53,15 @@ public class DAP036 : Verifier<DapperAnalyzer>
             public MultipleImplicit(MultipleImplicit c) {}
         }
         record class RecordClass(int a);
+        public record class RecordClassWithMultipleConstructors(int a, bool b)
+        {
+            public RecordClassWithMultipleConstructors(int a) : this(a, false) {}
+        }
         record struct RecordStruct(int a);
+        public record struct RecordStructWithMultipleConstructors(int a, bool b)
+        {
+            public RecordStructWithMultipleConstructors(int a) : this(a, false) {}
+        }
         readonly record struct ReadOnlyRecordStruct(int a);
 
         namespace System.Runtime.CompilerServices
