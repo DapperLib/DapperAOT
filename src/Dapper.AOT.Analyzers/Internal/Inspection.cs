@@ -830,6 +830,8 @@ internal static class Inspection
             return ConstructorResult.SuccessSingleExplicit;
         }
 
+        List<IMethodSymbol> implicitCtors = new();
+
         // look for remaining constructors
         foreach (var ctor in ctors)
         {
@@ -883,13 +885,34 @@ internal static class Inspection
                 continue;
             }
 
-            if (constructor is not null)
-            {
-                return ConstructorResult.FailMultipleImplicit;
-            }
-            constructor = ctor;
+            implicitCtors.Add(ctor);
         }
-        return constructor is null ? ConstructorResult.NoneFound : ConstructorResult.SuccessSingleImplicit;
+
+        if (implicitCtors.Count == 0)
+        {
+            return ConstructorResult.NoneFound;
+        }
+
+        if (implicitCtors.Count == 1)
+        {
+            constructor = implicitCtors[0];
+            return ConstructorResult.SuccessSingleImplicit;
+        }
+
+        // if it's a record without an [ExplicitConstructor] use the primary constructor, as you can't assign the attribute to the primary constructor
+        if (named.IsRecord)
+        {
+            bool hasPrimaryConstructor = named.TryGetPrimaryConstructor(out var primaryConstructor);
+
+            if (hasPrimaryConstructor && primaryConstructor != null)
+            {
+                constructor = primaryConstructor;
+                return ConstructorResult.SuccessSingleImplicit;
+            }
+        }
+
+        constructor = implicitCtors[0];
+        return ConstructorResult.FailMultipleImplicit;
     }
 
     /// <summary>
