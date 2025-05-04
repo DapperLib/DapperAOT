@@ -516,10 +516,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         IEnumerable<IArgumentOperation> arguments = op.Arguments;
 
         // invocation can be packed into a CommandDefinition
-        if (op.Arguments is { Length: 2 })
+        if (op.Arguments is { Length: >= 2 })
         {
             if (op.Arguments[0].Parameter?.Name == "cnn"
-                && op.Arguments[1].Parameter?.Name == "command" && op.Arguments[1].Parameter?.Type.IsDapperType("CommandDefinition") == true)
+                && op.Arguments[1].Parameter?.Name == "command" && op.Arguments[1].Parameter?.Type.IsCommandDefinition() == true)
             {
                 viaCommandDefinition = true;
 

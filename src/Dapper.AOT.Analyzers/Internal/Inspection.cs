@@ -193,6 +193,9 @@ internal static class Inspection
         return result;
     }
 
+    public static bool IsCommandDefinition(this ITypeSymbol? typeSymbol) 
+        => typeSymbol.IsDapperType("CommandDefinition") && typeSymbol?.TypeKind == TypeKind.Struct;
+
     public static bool IsSqlClient(ITypeSymbol? typeSymbol) => typeSymbol is
     {
         Name: "SqlCommand",
