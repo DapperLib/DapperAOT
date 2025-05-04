@@ -14,7 +14,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             // returns data: string
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(command.CommandText));
             global::System.Diagnostics.Debug.Assert((command.CommandType ?? global::Dapper.DapperAotExtensions.GetCommandType(command.CommandText)) == global::System.Data.CommandType.StoredProcedure);
-            global::System.Diagnostics.Debug.Assert(command.Buffered is false); 
+            global::System.Diagnostics.Debug.Assert(command.Buffered is false);
             global::System.Diagnostics.Debug.Assert(command.Parameters is not null);
 
             return global::Dapper.DapperAotExtensions.Command(cnn, command.Transaction, command.CommandText, command.CommandType ?? default, command.CommandTimeout ?? default, CommandFactory0.Instance).ExecuteScalar<string>(command.Parameters);
@@ -30,7 +30,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             // returns data: string
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(command.CommandText));
             global::System.Diagnostics.Debug.Assert((command.CommandType ?? global::Dapper.DapperAotExtensions.GetCommandType(command.CommandText)) == global::System.Data.CommandType.StoredProcedure);
-            global::System.Diagnostics.Debug.Assert(command.Buffered is false); 
+            global::System.Diagnostics.Debug.Assert(command.Buffered is false);
             global::System.Diagnostics.Debug.Assert(command.Parameters is not null);
 
             return global::Dapper.DapperAotExtensions.Command(cnn, command.Transaction, command.CommandText, command.CommandType ?? default, command.CommandTimeout ?? default, CommandFactory0.Instance).ExecuteScalarAsync<string>(command.Parameters, cancellationToken: command.CancellationToken);
@@ -46,7 +46,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             // returns data: string
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(command.CommandText));
             global::System.Diagnostics.Debug.Assert((command.CommandType ?? global::Dapper.DapperAotExtensions.GetCommandType(command.CommandText)) == global::System.Data.CommandType.Text);
-            global::System.Diagnostics.Debug.Assert(command.Buffered is false); 
+            global::System.Diagnostics.Debug.Assert(command.Buffered is false);
             global::System.Diagnostics.Debug.Assert(command.Parameters is not null);
 
             return global::Dapper.DapperAotExtensions.Command(cnn, command.Transaction, command.CommandText, command.CommandType ?? default, command.CommandTimeout ?? default, CommandFactory0.Instance).ExecuteScalarAsync<string>(command.Parameters, cancellationToken: command.CancellationToken);
@@ -62,7 +62,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             // returns data: string
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(command.CommandText));
             global::System.Diagnostics.Debug.Assert((command.CommandType ?? global::Dapper.DapperAotExtensions.GetCommandType(command.CommandText)) == global::System.Data.CommandType.Text);
-            global::System.Diagnostics.Debug.Assert(command.Buffered is false); 
+            global::System.Diagnostics.Debug.Assert(command.Buffered is false);
             global::System.Diagnostics.Debug.Assert(command.Parameters is not null);
 
             return global::Dapper.DapperAotExtensions.Command(cnn, command.Transaction, command.CommandText, command.CommandType ?? default, command.CommandTimeout ?? default, CommandFactory0.Instance).ExecuteScalar<string>(command.Parameters);
@@ -75,7 +75,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             // Execute, Async, TypedResult, Scalar
             // returns data: string
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(command.CommandText));
-            global::System.Diagnostics.Debug.Assert(command.Buffered is false); 
+            global::System.Diagnostics.Debug.Assert(command.Buffered is false);
             global::System.Diagnostics.Debug.Assert(command.Parameters is null);
 
             return global::Dapper.DapperAotExtensions.Command(cnn, command.Transaction, command.CommandText, command.CommandType ?? default, command.CommandTimeout ?? default, DefaultCommandFactory).ExecuteScalarAsync<string>(command.Parameters, cancellationToken: command.CancellationToken);
@@ -91,7 +91,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             // returns data: string
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(command.CommandText));
             global::System.Diagnostics.Debug.Assert((command.CommandType ?? global::Dapper.DapperAotExtensions.GetCommandType(command.CommandText)) == global::System.Data.CommandType.Text);
-            global::System.Diagnostics.Debug.Assert(command.Buffered is true); 
+            global::System.Diagnostics.Debug.Assert(command.Buffered is true);
             global::System.Diagnostics.Debug.Assert(command.Parameters is not null);
 
             return global::Dapper.DapperAotExtensions.Command(cnn, command.Transaction, command.CommandText, command.CommandType ?? default, command.CommandTimeout ?? default, CommandFactory1.Instance).QueryBuffered(command.Parameters, global::Dapper.RowFactory.Inbuilt.Value<string>());

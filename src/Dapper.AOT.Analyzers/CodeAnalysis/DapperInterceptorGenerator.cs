@@ -378,7 +378,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb
                   .Append("global::System.Diagnostics.Debug.Assert(")
                   .Append(viaCommandDefinition ? "command.Buffered is " : "buffered is ")
-                  .Append((flags & OperationFlags.Buffered) != 0).Append("); ").NewLine();
+                  .Append((flags & OperationFlags.Buffered) != 0).Append(");").NewLine();
             }
 
             if (HasParam(methodParameters, "param") || viaCommandDefinition)
