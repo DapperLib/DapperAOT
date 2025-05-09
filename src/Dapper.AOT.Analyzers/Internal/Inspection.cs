@@ -193,6 +193,9 @@ internal static class Inspection
         return result;
     }
 
+    public static bool IsCommandDefinition(this ITypeSymbol? typeSymbol) 
+        => typeSymbol.IsDapperType("CommandDefinition") && typeSymbol?.TypeKind == TypeKind.Struct;
+
     public static bool IsSqlClient(ITypeSymbol? typeSymbol) => typeSymbol is
     {
         Name: "SqlCommand",
@@ -1294,7 +1297,7 @@ internal static class Inspection
     public static bool HasAll(this OperationFlags value, OperationFlags testFor) => (value & testFor) == testFor;
 
     public static bool TryGetConstantValue<T>(IOperation op, out T? value)
-            => TryGetConstantValueWithSyntax(op, out value, out _, out _);
+            => TryGetStringConstantValueWithSyntax(op, out value, out _, out _);
     
     public static ITypeSymbol? GetResultType(this IInvocationOperation invocation, OperationFlags flags)
     {
@@ -1313,7 +1316,35 @@ internal static class Inspection
         ? symbol.NullableAnnotation == NullableAnnotation.Annotated
         : symbol.NullableAnnotation != NullableAnnotation.NotAnnotated;
 
-    public static bool TryGetConstantValueWithSyntax<T>(IOperation val, out T? value, out SyntaxNode? syntax, out StringSyntaxKind? syntaxKind)
+    public static bool TryGetEnumConstantValueWithSyntax<T>(IOperation val, out T? value)
+    {
+        if (val.ConstantValue.HasValue)
+        {
+            value = (T?)val.ConstantValue.Value;
+            return true;
+        }
+        if (val is IArgumentOperation arg)
+        {
+            val = arg.Value;
+        }
+        // work through any implicit/explicit conversion steps
+        while (val is IConversionOperation conv)
+        {
+            val = conv.Operand;
+        }
+        
+        // type-level constants
+        if (val is IFieldReferenceOperation field && field.Field.HasConstantValue)
+        {
+            value = (T?)field.Field.ConstantValue;
+            return true;
+        }
+
+        value = default!;
+        return false;
+    }
+
+    public static bool TryGetStringConstantValueWithSyntax<T>(IOperation val, out T? value, out SyntaxNode? syntax, out StringSyntaxKind? syntaxKind)
     {
         try
         {

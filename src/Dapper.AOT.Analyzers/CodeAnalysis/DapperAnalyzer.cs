@@ -192,7 +192,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             var parseState = new ParseState(ctx);
             bool aotEnabled = IsEnabled(in parseState, invoke, Types.DapperAotAttribute, out var aotAttribExists);
             if (!aotEnabled) flags |= OperationFlags.DoNotGenerate;
-            var location = SharedParseArgsAndFlags(parseState, invoke, ref flags, out var sql, out var argExpression, onDiagnostic, out _, exitFirstFailure: false);
+            var location = SharedParseArgsAndFlags(parseState, invoke, ref flags, out var sql, out var argExpression, onDiagnostic, out _, exitFirstFailure: false, out var viaCommandDefinition);
 
             // report our AOT readiness
             if (aotEnabled)
@@ -410,7 +410,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             if (caseSensitive) flags |= SqlParseInputFlags.CaseSensitive;
 
             // can we get the SQL itself?
-            if (!TryGetConstantValueWithSyntax(sqlSource, out string? sql, out var sqlSyntax, out var stringSyntaxKind))
+            if (!TryGetStringConstantValueWithSyntax(sqlSource, out string? sql, out var sqlSyntax, out var stringSyntaxKind))
             {
                 DiagnosticDescriptor? descriptor = stringSyntaxKind switch
                 {
@@ -503,23 +503,60 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
     // we want a common understanding of the setup between the analyzer and generator
     internal static Location SharedParseArgsAndFlags(in ParseState ctx, IInvocationOperation op, ref OperationFlags flags, out string? sql,
-        out IOperation? argExpression, Action<Diagnostic>? reportDiagnostic, out ITypeSymbol? resultType, bool exitFirstFailure)
+        out IOperation? argExpression, Action<Diagnostic>? reportDiagnostic, out ITypeSymbol? resultType, bool exitFirstFailure,
+        out bool viaCommandDefinition)
     {
         var callLocation = op.GetMemberLocation();
         argExpression = null;
         sql = null;
         bool? buffered = null;
+        viaCommandDefinition = false;
 
-        // check the args
-        foreach (var arg in op.Arguments)
+        // default is invocation, so simply take arguments
+        IEnumerable<IArgumentOperation> arguments = op.Arguments;
+
+        // invocation can be packed into a CommandDefinition
+        if (op.Arguments is { Length: >= 2 })
         {
+            if (op.Arguments[0].Parameter?.Name == "cnn"
+                && op.Arguments[1].Parameter?.Name == "command" && op.Arguments[1].Parameter?.Type.IsCommandDefinition() == true)
+            {
+                viaCommandDefinition = true;
 
+                // by default buffered CommandDefinition constructor initializes `buffered` as true via CommandFlags
+                // https://github.com/DapperLib/Dapper/blob/5c7143f2e3585d4708294a3b0530a134e18ace86/Dapper/CommandDefinition.cs#L85
+                buffered = true;
+
+                // in-place creation of CommandDefinition like `Query<T>(new CommandDefinition(...))`
+                if (op.Arguments[1].Value is IObjectCreationOperation { Arguments.IsDefaultOrEmpty: false } commandDefinitionCreation )
+                {
+                    arguments = commandDefinitionCreation.Arguments;
+                }
+
+                // ideally here we would want to parse other CommandDefinition cases (i.e. local variable).
+                // but it is complicated, so we can simply rely on passing CommandDefinition's members to the underlying query API
+                // ...
+            }
+        }
+
+        // check the args. Names of the parameters are handling Dapper method parameters + CommandDefinition members
+        foreach (var arg in arguments)
+        {
             switch (arg.Parameter?.Name)
             {
                 case "sql":
-                    if (TryGetConstantValueWithSyntax(arg, out string? s, out _, out _))
+                case "commandText":
+                    if (TryGetStringConstantValueWithSyntax(arg, out string? s, out _, out _))
                     {
                         sql = s;
+                    }
+                    break;
+                case "flags":
+                    {
+                        if (TryGetEnumConstantValueWithSyntax(arg, out int? value))
+                        {
+                            buffered = (value & 1) != 0; // CommandFlags.Buffered = 1
+                        }
                     }
                     break;
                 case "buffered":
@@ -529,6 +566,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     }
                     break;
                 case "param":
+                case "parameters":
                     if (arg.Value is not IDefaultValueOperation)
                     {
                         var expr = arg.Value;
@@ -555,6 +593,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 case "length":
                 case "returnNullIfFirstMissing":
                 case "concreteType" when arg.Value is IDefaultValueOperation || (arg.ConstantValue.HasValue && arg.ConstantValue.Value is null):
+                case "cancellationToken":
                     // nothing to do
                     break;
                 case "commandType":
@@ -580,6 +619,17 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                             default: // treat as flexible
                                 reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UnexpectedCommandType, arg.Syntax.GetLocation()));
                                 break;
+                        }
+                    }
+                    break;
+                case "command":
+                    {
+                        // case for CommandDefinition - we need to check that we detected it correctly before
+                        // and if we did; then don't drop errors - we could not parse SQL / other flags in complex CommandDefinition usages,
+                        // but we can optimistically pass CommandDefinition data to underlying query
+                        if (!viaCommandDefinition)
+                        {
+                            goto default;
                         }
                     }
                     break;
