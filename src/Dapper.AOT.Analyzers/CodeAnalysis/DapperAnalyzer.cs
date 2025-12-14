@@ -554,6 +554,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 case "startIndex":
                 case "length":
                 case "returnNullIfFirstMissing":
+                case "map": // multi-map function parameter
+                case "splitOn": // multi-map split column parameter
                 case "concreteType" when arg.Value is IDefaultValueOperation || (arg.ConstantValue.HasValue && arg.ConstantValue.Value is null):
                     // nothing to do
                     break;

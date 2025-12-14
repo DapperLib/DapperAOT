@@ -152,19 +152,6 @@ public sealed partial class DapperInterceptorGenerator
             }
         }
         sb.Append(";").NewLine();
-
-        static CodeWriter WriteTypedArg(CodeWriter sb, ITypeSymbol? parameterType)
-        {
-            if (parameterType is null || parameterType.IsAnonymousType)
-            {
-                sb.Append("param");
-            }
-            else
-            {
-                sb.Append("(").Append(parameterType).Append(")param!");
-            }
-            return sb;
-        }
     }
 
     private static bool HasParam(ImmutableArray<IParameterSymbol> methodParameters, string name)
@@ -181,4 +168,17 @@ public sealed partial class DapperInterceptorGenerator
 
     private static string Forward(ImmutableArray<IParameterSymbol> methodParameters, string name)
         => HasParam(methodParameters, name) ? name : "default";
+
+    private static CodeWriter WriteTypedArg(CodeWriter sb, ITypeSymbol? parameterType)
+    {
+        if (parameterType is null || parameterType.IsAnonymousType)
+        {
+            sb.Append("param");
+        }
+        else
+        {
+            sb.Append("(").Append(parameterType).Append(")param!");
+        }
+        return sb;
+    }
 }

@@ -122,6 +122,24 @@ internal sealed class CodeWriter
         return this;
     }
 
+    // Append type for use in 'new Type()' expressions, stripping nullable annotation
+    public CodeWriter AppendTypeForNew(ITypeSymbol? value)
+    {
+        if (value is null)
+        { }
+        else if (value.IsAnonymousType)
+        {
+            Append(value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+        }
+        else
+        {
+            // Strip nullable annotation for object creation (can't do 'new Type?()')
+            var nonNullable = value.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
+            Append(GetTypeName(nonNullable));
+        }
+        return this;
+    }
+
     private void AppendAsValueTuple(ITypeSymbol value)
     {
         var members = value.GetMembers();

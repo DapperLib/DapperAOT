@@ -86,7 +86,9 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             private RowFactory0() {}
             public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
             {
-                for (int i = 0; i < tokens.Length; i++)
+                int availableColumns = reader.FieldCount - columnOffset;
+                int tokenCount = global::System.Math.Min(tokens.Length, availableColumns);
+                for (int i = 0; i < tokenCount; i++)
                 {
                     int token = -1;
                     var name = reader.GetName(columnOffset);
@@ -108,15 +110,23 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                     columnOffset++;
 
                 }
-                return null;
+                // Initialize remaining tokens to -1 (unmapped)
+                for (int i = tokenCount; i < tokens.Length; i++)
+                {
+                    tokens[i] = -1;
+                }
+                return tokenCount;
             }
             public override global::Foo.PublicPropertiesNoConstructor Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
             {
+                if (columnOffset > 0 && reader.IsDBNull(columnOffset)) return default!;
                 int value0 = default;
                 string? value1 = default;
                 double? value2 = default;
-                foreach (var token in tokens)
+                int tokenCount = state is int count ? count : tokens.Length;
+                for (int i = 0; i < tokenCount; i++)
                 {
+                    var token = tokens[i];
                     switch (token)
                     {
                         case 0:
@@ -152,7 +162,9 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             private RowFactory1() {}
             public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
             {
-                for (int i = 0; i < tokens.Length; i++)
+                int availableColumns = reader.FieldCount - columnOffset;
+                int tokenCount = global::System.Math.Min(tokens.Length, availableColumns);
+                for (int i = 0; i < tokenCount; i++)
                 {
                     int token = -1;
                     var name = reader.GetName(columnOffset);
@@ -174,13 +186,21 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                     columnOffset++;
 
                 }
-                return null;
+                // Initialize remaining tokens to -1 (unmapped)
+                for (int i = tokenCount; i < tokens.Length; i++)
+                {
+                    tokens[i] = -1;
+                }
+                return tokenCount;
             }
             public override global::Foo.MultipleDapperAotFactoryMethods Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
             {
+                if (columnOffset > 0 && reader.IsDBNull(columnOffset)) return default!;
                 global::Foo.MultipleDapperAotFactoryMethods result = new();
-                foreach (var token in tokens)
+                int tokenCount = state is int count ? count : tokens.Length;
+                for (int i = 0; i < tokenCount; i++)
                 {
+                    var token = tokens[i];
                     switch (token)
                     {
                         case 0:
@@ -218,7 +238,9 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             private RowFactory2() {}
             public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
             {
-                for (int i = 0; i < tokens.Length; i++)
+                int availableColumns = reader.FieldCount - columnOffset;
+                int tokenCount = global::System.Math.Min(tokens.Length, availableColumns);
+                for (int i = 0; i < tokenCount; i++)
                 {
                     int token = -1;
                     var name = reader.GetName(columnOffset);
@@ -240,13 +262,21 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                     columnOffset++;
 
                 }
-                return null;
+                // Initialize remaining tokens to -1 (unmapped)
+                for (int i = tokenCount; i < tokens.Length; i++)
+                {
+                    tokens[i] = -1;
+                }
+                return tokenCount;
             }
             public override global::Foo.SingleFactoryNotMarkedWithDapperAot Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
             {
+                if (columnOffset > 0 && reader.IsDBNull(columnOffset)) return default!;
                 global::Foo.SingleFactoryNotMarkedWithDapperAot result = new();
-                foreach (var token in tokens)
+                int tokenCount = state is int count ? count : tokens.Length;
+                for (int i = 0; i < tokenCount; i++)
                 {
+                    var token = tokens[i];
                     switch (token)
                     {
                         case 0:
@@ -284,7 +314,9 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             private RowFactory3() {}
             public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
             {
-                for (int i = 0; i < tokens.Length; i++)
+                int availableColumns = reader.FieldCount - columnOffset;
+                int tokenCount = global::System.Math.Min(tokens.Length, availableColumns);
+                for (int i = 0; i < tokenCount; i++)
                 {
                     int token = -1;
                     var name = reader.GetName(columnOffset);
@@ -306,13 +338,21 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                     columnOffset++;
 
                 }
-                return null;
+                // Initialize remaining tokens to -1 (unmapped)
+                for (int i = tokenCount; i < tokens.Length; i++)
+                {
+                    tokens[i] = -1;
+                }
+                return tokenCount;
             }
             public override global::Foo.MultipleStandardFactoryMethods Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
             {
+                if (columnOffset > 0 && reader.IsDBNull(columnOffset)) return default!;
                 global::Foo.MultipleStandardFactoryMethods result = new();
-                foreach (var token in tokens)
+                int tokenCount = state is int count ? count : tokens.Length;
+                for (int i = 0; i < tokenCount; i++)
                 {
+                    var token = tokens[i];
                     switch (token)
                     {
                         case 0:

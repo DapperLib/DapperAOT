@@ -303,7 +303,40 @@ internal static class CommandUtils
             }
             else
             {
-                return (T)Convert.ChangeType(value, Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T), CultureInfo.InvariantCulture);
+                // Handle enum types: match original Dapper's enum conversion logic
+                // Enums require special handling because:
+                // 1. Databases may return different integer types (e.g., SQLite returns Int64 for INTEGER columns)
+                // 2. The enum's underlying type might differ (e.g., enum with int underlying type vs Int64 from DB)
+                // 3. Floating point values need conversion to the enum's underlying integral type first
+                // Enum.ToObject handles the conversion from any integral type to the enum automatically
+                var targetType = typeof(T);
+                var underlyingType = Nullable.GetUnderlyingType(targetType);
+                
+                // Unwrap nullable first, like original Dapper does
+                var effectiveType = underlyingType ?? targetType;
+                
+                if (effectiveType.IsEnum)
+                {
+                    // Special handling for float/double/decimal like original Dapper
+                    if (value is float || value is double || value is decimal)
+                    {
+                        value = Convert.ChangeType(value, Enum.GetUnderlyingType(effectiveType), CultureInfo.InvariantCulture);
+                    }
+                    // Enum.ToObject returns the enum value boxed as object
+                    // For nullable enums, the cast from object will fail, so we need to use Convert.ChangeType
+                    // which properly handles boxing/unboxing for nullable types
+                    return (T)Enum.ToObject(effectiveType, value);
+                }
+                else if (underlyingType is not null)
+                {
+                    // Other nullable types
+                    return (T)Convert.ChangeType(value, underlyingType, CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    // Non-nullable, non-enum fallback
+                    return (T)Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
+                }
             }
         }
     }
