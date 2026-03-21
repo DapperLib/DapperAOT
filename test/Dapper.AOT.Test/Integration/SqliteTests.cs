@@ -1,9 +1,5 @@
-﻿#if NETFRAMEWORK
-using SqliteConnection = System.Data.SQLite.SQLiteConnection;
-#else
+#if !NETFRAMEWORK
 using SqliteConnection = Microsoft.Data.Sqlite.SqliteConnection;
-#endif
-
 using System;
 using Xunit;
 
@@ -36,3 +32,4 @@ namespace Dapper.AOT.Test.Integration
         }
     }
 }
+#endif
