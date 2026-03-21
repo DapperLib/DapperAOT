@@ -19,6 +19,31 @@ public class AccessorInterceptorTests : GeneratorTestBase
         where path.EndsWith(".input.cs", StringComparison.OrdinalIgnoreCase)
         select new object[] { path };
 
+    [Fact]
+    public void InheritedMembersAreIncluded()
+    {
+        const string source = @"
+using Dapper;
+[module: DapperAot]
+public static class Foo
+{
+    static void SomeCode()
+    {
+        _ = TypeAccessor.CreateAccessor(new Entity1());
+    }
+}
+public abstract class EntityBase { public long Id { get; set; } }
+public class Entity1 : EntityBase { public string Name { get; set; } }
+";
+        var result = Execute<TypeAccessorInterceptorGenerator>(source);
+        var generated = Assert.Single(result.Result.Results)
+            .GeneratedSources.Single().SourceText.ToString();
+
+        Assert.Contains("nameof(global::Entity1.Name)", generated);
+        Assert.Contains("nameof(global::Entity1.Id)", generated);
+        Assert.Contains("MemberCount => 2", generated);
+    }
+
     [Theory, MemberData(nameof(GetFiles))]
     public void Test(string path)
     {

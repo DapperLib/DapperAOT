@@ -535,37 +535,46 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
     {
         var members = new List<MemberData>();
         int memberNumber = 0;
+        var seenNames = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var type in typeSymbol.GetMembers())
+        var tier = typeSymbol;
+        while (tier is not null and not IErrorTypeSymbol)
         {
-            if (!CodeWriter.IsGettableInstanceMember(type, out var member) || !CodeWriter.IsSettableInstanceMember(type, out _))
+            foreach (var type in tier.GetMembers())
             {
-                // TODO not sure if we can use not settable or gettable field\property
-                continue;
+                if (!CodeWriter.IsGettableInstanceMember(type, out var member) || !CodeWriter.IsSettableInstanceMember(type, out _))
+                {
+                    continue;
+                }
+
+                // skip members already seen at a more-derived level (handles `new` shadowing)
+                if (!seenNames.Add(type.Name)) continue;
+
+                if (type is IPropertySymbol property)
+                {
+                    members.Add(new()
+                    {
+                        Name = property.Name,
+                        Type = member.ToDisplayString(),
+                        TypeSymbol = property.Type,
+                        Number = memberNumber++,
+                        IsNullable = property.Type.IsNullable()
+                    });
+                }
+                if (type is IFieldSymbol field)
+                {
+                    members.Add(new()
+                    {
+                        Name = field.Name,
+                        Type = member.ToDisplayString(),
+                        TypeSymbol = field.Type,
+                        Number = memberNumber++,
+                        IsNullable = field.NullableAnnotation == NullableAnnotation.Annotated
+                    });
+                }
             }
 
-            if (type is IPropertySymbol property)
-            {
-                members.Add(new()
-                {
-                    Name = property.Name,
-                    Type = member.ToDisplayString(),
-                    TypeSymbol = property.Type,
-                    Number = memberNumber++,
-                    IsNullable = property.Type.IsNullable()
-                });
-            }
-            if (type is IFieldSymbol field)
-            {
-                members.Add(new()
-                {
-                    Name = field.Name,
-                    Type = member.ToDisplayString(),
-                    TypeSymbol = field.Type,
-                    Number = memberNumber++,
-                    IsNullable = field.NullableAnnotation == NullableAnnotation.Annotated
-                });
-            }
+            tier = tier.BaseType;
         }
 
 #pragma warning disable IDE0305 // Simplify collection initialization
