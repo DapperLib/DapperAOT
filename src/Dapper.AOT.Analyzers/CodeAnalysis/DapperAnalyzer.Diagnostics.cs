@@ -53,6 +53,10 @@ partial class DapperAnalyzer
         UseColumnAttributeNotSpecified = LibraryWarning("DAP043", "[Column] has no effect", "Attach the [UseColumnAttribute] attribute to make Dapper consider [Column]"),
         CancellationNotSupported = LibraryWarning("DAP044", "Cancellation not supported", "Vanilla Dapper does not support cancellation parameters in this scenario"),
         CancellationDuplicated = LibraryWarning("DAP045", "Duplicate cancellation", "Multiple parameter values cannot define cancellation"),
+        AmbiguousProperties = LibraryWarning("DAP046", "Ambiguous properties", "Properties have same name '{0}' after normalization and can be conflated"),
+        AmbiguousFields = LibraryWarning("DAP047", "Ambiguous fields", "Fields have same name '{0}' after normalization and can be conflated"),
+        MoveFromDbString = LibraryWarning("DAP048", "Move from DbString to DbValue", "DbString achieves the same as [DbValue] does. Use it instead."),
+        UnableToBindQueryColumns = LibraryError("DAP049", "Unable to bind query columns", "Something went terribly wrong"),
 
         // SQL parse specific
         GeneralSqlError = SqlWarning("DAP200", "SQL error", "SQL error: {0}"),
@@ -99,6 +103,7 @@ partial class DapperAnalyzer
         InterpolatedStringSqlExpression = SqlWarning("DAP241", "Interpolated string usage", "Data values should not be interpolated into SQL string - use parameters instead"),
         ConcatenatedStringSqlExpression = SqlWarning("DAP242", "Concatenated string usage", "Data values should not be concatenated into SQL string - use parameters instead"),
         InvalidDatepartToken = SqlWarning("DAP243", "Valid datepart token expected", "Date functions require a recognized datepart argument"),
-        SelectAggregateMismatch = SqlWarning("DAP244", "SELECT aggregate mismatch", "SELECT has mixture of aggregate and non-aggregate expressions");
+        SelectAggregateMismatch = SqlWarning("DAP244", "SELECT aggregate mismatch", "SELECT has mixture of aggregate and non-aggregate expressions"),
+        PseudoPositionalParameter = SqlError("DAP245", "Avoid SQL pseudo-positional parameter", "It is more like Dapper will incorrectly treat this literal as a pseudo-positional parameter");
     }
 }

@@ -6,7 +6,7 @@
 
 ## How does this work?
 
-Tye build SDK from .NET 8 onwards includes support for "interceptors", which are a mechanism for emitting code during build that redirects method calls. In
+The build SDK from .NET 8 onwards includes support for "interceptors", which are a mechanism for emitting code during build that redirects method calls. In
 the case of Dapper, this means we can replace the `QuerySingleOrDefault<Customer>(...)` call (above) and replace it with a generated method that
 has a compatible signature and behaves as we expect, but: using code generated entirely at build time. Making existing code compatible with AOT is
 one of the main goals of "interceptors", so: we're not doing anything unexpected here.

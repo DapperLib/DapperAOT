@@ -110,7 +110,7 @@ internal abstract partial class LanguageHelper
 
     internal virtual StringSyntaxKind? TryDetectOperationStringSyntaxKind(IOperation operation)
     {
-        if (operation is null) return null;
+        if (operation is null || operation is ILiteralOperation) return null;
         if (operation is IBinaryOperation)
         {
             return StringSyntaxKind.ConcatenatedString;

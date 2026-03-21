@@ -82,6 +82,7 @@ internal readonly struct GenerateState
     private readonly GenerateContextProxy? proxy;
     public readonly ImmutableArray<SourceState> Nodes;
     public readonly Compilation Compilation;
+    public readonly GeneratorContext GeneratorContext = new();
 
     internal void ReportDiagnostic(Diagnostic diagnostic)
     {

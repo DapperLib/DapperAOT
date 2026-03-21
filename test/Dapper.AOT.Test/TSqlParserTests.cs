@@ -306,7 +306,7 @@ public class TSqlParserTests
 
         var args = parser.GetParameters(out var errors);
         Assert.Equal("@id", Assert.Single(args));
-        Assert.Equal("Incorrect syntax near garbage. (#46010) L5 C27", Assert.Single(errors));
+        Assert.Equal("Incorrect syntax near 'garbage'. (#46010) L5 C27", Assert.Single(errors));
     }
 
     [Fact]

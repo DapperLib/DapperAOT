@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
@@ -222,6 +223,7 @@ partial struct Command<TArgs>
     {
         Debug.Assert(source.Length > 1);
         UnifiedCommand batch = default;
+        bool closeConnection = false;
         try
         {
             foreach (var arg in source)
@@ -230,6 +232,12 @@ partial struct Command<TArgs>
                 AddCommand(ref batch, arg);
             }
             if (!batch.HasBatch) return 0;
+
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+                closeConnection = true;
+            }
 
             var result = batch.AssertBatch.ExecuteNonQuery();
 
@@ -241,9 +249,14 @@ partial struct Command<TArgs>
         }
         finally
         {
+            if (closeConnection)
+            {
+                connection.Close();
+            }
             batch.Cleanup();
         }
     }
+
     private int ExecuteMultiBatch(IEnumerable<TArgs> source, int batchSize) // TODO: sub-batching
     {
         if (commandFactory.RequirePostProcess)
@@ -253,6 +266,7 @@ partial struct Command<TArgs>
         }
 
         UnifiedCommand batch = default;
+        bool closeConnection = false;
         try
         {
             foreach (var arg in source)
@@ -261,6 +275,12 @@ partial struct Command<TArgs>
                 AddCommand(ref batch, arg);
             }
             if (!batch.HasBatch) return 0;
+
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+                closeConnection = true;
+            }
 
             var result = batch.AssertBatch.ExecuteNonQuery();
             if (commandFactory.RequirePostProcess)
@@ -271,6 +291,10 @@ partial struct Command<TArgs>
         }
         finally
         {
+            if (closeConnection)
+            {
+                connection.Close();
+            }
             batch.Cleanup();
         }
     }

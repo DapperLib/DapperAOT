@@ -35,8 +35,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         // per-run state (in particular, so we can have "first time only" diagnostics)
         var state = new AnalyzerState(context);
 
-        // respond to method usages
-        context.RegisterOperationAction(state.OnOperation, OperationKind.Invocation, OperationKind.SimpleAssignment);
+        context.RegisterOperationAction(state.OnOperation, 
+            OperationKind.Invocation, // for Dapper method invocations
+            OperationKind.SimpleAssignment, // for assignments of query
+            OperationKind.ObjectCreation // for instantiating Command objects
+        );
 
         // final actions
         context.RegisterCompilationEndAction(state.OnCompilationEndAction);
@@ -111,8 +114,9 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             try
             {
                 // we'll look for:
-                // method calls with a parameter called "sql" or marked [Sql]
-                // property assignments to "CommandText"
+                // - method calls with a parameter called "sql" or marked [Sql]
+                // - property assignments to "CommandText"
+                // - allocation of SqlCommand (i.e. `new SqlCommand(queryString, ...)` )
                 switch (ctx.Operation.Kind)
                 {
                     case OperationKind.Invocation when ctx.Operation is IInvocationOperation invoke:
@@ -156,6 +160,21 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                             }
                         }
                         break;
+                    case OperationKind.ObjectCreation when ctx.Operation is IObjectCreationOperation objectCreationOperation:
+
+                        var ctor = objectCreationOperation.Constructor;
+                        var receiverType = ctor?.ReceiverType;
+
+                        if (ctor is not null && IsSqlClient(receiverType))
+                        {
+                            var sqlParam = ctor.Parameters.FirstOrDefault();
+                            if (sqlParam is not null && sqlParam.Type.SpecialType == SpecialType.System_String && sqlParam.Name == "cmdText")
+                            {
+                                ValidateParameterUsage(ctx, objectCreationOperation.Arguments.First(), sqlUsage: objectCreationOperation);
+                            }
+                        }
+
+                        break;
                 }
             }
             catch (Exception ex)
@@ -191,19 +210,14 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
 
             // check the types
+            // resultType can be an array, so let's unwrap it to determine actual type
             var resultType = invoke.GetResultType(flags);
-            if (resultType is not null && IdentifyDbType(resultType, out _) is null) // don't warn if handled as an inbuilt
+            if (resultType is not null && IdentifyDbType(resultType, out _) is null && !IsSpecialCaseAllowedResultType(resultType)) // don't warn if handled as an inbuilt
             {
                 var resultMap = MemberMap.CreateForResults(resultType, location);
                 if (resultMap is not null)
                 {
-                    if (resultMap.Members.Length != 0)
-                    {
-                        foreach (var member in resultMap.Members)
-                        {
-                            ValidateMember(member, onDiagnostic);
-                        }
-                    }
+                    ValidateMembers(resultMap, onDiagnostic);
 
                     // check for single-row value-type usage
                     if (flags.HasAny(OperationFlags.SingleRow) && !flags.HasAny(OperationFlags.AtLeastOne)
@@ -256,34 +270,9 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             {
                 _ = AdditionalCommandState.Parse(GetSymbol(parseState, invoke), parameters, onDiagnostic);
             }
-            if (parameters is not null)
-            {
-                if (flags.HasAny(OperationFlags.DoNotGenerate)) // using vanilla Dapper mode
-                {
-                    if (parameters.Members.Any(s => s.IsCancellation) || IsCancellationToken(parameters.ElementType))
-                    {
-                        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CancellationNotSupported, parameters.Location));
-                    }
-                }
-                else
-                {
-                    bool first = true;
-                    foreach(var member in parameters.Members)
-                    {
-                        if (member.IsCancellation)
-                        {
-                            if (first)
-                            {
-                                first = false;
-                            }
-                            else
-                            {
-                                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CancellationDuplicated, member.GetLocation()));
-                            }
-                        }
-                    }
-                }
-            }
+            
+            ValidateParameters(parameters, flags, onDiagnostic);
+
             var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags);
 
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(args), location);
@@ -357,11 +346,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        private void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource)
+        private void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource, IOperation? sqlUsage = null)
         {
             // TODO: check other parameters for special markers like command type?
             var flags = SqlParseInputFlags.None;
-            ValidateSql(ctx, sqlSource, flags, SqlParameters.None);
+            ValidateSql(ctx, sqlSource, flags, SqlParameters.None, sqlUsageOperation: sqlUsage);
         }
 
         private void ValidatePropertyUsage(in OperationAnalysisContext ctx, IOperation sqlSource, bool isCommand)
@@ -402,12 +391,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
 
         private void ValidateSql(in OperationAnalysisContext ctx, IOperation sqlSource, SqlParseInputFlags flags,
-            ImmutableArray<SqlParameter> parameters, Location? location = null)
+            ImmutableArray<SqlParameter> parameters, Location? location = null, IOperation? sqlUsageOperation = null)
         {
             var parseState = new ParseState(ctx);
 
             // should we consider this as a syntax we can handle?
-            var syntax = IdentifySqlSyntax(parseState, ctx.Operation, out var caseSensitive) ?? DefaultSqlSyntax ?? SqlSyntax.General;
+            var syntax = IdentifySqlSyntax(parseState, sqlUsageOperation ?? ctx.Operation, out var caseSensitive) ?? DefaultSqlSyntax ?? SqlSyntax.General;
             switch (syntax)
             {
                 case SqlSyntax.SqlServer:
@@ -676,6 +665,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
+        if (flags.HasAny(OperationFlags.Query) && (IsEnabled(ctx, op, Types.StrictTypesAttribute, out _)))
+        {
+            flags |= OperationFlags.StrictTypes;
+        }
+
         if (exitFirstFailure && flags.HasAny(OperationFlags.DoNotGenerate))
         {
             resultType = null;
@@ -768,17 +762,20 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
                     if (reportDiagnostic is not null)
                     {
-                        foreach (var attrib in member.Member.GetAttributes())
+                        if (member.IsMapped)
                         {
-                            switch (attrib.AttributeClass!.Name)
+                            foreach (var attrib in member.Member.GetAttributes())
                             {
-                                case Types.RowCountHintAttribute:
-                                    if (attrib.ConstructorArguments.Length != 0)
-                                    {
-                                        reportDiagnostic.Invoke(Diagnostic.Create(Diagnostics.RowCountHintShouldNotSpecifyValue,
-                                            attrib.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? location));
-                                    }
-                                    break;
+                                switch (attrib.AttributeClass!.Name)
+                                {
+                                    case Types.RowCountHintAttribute:
+                                        if (attrib.ConstructorArguments.Length != 0)
+                                        {
+                                            reportDiagnostic.Invoke(Diagnostic.Create(Diagnostics.RowCountHintShouldNotSpecifyValue,
+                                                attrib.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? location));
+                                        }
+                                        break;
+                                }
                             }
                         }
                     }
@@ -786,6 +783,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
+        ImmutableArray<string> queryColumns = default;
         int? batchSize = null;
         foreach (var attrib in methodAttribs)
         {
@@ -824,6 +822,9 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                             batchSize = batchTmp;
                         }
                         break;
+                    case Types.QueryColumnsAttribute:
+                        queryColumns = ParseQueryColumns(attrib, reportDiagnostic, location);
+                        break;
                 }
             }
         }
@@ -852,8 +853,109 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
 
 
-        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null
-            ? null : new(rowCountHint, rowCountHintMember?.Member.Name, batchSize, cmdProps);
+        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && queryColumns.IsDefault
+            ? null : new(rowCountHint, rowCountHintMember?.Member?.Name, batchSize, cmdProps, queryColumns);
+    }
+
+    static void ValidateParameters(MemberMap? parameters, OperationFlags flags, Action<Diagnostic> onDiagnostic)
+    {
+        if (parameters is null) return;
+
+        var usingVanillaDapperMode = flags.HasAny(OperationFlags.DoNotGenerate); // using vanilla Dapper mode
+        if (usingVanillaDapperMode)
+        {
+            if (parameters.Members.Any(s => s.IsCancellation) || IsCancellationToken(parameters.ElementType))
+            {
+                onDiagnostic(Diagnostic.Create(Diagnostics.CancellationNotSupported, parameters.Location));
+            }
+        }
+
+        var isFirstCancellation = true;
+        foreach (var member in parameters.Members)
+        {
+            ValidateCancellationTokenParameter(member);
+            ValidateDbStringParameter(member);
+        }
+
+        void ValidateDbStringParameter(ElementMember member)
+        {
+            if (usingVanillaDapperMode)
+            {
+                // reporting ONLY in Dapper AOT
+                return;
+            }
+            
+            if (member.DapperSpecialType == DapperSpecialType.DbString)
+            {
+                onDiagnostic(Diagnostic.Create(Diagnostics.MoveFromDbString, member.GetLocation()));
+            }
+        }
+
+        void ValidateCancellationTokenParameter(ElementMember member)
+        {
+            if (!usingVanillaDapperMode && member.IsCancellation)
+            {
+                if (isFirstCancellation) isFirstCancellation = false;
+                else onDiagnostic(Diagnostic.Create(Diagnostics.CancellationDuplicated, member.GetLocation()));
+            }
+        }
+    }
+
+    static void ValidateMembers(MemberMap memberMap, Action<Diagnostic> onDiagnostic)
+    {
+        if (memberMap.Members.Length == 0)
+        {
+            return;
+        }
+        
+        var normalizedPropertyNames = new Dictionary<string, List<Location>>();
+        var normalizedFieldNames = new Dictionary<string, List<Location>>();
+
+        foreach (var member in memberMap!.Members)
+        {
+            ValidateMember(member, onDiagnostic);
+
+            // build collection of duplicate normalized memberNames with memberLocations
+            Location? memberLoc;
+            if ((memberLoc = member.GetLocation()) is not null)
+            {
+                var normalizedName = StringHashing.Normalize(member.CodeName);
+
+                switch (member.SymbolKind)
+                {
+                    case SymbolKind.Property:
+                        if (!normalizedPropertyNames.ContainsKey(normalizedName)) normalizedPropertyNames[normalizedName] = new();
+                        normalizedPropertyNames[normalizedName].Add(memberLoc);
+                        break;
+
+                    case SymbolKind.Field:
+                        if (!normalizedFieldNames.ContainsKey(normalizedName)) normalizedFieldNames[normalizedName] = new();
+                        normalizedFieldNames[normalizedName].Add(memberLoc);
+                        break;
+                }
+            }
+        }
+
+        ReportNormalizedMembersNamesCollisions(normalizedFieldNames, Diagnostics.AmbiguousFields);
+        ReportNormalizedMembersNamesCollisions(normalizedPropertyNames, Diagnostics.AmbiguousProperties);
+
+        void ReportNormalizedMembersNamesCollisions(Dictionary<string, List<Location>> nameMemberLocations, DiagnosticDescriptor diagnosticDescriptor)
+        {
+            if (nameMemberLocations.Count == 0) return;
+
+            foreach (var entry in nameMemberLocations)
+            {
+                if (entry.Value?.Count <= 1)
+                {
+                    continue;
+                }
+
+                onDiagnostic?.Invoke(Diagnostic.Create(diagnosticDescriptor,
+                        location: entry.Value.First(),
+                        additionalLocations: entry.Value.Skip(1),
+                        messageArgs: entry.Key));
+            }
+        }
     }
 
     static void ValidateMember(ElementMember member, Action<Diagnostic>? reportDiagnostic)

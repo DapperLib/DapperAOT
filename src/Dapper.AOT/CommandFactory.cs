@@ -1,5 +1,6 @@
 ﻿using Dapper.Internal;
 using System;
+using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
@@ -175,12 +176,53 @@ public abstract class CommandFactory
     /// <summary>
     /// Provides an opportunity to recycle and reuse command instances
     /// </summary>
-    protected static bool TryRecycle(ref DbCommand? storage, DbCommand command)
+    protected static bool TryRecycleInterlocked(ref DbCommand? storage, DbCommand command, DbCommandCache? cache = null)
     {
         // detach and recycle
         command.Connection = null;
         command.Transaction = null;
-        return Interlocked.CompareExchange(ref storage, command, null) is null;
+        if (Interlocked.CompareExchange(ref storage, command, null) is null)
+        {
+            return true;
+        }
+        return cache is not null && cache.TryPut(command);
+    }
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse command instances
+    /// </summary>
+    protected static bool TryRecycleThreadStatic(ref DbCommand? storage, DbCommand command, DbCommandCache? cache = null)
+    {
+        // detach and recycle
+        command.Connection = null;
+        command.Transaction = null;
+        if (storage is null)
+        {
+            storage = command;
+            return true;
+        }
+        return cache is not null && cache.TryPut(command);
+    }
+
+
+    /// <summary>
+    /// A simple store for command re-use.
+    /// </summary>
+    protected sealed class DbCommandCache(int capacity = 16)
+    {
+        private readonly ConcurrentQueue<DbCommand> store = [];
+        internal bool TryPut(DbCommand command)
+        {
+            if (store.Count < capacity) // not exact - inherent race condition
+            {
+                store.Enqueue(command);
+                return true;
+            }
+            return false;
+        }
+
+        internal DbCommand? TryTake()
+            => store.TryDequeue(out var cmd) ? cmd : null;
     }
 }
 
@@ -252,9 +294,26 @@ public class CommandFactory<T> : CommandFactory
     /// <summary>
     /// Provides an opportunity to recycle and reuse command instances
     /// </summary>
-    protected DbCommand? TryReuse(ref DbCommand? storage, string sql, CommandType commandType, T args)
+    protected DbCommand? TryReuseThreadStatic(ref DbCommand? storage, string sql, CommandType commandType, T args, DbCommandCache? cache = null)
     {
-        var cmd = Interlocked.Exchange(ref storage, null);
+        var cmd = storage ?? cache?.TryTake();
+        storage = null;
+        if (cmd is not null)
+        {
+            // try to avoid any dirty detection in the setters
+            if (cmd.CommandText != sql) cmd.CommandText = sql;
+            if (cmd.CommandType != commandType) cmd.CommandType = commandType;
+            UpdateParameters(new(cmd), args);
+        }
+        return cmd;
+    }
+
+    /// <summary>
+    /// Provides an opportunity to recycle and reuse command instances
+    /// </summary>
+    protected DbCommand? TryReuseInterlocked(ref DbCommand? storage, string sql, CommandType commandType, T args, DbCommandCache? cache = null)
+    {
+        var cmd = Interlocked.Exchange(ref storage, null) ?? cache?.TryTake();
         if (cmd is not null)
         {
             // try to avoid any dirty detection in the setters

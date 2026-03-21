@@ -165,6 +165,46 @@ internal static class CommandUtils
                 DateTime? t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
                 return Unsafe.As<DateTime?, T>(ref t);
             }
+#if NET6_0_OR_GREATER
+            else if (typeof(T) == typeof(DateOnly))
+            {
+                if (value is DateOnly only) return Unsafe.As<DateOnly, T>(ref only);
+
+                DateTime t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
+                var dateOnly = DateOnly.FromDateTime(t);
+                return Unsafe.As<DateOnly, T>(ref dateOnly);
+            }
+            else if (typeof(T) == typeof(DateOnly?))
+            {
+                DateTime? t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
+                DateOnly? dateOnly = t is null ? null : DateOnly.FromDateTime(t.Value);
+                return Unsafe.As<DateOnly?, T>(ref dateOnly);
+            }
+            else if (typeof(T) == typeof(TimeOnly))
+            {
+                if (value is TimeSpan timeSpan)
+                {
+                    var fromSpan = TimeOnly.FromTimeSpan(timeSpan);
+                    return Unsafe.As<TimeOnly, T>(ref fromSpan);
+                }
+
+                DateTime t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
+                var timeOnly = TimeOnly.FromDateTime(t);
+                return Unsafe.As<TimeOnly, T>(ref timeOnly);
+            }
+            else if (typeof(T) == typeof(TimeOnly?))
+            {
+                if (value is TimeSpan timeSpan)
+                {
+                    var fromSpan = TimeOnly.FromTimeSpan(timeSpan);
+                    return Unsafe.As<TimeOnly, T>(ref fromSpan);
+                }
+
+                DateTime? t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
+                TimeOnly? timeOnly = t is null ? null : TimeOnly.FromDateTime(t.Value);
+                return Unsafe.As<TimeOnly?, T>(ref timeOnly);
+            }
+#endif
             else if (typeof(T) == typeof(Guid) && (s = value as string) is not null)
             {
                 Guid t = Guid.Parse(s);

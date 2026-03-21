@@ -328,7 +328,7 @@ internal sealed class CodeWriter
         return s;
     }
 
-    internal CodeWriter AppendReader(ITypeSymbol? resultType, RowReaderState readers)
+    internal CodeWriter AppendReader(ITypeSymbol? resultType, RowReaderState readers, OperationFlags flags, ImmutableArray<string> queryColumns)
     {
         if (IsInbuilt(resultType, out var helper))
         {
@@ -336,7 +336,7 @@ internal sealed class CodeWriter
         }
         else
         {
-            return Append("RowFactory").Append(readers.GetIndex(resultType!)).Append(".Instance");
+            return Append("RowFactory").Append(readers.GetIndex(resultType!, flags, queryColumns)).Append(".Instance");
         }
 
         static bool IsInbuilt(ITypeSymbol? type, out string? helper)

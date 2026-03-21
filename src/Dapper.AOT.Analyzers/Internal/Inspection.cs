@@ -4,11 +4,13 @@ using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 
@@ -145,6 +147,69 @@ internal static class Inspection
         exists = false;
         return false;
     }
+
+    public static ImmutableArray<string> ParseQueryColumns(AttributeData attrib, Action<Diagnostic>? reportDiagnostic, Location? location)
+    {
+        ImmutableArray<string> result = default;
+        if (attrib is not null && attrib.ConstructorArguments.Length == 1
+            && attrib.ConstructorArguments[0].Kind == TypedConstantKind.Array)
+        {
+            var columnNames = attrib.ConstructorArguments[0].Values.AsSpan();
+            var arr = ArrayPool<string>.Shared.Rent(columnNames.Length);
+            bool fail = false;
+            for (int i = 0; i < columnNames.Length; i++)
+            {
+                if (columnNames[i].Kind != TypedConstantKind.Primitive)
+                {
+                    fail = true;
+                }
+                else
+                {
+                    switch (columnNames[i].Value)
+                    {
+                        case null:
+                            arr[i] = "";
+                            break;
+                        case string s when s.IndexOf('\x03') < 0:
+                            arr[i] = string.IsNullOrWhiteSpace(s) ? "" : StringHashing.Normalize(s);
+                            break;
+                        default:
+                            fail = true;
+                            break;
+                    }
+                }
+                if (fail) break;
+            }
+            if (fail)
+            {
+                reportDiagnostic?.Invoke(Diagnostic.Create(DapperAnalyzer.Diagnostics.UnableToBindQueryColumns, location));
+            }
+            else
+            {
+                result = ImmutableArray.Create<string>(arr, 0, columnNames.Length);
+            }
+            ArrayPool<string?>.Shared.Return(arr);
+        }
+        return result;
+    }
+
+    public static bool IsSqlClient(ITypeSymbol? typeSymbol) => typeSymbol is
+    {
+        Name: "SqlCommand",
+        ContainingNamespace:
+        {
+            Name: "SqlClient",
+            ContainingNamespace:
+            {
+                Name: "Data",
+                ContainingNamespace:
+                {
+                    Name: "Microsoft" or "System", // either Microsoft.Data.SqlClient or System.Data.SqlClient
+                    ContainingNamespace.IsGlobalNamespace: true
+                }
+            }
+        }
+    };
 
     public static bool IsDapperAttribute(AttributeData attrib)
         => attrib.AttributeClass is
@@ -421,6 +486,13 @@ internal static class Inspection
         Cancellation = 1 << 2,
     }
 
+    [Flags]
+    internal enum DapperSpecialType
+    {
+        None = 0,
+        DbString = 1 << 0,
+    }
+
     internal static bool IsCancellationToken(ITypeSymbol? type)
            => type is INamedTypeSymbol
            {
@@ -468,10 +540,15 @@ internal static class Inspection
                 return CodeName;
             }
         }
-        public string CodeName => Member.Name;
-        public ISymbol Member { get; }
-        public ITypeSymbol CodeType => Member switch
+        public string CodeName => Member?.Name ?? "";
+        public ISymbol? Member { get; }
+
+        [MemberNotNullWhen(true, nameof(Member), nameof(CodeType))]
+        public bool IsMapped => Member is not null;
+
+        public ITypeSymbol? CodeType => Member switch
         {
+            null => null,
             IPropertySymbol prop => prop.Type,
             _ => ((IFieldSymbol)Member).Type,
         };
@@ -481,10 +558,30 @@ internal static class Inspection
 
         public ElementMemberKind Kind { get; }
 
+        public SymbolKind SymbolKind => Member?.Kind ?? SymbolKind.ErrorType;
+
         public bool IsRowCount => (Kind & ElementMemberKind.RowCount) != 0;
         public bool IsRowCountHint => (Kind & ElementMemberKind.RowCountHint) != 0;
         public bool IsCancellation => (Kind & ElementMemberKind.Cancellation) != 0;
         public bool HasDbValueAttribute => _dbValue is not null;
+
+        public DapperSpecialType DapperSpecialType 
+        { 
+            get 
+            {
+                if (CodeType is {
+                    Name: "DbString",
+                    TypeKind: TypeKind.Class,
+                    ContainingNamespace:
+                    {
+                        Name: "Dapper",
+                        ContainingNamespace.IsGlobalNamespace: true
+                    }
+                }) return DapperSpecialType.DbString;
+                
+                return DapperSpecialType.None;
+            } 
+        }
 
         public T? TryGetValue<T>(string memberName) where T : struct
             => TryGetAttributeValue(_dbValue, memberName, out T value) ? value : null;
@@ -570,11 +667,23 @@ internal static class Inspection
 
         public Location? GetLocation()
         {
-            foreach (var node in Member.DeclaringSyntaxReferences)
+            if (Member is not null)
             {
-                if (node.GetSyntax().GetLocation() is { } loc)
+                // `ISymbol.Locations` gives the best location of member
+                // (i.e. for property it will be NAME of an element without modifiers \ getters and setters),
+                // but it also returns implicitly defined members -> so we need to double check if that can be used
+                if (Member.Locations.Length > 0)
                 {
-                    return loc;
+                    var sourceLocation = Member.Locations.FirstOrDefault(loc => loc.IsInSource);
+                    if (sourceLocation is not null) return sourceLocation;
+                }
+
+                foreach (var node in Member.DeclaringSyntaxReferences)
+                {
+                    if (node.GetSyntax().GetLocation() is { } loc)
+                    {
+                        return loc;
+                    }
                 }
             }
             return null;
@@ -594,7 +703,7 @@ internal static class Inspection
         }
     }
 
-    internal struct ColumnAttributeData
+    internal readonly struct ColumnAttributeData
     {
         public UseColumnAttributeState UseColumnAttribute { get; }
         public ColumnAttributeState ColumnAttribute { get; }
@@ -1022,6 +1131,21 @@ internal static class Inspection
             ? type : type.WithNullableAnnotation(NullableAnnotation.None);
     }
 
+    /// <summary>
+    /// There are special types we are allowing user to query,
+    /// which are not handled in the general checks
+    /// </summary>
+    public static bool IsSpecialCaseAllowedResultType(ITypeSymbol? type)
+    {
+        // byte[] or sbyte[] are basically blobs
+        if (type is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte or SpecialType.System_SByte })
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     public static DbType? IdentifyDbType(ITypeSymbol? type, out string? readerMethod)
     {
         if (type is null)
@@ -1085,6 +1209,11 @@ internal static class Inspection
         {
             readerMethod = null;
             return DbType.DateTimeOffset;
+        }
+        if (type.Name == "DbString" && type.ContainingNamespace is { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true })
+        {
+            readerMethod = null;
+            return DbType.String;
         }
         readerMethod = null;
         return null;
@@ -1166,7 +1295,7 @@ internal static class Inspection
 
     public static bool TryGetConstantValue<T>(IOperation op, out T? value)
             => TryGetConstantValueWithSyntax(op, out value, out _, out _);
-
+    
     public static ITypeSymbol? GetResultType(this IInvocationOperation invocation, OperationFlags flags)
     {
         if (flags.HasAny(OperationFlags.TypedResult))
@@ -1376,6 +1505,26 @@ internal static class Inspection
                 }
             }
         }
+        else if (op is IObjectCreationOperation objectCreationOp)
+        {
+            var ctorTypeNamespace = objectCreationOp.Type?.ContainingNamespace;
+            var ctorTypeName = objectCreationOp.Type?.Name;
+
+            if (ctorTypeNamespace is not null && ctorTypeName is not null)
+            {
+                foreach (var candidate in KnownConnectionTypes)
+                {
+                    var current = ctorTypeNamespace;
+                    if (ctorTypeName == candidate.Command
+                        && AssertAndAscend(ref current, candidate.Namespace0)
+                        && AssertAndAscend(ref current, candidate.Namespace1)
+                        && AssertAndAscend(ref current, candidate.Namespace2))
+                    {
+                        return candidate.Syntax;
+                    }
+                }
+            }
+        }
 
         return null;
 
@@ -1447,6 +1596,6 @@ enum OperationFlags
     KnownParameters = 1 << 21,
     QueryMultiple = 1 << 22,
     GetRowParser = 1 << 23,
-
+    StrictTypes = 1 << 24,
     NotAotSupported = 1 << 31,
 }

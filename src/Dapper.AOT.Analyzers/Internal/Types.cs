@@ -3,21 +3,23 @@
 internal static class Types
 {
     public const string
+        BatchSizeAttribute = nameof(BatchSizeAttribute),
         BindTupleByNameAttribute = nameof(BindTupleByNameAttribute),
+        CacheCommandAttribute = nameof(CacheCommandAttribute),
+        ColumnAttribute = nameof(ColumnAttribute),
+        CommandPropertyAttribute = nameof(CommandPropertyAttribute),
         DapperAotAttribute = nameof(DapperAotAttribute),
         DbValueAttribute = nameof(DbValueAttribute),
-        ColumnAttribute = nameof(ColumnAttribute),
-        UseColumnAttributeAttribute = nameof(UseColumnAttributeAttribute),
-        RowCountAttribute = nameof(RowCountAttribute),
-        CacheCommandAttribute = nameof(CacheCommandAttribute),
+        DynamicParameters = nameof(DynamicParameters),
+        ExplicitConstructorAttribute = nameof(ExplicitConstructorAttribute),
+        IDynamicParameters = nameof(IDynamicParameters),
         IncludeLocationAttribute = nameof(IncludeLocationAttribute),
         SqlSyntaxAttribute = nameof(SqlSyntaxAttribute),
+        StrictTypesAttribute = nameof(StrictTypesAttribute),
+        QueryColumnsAttribute = nameof(QueryColumnsAttribute),
+        RowCountAttribute = nameof(RowCountAttribute),
         RowCountHintAttribute = nameof(RowCountHintAttribute),
-        CommandPropertyAttribute = nameof(CommandPropertyAttribute),
-        DynamicParameters = nameof(DynamicParameters),
-        IDynamicParameters = nameof(IDynamicParameters),
-        SqlMapper = nameof(SqlMapper),
         SqlAttribute = nameof(SqlAttribute),
-        ExplicitConstructorAttribute = nameof(ExplicitConstructorAttribute),
-        BatchSizeAttribute = nameof(BatchSizeAttribute);
+        SqlMapper = nameof(SqlMapper),
+        UseColumnAttributeAttribute = nameof(UseColumnAttributeAttribute);
 }

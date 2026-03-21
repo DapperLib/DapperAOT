@@ -21,7 +21,40 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             }
         }
         """, DefaultConfig, [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-    .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111.")]);
+    .WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'.")]);
+
+    [Fact]
+    public Task CSVerifyQuestionMarkInQuery_LikePseudoPositional() => CSVerifyAsync("""
+        using Dapper;
+        using System.Data.Common;
+    
+        [DapperAot(true)]
+        class SomeCode
+        {
+            public void Foo(DbConnection conn)
+            {
+                _ = conn.Query<int>("select {|#0:'this ?looks? like pseudo-positional'|}");                                                                     // line 9
+                _ = conn.Query<int>("select 'this ? does not look ? like pseudo-positional because of spaces'");                                                // line 10
+                _ = conn.Query<int>("select * from Orders where Id = ?id?", new Poco { Id = "1" });                                                             // line 11
+                _ = conn.Query<int>("select * from Orders where Id = ?id? and Name = ?name?", new Poco { Id = "1", Name = "me" });                              // line 12
+                _ = conn.Query<int>("select 'this ?' + 'does not look like ? pseudo-positional' + 'because only 1 question mark is in every string part ?'");   // line 13
+                _ = conn.Query<int>(@"                                                                                                                          // line 14
+                    SELECT *                                                                                                                                    // line 15
+                    FROM Orders                                                                                                                                 // line 16
+                    WHERE Id = ?id?                                                                                                                             // line 17
+                      AND Name = ?name?",                                                                                                                       // line 18
+                    new Poco { Id = "1", Name = "me" });                                                                                                        // line 19
+            }
+        }
+
+        class Poco
+        {
+            public string Id { get; set; }
+            public string Name { get; set; }
+        }
+    """, DefaultConfig, [
+        Diagnostic(DapperAnalyzer.Diagnostics.PseudoPositionalParameter).WithLocation(0)
+    ]);
 
     [Fact]
     public Task CSViaProperty() => CSVerifyAsync("""
@@ -46,9 +79,9 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             public string Blap {get;set;}
         }
         """, DefaultConfig, [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-    .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."),
+    .WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-    .WithLocation(1).WithArguments(46010, "Incorrect syntax near 444.")]);
+    .WithLocation(1).WithArguments(46010, "Incorrect syntax near '444'.")]);
 
     [Fact]
     public Task CSViaParam() => CSVerifyAsync("""
@@ -71,10 +104,10 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         """, DefaultConfig,
         [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(0)
-            .WithArguments(46010, "Incorrect syntax near 111."),
+            .WithArguments(46010, "Incorrect syntax near '111'."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(1)
-            .WithArguments(46010, "Incorrect syntax near 333.")]);
+            .WithArguments(46010, "Incorrect syntax near '333'.")]);
 
     [Fact]
     public Task VBViaDapper() => VBVerifyAsync("""
@@ -89,7 +122,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             End Sub
         End Class
         """, DefaultConfig, [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-    .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111.")]);
+    .WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'.")]);
 
     [Fact]
     public Task VBViaProperty() => VBVerifyAsync("""
@@ -112,9 +145,9 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             Public Property Blap As String
         End Class
         """, DefaultConfig, [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-.WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."),
+.WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'."),
     Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
-.WithLocation(1).WithArguments(46010, "Incorrect syntax near 444.")]);
+.WithLocation(1).WithArguments(46010, "Incorrect syntax near '444'.")]);
 
     [Fact]
     public Task VBViaParam() => VBVerifyAsync("""
@@ -138,10 +171,10 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         """, DefaultConfig,
         [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(0)
-            .WithArguments(46010, "Incorrect syntax near 111."),
+            .WithArguments(46010, "Incorrect syntax near '111'."),
         Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
             .WithLocation(1)
-            .WithArguments(46010, "Incorrect syntax near 333.")]);
+            .WithArguments(46010, "Incorrect syntax near '333'.")]);
 
     [Fact]
     public Task CSharpSmokeTestVanilla() => CSVerifyAsync(""""
@@ -151,32 +184,32 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         {
             static void Main()
             {
-        using var conn = new SqlConnection("my connection string here");
-        string name = "abc";
-        conn.{|#0:Execute|}("""
-            select Id, Name, Age
-            from Users
-            where Id = @id
-            and Name = @name
-            and Age = @age
-            and Something = {|#1:null|}
-            """, new
-        {
-            name,
-            id = 42,
-            age = 24,
-        });
+                using var conn = new SqlConnection("my connection string here");
+                string name = "abc";
+                conn.{|#0:Execute|}("""
+                    select Id, Name, Age
+                    from Users
+                    where Id = @id
+                    and Name = @name
+                    and Age = @age
+                    and Something = {|#1:null|}
+                    """, new
+                {
+                    name,
+                    id = 42,
+                    age = 24,
+                });
 
-        using var cmd = new SqlCommand("should ' verify this too", conn);
-        cmd.CommandText = """
-            select Id, Name, Age
-            from Users
-            where Id = @id
-            and Name = @name
-            and Age = @age
-            and Something = {|#2:null|}
-            """;
-        cmd.ExecuteNonQuery();
+                using var cmd = new SqlCommand("should {|#3:|}' verify this too", conn);
+                cmd.CommandText = """
+                    select Id, Name, Age
+                    from Users
+                    where Id = @id
+                    and Name = @name
+                    and Age = @age
+                    and Something = {|#2:null|}
+                    """;
+                cmd.ExecuteNonQuery();
             }
         }
 """", [], [
@@ -184,7 +217,48 @@ public class SqlDetection : Verifier<DapperAnalyzer>
         Diagnostic(DapperAnalyzer.Diagnostics.ExecuteCommandWithQuery).WithLocation(0),
         Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(1),
         Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2),
+        Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(3).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.")
     ], SqlSyntax.General, refDapperAot: false);
+
+    [Theory]
+    [InlineData("Microsoft.Data.SqlClient")]
+    [InlineData("System.Data.SqlClient")]
+    public Task SqlClientCommandReportsParseError(string @namespace) => CSVerifyAsync($$""""
+        using {{@namespace}};
+        using Dapper;
+
+        static class Program
+        {
+            static void Main()
+            {
+                using var conn = new {{@namespace}}.SqlConnection("my connection string here");
+                using var cmd = new {{@namespace}}.SqlCommand("should {|#0:|}' verify this too", conn);
+                cmd.ExecuteNonQuery();
+            }
+        }
+    """", [], [ Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(0).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.") ], SqlSyntax.General, refDapperAot: false);
+
+    [Theory]
+    [InlineData("Microsoft.Data.SqlClient")]
+    [InlineData("System.Data.SqlClient")]
+    public Task SqlClientCommandInlineCreationReportsParseError(string @namespace) => CSVerifyAsync($$""""
+        using {{@namespace}};
+        using Dapper;
+
+        static class Program
+        {
+            static void Main()
+            {
+                using var conn = new {{@namespace}}.SqlConnection("my connection string here");
+                RunCommand(new {{@namespace}}.SqlCommand("should {|#0:|}' verify this too", conn));
+            }
+
+            static void RunCommand({{@namespace}}.SqlCommand cmd)
+            {
+                cmd.ExecuteNonQuery();
+            }
+        }
+    """", [], [Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(0).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.")], SqlSyntax.General, refDapperAot: false);
 
     [Fact]
     public Task VBSmokeTestVanilla() => VBVerifyAsync("""
@@ -202,7 +276,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             and Age = @age
             and Something = {|#1:null|}", New With {name, .id = 42, .age = 24 })
 
-                    Using cmd As New SqlCommand("should ' verify this too", conn)
+                    Using cmd As New SqlCommand("should {|#3:|}' verify this too", conn)
                         cmd.CommandText = "
             select Id, Name, Age
             from Users
@@ -218,6 +292,7 @@ public class SqlDetection : Verifier<DapperAnalyzer>
 """, [], [
         Diagnostic(DapperAnalyzer.Diagnostics.ExecuteCommandWithQuery).WithLocation(0),
         Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(1),
-        Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2)
+        Diagnostic(DapperAnalyzer.Diagnostics.NullLiteralComparison).WithLocation(2),
+        Diagnostic(DapperAnalyzer.Diagnostics.ParseError).WithLocation(3).WithArguments(46030, "Expected but did not find a closing quotation mark after the character string ' verify this too.")
     ], SqlSyntax.General, refDapperAot: false);
 }

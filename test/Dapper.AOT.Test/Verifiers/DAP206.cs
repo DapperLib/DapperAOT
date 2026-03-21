@@ -13,5 +13,5 @@ public class DAP206 : Verifier<DapperAnalyzer>
     [Fact]
     public Task ParseError() => SqlVerifyAsync("{|#0:|}111 invalid",
         Diagnostic(Diagnostics.ParseError)
-            .WithLocation(0).WithArguments(46010, "Incorrect syntax near 111."));
+            .WithLocation(0).WithArguments(46010, "Incorrect syntax near '111'."));
 }
