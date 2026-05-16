@@ -17,7 +17,9 @@ try
     Console.WriteLine("Got dynamic object; trying to access...");
     try
     {
+#pragma warning disable IL2026, IL3050
         Console.WriteLine($"Success: {(int)dobj.ProductID}: {(string)dobj.Name} ({(string)dobj.ProductNumber})");
+#pragma warning restore IL3050, IL2026
     }
     catch (Exception ex)
     {
