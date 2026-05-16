@@ -18,9 +18,7 @@ public class BatchInsertBenchmarks : IAsyncDisposable
     private readonly SqlConnection sqlClient = new(Program.ConnectionString);
     private readonly NpgsqlConnection npgsql = new();
 
-    private readonly PostgreSqlContainer _postgresContainer = new PostgreSqlBuilder()
-        .WithImage("postgres:15-alpine")
-        .Build();
+    private readonly PostgreSqlContainer _postgresContainer = new PostgreSqlBuilder("postgres:15-alpine").Build();
 
     private Customer[] customers = [];
 
@@ -335,9 +333,9 @@ public class BatchInsertBenchmarks : IAsyncDisposable
         private ref DbCommand? Spare => ref (_canPrepare ? ref _spareP : ref _spareU);
 
         public override DbCommand GetCommand(DbConnection connection, string sql, CommandType commandType, Customer args)
-            => TryReuse(ref Spare, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);
+            => TryReuseThreadStatic(ref Spare, sql, commandType, args) ?? base.GetCommand(connection, sql, commandType, args);
 
-        public override bool TryRecycle(DbCommand command) => TryRecycle(ref Spare, command);
+        public override bool TryRecycle(DbCommand command) => TryRecycleThreadStatic(ref Spare, command);
 
         public override void AddParameters(in UnifiedCommand command, Customer obj)
         {
