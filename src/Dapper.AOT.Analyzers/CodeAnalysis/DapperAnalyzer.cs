@@ -994,8 +994,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         {
             parseFlags = SqlParseOutputFlags.MaybeQuery;
 
-            // if command-type or command is not known statically: defer decision
-            if (!flags.HasAny(OperationFlags.Text) || string.IsNullOrWhiteSpace(sql))
+            // if command-type or command is not known statically, or DynamicParameters: defer decision
+            if (!flags.HasAny(OperationFlags.Text)
+                || string.IsNullOrWhiteSpace(sql)
+                || IsDynamicParameters(map?.DeclaredType, out _))
             {
                 mode = ParameterMode.Defer;
             }

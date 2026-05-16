@@ -19,7 +19,7 @@ public class BatchTests : IDisposable
 
     private Command<string> Batch => connection.Command("insert " + SqlClientFixture.AotIntegrationBatchTests + "(Name) values (@name)", handler: CustomHandler.Instance);
 
-    [SkippableTheory]
+    [Theory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
@@ -31,7 +31,7 @@ public class BatchTests : IDisposable
         Assert.Equal(count < 0 ? 0 : count, Batch.Execute((IEnumerable<string>)data));
     }
 
-    [SkippableTheory]
+    [Theory]
     [InlineData(-1, 0, 0, true)]
     [InlineData(-1, -1, 0, false)]
     [InlineData(-1, 0, -1, false)]
@@ -82,7 +82,7 @@ public class BatchTests : IDisposable
         }
     }
 
-    [SkippableTheory]
+    [Theory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
@@ -93,7 +93,7 @@ public class BatchTests : IDisposable
         Assert.Equal(count < 0 ? 0 : count, Batch.Execute(data));
     }
 
-    [SkippableTheory]
+    [Theory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
@@ -105,7 +105,7 @@ public class BatchTests : IDisposable
         Assert.Equal(count < 0 ? 0 : count, Batch.Execute((IEnumerable<string>)data));
     }
 
-    [SkippableTheory]
+    [Theory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
@@ -116,7 +116,7 @@ public class BatchTests : IDisposable
         Assert.Equal(count < 0 ? 0 : count, Batch.Execute(data));
     }
 
-    [SkippableTheory]
+    [Theory]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]

@@ -65,7 +65,7 @@ public class BulkInsertIntegrationTests : IDisposable
         table.EnableStreaming = true;
         table.DestinationTableName = "#target";
         await table.WriteToServerAsync(TypeAccessor.CreateDataReader(GenerateRows(1000), [nameof(Foo.Id), nameof(Foo.Name)],
-            accessor: DapperTypeAccessorGeneratedInterceptors.FooAccessor));
+            accessor: DapperTypeAccessorGeneratedInterceptors.FooAccessor), TestContext.Current.CancellationToken);
         Assert.Equal(1000, Count());
     }
 
@@ -77,7 +77,7 @@ public class BulkInsertIntegrationTests : IDisposable
         table.EnableStreaming = true;
         table.DestinationTableName = "#target";
         table.WriteToServer(TypeAccessor.CreateDataReader(GenerateRowsAsync(1000), [nameof(Foo.Id), nameof(Foo.Name)],
-            accessor: DapperTypeAccessorGeneratedInterceptors.FooAccessor));
+            accessor: DapperTypeAccessorGeneratedInterceptors.FooAccessor, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(1000, Count());
     }
 
@@ -88,8 +88,9 @@ public class BulkInsertIntegrationTests : IDisposable
         using var table = new SqlBulkCopy(_connection);
         table.EnableStreaming = true;
         table.DestinationTableName = "#target";
+        var ct = TestContext.Current.CancellationToken;
         await table.WriteToServerAsync(TypeAccessor.CreateDataReader(GenerateRowsAsync(1000), [nameof(Foo.Id), nameof(Foo.Name)],
-            accessor: DapperTypeAccessorGeneratedInterceptors.FooAccessor));
+            accessor: DapperTypeAccessorGeneratedInterceptors.FooAccessor, cancellationToken: ct), ct);
         Assert.Equal(1000, Count());
     }
 

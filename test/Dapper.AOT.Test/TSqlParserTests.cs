@@ -7,7 +7,6 @@ using System.Collections.Immutable;
 using System.Data;
 using System.Linq;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Dapper.AOT.Test;
 

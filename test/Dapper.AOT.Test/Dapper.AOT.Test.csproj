@@ -1,9 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFrameworks>net8.0;net48;net9.0</TargetFrameworks>
+        <TargetFrameworks>net8.0;net48;net10.0</TargetFrameworks>
         <NoWarn>$(NoWarn);IDE0042;CS8002;CA1816</NoWarn>
         <RootNamespace>Dapper.AOT.Test</RootNamespace>
         <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
+        <OutputType>exe</OutputType>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="Accessors/Data/**/*.*.cs" />
@@ -32,13 +33,14 @@
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
         <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net8.0'" />
-        <PackageReference Include="Microsoft.Build" VersionOverride="17.11.4" Condition="'$(TargetFramework)'=='net8.0'" />
+        <PackageReference Include="Microsoft.Build" VersionOverride="[17.11.48]" Condition="'$(TargetFramework)'=='net8.0'" />
         <PackageReference Include="Microsoft.Build.Utilities.Core" />
         <PackageReference Include="Oracle.ManagedDataAccess" Condition="'$(TargetFramework)'=='net48'" />
         <PackageReference Include="Oracle.ManagedDataAccess.Core" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="System.Data.SqlClient" />
+        <PackageReference Include="System.Memory" />
         <PackageReference Include="Microsoft.Data.SqlClient" />
-        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.v3" />
         <PackageReference Include="xunit.runner.visualstudio">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
@@ -46,10 +48,10 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
         <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.XUnit" />
-        <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Analyzer.Testing.XUnit" />
-        <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing.XUnit" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" />
+        <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Analyzer.Testing" />
+        <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.CodeFix.Testing" />
         <PackageReference Include="Testcontainers.PostgreSql" />
         <PackageReference Include="Testcontainers.MsSql" />
     </ItemGroup>
@@ -58,7 +60,7 @@
         <PackageReference Include="Npgsql" />
     </ItemGroup>
     <ItemGroup Condition="'$(TargetFramework)'=='net48'">
-        <PackageReference Include="Npgsql" VersionOverride="8.0.6" />
+        <PackageReference Include="Npgsql" VersionOverride="8.0.9" />
         <PackageReference Include="System.Data.Common" />
         <PackageReference Include="System.ComponentModel.Annotations" />
     </ItemGroup>
