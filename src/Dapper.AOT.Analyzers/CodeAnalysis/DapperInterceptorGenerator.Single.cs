@@ -19,7 +19,8 @@ public sealed partial class DapperInterceptorGenerator
         in CommandFactoryState factories,
         in RowReaderState readers,
         string? fixedSql,
-        AdditionalCommandState? additionalCommandState)
+        AdditionalCommandState? additionalCommandState,
+        bool viaCommandDefinition)
     {
         sb.Append("return ");
         if (flags.HasAll(OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
@@ -27,18 +28,29 @@ public sealed partial class DapperInterceptorGenerator
             sb.Append("global::Dapper.DapperAotExtensions.AsEnumerableAsync(").Indent(false).NewLine();
         }
         // (DbConnection connection, DbTransaction? transaction, string sql, TArgs args, CommandType commandType, int timeout, CommandFactory<TArgs>? commandFactory)
-        sb.Append("global::Dapper.DapperAotExtensions.Command(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", ");
+        sb.Append("global::Dapper.DapperAotExtensions.Command(cnn, ");
+
+        if (viaCommandDefinition) sb.Append("command.Transaction, ");
+        else sb.Append(Forward(methodParameters, "transaction")).Append(", ");
+
         if (fixedSql is not null)
         {
             sb.AppendVerbatimLiteral(fixedSql).Append(", ");
         }
         else
         {
-            sb.Append("sql, ");
+            if (viaCommandDefinition) sb.Append("command.CommandText, ");
+            else sb.Append("sql, ");
         }
+
         if (commandTypeMode == 0)
-        {   // not hard-coded
-            if (HasParam(methodParameters, "command"))
+        {
+            if (viaCommandDefinition)
+            {
+                sb.Append("command.CommandType ?? default");
+            }
+            // not hard-coded
+            else if (HasParam(methodParameters, "command"))
             {
                 sb.Append("command.GetValueOrDefault()");
             }
@@ -49,9 +61,14 @@ public sealed partial class DapperInterceptorGenerator
         }
         else
         {
-            sb.Append("global::System.Data.CommandType.").Append(commandTypeMode.ToString());
+            if (viaCommandDefinition) sb.Append("command.CommandType ?? default");
+            else sb.Append("global::System.Data.CommandType.").Append(commandTypeMode.ToString());
         }
-        sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "").Append(", ");
+        sb.Append(", ");
+
+        if (viaCommandDefinition) sb.Append("command.CommandTimeout ?? default, ");
+        else sb.Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "").Append(", ");
+
         if (flags.HasAny(OperationFlags.HasParameters))
         {
             var index = factories.GetIndex(parameterType!, map, cache, additionalCommandState, out var subIndex);
@@ -79,7 +96,7 @@ public sealed partial class DapperInterceptorGenerator
                 OperationFlags.Unbuffered => "Unbuffered",
                 _ => ""
             }).Append(isAsync ? "Async" : "").Append("(");
-            WriteTypedArg(sb, parameterType).Append(", ");
+            WriteTypedArg(sb, parameterType, viaCommandDefinition).Append(", ");
             if (!flags.HasAny(OperationFlags.SingleRow))
             {
                 switch (flags & (OperationFlags.Buffered | OperationFlags.Unbuffered))
@@ -107,7 +124,7 @@ public sealed partial class DapperInterceptorGenerator
                 sb.Append("<").Append(resultType).Append(">");
             }
             sb.Append("(");
-            WriteTypedArg(sb, parameterType);
+            WriteTypedArg(sb, parameterType, viaCommandDefinition);
         }
         else
         {
@@ -124,9 +141,11 @@ public sealed partial class DapperInterceptorGenerator
                 sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param!).").Append(additionalCommandState.RowCountHintMemberName);
             }
         }
-        if (isAsync && HasParam(methodParameters, "cancellationToken"))
+        if (isAsync && (HasParam(methodParameters, "cancellationToken") || viaCommandDefinition))
         {
-            sb.Append(", cancellationToken: ").Append(Forward(methodParameters, "cancellationToken"));
+            sb.Append(", cancellationToken: ");
+            if (viaCommandDefinition) sb.Append("command.CancellationToken");
+            else sb.Append(Forward(methodParameters, "cancellationToken"));
         }
         if (flags.HasAll(OperationFlags.Async | OperationFlags.Query | OperationFlags.Buffered))
         {
@@ -153,10 +172,17 @@ public sealed partial class DapperInterceptorGenerator
         }
         sb.Append(";").NewLine();
 
-        static CodeWriter WriteTypedArg(CodeWriter sb, ITypeSymbol? parameterType)
+        static CodeWriter WriteTypedArg(CodeWriter sb, ITypeSymbol? parameterType, bool viaCommandDefinition)
         {
+            if (viaCommandDefinition)
+            {
+                sb.Append("command.Parameters");
+                return sb;
+            }
+
             if (parameterType is null || parameterType.IsAnonymousType)
             {
+                
                 sb.Append("param");
             }
             else

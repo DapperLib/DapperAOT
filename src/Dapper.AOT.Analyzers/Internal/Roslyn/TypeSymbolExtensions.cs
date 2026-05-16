@@ -145,6 +145,19 @@ internal static class TypeSymbolExtensions
     /// </returns>
     public static bool IsImmutableArray(this ITypeSymbol? typeSymbol) => IsStandardCollection(typeSymbol, "ImmutableArray", "Immutable", TypeKind.Struct);
 
+    public static bool IsDapperType(this ITypeSymbol? typeSymbol, string expectedName)
+    {
+        if (typeSymbol is null) return false;
+        return typeSymbol.Name == expectedName && typeSymbol.ContainingNamespace is
+        {
+            Name: "Dapper",
+            ContainingNamespace:
+            {
+                IsGlobalNamespace: true
+            }
+        };
+    }
+
     private static bool IsStandardCollection(ITypeSymbol? type, string name, string nsName = "Generic", TypeKind kind = TypeKind.Class)
         => type is INamedTypeSymbol named
             && named.Name == name

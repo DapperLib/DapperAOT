@@ -104,13 +104,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 return null;
             }
 
-            var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var argExpression, reportDiagnostic: null, out var resultType, exitFirstFailure: true);
+            var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var argExpression, reportDiagnostic: null, out var resultType, exitFirstFailure: true, out var viaCommandDefinition);
             if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
                 return null;
             }
-
-
 
             // additional result-type checks
 
@@ -133,7 +131,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             var additionalState = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), map, null);
 
             Debug.Assert(!flags.HasAny(OperationFlags.DoNotGenerate), "should have already exited");
-            return new SuccessSourceState(location, op.TargetMethod, flags, sql, resultType, argExpression?.Type, parameterMap, additionalState);
+            return new SuccessSourceState(location, op.TargetMethod, flags, sql, resultType, argExpression?.Type, parameterMap, additionalState, viaCommandDefinition);
         }
         catch (Exception ex)
         {
@@ -284,7 +282,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         foreach (var grp in ctx.Nodes.OfType<SuccessSourceState>().Where(x => !x.Flags.HasAny(OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
             // first, try to resolve the helper method that we're going to use for this
-            var (flags, method, parameterType, parameterMap, _, additionalCommandState) = grp.Key;
+            var (flags, method, parameterType, parameterMap, _, additionalCommandState, viaCommandDefinition) = grp.Key;
             const bool useUnsafe = false;
             int usageCount = 0;
 
@@ -343,39 +341,52 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             var methodParameters = grp.Key.Method.Parameters;
             string? fixedSql = null;
 
-            if (HasParam(methodParameters, "sql"))
+            if (HasParam(methodParameters, "sql") || viaCommandDefinition)
             {
                 if (flags.HasAny(OperationFlags.IncludeLocation))
                 {
                     var origin = grp.Single();
                     fixedSql = origin.Sql; // expect exactly one SQL
-                    sb.Append("global::System.Diagnostics.Debug.Assert(sql == ")
+                    sb.Append("global::System.Diagnostics.Debug.Assert(")
+                        .Append(viaCommandDefinition ? "command.CommandText" : "sql").Append(" == ")
                         .AppendVerbatimLiteral(fixedSql).Append(");").NewLine();
                     var path = origin.Location.GetMappedLineSpan();
                     fixedSql = $"-- {path.Path}#{path.StartLinePosition.Line + 1}\r\n{fixedSql}";
                 }
                 else
                 {
-                    sb.Append("global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));").NewLine();
+                    sb.Append("global::System.Diagnostics.Debug.Assert(")
+                        .Append("!string.IsNullOrWhiteSpace(").Append(viaCommandDefinition ? "command.CommandText" : "sql").Append(")")
+                      .Append(");").NewLine();
                 }
             }
-            if (HasParam(methodParameters, "commandType"))
+            if (HasParam(methodParameters, "commandType") || viaCommandDefinition)
             {
                 if (commandTypeMode != 0)
                 {
-                    sb.Append("global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.")
-                            .Append(commandTypeMode.ToString()).Append(");").NewLine();
+                    sb.Append("global::System.Diagnostics.Debug.Assert(")
+                      .Append("(").Append(viaCommandDefinition ? "command.CommandType" : "commandType")
+                      .Append(" ?? global::Dapper.DapperAotExtensions.GetCommandType(")
+                      .Append(viaCommandDefinition ? "command.CommandText" : "sql")
+                      .Append(")) == global::System.Data.CommandType.")
+                      .Append(commandTypeMode.ToString()).Append(");").NewLine();
                 }
             }
 
-            if (flags.HasAny(OperationFlags.Buffered | OperationFlags.Unbuffered) && HasParam(methodParameters, "buffered"))
+            if (flags.HasAny(OperationFlags.Buffered | OperationFlags.Unbuffered) && HasParam(methodParameters, "buffered") || viaCommandDefinition)
             {
-                sb.Append("global::System.Diagnostics.Debug.Assert(buffered is ").Append((flags & OperationFlags.Buffered) != 0).Append(");").NewLine();
+                sb
+                  .Append("global::System.Diagnostics.Debug.Assert(")
+                  .Append(viaCommandDefinition ? "command.Buffered is " : "buffered is ")
+                  .Append((flags & OperationFlags.Buffered) != 0).Append(");").NewLine();
             }
 
-            if (HasParam(methodParameters, "param"))
+            if (HasParam(methodParameters, "param") || viaCommandDefinition)
             {
-                sb.Append("global::System.Diagnostics.Debug.Assert(param is ").Append(flags.HasAny(OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine();
+                sb
+                  .Append("global::System.Diagnostics.Debug.Assert(")
+                  .Append(viaCommandDefinition ? "command.Parameters" : "param")
+                  .Append(" is ").Append(flags.HasAny(OperationFlags.HasParameters) ? "not " : "").Append("null);").NewLine();
             }
 
             if (HasParam(methodParameters, "concreteType"))
@@ -398,7 +409,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             else if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
             {
-                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql, additionalCommandState);
+                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql, additionalCommandState, viaCommandDefinition);
             }
 
             sb.Outdent().NewLine().NewLine();
@@ -1513,10 +1524,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public ITypeSymbol? ResultType { get; }
         public ITypeSymbol? ParameterType { get; }
         public AdditionalCommandState? AdditionalCommandState { get; }
+        public bool ViaCommandDefinition { get; }
 
         public SuccessSourceState(Location location, IMethodSymbol method, OperationFlags flags, string? sql,
             ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap,
-            AdditionalCommandState? additionalCommandState) : base(location)
+            AdditionalCommandState? additionalCommandState,
+            bool viaCommandDefinition) : base(location)
         {
             Flags = flags;
             Sql = sql;
@@ -1525,27 +1538,29 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             Method = method;
             ParameterMap = parameterMap;
             AdditionalCommandState = additionalCommandState;
+            ViaCommandDefinition = viaCommandDefinition;
         }
 
-        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) Group()
-            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location, AdditionalCommandState);
+        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState, bool ViaCommandDefinition) Group()
+            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location, AdditionalCommandState, ViaCommandDefinition);
     }
-    private sealed class CommonComparer : LocationComparer, IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState)>
+    private sealed class CommonComparer : LocationComparer, IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState, bool ViaCommandDefinition)>
     {
         public static readonly CommonComparer Instance = new();
         private CommonComparer() { }
 
         public bool Equals(
 
-            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) x,
-            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) y) => x.Flags == y.Flags
+            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState, bool ViaCommandDefinition) x,
+            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState, bool ViaCommandDefinition) y) => x.Flags == y.Flags
                 && x.ParameterMap == y.ParameterMap
                 && SymbolEqualityComparer.Default.Equals(x.Method, y.Method)
                 && SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType)
                 && x.UniqueLocation == y.UniqueLocation
-                && Equals(x.AdditionalCommandState, y.AdditionalCommandState);
+                && Equals(x.AdditionalCommandState, y.AdditionalCommandState)
+                && x.ViaCommandDefinition == y.ViaCommandDefinition;
 
-        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) obj)
+        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState, bool ViaCommandDefinition) obj)
         {
             var hash = (int)obj.Flags;
             hash *= -47;
@@ -1567,6 +1582,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             {
                 hash += obj.AdditionalCommandState.GetHashCode();
             }
+            hash *= -47;
+            hash += obj.ViaCommandDefinition ? 1 : 0;
             return hash;
         }
     }
