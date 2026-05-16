@@ -127,7 +127,7 @@ public class QueryTests : IDisposable
     public async Task QueryBufferedTypedAsync(int count)
     {
         AssertClosed();
-        var rows = await Read(count).QueryBufferedAsync<Foo>(null, Foo.RowFactory);
+        var rows = await Read(count).QueryBufferedAsync<Foo>(null, Foo.RowFactory, cancellationToken: TestContext.Current.CancellationToken);
         AssertClosed();
         AssertExpectedTypedRows(rows, count);
     }
@@ -141,7 +141,7 @@ public class QueryTests : IDisposable
     {
         AssertClosed();
         List<Foo> rows = new();
-        await foreach (var row in Read(count).QueryUnbufferedAsync<Foo>(null, Foo.RowFactory))
+        await foreach (var row in Read(count).QueryUnbufferedAsync<Foo>(null, Foo.RowFactory, TestContext.Current.CancellationToken))
         {
             rows.Add(row);
         }
@@ -185,7 +185,7 @@ public class QueryTests : IDisposable
     public async Task QueryBufferedDynamicAsync(int count)
     {
         AssertClosed();
-        var rows = await Read(count).QueryBufferedAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic);
+        var rows = await Read(count).QueryBufferedAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic, cancellationToken: TestContext.Current.CancellationToken);
         AssertClosed();
         AssertExpectedDynamicRows(rows, count);
     }
@@ -199,7 +199,7 @@ public class QueryTests : IDisposable
     {
         AssertClosed();
         List<dynamic> rows = new();
-        await foreach (var row in Read(count).QueryUnbufferedAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic))
+        await foreach (var row in Read(count).QueryUnbufferedAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic, TestContext.Current.CancellationToken))
         {
             rows.Add(row);
         }
@@ -226,7 +226,7 @@ public class QueryTests : IDisposable
     public async Task QueryFirstOrDefaultTypedAsync(int count)
     {
         AssertClosed();
-        var row = await Read(count).QueryFirstOrDefaultAsync<Foo>(null, Foo.RowFactory);
+        var row = await Read(count).QueryFirstOrDefaultAsync<Foo>(null, Foo.RowFactory, TestContext.Current.CancellationToken);
         AssertClosed();
         AssertExpectedTypedRow(row, count);
     }
@@ -262,11 +262,11 @@ public class QueryTests : IDisposable
         switch (count)
         {
             case 0:
-                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QueryFirstAsync<Foo>(null, Foo.RowFactory));
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QueryFirstAsync<Foo>(null, Foo.RowFactory, TestContext.Current.CancellationToken));
                 Assert.Equal("Sequence contains no elements", ex.Message);
                 break;
             default:
-                var row = await Read(count).QueryFirstAsync<Foo>(null, Foo.RowFactory);
+                var row = await Read(count).QueryFirstAsync<Foo>(null, Foo.RowFactory, TestContext.Current.CancellationToken);
                 AssertExpectedTypedRow(row, count);
                 break;
         }
@@ -307,11 +307,11 @@ public class QueryTests : IDisposable
         {
             case 0:
             case 1:
-                var row = await Read(count).QuerySingleOrDefaultAsync<Foo>(null, Foo.RowFactory);
+                var row = await Read(count).QuerySingleOrDefaultAsync<Foo>(null, Foo.RowFactory, TestContext.Current.CancellationToken);
                 AssertExpectedTypedRow(row, count);
                 break;
             default:
-                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleOrDefaultAsync<Foo>(null, Foo.RowFactory));
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleOrDefaultAsync<Foo>(null, Foo.RowFactory, TestContext.Current.CancellationToken));
                 Assert.Equal("Sequence contains more than one element", ex.Message);
                 break;
         }
@@ -353,15 +353,15 @@ public class QueryTests : IDisposable
         switch (count)
         {
             case 0:
-                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleAsync<Foo>(null, Foo.RowFactory));
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleAsync<Foo>(null, Foo.RowFactory, TestContext.Current.CancellationToken));
                 Assert.Equal("Sequence contains no elements", ex.Message);
                 break;
             case 1:
-                var row = await Read(count).QuerySingleAsync<Foo>(null, Foo.RowFactory);
+                var row = await Read(count).QuerySingleAsync<Foo>(null, Foo.RowFactory, TestContext.Current.CancellationToken);
                 AssertExpectedTypedRow(row, count);
                 break;
             default:
-                ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleAsync<Foo>(null, Foo.RowFactory));
+                ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleAsync<Foo>(null, Foo.RowFactory, TestContext.Current.CancellationToken));
                 Assert.Equal("Sequence contains more than one element", ex.Message);
                 break;
         }
@@ -387,7 +387,7 @@ public class QueryTests : IDisposable
     public async Task QueryFirstOrDefaultDynamicAsync(int count)
     {
         AssertClosed();
-        var row = await Read(count).QueryFirstOrDefaultAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic);
+        var row = await Read(count).QueryFirstOrDefaultAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic, TestContext.Current.CancellationToken);
         AssertClosed();
         AssertExpectedDynamicRow(row, count);
     }
@@ -423,11 +423,11 @@ public class QueryTests : IDisposable
         switch (count)
         {
             case 0:
-                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QueryFirstAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic));
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QueryFirstAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic, TestContext.Current.CancellationToken));
                 Assert.Equal("Sequence contains no elements", ex.Message);
                 break;
             default:
-                var row = await Read(count).QueryFirstAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic);
+                var row = await Read(count).QueryFirstAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic, TestContext.Current.CancellationToken);
                 AssertExpectedDynamicRow(row, count);
                 break;
         }
@@ -468,11 +468,11 @@ public class QueryTests : IDisposable
         {
             case 0:
             case 1:
-                var row = await Read(count).QuerySingleOrDefaultAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic);
+                var row = await Read(count).QuerySingleOrDefaultAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic, TestContext.Current.CancellationToken);
                 AssertExpectedDynamicRow(row, count);
                 break;
             default:
-                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleOrDefaultAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic));
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleOrDefaultAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic, TestContext.Current.CancellationToken));
                 Assert.Equal("Sequence contains more than one element", ex.Message);
                 break;
         }
@@ -514,15 +514,15 @@ public class QueryTests : IDisposable
         switch (count)
         {
             case 0:
-                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic));
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic, TestContext.Current.CancellationToken));
                 Assert.Equal("Sequence contains no elements", ex.Message);
                 break;
             case 1:
-                var row = await Read(count).QuerySingleAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic);
+                var row = await Read(count).QuerySingleAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic, TestContext.Current.CancellationToken);
                 AssertExpectedDynamicRow(row, count);
                 break;
             default:
-                ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic));
+                ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Read(count).QuerySingleAsync<dynamic>(null, RowFactory.Inbuilt.Dynamic, TestContext.Current.CancellationToken));
                 Assert.Equal("Sequence contains more than one element", ex.Message);
                 break;
         }

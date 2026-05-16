@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using System;
+using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Threading.Tasks;
 using Testcontainers.MsSql;
@@ -31,13 +32,13 @@ public sealed class MsSqlFixture : IAsyncLifetime
         return conn;
     }
 
-    async Task IAsyncLifetime.InitializeAsync()
+    async ValueTask IAsyncLifetime.InitializeAsync()
     {
         await _msSqlContainer.StartAsync();
         ConnectionString = _msSqlContainer.GetConnectionString();
     }
 
-    async Task IAsyncLifetime.DisposeAsync()
+    async ValueTask IAsyncDisposable.DisposeAsync()
     {
         await using (_msSqlContainer)
         {

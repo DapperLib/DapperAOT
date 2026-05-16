@@ -17,8 +17,8 @@ namespace Dapper.AOT.Test.Helpers
 
             public static Net DetermineNetVersion()
         {
-#if NET9_0_OR_GREATER
-            return Net.Net9;
+#if NET10_0_OR_GREATER
+            return Net.Net10;
 #elif NET8_0_OR_GREATER
             return Net.Net8;
 #elif NET6_0_OR_GREATER
@@ -33,7 +33,7 @@ namespace Dapper.AOT.Test.Helpers
             Net48,
             Net6,
             Net8,
-            Net9,
+            Net10,
         }
     }
 }

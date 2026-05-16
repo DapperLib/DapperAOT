@@ -9,22 +9,18 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace Dapper.AOT.Test
 {
-    public abstract partial class GeneratorTestBase
+    public abstract partial class GeneratorTestBase(ITestOutputHelper? log)
     {
-        private readonly ITestOutputHelper? _log;
-        protected GeneratorTestBase(ITestOutputHelper? log)
-            => _log = log;
-
 #if !NET48
         [return: NotNullIfNotNull(nameof(message))]
 #endif
         protected string? Log(string? message)
         {
-            if (message is not null) _log?.WriteLine(message);
+            if (message is not null) log?.WriteLine(message);
             return message;
         }
 
@@ -50,7 +46,7 @@ namespace Dapper.AOT.Test
             {
                 if (force || !string.IsNullOrWhiteSpace(message))
                 {
-                    _log?.WriteLine(message);
+                    log?.WriteLine(message);
                     diagnosticsTo?.AppendLine(message.Replace('\\', '/')); // need to normalize paths
                 }
             }
@@ -95,12 +91,12 @@ namespace Dapper.AOT.Test
 
         int ShowDiagnostics(string caption, Compilation compilation, StringBuilder? diagnosticsTo, params string[] ignore)
         {
-            if (_log is null && diagnosticsTo is null) return 0; // nothing useful to do!
+            if (log is null && diagnosticsTo is null) return 0; // nothing useful to do!
             void Output(string message, bool force = false)
             {
                 if (force || !string.IsNullOrWhiteSpace(message))
                 {
-                    _log?.WriteLine(message);
+                    log?.WriteLine(message);
                     diagnosticsTo?.AppendLine(message.Replace('\\', '/')); // need to normalize paths
                 }
             }
