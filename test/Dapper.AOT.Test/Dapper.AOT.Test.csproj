@@ -1,22 +1,31 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFrameworks>net8.0;net48;net10.0</TargetFrameworks>
         <NoWarn>$(NoWarn);IDE0042;CS8002;CA1816</NoWarn>
         <RootNamespace>Dapper.AOT.Test</RootNamespace>
         <DefineConstants>$(DefineConstants);DAPPERAOT_INTERNAL</DefineConstants>
+        <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
+        <Deterministic>true</Deterministic>
+        <DeterministicSourcePaths>true</DeterministicSourcePaths>
         <OutputType>exe</OutputType>
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="Accessors/Data/**/*.*.cs" />
         <None Include="Accessors/Data/**/*.*" />
         <None Update="Accessors/Data/**/*.*" CopyToOutputDirectory="PreserveNewest" />
-
         <Compile Remove="Interceptors/**/*.*.cs" />
         <None Include="Interceptors/**/*.*" />
         <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
 
         <Compile Include="..\..\src\Dapper.AOT.Analyzers\AotGridReader.cs" Link="AotGridReader.cs" />
         <Compile Include="..\..\src\Dapper.AOT.Analyzers\InGeneration\DapperHelpers.cs" Link="DapperHelpers.cs" />
+
+        <None Remove="Interceptors\SqliteUsage.input.cs" />
+        <None Remove="Interceptors\SqliteUsage.snapshot.cs" />
+        <Compile Include="Interceptors\SqliteUsage.input.cs" />
+        <Compile Include="Interceptors\SqliteUsage.snapshot.cs">
+          <DependentUpon>Interceptors\SqliteUsage.input.cs</DependentUpon>
+        </Compile>
 
         <None Update="**/*.output.*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.output', '.input.cs'))</DependentUpon>
@@ -27,11 +36,11 @@
         <None Update="**/*DAP*.*.cs*">
             <DependentUpon>$([System.String]::Copy(%(Filename)).Replace('.VB.cs', '.cs'))</DependentUpon>
         </None>
-
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Dapper" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="Dapper.StrongName" Condition="'$(TargetFramework)'=='net48'" />
+        <PackageReference Include="Microsoft.Data.Sqlite" Condition="'$(TargetFramework)'!='net48'" />
         <PackageReference Include="Microsoft.Build" Condition="'$(TargetFramework)'!='net8.0'" />
         <PackageReference Include="Microsoft.Build" VersionOverride="[17.11.48]" Condition="'$(TargetFramework)'=='net8.0'" />
         <PackageReference Include="Microsoft.Build.Utilities.Core" />

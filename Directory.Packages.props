@@ -21,6 +21,7 @@
     <!-- 4.8 would be nice, but: let's try to offer down-level compiler support -->
     <PackageVersion Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="[4.4.0]" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="7.0.1" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.8" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.8" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />

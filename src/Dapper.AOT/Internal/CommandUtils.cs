@@ -303,7 +303,14 @@ internal static class CommandUtils
             }
             else
             {
-                return (T)Convert.ChangeType(value, Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T), CultureInfo.InvariantCulture);
+                var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+                if (targetType.IsEnum)
+                {
+                    return (s = value as string) is not null
+                        ? (T)Enum.Parse(targetType, s, true)
+                        : (T)Enum.ToObject(targetType, value);
+                }
+                return (T)Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
             }
         }
     }
