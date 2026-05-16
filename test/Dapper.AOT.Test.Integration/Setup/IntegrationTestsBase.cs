@@ -13,6 +13,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Data.SqlClient;
+using Xunit;
 
 namespace Dapper.AOT.Test.Integration.Setup;
 

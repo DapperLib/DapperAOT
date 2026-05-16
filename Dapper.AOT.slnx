@@ -1,0 +1,32 @@
+<Solution>
+  <Folder Name="/docs/">
+    <Project Path="docs/docs.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".github/workflows/dotnet-integration.yml" />
+    <File Path=".github/workflows/dotnet.yml" />
+    <File Path=".gitignore" />
+    <File Path="build.cmd" />
+    <File Path="Build.csproj" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="nuget.config" />
+    <File Path="README.md" />
+    <File Path="version.json" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Dapper.Advisor/Dapper.Advisor.csproj" />
+    <Project Path="src/Dapper.AOT.Analyzers/Dapper.AOT.Analyzers.csproj" />
+    <Project Path="src/Dapper.AOT/Dapper.AOT.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Dapper.AOT.Test.Integration.Executables/Dapper.AOT.Test.Integration.Executables.csproj" />
+    <Project Path="test/Dapper.AOT.Test.Integration/Dapper.AOT.Test.Integration.csproj" />
+    <Project Path="test/Dapper.AOT.Test/Dapper.AOT.Test.csproj" />
+    <Project Path="test/UsageBenchmark/UsageBenchmark.csproj" />
+    <Project Path="test/UsageLinker/UsageLinker.csproj" />
+    <Project Path="test/UsageVanilla/UsageVanilla.csproj" />
+  </Folder>
+</Solution>

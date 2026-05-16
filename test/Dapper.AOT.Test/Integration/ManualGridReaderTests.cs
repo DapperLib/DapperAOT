@@ -47,7 +47,7 @@ public class ManualGridReaderTests : IDisposable
         Assert.Equal(123, await reader.ReadSingleAsync<int>());
         Assert.Equal("abc", await reader.ReadSingleAsync<string>());
         Assert.Equal(new[] { null, "def", "ghi" }, (await reader.ReadAsync<string?>(buffered: true)).ToArray());
-        Assert.Equal([456, 789], (await reader.ReadAsync<int>(buffered: false)).ToArray());
+        Assert.Equal(new[] { 456, 789 }, (await reader.ReadAsync<int>(buffered: false)).ToArray());
         Assert.True(reader.IsConsumed);
         AssertClosed();
     }
@@ -73,12 +73,12 @@ public class ManualGridReaderTests : IDisposable
 #if NET5_0_OR_GREATER
         await
 #endif
-        using SqlMapper.GridReader reader = new AotGridReader(await connection.Command<object?>(SQL).ExecuteReaderAsync<AotWrappedDbDataReader>(null));
+        using SqlMapper.GridReader reader = new AotGridReader(await connection.Command<object?>(SQL).ExecuteReaderAsync<AotWrappedDbDataReader>(null, cancellationToken: TestContext.Current.CancellationToken));
         Assert.NotNull(reader.Command);
         Assert.Equal(123, await ((AotGridReader)reader).ReadSingleAsync(RowFactory.Inbuilt.Value<int>()));
         Assert.Equal("abc", await ((AotGridReader)reader).ReadSingleAsync(RowFactory.Inbuilt.Value<string>()));
         Assert.Equal(new[] { null, "def", "ghi" }, (await ((AotGridReader)reader).ReadAsync(buffered: true, RowFactory.Inbuilt.Value<string>())).ToArray());
-        Assert.Equal([456, 789], (await ((AotGridReader)reader).ReadAsync(buffered: false, RowFactory.Inbuilt.Value<int>())).ToArray());
+        Assert.Equal(new[] { 456, 789 }, (await ((AotGridReader)reader).ReadAsync(buffered: false, RowFactory.Inbuilt.Value<int>())).ToArray());
         Assert.True(reader.IsConsumed);
         AssertClosed();
     }
@@ -104,12 +104,12 @@ public class ManualGridReaderTests : IDisposable
 #if NET5_0_OR_GREATER
         await
 #endif
-        using SqlMapper.GridReader reader = new AotGridReader(await connection.Command<object?>(SQL).ExecuteReaderAsync<AotWrappedDbDataReader>(null));
+        using SqlMapper.GridReader reader = new AotGridReader(await connection.Command<object?>(SQL).ExecuteReaderAsync<AotWrappedDbDataReader>(null, cancellationToken: TestContext.Current.CancellationToken));
         Assert.NotNull(reader.Command);
         Assert.Equal(123, await reader.ReadSingleAsync<int>());
         Assert.Equal("abc", await reader.ReadSingleAsync<string>());
         Assert.Equal(new[] { null, "def", "ghi" }, (await reader.ReadAsync<string>(buffered: true)).ToArray());
-        Assert.Equal([456, 789], (await reader.ReadAsync<int>(buffered: false)).ToArray());
+        Assert.Equal(new[] { 456, 789 }, (await reader.ReadAsync<int>(buffered: false)).ToArray());
         Assert.True(reader.IsConsumed);
         AssertClosed();
     }

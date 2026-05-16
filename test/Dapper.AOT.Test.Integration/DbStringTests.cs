@@ -3,6 +3,7 @@ using System.Data;
 using Dapper.AOT.Test.Integration.Executables.Models;
 using Dapper.AOT.Test.Integration.Executables.UserCode;
 using Dapper.AOT.Test.Integration.Setup;
+using Xunit;
 
 namespace Dapper.AOT.Test.Integration;
 

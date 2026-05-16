@@ -12,7 +12,7 @@ public class DynamicTests : IDisposable
     void IDisposable.Dispose() => connection?.Dispose();
     public DynamicTests(SqlClientFixture database) => connection = database.CreateConnection();
 
-    [SkippableFact]
+    [Fact]
     public void CanAccessDynamicData()
     {
         var wilma = connection.Command("select * from " + SqlClientFixture.AotIntegrationDynamicTests + " where Name = 'Wilma';", handler: CommandFactory.Simple)

@@ -1,6 +1,8 @@
-﻿using Npgsql;
+﻿using System;
+using Npgsql;
 using System.Threading.Tasks;
 using Testcontainers.PostgreSql;
+using Xunit;
 
 namespace Dapper.AOT.Test.Integration.Setup;
 
@@ -30,13 +32,13 @@ public sealed class PostgresqlFixture : IAsyncLifetime
         return conn;
     }
 
-    async Task IAsyncLifetime.InitializeAsync()
+    async ValueTask IAsyncLifetime.InitializeAsync()
     {
         await _postgresContainer.StartAsync();
         ConnectionString = _postgresContainer.GetConnectionString();
     }
 
-    async Task IAsyncLifetime.DisposeAsync()
+    async ValueTask IAsyncDisposable.DisposeAsync()
     {
         await using (_postgresContainer)
         {

@@ -6,7 +6,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
-using Microsoft.CodeAnalysis.Testing.Verifiers;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.VisualBasic;
 using Microsoft.CodeAnalysis.VisualBasic.Testing;
@@ -16,11 +15,11 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-
+using Xunit;
 
 namespace Dapper.AOT.Test.Verifiers;
 // inspiration: https://www.thinktecture.com/en/net/roslyn-source-generators-analyzers-code-fixes-testing/
-public abstract class Verifier
+public abstract class Verifier(ITestOutputHelper? log)
 {
     public CancellationToken CancellationToken { get; private set; }
 
@@ -36,7 +35,7 @@ public abstract class Verifier
         DiagnosticResult[] expected, SqlSyntax sqlSyntax, SqlParseInputFlags sqlParseInputFlags = SqlParseInputFlags.None, bool refDapperAot = true)
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
-        var test = new CSharpAnalyzerTest<TAnalyzer, XUnitVerifier>();
+        var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>();
         return ExecuteAsync(test, source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot);
     }
     internal Task CSVerifyAsync<TAnalyzer, TCodeFix>(string source,
@@ -45,7 +44,7 @@ public abstract class Verifier
         where TAnalyzer : DiagnosticAnalyzer, new()
         where TCodeFix : CodeFixProvider, new()
     {
-        var test = new CSharpCodeFixTest<TAnalyzer, TCodeFix, XUnitVerifier>();
+        var test = new CSharpCodeFixTest<TAnalyzer, TCodeFix, DefaultVerifier>();
         return ExecuteAsync(test, source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot);
     }
 
@@ -54,7 +53,7 @@ public abstract class Verifier
     DiagnosticResult[] expected, SqlSyntax sqlSyntax, bool refDapperAot)
     where TAnalyzer : DiagnosticAnalyzer, new()
     {
-        var test = new VisualBasicAnalyzerTest<TAnalyzer, XUnitVerifier>();
+        var test = new VisualBasicAnalyzerTest<TAnalyzer, DefaultVerifier>();
         return ExecuteAsync(test, source, transforms, expected, sqlSyntax, SqlParseInputFlags.None, refDapperAot);
     }
     internal Task VBVerifyAsync<TAnalyzer, TCodeFix>(string source,
@@ -63,33 +62,28 @@ public abstract class Verifier
         where TAnalyzer : DiagnosticAnalyzer, new()
         where TCodeFix : CodeFixProvider, new()
     {
-        var test = new VisualBasicCodeFixTest<TAnalyzer, TCodeFix, XUnitVerifier>();
+        var test = new VisualBasicCodeFixTest<TAnalyzer, TCodeFix, DefaultVerifier>();
         return ExecuteAsync(test, source, transforms, expected, sqlSyntax, SqlParseInputFlags.None, refDapperAot);
     }
 
-    internal Task ExecuteAsync(AnalyzerTest<XUnitVerifier> test, string source,
+    internal Task ExecuteAsync(AnalyzerTest<DefaultVerifier> test, string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         DiagnosticResult[] expected, SqlSyntax sqlSyntax, SqlParseInputFlags sqlParseInputFlags, bool refDapperAot)
     {
         test.TestCode = source;
+
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (expected is not null)
         {
             test.ExpectedDiagnostics.AddRange(expected);
         }
+        log?.WriteLine($"Expecting {expected?.Length ?? 0} diagnostics. {test.DisabledDiagnostics.Count} disabled");
 #if NETFRAMEWORK
         test.ReferenceAssemblies = ReferenceAssemblies.NetFramework.Net472.Default;
-#elif NET9_0_OR_GREATER
-        test.ReferenceAssemblies = new ReferenceAssemblies("net9.0",
-            new PackageIdentity("Microsoft.NETCore.App.Ref", "9.0.0"),
-            Path.Combine("ref", "net9.0"));
+#elif NET10_0_OR_GREATER
+        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net100;
 #elif NET8_0_OR_GREATER
-        test.ReferenceAssemblies = new ReferenceAssemblies("net8.0",
-            new PackageIdentity("Microsoft.NETCore.App.Ref", "8.0.0"),
-            Path.Combine("ref", "net8.0"));
-#elif NET7_0_OR_GREATER
-        test.ReferenceAssemblies = new ReferenceAssemblies("net7.0",
-            new PackageIdentity("Microsoft.NETCore.App.Ref", "7.0.0"),
-            Path.Combine("ref", "net7.0"));
+        test.ReferenceAssemblies = ReferenceAssemblies.Net.Net80;
 #else
         test.ReferenceAssemblies = ReferenceAssemblies.Net.Net60;
 #endif
@@ -110,11 +104,15 @@ public abstract class Verifier
         test.TestState.AdditionalReferences.Add(typeof(System.Data.SqlClient.SqlConnection).Assembly);
 #pragma warning restore CS0618
         test.TestState.AdditionalReferences.Add(typeof(Microsoft.Data.SqlClient.SqlConnection).Assembly);
+#if !NET10_0_OR_GREATER // implicitly included
         test.TestState.AdditionalReferences.Add(typeof(System.ComponentModel.DataAnnotations.Schema.ColumnAttribute).Assembly);
+#endif
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (transforms is not null)
         {
             test.SolutionTransforms.AddRange(transforms);
         }
+        log?.WriteLine($"Executing test code {test.DiagnosticVerifier is null}");
         return test.RunAsync(CancellationToken);
     }
 
@@ -177,7 +175,7 @@ public abstract class Verifier
     }
 }
 
-public class Verifier<TAnalyzer> : Verifier where TAnalyzer : DiagnosticAnalyzer, new()
+public class Verifier<TAnalyzer>(ITestOutputHelper? log = null) : Verifier(log) where TAnalyzer : DiagnosticAnalyzer, new()
 {
     internal Task SqlVerifyAsync(string sql,
         params DiagnosticResult[] expected) => SqlVerifyAsync(sql, SqlParseInputFlags.None, expected);

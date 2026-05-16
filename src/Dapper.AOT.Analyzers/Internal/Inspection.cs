@@ -914,7 +914,7 @@ internal static class Inspection
             var tier = elementType;
 
             var builder = ImmutableArray.CreateBuilder<ElementMember>();
-            while (tier is not null or IErrorTypeSymbol)
+            while (tier is not (null or IErrorTypeSymbol))
             {
                 var elMembers = tier.GetMembers(); // walk hierarchy model
 

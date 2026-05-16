@@ -3,11 +3,10 @@ using System;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Dapper.AOT.Test;
 
-public class DapperApiTests
+public class DapperApiTests(ITestOutputHelper log)
 {
 #if NETFRAMEWORK
     private const bool IsNetFx = true;
@@ -15,8 +14,7 @@ public class DapperApiTests
     private const bool IsNetFx = false;
 #endif
 
-    private readonly ITestOutputHelper Log;
-    public DapperApiTests(ITestOutputHelper log) => Log = log;
+    private readonly ITestOutputHelper Log= log;
     [Fact]
     public void DiscoveredMethodsAreExpected()
     {
