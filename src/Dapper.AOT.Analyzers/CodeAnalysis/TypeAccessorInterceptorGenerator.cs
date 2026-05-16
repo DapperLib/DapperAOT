@@ -535,7 +535,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
     {
         var members = new List<MemberData>();
         int memberNumber = 0;
-        var seenNames = new HashSet<string>(StringComparer.Ordinal);
+        HashSet<string> seenNames = new(StringComparer.Ordinal);
 
         var tier = typeSymbol;
         while (tier is not null and not IErrorTypeSymbol)
