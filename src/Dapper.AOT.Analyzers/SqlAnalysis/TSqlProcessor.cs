@@ -268,6 +268,22 @@ internal class TSqlProcessor
         => OnError("TOP cannot be used when OFFSET is specified", location);
 
 
+    private static bool TryGetSingleToken(ScalarExpression expression, out string value)
+    {
+        switch (expression)
+        {
+            case ColumnReferenceExpression col when col.MultiPartIdentifier.Count is 1:
+                value = col.MultiPartIdentifier[0].Value;
+                return true;
+            case IdentifierLiteral id:
+                value = id.Value;
+                return true;
+            default:
+                value = "";
+                return false;
+        }
+    }
+
     internal readonly struct Location
     {
         public static implicit operator Location(TSqlFragment source) => new(source);
@@ -809,12 +825,11 @@ internal class TSqlProcessor
             "microsecond", "mcs",
             "nanosecond", "ns"
             ];
-
+        
         private void ValidateDateArg(ScalarExpression value)
         {
-            if (!(value is ColumnReferenceExpression col
-                && col.MultiPartIdentifier.Count == 1 && IsAnyCaseInsensitive(
-                    col.MultiPartIdentifier[0].Value, DateTokens)))
+            if (!(TryGetSingleToken(value, out var token)
+                && IsAnyCaseInsensitive(token, DateTokens)))
             {
                 parser.OnInvalidDatepartToken(value);
             }
