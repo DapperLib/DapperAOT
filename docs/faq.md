@@ -39,7 +39,7 @@ Yes! A few examples (there are more):
 
 - tuple-types: Dapper can't make use of tuple-types with names, because the names don't exist at runtime. Dapper.AOT *can see the names* (it will offer guidance on
 using this feature if it sees you using a tuple-type)
-- bulk insert: Dapper.AOT includes a facility to treat sequences of objects as a data-reader, suitable for use with `SqlBulkCopy` (this is sikilar to FastMember)
+- bulk insert: Dapper.AOT includes a facility to treat sequences of objects as a data-reader, suitable for use with `SqlBulkCopy` (this is similar to FastMember)
 - factory methods: Dapper.AOT supports static factory methods for row data in addition to constructors
 
 ## Can I see the generated code?
