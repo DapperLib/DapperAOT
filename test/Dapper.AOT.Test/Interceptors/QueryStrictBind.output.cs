@@ -115,16 +115,16 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                         case 3:
                             result.X = GetValue<int>(reader, columnOffset);
                             break;
-                        case 2:
+                        case 1:
                             result.Z = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
                             break;
-                        case 5:
+                        case 4:
                             result.Z = reader.IsDBNull(columnOffset) ? (double?)null : GetValue<double>(reader, columnOffset);
                             break;
-                        case 4:
+                        case 2:
                             result.Y = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
                             break;
-                        case 7:
+                        case 5:
                             result.Y = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
                             break;
 
@@ -161,10 +161,10 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                         case 0:
                             result.X = reader.GetInt32(columnOffset);
                             break;
-                        case 2:
+                        case 1:
                             result.Z = reader.IsDBNull(columnOffset) ? (double?)null : reader.GetDouble(columnOffset);
                             break;
-                        case 4:
+                        case 2:
                             result.Y = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
                             break;
 

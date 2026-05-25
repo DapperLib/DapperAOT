@@ -243,7 +243,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     {
         try
         {
-            Generate(new(ctx, state));
+            var (typeHandlerRegistry, typeHandlers) = InitTypeHandlers(ctx.ReportDiagnostic, state.Compilation);
+            Generate(new(ctx, state.Compilation, state.Nodes, typeHandlers, typeHandlerRegistry));
         }
         catch (Exception ex)
         {
@@ -276,6 +277,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             .Append("#pragma warning disable CS9270 // SDK-dependent change to interceptors usage").NewLine()
             .Append("namespace ").Append(FeatureKeys.CodegenNamespace).Append(" // interceptors must be in a known namespace").Indent().NewLine()
             .Append("file static class DapperGeneratedInterceptors").Indent().NewLine();
+
+        sb.AppendTypeHandlers(ctx.TypeHandlerRegistry.GetAllRegisteredHandlersForEmission());
+
         int methodIndex = 0, callSiteCount = 0;
 
         var factories = new CommandFactoryState(ctx.Compilation);
@@ -759,7 +763,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         var hasGetOnlyMembers = members.Any(member => member is { IsGettable: true, IsSettable: false, IsInitOnly: false });
         var useConstructorDeferred = map.Constructor is not null;
         var useFactoryMethodDeferred = map.FactoryMethod is not null;
-        
+        var typeHandlers = context.TypeHandlers; // Prevent ctx getting captured
+
         // Implementation detail: 
         // constructor takes advantage over factory method.
         var useDeferredConstruction = useConstructorDeferred || useFactoryMethodDeferred || hasInitOnlyMembers || hasGetOnlyMembers || hasRequiredMembers;
@@ -824,7 +829,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     .Append("var type = reader.GetFieldType(columnOffset);").NewLine()
                     .Append("switch (NormalizedHash(name))").Indent().NewLine();
 
-                int token = 0;
+                int firstToken  = 0;
+                int secondToken = map.Members.Length;
                 foreach (var member in members)
                 {
                     if (member.IsMapped)
@@ -835,17 +841,27 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                             .AppendVerbatimLiteral(StringHashing.Normalize(dbName)).Append("):").Indent(false).NewLine();
                         if (flags.HasAny(OperationFlags.StrictTypes))
                         {
-                            sb.Append("token = ").Append(token).Append(";").Append(token == 0 ? " // note: strict types" : "");
+                            sb.Append("token = ").Append(firstToken ).Append(";").Append(firstToken  == 0 ? " // note: strict types" : "");
                         }
                         else
                         {
-                            sb.Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(token)
-                            .Append(" : ").Append(token + map.Members.Length).Append(";")
-                            .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "");
+                            if (typeHandlers.TryGetValue(member.CodeType, out var typeHandlerSymbolFound) && typeHandlerSymbolFound is INamedTypeSymbol namedTypeHandlerSymbol)
+                            {
+                                sb.Append("token = ").Append(firstToken).Append(";");
+                            }
+                            else
+                            {
+                                sb
+                                    .Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(firstToken)
+                                    .Append(" : ").Append(secondToken).Append(";");
+                                secondToken++;
+                            }
+
+                            sb.Append(firstToken == 0 ? " // two tokens for right-typed and type-flexible" : "");
                         }
                         sb.NewLine().Append("break;").Outdent(false).NewLine();
                     }
-                    token++;
+                    firstToken++;
                 }
                 sb.Outdent().NewLine()
                     .Append("tokens[i] = token;").NewLine()
@@ -886,7 +902,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
 
-            int token = 0;
+            int firstToken = 0;
             var deferredMethodArgumentsOrdered = new SortedList<int, string>();
 
             if (useDeferredConstruction)
@@ -901,7 +917,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 {
                     if (member.IsMapped)
                     {
-                        var variableName = DeferredConstructionVariableName + token;
+                        var variableName = DeferredConstructionVariableName + firstToken;
 
                         if (Inspection.CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
                         else sb.Append(CodeWriter.GetTypeName(member.CodeType));
@@ -920,7 +936,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                             deferredMethodArgumentsOrdered.Add(member.FactoryMethodParameterOrder.Value, variableName);
                         }
                     }
-                    token++;
+                    firstToken++;
                 }
             }
             else
@@ -942,7 +958,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             sb.Indent().NewLine().Append("switch (token)").Indent().NewLine();
 
-            token = 0;
+            firstToken = 0;
+            int secondToken = members.Length;
             foreach (var member in members)
             {
                 if (member.IsMapped)
@@ -951,43 +968,53 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
                     member.GetDbType(out var readerMethod);
                     var nullCheck = Inspection.CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
-                    sb.Append("case ").Append(token).Append(":").NewLine().Indent(false);
+                    sb.Append("case ").Append(firstToken).Append(":").NewLine().Indent(false);
 
                     // write `result.X = ` or `member0 = `
-                    if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
+                    if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(firstToken);
                     else sb.Append("result.").Append(member.CodeName);
                     sb.Append(" = ");
 
                     sb.Append(nullCheck);
-                    if (readerMethod is null)
+                    if (context.TypeHandlers.TryGetValue(memberType, out var typeHandlerSymbolFound) && typeHandlerSymbolFound is INamedTypeSymbol namedTypeHandlerSymbol)
                     {
-                        sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                        var (handlerPropertyName, _) = context.TypeHandlerRegistry.GetOrCreateHandlerInfo(namedTypeHandlerSymbol);
+                        sb
+                            .Append($"{handlerPropertyName}.Read(reader, columnOffset);").NewLine()
+                            .Append("break;").NewLine().Outdent(false);
                     }
                     else
                     {
-                        sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
+                        if (readerMethod is null)
+                        {
+                            sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                        }
+                        else
+                        {
+                            sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
+                        }
+
+                        sb.NewLine().Append("break;").NewLine().Outdent(false);
+
+                        // optionally emit type-forgiving version
+                        if (!flags.HasAny(OperationFlags.StrictTypes))
+                        {
+                            sb.Append("case ").Append(firstToken + map.Members.Length).Append(":").NewLine().Indent(false);
+
+                            // write `result.X = ` or `member0 = `
+                            if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(firstToken);
+                            else sb.Append("result.").Append(member.CodeName);
+
+                            sb.Append(" = ")
+                                .Append(nullCheck)
+                                .Append("GetValue<")
+                                .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
+                                .Append("break;").NewLine().Outdent(false);
+                        }
+                        secondToken++;
                     }
-
-
-                    sb.NewLine().Append("break;").NewLine().Outdent(false);
-
-                    // optionally emit type-forgiving version
-                    if (!flags.HasAny(OperationFlags.StrictTypes))
-                    {
-                        sb.Append("case ").Append(token + map.Members.Length).Append(":").NewLine().Indent(false);
-
-                        // write `result.X = ` or `member0 = `
-                        if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
-                        else sb.Append("result.").Append(member.CodeName);
-
-                        sb.Append(" = ")
-                            .Append(nullCheck)
-                            .Append("GetValue<")
-                            .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
-                            .Append("break;").NewLine().Outdent(false);
-                    }
+                    firstToken++;
                 }
-                token++;
             }
 
             sb.Outdent().NewLine().Append("columnOffset++;").NewLine().Outdent().NewLine();
@@ -1042,14 +1069,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     if (deferredMethodArgumentsOrdered!.Count == members.Length) return;
                     
                     sb.Indent().NewLine();
-                    token = -1;
+                    firstToken = -1;
                     foreach (var member in members)
                     {
-                        token++;
+                        firstToken++;
                         if (member.IsMapped)
                         {
                             if (member.ConstructorParameterOrder is not null) continue; // already used in constructor arguments
-                            sb.Append(member.CodeName).Append(" = ").Append(DeferredConstructionVariableName).Append(token).Append(',').NewLine();
+                            sb.Append(member.CodeName).Append(" = ").Append(DeferredConstructionVariableName).Append(firstToken).Append(',').NewLine();
                         }
                     }
                     sb.Outdent(withScope: false).Append("}");
@@ -1073,6 +1100,31 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb.Append("return result;").NewLine().Outdent().NewLine();
             }
         }
+    }
+    
+    internal static (TypeHandlerInstanceRegistry, IImmutableDictionary<ITypeSymbol, ITypeSymbol>) InitTypeHandlers(Action<Diagnostic> reportDiagnostic, Compilation compilation)
+    {
+        var typeHandlerRegistry = new TypeHandlerInstanceRegistry();
+        var typeHandlers = IdentifyTypeHandlers(reportDiagnostic, compilation);
+        foreach (var pair in typeHandlers)
+        {
+            var handlerSymbol = pair.Value;
+
+            if (handlerSymbol is INamedTypeSymbol namedTypeHandlerSymbol)
+            {
+                typeHandlerRegistry.GetOrCreateHandlerInfo(namedTypeHandlerSymbol);
+            }
+            else
+            {
+                reportDiagnostic(Diagnostic.Create(
+                    Diagnostics.InvalidTypeHandlerSymbol,
+                    handlerSymbol.Locations.FirstOrDefault(),
+                    handlerSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                ));
+            }
+        }
+
+        return (typeHandlerRegistry, typeHandlers);
     }
 
     [Flags]
@@ -1270,7 +1322,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                             }
                             else
                             {
-                                sb.Append("p.Value = ").Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                                AppendSetValue(ctx, sb, "p", source, member);
                             }
                             break;
                         default:
@@ -1301,29 +1353,33 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         break;
                     }
 
-                    sb.Append("ps[");
-                    if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
-                    else sb.Append(parameterIndex);
-                    sb.Append("].Value = ");
+                    var parameter = GetParameterIndex(flags, member.DbName, parameterIndex);
                     switch (direction)
                     {
                         case ParameterDirection.Input:
                         case ParameterDirection.InputOutput:
-                            sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                            AppendSetValue(ctx, sb, parameter, source, member);
                             break;
                         default:
-                            sb.Append("global::System.DBNull.Value;").NewLine();
+                            sb.Append(parameter).Append(".Value = global::System.DBNull.Value;").NewLine();
                             break;
 
                     }
                     break;
                 case WriteArgsMode.PostProcess:
                     // we already eliminated args that we don't need to look at
-                    sb.Append(source).Append(".").Append(member.CodeName).Append(" = Parse<")
-                        .Append(member.CodeType).Append(">(ps[");
-                    if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
-                    else sb.Append(parameterIndex);
-                    sb.Append("].Value);").NewLine();
+                    parameter = GetParameterIndex(flags, member.DbName, parameterIndex);
+                    sb.Append(source).Append(".").Append(member.CodeName).Append(" = ");
+                    if (ctx.TypeHandlers.TryGetValue(member.CodeType, out var handlerClassSymbolFound) && handlerClassSymbolFound is INamedTypeSymbol namedHandlerClassSymbol)
+                    {
+                        var (handlerPropertyName, _) = ctx.TypeHandlerRegistry.GetOrCreateHandlerInfo(namedHandlerClassSymbol);
+                        sb.Append($"{handlerPropertyName}.Parse((global::System.Data.Common.DbParameter){parameter});").NewLine();
+                    }
+                    else
+                    {
+                        sb.Append(source).Append(".").Append(member.CodeName).Append("Parse<")
+                            .Append(member.CodeType).Append(">(").Append(parameter).Append(".Value);").NewLine();
+                    }
 
                     break;
             }
@@ -1332,6 +1388,22 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb.Outdent().NewLine();
             }
             parameterIndex++;
+        }
+    }
+
+    static void AppendSetValue(in GenerateState ctx, CodeWriter sb, string parameter, string? source, in Inspection.ElementMember member)
+    {
+        if (member.CodeType != null && ctx.TypeHandlers.TryGetValue(member.CodeType, out var handlerClassSymbolFound) && handlerClassSymbolFound is INamedTypeSymbol namedHandlerClassSymbol)
+        {
+            var (handlerPropertyName, _) = ctx.TypeHandlerRegistry.GetOrCreateHandlerInfo(namedHandlerClassSymbol);
+            sb
+                .Append($"{handlerPropertyName}.SetValue(")
+                .Append($"(global::System.Data.Common.DbParameter){parameter}, ").Append(source).Append(".").Append(member.CodeName)
+                .Append(");").NewLine();
+        }
+        else
+        {
+            sb.Append(parameter).Append(".Value = AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
         }
     }
 
@@ -1403,6 +1475,15 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             && prop.SetMethod is { DeclaredAccessibility: Accessibility.Public }
             && prop.Type.SpecialType == type
             && !prop.IsIndexer && !prop.IsStatic;
+    }
+
+    private static string GetParameterIndex(WriteArgsFlags flags, string dbName, int parameterIndex)
+    {
+        string index = ((flags & WriteArgsFlags.NeedsTest) != 0)
+            ? CodeWriter.CreateVerbatimLiteral(dbName)
+            : parameterIndex.ToString(CultureInfo.InvariantCulture);
+
+        return "ps[" + index + "]";
     }
 
     [Flags]
@@ -1488,6 +1569,31 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
+    private static IImmutableDictionary<ITypeSymbol, ITypeSymbol> IdentifyTypeHandlers(Action<Diagnostic> reportDiagnostic, Compilation compilation)
+    {
+        var assembly = compilation.Assembly;
+        var attributes = assembly.GetAttributes()
+            .Concat(assembly.Modules.SelectMany(x => x.GetAttributes()))
+            .Where(x => Inspection.IsDapperAttribute(x) && x.AttributeClass!.Name == "TypeHandlerAttribute");
+
+        var dictionary = ImmutableDictionary.CreateBuilder<ITypeSymbol, ITypeSymbol>(SymbolEqualityComparer.Default);
+        foreach (var attribute in attributes)
+        {
+            var valueType = attribute.AttributeClass!.TypeArguments[0];
+            var typeHandler = attribute.AttributeClass!.TypeArguments[1];
+            if (dictionary.ContainsKey(valueType))
+            {
+                reportDiagnostic(Diagnostic.Create(Diagnostics.DuplicateTypeHandlers, null, valueType.Name));
+            }
+            else
+            {
+                dictionary.Add(valueType, typeHandler);
+            }
+        }
+
+        return dictionary.ToImmutable();
+    }
+
     internal abstract class SourceState
     {
         public Location? Location { get; }
@@ -1568,6 +1674,32 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 hash += obj.AdditionalCommandState.GetHashCode();
             }
             return hash;
+        }
+    }
+
+    internal class TypeHandlerInstanceRegistry
+    {
+        private int _nextTypeHandlerIndex = 0;
+        private readonly Dictionary<INamedTypeSymbol, (int Index, string HandlerPropertyName, INamedTypeSymbol HandlerTypeSymbol)> _typeHandlerMap = new(SymbolEqualityComparer.Default);
+
+        public (string PropertyName, INamedTypeSymbol HandlerType) GetOrCreateHandlerInfo(INamedTypeSymbol typeHandlerSymbol)
+        {
+            if (!_typeHandlerMap.TryGetValue(typeHandlerSymbol, out var info))
+            {
+                var index = Interlocked.Increment(ref _nextTypeHandlerIndex);
+                var propertyName = $"__Handler{index}";
+                info = (index, propertyName, typeHandlerSymbol);
+                _typeHandlerMap[typeHandlerSymbol] = info;
+            }
+            return (info.HandlerPropertyName, info.HandlerTypeSymbol);
+        }
+
+        public IEnumerable<(string PropertyName, string TypeHandlerFullName)> GetAllRegisteredHandlersForEmission()
+        {
+            return _typeHandlerMap.Values
+                .Select(info => (info.HandlerPropertyName, info.HandlerTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)))
+                .Distinct()
+                .ToList();
         }
     }
 }

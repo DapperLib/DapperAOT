@@ -1,8 +1,8 @@
-﻿using Dapper.CodeAnalysis;
+﻿using System.Collections.Concurrent;
+using System.Collections.Immutable;
+using Dapper.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Concurrent;
-using System.Collections.Immutable;
 using static Dapper.CodeAnalysis.DapperInterceptorGenerator;
 
 namespace Dapper.AOT.Test.TestCommon;
@@ -39,9 +39,13 @@ public sealed class WrappedDapperInterceptorAnalyzer : DiagnosticAnalyzer
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0028:Simplify collection initialization", Justification = "This is fine")]
         private readonly ConcurrentBag<SourceState> _bag = new();
         public void OnCompilationEnd(CompilationAnalysisContext context)
-        => inner.Generate(new GenerateState(GenerateContextProxy.Create(context, _bag.ToImmutableArray())));
+        {
+            var (registry, identifiedTypeHandlers) = InitTypeHandlers(context.ReportDiagnostic, context.Compilation);
+            var proxy = GenerateContextProxy.Create(context, [.. _bag], registry, identifiedTypeHandlers);
 
-
+            inner.Generate(new GenerateState(proxy));
+        }
+        
         public void OnOperation(OperationAnalysisContext context)
         {
             if (!inner.PreFilter(context.Operation.Syntax, context.CancellationToken)) return;
@@ -54,5 +58,4 @@ public sealed class WrappedDapperInterceptorAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    
 }

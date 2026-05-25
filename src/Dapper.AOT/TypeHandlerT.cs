@@ -10,7 +10,7 @@ namespace Dapper;
 /// when processing values of type <typeparamref name="TValue"/>
 /// </summary>
 [ImmutableObject(true)]
-[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Module | AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Method, AllowMultiple = true)]
+[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Module, AllowMultiple = true)]
 public sealed class TypeHandlerAttribute<TValue, TTypeHandler> : Attribute
     where TTypeHandler : TypeHandler<TValue>, new()
 {}
@@ -31,4 +31,10 @@ public abstract class TypeHandler<T>
     /// </summary>
     public virtual T Parse(DbParameter parameter)
         => CommandUtils.As<T>(parameter.Value);
+
+    /// <summary>
+    /// Reads the value from the results
+    /// </summary>
+    public virtual T Read(DbDataReader reader, int columnOffset)
+        => CommandUtils.As<T>(reader.GetValue(columnOffset));
 }

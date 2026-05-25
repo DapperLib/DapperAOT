@@ -1,10 +1,12 @@
-﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Threading;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Dapper.Internal;
 
@@ -155,6 +157,23 @@ internal sealed class CodeWriter
         }
     }
 
+    public CodeWriter AppendTypeHandlers(IEnumerable<(string PropertyName, string TypeHandlerFullName)> typeHandlers)
+    {
+        if (typeHandlers == null || !typeHandlers.Any())
+        {
+            return this;
+        }
+
+        Append("#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.").NewLine();
+        foreach (var (propertyName, typeHandlerFullName) in typeHandlers)
+        {
+            Append($"private static {typeHandlerFullName}? {propertyName.Replace("__Handler", "__handler")};").NewLine();
+            Append($"private static {typeHandlerFullName} {propertyName} => {propertyName.Replace("__Handler", "__handler")} ??= new {typeHandlerFullName}();").NewLine();
+        }
+        Append("#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.").NewLine();
+        return this;
+    }
+
     public static int CountGettableInstanceMembers(ImmutableArray<ISymbol> members)
     {
         int count = 0;
@@ -238,7 +257,10 @@ internal sealed class CodeWriter
 
     }
     public CodeWriter AppendVerbatimLiteral(string? value) => Append(
-        value is null ? "null" : SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(value)).ToFullString());
+       CreateVerbatimLiteral(value));
+
+    public static string CreateVerbatimLiteral(string? value) =>
+        value is null ? "null" : SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(value)).ToFullString();
     public CodeWriter Append(char value)
     {
         Core.Append(value);

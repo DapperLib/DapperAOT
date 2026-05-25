@@ -70,19 +70,26 @@ internal readonly struct GenerateState
         Nodes = proxy.Nodes;
         ctx = default;
         this.proxy = proxy;
+        TypeHandlerRegistry = proxy.TypeHandlerRegistry;
+        TypeHandlers = proxy.TypeHandlers;
     }
-    public GenerateState(SourceProductionContext ctx, in (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+    public GenerateState(SourceProductionContext ctx, Compilation compilation, ImmutableArray<SourceState> nodes, 
+        IImmutableDictionary<ITypeSymbol, ITypeSymbol> typeHandlers, TypeHandlerInstanceRegistry typeHandlerRegistry)
     {
-        Compilation = state.Compilation;
-        Nodes = state.Nodes;
+        Compilation = compilation;
+        Nodes = nodes;
         this.ctx = ctx;
         proxy = null;
+        TypeHandlers = typeHandlers;
+        TypeHandlerRegistry = typeHandlerRegistry;
     }
     private readonly SourceProductionContext ctx;
     private readonly GenerateContextProxy? proxy;
     public readonly ImmutableArray<SourceState> Nodes;
     public readonly Compilation Compilation;
     public readonly GeneratorContext GeneratorContext = new();
+    public readonly IImmutableDictionary<ITypeSymbol, ITypeSymbol> TypeHandlers;
+    public readonly TypeHandlerInstanceRegistry TypeHandlerRegistry;
 
     internal void ReportDiagnostic(Diagnostic diagnostic)
     {
@@ -121,9 +128,12 @@ internal abstract class GenerateContextProxy
 {
     public abstract Compilation Compilation { get; }
     public abstract ImmutableArray<SourceState> Nodes { get; }
+    public abstract TypeHandlerInstanceRegistry TypeHandlerRegistry { get; }
+    public abstract IImmutableDictionary<ITypeSymbol, ITypeSymbol> TypeHandlers { get; }
 
-    public static GenerateContextProxy Create(in CompilationAnalysisContext context, ImmutableArray<SourceState> nodes)
-        => new CompilationAnalysisContextProxy(in context, nodes);
+    public static GenerateContextProxy Create(in CompilationAnalysisContext context, ImmutableArray<SourceState> nodes, 
+        TypeHandlerInstanceRegistry typeHandlerRegistry, IImmutableDictionary<ITypeSymbol, ITypeSymbol> typeHandlers)
+        => new CompilationAnalysisContextProxy(in context, nodes, typeHandlerRegistry, typeHandlers);
 
     internal virtual void AddSource(string hintName, string text) { }
     internal virtual void ReportDiagnostic(Diagnostic diagnostic) { }
@@ -132,8 +142,14 @@ internal abstract class GenerateContextProxy
     {
         private readonly CompilationAnalysisContext context;
         private readonly ImmutableArray<SourceState> nodes;
-        public CompilationAnalysisContextProxy(in CompilationAnalysisContext context, ImmutableArray<SourceState> nodes)
+        private readonly TypeHandlerInstanceRegistry typeHandlerRegistry;
+        private readonly IImmutableDictionary<ITypeSymbol, ITypeSymbol> typeHandlers;
+
+        public CompilationAnalysisContextProxy(in CompilationAnalysisContext context, ImmutableArray<SourceState> nodes, 
+            TypeHandlerInstanceRegistry typeHandlerRegistry, IImmutableDictionary<ITypeSymbol, ITypeSymbol> typeHandlers)
         {
+            this.typeHandlerRegistry = typeHandlerRegistry;
+            this.typeHandlers = typeHandlers;
             this.context = context;
             this.nodes = nodes;
         }
@@ -142,5 +158,7 @@ internal abstract class GenerateContextProxy
             => context.ReportDiagnostic(diagnostic);
         public override Compilation Compilation => context.Compilation;
         public override ImmutableArray<SourceState> Nodes => nodes;
+        public override TypeHandlerInstanceRegistry TypeHandlerRegistry => typeHandlerRegistry;
+        public override IImmutableDictionary<ITypeSymbol, ITypeSymbol> TypeHandlers => typeHandlers;
     }
 }
