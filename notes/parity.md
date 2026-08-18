@@ -155,6 +155,14 @@ analysis (DAP2xx), `[SqlSyntax]`.
   `GetInterceptableLocation` (Roslyn 4.11+) so the shipped baseline can stay low, and
   `docs/aot-grpc.md` there records the encoding — reverse-engineered and proven by hand — as
   the fallback if the reflection ever stops working. Port that approach.
+  **Requirement (Marc, 2026-08-18): soft-target.** Do not force SDK/compiler updates: emit
+  the new version+data form only when the *hosting* compiler supports it, and keep emitting
+  the old path/line/column form on down-level. The clean fact making this safe: generation
+  and consumption happen in the same csc invocation, so reflecting on the running Roslyn for
+  `GetInterceptableLocation` (added Roslyn 4.11 / VS 17.11; the encoded form itself landed in
+  4.10) is exactly the right capability probe — no SDK/LangVersion sniffing needed (both
+  attribute forms compile under the same C# 11+ interceptors gate). The emitted
+  `InterceptsLocationAttribute` polyfill needs both constructors.
 
 - **New diagnostic: warn on "has no meaning" APIs.** When AOT is enabled, detect usage of
   the APIs whose *concept* doesn't exist under AOT — the plan-cache surface
