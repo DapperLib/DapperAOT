@@ -199,6 +199,26 @@ list expansion, TVPs, custom params), TypeHandlerTests ×16 (type-handler story)
 ×16 (coercions + tokens), Async/Literal (literals), plus the First-pipeline drain pair and
 the small tail. Nothing unexplained.
 
+## Round 9: list expansion (PR #197) - 638/762, in-list group cleared
+
+With #195+#196+#197 combined: **638 passed / 124 failed** (up from 616/146; the in-list
+group recovered 22 across both providers). Interception count **unchanged at 533/725**,
+which is the expected shape: expandable members were already intercepted - binding the
+list as a single raw parameter, which fails at execution - so this round is correctness
+at existing sites, not coverage. The two new parse-side skips (multi-exec over expandable
+elements; expandable alongside an output/return parameter, whose PostProcess read-back is
+by index) cost the suite nothing.
+
+Design note carried on the PR: the generated code calls the public-but-\[Obsolete\]
+`SqlMapper.PackListParameters` (per-line CS0618 pragma), which works against every
+shipped Dapper with no feature-detection needed; the alternative is a fresh non-obsolete
+Dapper wrapper, probe-gated like the DynamicParameters overload. Marc's call at review.
+
+Remaining failure classes, all mapped to planned features: TypeHandlerTests x16/provider,
+MiscTests x15 (coercions + tokens), ParameterTests x14 (TVPs/DataTable/
+ICustomQueryParameter/SqlDecimal), Literal x5, Async x5, small tail (Constructor x2,
+Xml/Transaction/enum-handler x1s).
+
 ## Round 8b: confirmation - suite duration 9m28s → **17 seconds**
 
 With #195+#196 combined: 616 passed / 146 failed. The behavior fix recovered the
@@ -226,7 +246,7 @@ confirmed bugs and a 10x.
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | 725 honest | 533 (73.5%) | ✅ | 616/762 (146 fail; suite runs in 17s) | — |
+| net10.0 | 725 honest | 533 (73.5%) | ✅ | 638/762 (124 fail; suite runs in 18s) | — |
 | net8.0 | > 387 | 387 claimed | ✅ | — | — |
 | net481 | > 405 | 405 claimed | ✅ (needs PR #184) | — | — |
 
