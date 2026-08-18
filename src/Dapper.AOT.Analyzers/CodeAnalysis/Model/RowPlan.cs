@@ -112,7 +112,8 @@ internal readonly struct RowMember : IEquatable<RowMember>
     public string CodeName { get; }
     public string DbName { get; }
     public string TypeName { get; } // emitted (Append) form of the member type
-    public string NonNullTypeName { get; } // MakeNonNullable form, for typeof(...) tests
+    public string NonNullTypeName { get; } // MakeNonNullable form, for GetValue<T> reads
+    public string TypeOfName { get; } // for typeof(...) tests: dynamic becomes object (typeof(dynamic) is not legal C#)
     public string AnnotatedTypeName { get; } // GetTypeName(WithNullableAnnotation(Annotated)), for the null-check cast
     public bool CouldBeNullable { get; }
     public string? ReaderMethod { get; } // e.g. GetInt32; null = GetFieldValue<T>
@@ -125,7 +126,7 @@ internal readonly struct RowMember : IEquatable<RowMember>
     public bool NeedsDefaultBang { get; } // reference type, not annotated: "default!"
 
     private RowMember(bool isMapped, string codeName, string dbName, string typeName, string nonNullTypeName,
-        string annotatedTypeName, bool couldBeNullable, string? readerMethod, int? constructorParameterOrder,
+        string typeOfName, string annotatedTypeName, bool couldBeNullable, string? readerMethod, int? constructorParameterOrder,
         int? factoryMethodParameterOrder, bool isInitOnly, bool isRequired, bool isGettable, bool isSettable,
         bool needsDefaultBang)
     {
@@ -134,6 +135,7 @@ internal readonly struct RowMember : IEquatable<RowMember>
         DbName = dbName;
         TypeName = typeName;
         NonNullTypeName = nonNullTypeName;
+        TypeOfName = typeOfName;
         AnnotatedTypeName = annotatedTypeName;
         CouldBeNullable = couldBeNullable;
         ReaderMethod = readerMethod;
@@ -150,13 +152,15 @@ internal readonly struct RowMember : IEquatable<RowMember>
     {
         if (!member.IsMapped)
         {
-            return new(false, "", "", "", "", "", false, null, null, null, false, false, false, false, false);
+            return new(false, "", "", "", "", "", "", false, null, null, null, false, false, false, false, false);
         }
         var memberType = member.CodeType!;
         member.GetDbType(out var readerMethod);
+        var nonNullTypeName = CodeWriter.GetAppendTypeName(Inspection.MakeNonNullable(memberType));
         return new(true, member.CodeName, member.DbName,
             CodeWriter.GetAppendTypeName(memberType),
-            CodeWriter.GetAppendTypeName(Inspection.MakeNonNullable(memberType)),
+            nonNullTypeName,
+            memberType.TypeKind == TypeKind.Dynamic ? "object" : nonNullTypeName,
             CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated)),
             Inspection.CouldBeNullable(memberType), readerMethod,
             member.ConstructorParameterOrder, member.FactoryMethodParameterOrder,
@@ -169,6 +173,7 @@ internal readonly struct RowMember : IEquatable<RowMember>
         && string.Equals(DbName, other.DbName, StringComparison.Ordinal)
         && string.Equals(TypeName, other.TypeName, StringComparison.Ordinal)
         && string.Equals(NonNullTypeName, other.NonNullTypeName, StringComparison.Ordinal)
+        && string.Equals(TypeOfName, other.TypeOfName, StringComparison.Ordinal)
         && string.Equals(AnnotatedTypeName, other.AnnotatedTypeName, StringComparison.Ordinal)
         && CouldBeNullable == other.CouldBeNullable
         && string.Equals(ReaderMethod, other.ReaderMethod, StringComparison.Ordinal)

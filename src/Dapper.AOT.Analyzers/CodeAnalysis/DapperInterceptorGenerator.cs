@@ -874,7 +874,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         }
                         else
                         {
-                            sb.Append("token = type == typeof(").Append(member.NonNullTypeName).Append(") ? ").Append(token)
+                            sb.Append("token = type == typeof(").Append(member.TypeOfName).Append(") ? ").Append(token)
                             .Append(" : ").Append(token + plan.TotalMemberCount).Append(";")
                             .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "");
                         }
@@ -905,7 +905,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         var member = members[i];
                         if (member.IsMapped)
                         {
-                            sb.Append(i).Append(" => type == typeof(").Append(member.NonNullTypeName).Append(") ? ").Append(i)
+                            sb.Append(i).Append(" => type == typeof(").Append(member.TypeOfName).Append(") ? ").Append(i)
                                 .Append(" : ").Append(i + plan.TotalMemberCount).Append(",").NewLine();
                         }
                     }
