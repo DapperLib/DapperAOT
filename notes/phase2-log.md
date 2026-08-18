@@ -54,5 +54,12 @@ beats today's state.
   bool one until the big generator converts — avoids touching it out of order.
   **[DECISION]** `ForwarderMethod`/type-name projection replicates `CodeWriter.Append(ITypeSymbol)`
   exactly (anonymous → MinimallyQualified, else GetTypeName) so output cannot shift.
-- Next: increment 3a — `LocationSnapshot` into the interceptor generator's `SuccessSourceState`
+- **Increment 3a done** (pushed): `Location` out of all interceptor-generator cached states.
+  `LocationSnapshot` gained MappedPath/MappedStartLine (the IncludeLocation SQL comment used
+  `GetMappedLineSpan`); the interceptor file path and language version are projected at parse
+  (emit used to reach through `Location.SourceTree` for both). Byte-identical: goldens
+  unchanged + harness hash equal (`f8d3a61f`).
+  **[NOTE]** the Bash harness un-escapes backslashes in commands, which broke two heredocs
+  before being identified — long edit scripts now go via a file, not a heredoc.
+- Next was: increment 3a — `LocationSnapshot` into the interceptor generator's `SuccessSourceState`
   (plus projecting the interceptor file path at parse, since emit asks the `SourceTree` for it).
