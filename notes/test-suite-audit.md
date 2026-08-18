@@ -17,6 +17,13 @@ ideally AOT-publishable without warnings.
   drive to 100% is that ratio (per test assembly), then the test pass rate, then the AOT
   publish warning count — in that order. A passing test with an un-intercepted call site is
   measuring vanilla Dapper, not us.
+- **The DAP list is useful but incomplete: some failure modes are silent until executed.**
+  "Handled" at build time means an interceptor was emitted, not that it behaves like Dapper —
+  a generated call can bind the wrong member, format a value differently, or fail only on a
+  particular data shape, with no diagnostic anywhere. So the build-time ratio is an *upper
+  bound*; only the test run catches silent divergence, which is why the DB-backed run is part
+  of the measurement and not an optional extra. (This is the same lesson as protobuf-net's
+  AOT differential: every serious generator bug there compiled cleanly and wrote wrong bytes.)
 - **Decided:** tests that assert *Dapper internals* (cache counts, `Identity`, deserializer
   internals) are expected to be **adjusted, not maintained** — those side-effect numbers are
   not part of the contract, and several describe machinery AOT doesn't have. Per test: skip
