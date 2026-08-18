@@ -44,10 +44,13 @@ Useful beyond AOT (extenders have wanted a way to invoke bags directly). No rele
 yet: the harness consumes Dapper by project reference, so this can sit on a Dapper branch
 until the next ship.
 
-**Consumer-version safety**: generated code calling a new Dapper API would break consumers
-on older Dapper, so the generator must *probe for the overload symbol* and only take this
-path when present - otherwise the call-site keeps DAP015 and stays on vanilla (the
-protobuf-net probe-for-`UnsafeAccessor` pattern).
+**Consumer-version safety (the rule, per Marc)**: generated code calling a new Dapper API
+would break consumers on older Dapper, so for *every* Dapper-side dependency the generator
+must (a) probe for the symbol, (b) never emit code that cannot compile against the
+referenced Dapper, and (c) refuse with a diagnostic that names exactly which API is missing
+and what it enables - **DAP052** ("Feature requires a newer Dapper"), not a generic message,
+and never a baffling compiler error. Implemented; the DAP052 verifier runs against the
+packaged (older) Dapper, which is exactly the scenario it exists for.
 
 ## Generator/runtime shape
 
