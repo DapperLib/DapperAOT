@@ -60,11 +60,27 @@ didn't crash). Hypothesis: the broken generated code poisons binding, and the an
 operation callbacks bail on error symbols. Re-check once Bug A is fixed; if the silence
 persists with a clean compile, that's its own bug.
 
+## Round 3 (same day): four fixes in, the suite compiles
+
+With PRs #180 (generic args in accessibility), #181 (enumerable params outside Execute),
+#182 (member types checked like the parameter type), #183 (GetRowParser over IDataReader),
+plus a harness-side severity downgrade of DAP036/DAP037 (they fire as *refusals* on the
+scalar-result feature gaps — enums, char, TimeSpan, arrays, dynamic — so for measurement
+they are gap markers, not build breaks):
+
+> **exit 0.** `Dapper.AOT handled 387 of 387 possible call-sites using 137 interceptors,
+> 55 commands and 15 readers` — and zero compiler errors.
+
+The 550 DAP warnings are now the measured gap surface (DAP027 ×402, DAP028 ×44, DAP012 ×40,
+DAP018 ×26, DAP048 ×16, DAP036/037 ×20 as downgraded errors). Next instruments: the honest
+scorecard (the 387 denominator still excludes never-attempted APIs), then actually *running*
+the suite against a database, which is where silent divergence shows.
+
 ## Scoreboard (to update as things land)
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | > 396 (denominator understated) | 396 claimed | ❌ (2 root-cause bugs) | — | — |
+| net10.0 | > 387 (denominator understated) | 387 claimed | ✅ (with 4 fix-PRs + 2 severity downgrades) | — | — |
 | net8.0 | not yet measured | | | | |
 | net481 | not yet measured | | | | |
 
