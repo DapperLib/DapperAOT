@@ -29,6 +29,7 @@ build time. See [type-vs-generic.md](type-vs-generic.md).
 | [type-vs-generic.md](type-vs-generic.md) | `Type`-based vs `<T>` APIs, and the "announce your types" design space |
 | [test-suite-audit.md](test-suite-audit.md) | the Dapper test files as acceptance corpus, and what blocks each |
 | [harness-baseline.md](harness-baseline.md) | real numbers from the suite with AOT enabled (Dapper repo, `aot-harness` branch) |
+| [dynamicparameters-design.md](dynamicparameters-design.md) | phase 3 item 1: delegate to the bag's own vanilla protocol; needs a small Dapper-side API |
 | [generator-audit.md](generator-audit.md) | **fix-first gate**: the capture model snapshots Roslyn symbols/nodes — retention + cache defeat |
 
 ## Scope: the public API, by observable behavior
