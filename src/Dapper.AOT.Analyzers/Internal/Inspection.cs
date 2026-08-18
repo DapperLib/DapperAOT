@@ -309,6 +309,15 @@ internal static class Inspection
             {
                 return IsPublicOrAssemblyLocal(array.ElementType, assembly, out failingSymbol);
             }
+            if (symbol is INamedTypeSymbol { IsGenericType: true } generic)
+            {
+                // the type arguments matter too: List<Private> is as inaccessible as Private
+                foreach (var typeArg in generic.TypeArguments)
+                {
+                    if (typeArg is ITypeParameterSymbol) continue; // handled by InvolvesGenericTypeParameter
+                    if (!IsPublicOrAssemblyLocal(typeArg, assembly, out failingSymbol)) return false;
+                }
+            }
             switch (symbol.DeclaredAccessibility)
             {
                 case Accessibility.Public:
