@@ -21,7 +21,18 @@ public class DynamicTests : IDisposable
         Assert.Equal("Wilma", (string)wilma.Name);
         Assert.True((int)wilma.Id > 0);
         Assert.Throws<KeyNotFoundException>(() => _ = wilma.NotExist);
-        Assert.Throws<NotSupportedException>(() => wilma.Name = "abc");
+
+        // dynamic records are mutable, like vanilla Dapper's DapperRow: an existing
+        // member can be replaced, and a new member added
+        wilma.Name = "abc";
+        Assert.Equal("abc", (string)wilma.Name);
+        wilma.NotExist = 123;
+        Assert.Equal(123, (int)wilma.NotExist);
+
+        IDictionary<string, object?> lookup = wilma;
+        Assert.True(lookup.Remove("NotExist"));
+        Assert.False(lookup.Remove("NotExist"));
+        Assert.Throws<KeyNotFoundException>(() => _ = wilma.NotExist);
     }
 }
 
