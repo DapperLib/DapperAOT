@@ -132,6 +132,20 @@ analysis (DAP2xx), `[SqlSyntax]`.
 
 ## 7. Work items arising
 
+- **Investigate `[UnsafeAccessor]` (net8+) to lift the accessibility-class refusals.** The
+  protobuf-net AOT generator uses it extensively in generated code, gated on target framework:
+  it covers **construction** (`UnsafeAccessorKind.Constructor`), non-public **properties/setters**,
+  **fields**, and even get-only auto-properties (writing the compiler-generated backing field) —
+  and unlike reflection it is resolved at publish time, so it stays AOT-safe (protobuf-net proved
+  it under ILC, including `initonly` backing fields; struct targets take `ref`). Candidates here:
+  the DAP050 shapes where the *type* is accessible but its constructor is not (`DbGeography`'s
+  internal ctor is exactly this), non-public setters on result members, and get-only auto-props.
+  Two limits to respect, both learned in protobuf-net: the accessor's signature must still *name*
+  the target type, so non-public **types** (DAP017) stay refused regardless; and it is net8.0+,
+  so down-level targets keep the refusal path — protobuf-net's pattern is "smaller model with
+  warnings naming the fix, not a broken build" (`DownLevelSmoke`). Probe for the attribute
+  rather than assuming TFM.
+
 - **Migrate to the modern interceptor syntax.** The generator emits the legacy
   `[InterceptsLocation(path, line, column)]` form, deprecated in current SDKs (`CS9270` — the
   generated header even carries a pragma for it, and the `SqliteUsage` snapshot warns today);
