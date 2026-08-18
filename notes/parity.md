@@ -132,6 +132,16 @@ analysis (DAP2xx), `[SqlSyntax]`.
 
 ## 7. Work items arising
 
+- **Migrate to the modern interceptor syntax.** The generator emits the legacy
+  `[InterceptsLocation(path, line, column)]` form, deprecated in current SDKs (`CS9270` — the
+  generated header even carries a pragma for it, and the `SqliteUsage` snapshot warns today);
+  the replacement is the `InterceptableLocation`-based version+data form. **A working
+  implementation that does not need an SDK/Roslyn bump exists in protobuf-net** (just done):
+  `GrpcProxyGenerator` obtains the location payload by reflecting into the host's
+  `GetInterceptableLocation` (Roslyn 4.11+) so the shipped baseline can stay low, and
+  `docs/aot-grpc.md` there records the encoding — reverse-engineered and proven by hand — as
+  the fallback if the reflection ever stops working. Port that approach.
+
 - **New diagnostic: warn on "has no meaning" APIs.** When AOT is enabled, detect usage of
   the APIs whose *concept* doesn't exist under AOT — the plan-cache surface
   (`PurgeQueryCache`, `GetCachedSQL`, `GetCachedSQLCount`, `GetHashCollissions`,

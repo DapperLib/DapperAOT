@@ -68,5 +68,33 @@ persists with a clean compile, that's its own bug.
 | net8.0 | not yet measured | | | | |
 | net481 | not yet measured | | | | |
 
-Next: fix Bug A and Bug B in the generator (both look small), rebuild, re-tally — expect the
-DAP001/DAP2xx picture to appear once the compile is clean, which gives the real gap list.
+## Round 2 (same day): both bugs fixed (PRs #180, #181), repack, re-measure
+
+Predictions held: the zero-analyzer-diagnostics anomaly was cascade from Bug A — with the
+parse wreck gone the full picture appeared, and the scorecard moved honestly (396 → **394 of
+394**: the refused sites left the denominator too, which is the dishonesty already on
+record).
+
+Warnings: DAP027 ×402, DAP028 ×44, DAP012 ×40 (tuple-name guidance), DAP018 ×26 (params not
+detected in SQL), DAP048 ×16 (DbString→DbValue). Remaining build breaks, i.e. the next
+bug/gap batch:
+
+- **types nested in generic classes leak `TProvider`** (CS0246 ×16 + CS0122 ×8):
+  `ParameterTests<TProvider>.IntCustomParam` renders with the open type parameter into the
+  generated (non-generic) scope. `InvolvesGenericTypeParameter` has the same blind spot
+  `IsPublicOrAssemblyLocal` had (PR #180): it walks containment but not type arguments.
+  Same fix shape; note the accessibility check *also* missed these (private nested), so
+  check ordering/coverage while there;
+- **CS1503 ×2**: generated code passes `IDataReader` where `DbDataReader` is required
+  (`GetRowParser`-adjacent, generated line 497) — emit bug, uninvestigated;
+- **DAP037 as a build error on scalar-ish results** (×16): `Query<AnEnum>`, `Query<char>`,
+  `Query<ShortEnum>`, `Query<int[]>` (renders as `''`), `Query<dynamic>` — all fine in
+  vanilla Dapper, all "no settable members" *errors* here. The generator lacks scalar
+  result-type handling for enums/char/arrays and mishandles `dynamic` as a generic argument;
+  an analyzer **error** on a vanilla-supported shape also breaks the build outright, which
+  is worth revisiting as a severity question independent of the feature gap;
+- **DAP036 as a build error** (×4): `Query<TimeSpan>`, `Query<SqlDecimal>` — BCL structs as
+  results hit the constructor-ambiguity error. Same family as above.
+
+The scalar-result gaps are phase-3 features (they add parse-time state); the `TProvider`
+leak is a phase-1 refusal fix; the CS1503 needs sizing.
