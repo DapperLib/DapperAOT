@@ -38,5 +38,21 @@ beats today's state.
 
 ## Log
 
-- (start) Branch `phase2-model` from `main` (42ad705 + merges). Baseline hash of the harness
-  generated file to be recorded below.
+- (start) Branch `phase2-model` from `main`. Baseline hash of the harness generated file:
+  `f8d3a61f81455c8ef0bcecccbfc348a1584a6bab` (copy kept at `/tmp/baseline-generated.cs` for
+  diffing; regenerate with `-p:EmitCompilerGeneratedFiles=true
+  -p:CompilerGeneratedFilesOutputPath=obj/gen` — under `obj/`, or the default glob compiles
+  the stale copies as source, which cost an hour earlier).
+- **Increment 1 done** (pushed on `phase2-model`): `TypeAccessorInterceptorGenerator`
+  converted end-to-end. New `Dapper.CodeAnalysis.Model` namespace: `LocationSnapshot`,
+  `EquatableArray<T>`, `TypeAccessorModel`/`AccessorMember`/`ForwarderMethod`,
+  `GenerationEnvironment` (AllowUnsafe + AssemblyName + has-InterceptsLocationAttribute — the
+  only three facts the output step needed from the `Compilation`). `ModelShapeTests` enforces
+  no-Roslyn-fields + IEquatable over the namespace by reflection. Byte-identical: Accessors
+  goldens unchanged; full suite green net10/net48.
+  **[DECISION]** `PreGeneratedCodeWriter` keeps its `Compilation` ctor alongside the new
+  bool one until the big generator converts — avoids touching it out of order.
+  **[DECISION]** `ForwarderMethod`/type-name projection replicates `CodeWriter.Append(ITypeSymbol)`
+  exactly (anonymous → MinimallyQualified, else GetTypeName) so output cannot shift.
+- Next: increment 3a — `LocationSnapshot` into the interceptor generator's `SuccessSourceState`
+  (plus projecting the interceptor file path at parse, since emit asks the `SourceTree` for it).
