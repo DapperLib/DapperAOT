@@ -169,6 +169,28 @@ worth triage), InvalidCast ×8, SqlException ×16, NotSupported ×8.
 **[NOTE]** run duration jumped 22s → 9m26s - some newly-intercepted failing tests appear to
 burn full command timeouts; worth a look during phase 3 (it makes the behavioral loop slow).
 
+## Round 7: DynamicParameters lands (delegate-to-the-bag)
+
+Design in [dynamicparameters-design.md](dynamicparameters-design.md); the Dapper-side
+`AddParameters(IDbCommand)` overload sits on the local `dynamicparameters-apply` branch
+(API shape awaiting Marc's sign-off), and the generator support (probe-gated: older Dapper
+keeps the DAP015 refusal, goldens untouched) is on `dynamicparameters-support`.
+
+**533 of 725 handled (73.5%)**, up from 68.1%; DAP015 falls 114 → 30 (the rest are
+object-typed args - announced-types territory). First behavioral run caught a real bug the
+unit suite could not: stored procedures took `ParameterMode.All` before the dynamic-bag
+Defer check, so proc+bag sites got the parameterless fallback factory ("expects parameter
+@ID, which was not supplied") - fixed; ProcedureTests goes 16 failures → 0 bag-related
+(the 2 left are the known list-expansion gap).
+
+**New triage item, found by the suite (parity.md §4 said "verify" - now verified as a real
+divergence): the First/Single pipeline's CommandBehavior/drain semantics.**
+`QueryFirst("select * from #mydata; raiserror(...)")` over 500k rows: vanilla surfaces the
+trailing DbException; Dapper.AOT does not (Assert.ThrowsAny: no exception thrown), and the
+run burns ~4.5 minutes per provider apparently draining pending rows on reader close. Both
+halves point at how the generated First path picks CommandBehavior vs vanilla's deliberate
+choices (`Settings.UseSingleRowOptimization` exists precisely because of this trap).
+
 ## Scoreboard (to update as things land)
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
