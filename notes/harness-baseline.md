@@ -1,7 +1,8 @@
 # Harness baseline: Dapper.AOT enabled in the Dapper test suite
 
 First real numbers, 2026-08-18. Setup lives on the `aot-harness` branch of the **Dapper**
-repo (sibling checkout): local package feed at `../DapperAOT/artifacts` (pack with
+repo (sibling checkout; deliberately **local-only, not pushed** — it is a measurement rig,
+not work-in-progress on the public repo): local package feed at `../DapperAOT/artifacts` (pack with
 `NBGV_GitEngine=Disabled dotnet pack src/Dapper.AOT/Dapper.AOT.csproj -c Release -o artifacts`,
 giving the stable harness version `1.0.0-g`; purge `~/.nuget/packages/dapper.aot/1.0.0-g`
 between repacks), `[module: DapperAot]` in `DapperAotEnable.cs`, interceptors enabled, and a
