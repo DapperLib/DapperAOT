@@ -933,6 +933,10 @@ internal class TSqlProcessor
                     }
                 }
             }
+            else if (node.Into is null && node.QueryExpression is BinaryQueryExpression or QueryParenthesisExpression)
+            {
+                AddQuery(); // union/except/intersect/parens still produce a grid
+            }
 
             base.Visit(node);
         }
