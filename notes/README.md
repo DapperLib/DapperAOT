@@ -23,6 +23,7 @@ build time. See [type-vs-generic.md](type-vs-generic.md).
 
 | doc | contents |
 | --- | --- |
+| [plan.md](plan.md) | **the agreed plan**: complete the gap table → fix the generator → close the gaps |
 | [parity.md](parity.md) | the feature parity table: Dapper's surface vs Dapper.AOT today |
 | [tokens.md](tokens.md) | special string-token handling: `@ids` expansion, `{=literal}`, `?foo?`, etc |
 | [type-vs-generic.md](type-vs-generic.md) | `Type`-based vs `<T>` APIs, and the "announce your types" design space |
