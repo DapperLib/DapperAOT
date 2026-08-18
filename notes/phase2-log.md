@@ -107,5 +107,17 @@ beats today's state.
   GetSpecialCommandFlags, GetCommandFactory, AllowUnsafe, assembly name, PreGeneratedCodeWriter,
   and the CommandFactoryState systemObject plan). Project those into an equatable environment
   (the TypeAccessor generator shows the pattern) and the recompute half is done too.
+- **Increment 4 done — PHASE 2 COMPLETE** (PR #188, stacked on #187): `InterceptorEnvironment`
+  projected via `Select` (AllowUnsafe, assembly name, InterceptsLocationAttribute presence,
+  the DbCommand special-types sweep pre-filtered, module-level `[CommandFactory<T>]`, the
+  object fallback plan); the analyzer bridge builds the same environment. All four exit
+  criteria met: plain equatable cached model (zero Roslyn objects, shape-test-enforced
+  including the SourceState family), no CompilationProvider into either output step, shape
+  test in CI, output byte-identical (`f8d3a61f` unchanged across the entire rework; goldens
+  green net10/net48 at every increment).
+- Review pointers for the PRs: the states now have structural equality *as well as* plain
+  fields — both halves were needed for node-level caching; the `HasPublicSettableInstanceMember`
+  readonly-field quirk is preserved-as-was and flagged; ordering of the DbCommand special
+  types follows the same HashSet enumeration as before (projection just moved it earlier).
 - Next was: increment 3a — `LocationSnapshot` into the interceptor generator's `SuccessSourceState`
   (plus projecting the interceptor file path at parse, since emit asks the `SourceTree` for it).
