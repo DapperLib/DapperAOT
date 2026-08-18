@@ -154,11 +154,26 @@ Remaining skip buckets: DAP015 ×114 (untyped params - DynamicParameters is now 
 phase-3 #1), DAP013/14 ×40 (tuples), DAP016 ×28 (genuinely-generic incl. helper methods),
 DAP017 ×22 (private types), DAP037 ×20 + DAP050 ×12 (construction), DAP036 ×4.
 
+## Round 6b: behavioral run on the restructured suite
+
+**612 passed / 148 failed** (74 per provider, symmetric; vanilla control remains 760/0).
+Failures *rose* from 84 as interception rose from 387 to 494 - which is the honest direction:
+the newly-intercepted call-sites exercise runtime gaps that were previously hidden behind
+DAP051 refusals. The growth is concentrated exactly where expected: TypeHandlerTests 4 → 16
+per provider (the DTOs now generate, and `SqlMapper.AddTypeHandler` registrations are
+ignored by generated code - the phase-3 type-handler story), MiscTests 10 → 16, plus the
+existing token/TVP groups. Breakdown: ArgumentException ×56 (raw-bound lists/TVPs),
+assertion failures ×30 (behavioral divergence at handled sites - the coercion-matrix tail,
+worth triage), InvalidCast ×8, SqlException ×16, NotSupported ×8.
+
+**[NOTE]** run duration jumped 22s → 9m26s - some newly-intercepted failing tests appear to
+burn full command timeouts; worth a look during phase 3 (it makes the behavioral loop slow).
+
 ## Scoreboard (to update as things land)
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | 725 honest | 494 (68.1%) | ✅ | behavioral re-run pending | — |
+| net10.0 | 725 honest | 494 (68.1%) | ✅ | 612/760 (148 fail, runtime-only) | — |
 | net8.0 | > 387 | 387 claimed | ✅ | — | — |
 | net481 | > 405 | 405 claimed | ✅ (needs PR #184) | — | — |
 
