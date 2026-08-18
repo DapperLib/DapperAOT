@@ -80,9 +80,16 @@ the suite against a database, which is where silent divergence shows.
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | > 387 (denominator understated) | 387 claimed | ✅ (with 4 fix-PRs + 2 severity downgrades) | — | — |
-| net8.0 | not yet measured | | | | |
-| net481 | not yet measured | | | | |
+| net10.0 | > 387 (denominator understated) | 387 claimed | ✅ | — | — |
+| net8.0 | > 387 | 387 claimed | ✅ | — | — |
+| net481 | > 405 | 405 claimed | ✅ (needs PR #184) | — | — |
+
+All three legs compile as of 2026-08-18 evening, with PRs #180–#184 (the net481 leg — EF
+spatial, Linq2Sql — was the finder for #184: `DbGeography`/`Binary` result types emitted
+uncompilable construction; now refused with the new DAP050) plus the two harness severity
+downgrades. Environment note: **SQL Server 2022 Developer is installed and running locally**
+(default instance, matching the suite's default `Data Source=.` connection string), so the
+vanilla control run needs no docker.
 
 ## Round 2 (same day): both bugs fixed (PRs #180, #181), repack, re-measure
 
