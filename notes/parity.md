@@ -49,7 +49,7 @@ Two levers change several complexity scores and are worth naming up front:
 | `GetTypeDeserializer(Type, reader, startBound, length, ...)` | ❌ | low-med | low* | a valid raw-materializer API, not mere plumbing: with announced types it's the same dispatch map, returning a boxed `Func<DbDataReader, object>`. Its generic strengthening **already exists**: `GetRowParser<T>` (same slicing knobs), which AOT supports |
 | `CreateParamInfoGenerator(Identity, ...)` | ❌ | low | med | the raw parameter-binder factory; **no generic counterpart exists in Dapper** — see "Strengthened APIs" in [type-vs-generic.md](type-vs-generic.md) for the proposed `<T>` form |
 | `ReadChar` / `ReadNullableChar` / `SanitizeParameterValue` | ✅ | — | — | plain static helpers, AOT-safe as-is; nothing to intercept |
-| `PurgeQueryCache` / `GetCachedSQL*` / `GetHashCollissions` / `QueryCachePurged` | 🚫 | **zero** | — | there is no ref-emit plan cache in AOT |
+| `PurgeQueryCache` / `GetCachedSQL*` / `GetHashCollissions` / `QueryCachePurged` | 🚫 | **zero** | — | there is no ref-emit plan cache in AOT — but usage should *warn*, see §7 |
 | `Format` / `ReplaceLiterals` | ❓ | low | low | falls out of the literal-injection work (see [tokens.md](tokens.md)) |
 | public infrastructure statics: `PackListParameters`, `FindOrAddParameter`, `LookupDbType`, `HasTypeHandler`, `GetTypeName`/`SetTypeName`, `SetDbType`, `TypeHandlerCache<T>.Parse/SetValue`, `ThrowDataException`, `ThrowNullCustomQueryParameter` | ❓ | low | low | in scope because they are public (Contrib-style extenders call them), even though they exist to serve Dapper's generated IL. Mostly plain AOT-safe statics; the `Type`-keyed ones (`LookupDbType`, `TypeHandlerCache`) fold into announced types / the type-handler story |
 
@@ -129,3 +129,15 @@ Recorded so the unified story stays a superset, not a port: batch execution (`Db
 `[CacheCommand]`, `[CommandProperty]` (provider-specific command props), `[RowCount]` /
 `[RowCountHint]`, `TypeAccessor` + `SqlBulkCopy` bridge, `[IncludeLocation]`, deep TSQL
 analysis (DAP2xx), `[SqlSyntax]`.
+
+## 7. Work items arising
+
+- **New diagnostic: warn on "has no meaning" APIs.** When AOT is enabled, detect usage of
+  the APIs whose *concept* doesn't exist under AOT — the plan-cache surface
+  (`PurgeQueryCache`, `GetCachedSQL`, `GetCachedSQLCount`, `GetHashCollissions`,
+  `QueryCachePurged`), `CommandFlags.NoCache`, and (if confirmed zero)
+  `SqlMapper.ConnectionStringComparer` — and emit a **warning**: the call is harmless but
+  inert, and its presence usually signals code written to manage a runtime that is no longer
+  there. Not an error: the code still runs. Next free id in the library block is DAP050
+  (DAP049 is the highest taken). Distinct from DAP001 (unsupported-but-meaningful): this is
+  *supported-and-meaningless*.
