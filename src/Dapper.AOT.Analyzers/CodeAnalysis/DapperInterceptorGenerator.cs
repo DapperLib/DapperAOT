@@ -168,7 +168,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return new SuccessSourceState(new LocationSnapshot(location), InterceptorFilePath(ctx, location), languageVersion,
                 ProjectMethod(op.TargetMethod), flags, sql,
                 RowPlan.Create(resultType, additionalState?.QueryColumns ?? default),
-                argExpression?.Type, parameterMap, additionalState);
+                ParamPlan.Create(argExpression?.Type), parameterMap, additionalState);
         }
         catch (Exception ex)
         {
@@ -333,7 +333,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         foreach (var grp in ctx.Nodes.OfType<SuccessSourceState>().Where(x => !x.Flags.HasAny(OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
         {
             // first, try to resolve the helper method that we're going to use for this
-            var (flags, method, parameterType, parameterMap, _, additionalCommandState) = grp.Key;
+            var (flags, method, parameterPlan, parameterMap, _, additionalCommandState) = grp.Key;
             const bool useUnsafe = false;
             int usageCount = 0;
 
@@ -368,7 +368,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             sb.Append("// ").Append(flags.ToString()).NewLine();
             if (flags.HasAny(OperationFlags.HasParameters))
             {
-                sb.Append("// takes parameter: ").Append(parameterType).NewLine();
+                sb.Append("// takes parameter: ").Append(parameterPlan!.TypeName).NewLine();
             }
             if (!string.IsNullOrWhiteSpace(grp.Key.ParameterMap))
             {
@@ -443,9 +443,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             {
                 WriteGetRowParser(sb, resultPlan, readers, grp.Key.Flags);
             }
-            else if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
+            else if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterPlan, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
             {
-                WriteSingleImplementation(sb, method, resultPlan, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql, additionalCommandState);
+                WriteSingleImplementation(sb, method, resultPlan, flags, commandTypeMode, parameterPlan, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql, additionalCommandState);
             }
 
             sb.Outdent().NewLine().NewLine();
@@ -506,7 +506,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var tuple in factories)
         {
-            WriteCommandFactory(ctx, baseCommandFactory, sb, tuple.Type, tuple.Index, tuple.Map, tuple.CacheCount, tuple.AdditionalCommandState);
+            WriteCommandFactory(ctx, baseCommandFactory, sb, tuple.Plan, tuple.Index, tuple.Map, tuple.CacheCount, tuple.AdditionalCommandState);
         }
 
         sb.Outdent().Outdent(); // ends our generated file-scoped class and the namespace
@@ -526,14 +526,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             .Append(".GetRowParser(reader, startIndex, length, returnNullIfFirstMissing);").NewLine();
     }
 
-    private static void WriteCommandFactory(in GenerateState ctx, string baseFactory, CodeWriter sb, ITypeSymbol type, int index, string map, int cacheCount, AdditionalCommandState? additionalCommandState)
+    private static void WriteCommandFactory(in GenerateState ctx, string baseFactory, CodeWriter sb, ParamPlan type, int index, string map, int cacheCount, AdditionalCommandState? additionalCommandState)
     {
-        var declaredType = type.IsAnonymousType ? "object?" : CodeWriter.GetTypeName(type);
+        var declaredType = type.DeclaredType;
         sb.Append("private ").Append(cacheCount <= 1 ? "sealed" : "abstract").Append(" class CommandFactory").Append(index).Append(" : ")
             .Append(baseFactory).Append("<").Append(declaredType).Append(">");
-        if (type.IsAnonymousType)
+        if (type.IsAnonymous)
         {
-            sb.Append(" // ").Append(type); // give the reader a clue
+            sb.Append(" // ").Append(type.TypeName); // give the reader a clue
         }
         sb.Indent().NewLine();
 
@@ -559,7 +559,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 break;
         }
 
-        if (Inspection.IsCancellationToken(type))
+        if (type.IsCancellationTokenType)
         {
             sb.Append("public override global::System.Threading.CancellationToken GetCancellationToken(").Append(declaredType).Append(" args) => args;").NewLine();
         }
@@ -1092,7 +1092,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         GetCancellationToken
     }
 
-    private static void WriteArgs(in GenerateState ctx, ITypeSymbol? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags)
+    private static void WriteArgs(in GenerateState ctx, ParamPlan? parameterType, CodeWriter sb, WriteArgsMode mode, string map, ref WriteArgsFlags flags)
     {
         if (parameterType is null)
         {
@@ -1101,11 +1101,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         var source = "args";
 
-        if (parameterType.IsAnonymousType)
+        if (parameterType.IsAnonymous)
         {
-            sb.Append("var typed = Cast(args, ");
-            AppendShapeLambda(sb, parameterType);
-            sb.Append("); // expected shape").NewLine();
+            sb.Append("var typed = Cast(args, ").Append(parameterType.ShapeLambda).Append("); // expected shape").NewLine();
             source = "typed";
         }
 
@@ -1116,10 +1114,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         bool first = true, firstTest = true;
         int parameterIndex = 0;
-        var memberMap = MemberMap.CreateForParameters(parameterType);
-        if (memberMap is null or { Members.IsDefaultOrEmpty: true }) return;
+        var planMembers = parameterType.Members;
+        if (planMembers.IsEmpty) return;
 
-        foreach (var member in memberMap.Members)
+        foreach (var member in planMembers)
         {
             if (!member.IsMapped) continue;
 
@@ -1204,7 +1202,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     sb.Append("p = cmd.CreateParameter();").NewLine();
                     sb.Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
 
-                    if (member.DapperSpecialType is DapperSpecialType.DbString)
+                    if (member.IsDbString)
                     {
                         ctx.GeneratorContext.IncludeGenerationType(IncludedGeneration.DbStringHelpers);
 
@@ -1215,30 +1213,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         break;
                     }
 
-                    var dbType = member.GetDbType(out _);
-                    var size = member.TryGetValue<int>("Size");
-                    bool useSetValueWithDefaultSize = false;
-                    if (dbType is not null)
+                    bool useSetValueWithDefaultSize = member.UseSetValueWithDefaultSize;
+                    if (member.HasDbType)
                     {
-                        sb.Append("p.DbType = global::System.Data.DbType.").Append(dbType.GetValueOrDefault().ToString()).Append(";").NewLine();
-                        if (size is null)
-                        {
-                            switch (dbType.GetValueOrDefault())
-                            {
-                                case DbType.Binary:
-                                case DbType.String:
-                                case DbType.AnsiString:
-                                    if (member.CodeType.SpecialType == SpecialType.System_String)
-                                    {
-                                        useSetValueWithDefaultSize = true;
-                                    }
-                                    else
-                                    {
-                                        size = -1; // default to [n]varchar(max)/varbinary(max)
-                                    }
-                                    break;
-                            }
-                        }
+                        sb.Append("p.DbType = global::System.Data.DbType.").Append(member.DbTypeName).Append(";").NewLine();
                     }
                     else
                     {
@@ -1246,9 +1224,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         // string/binary args to have a size, but: we've set that)
                         flags &= ~WriteArgsFlags.CanPrepare;
                     }
-                    AppendDbParameterSetting(sb, "Size", size);
-                    AppendDbParameterSetting(sb, "Precision", member.TryGetValue<byte>("Precision"));
-                    AppendDbParameterSetting(sb, "Scale", member.TryGetValue<byte>("Scale"));
+                    AppendDbParameterSetting(sb, "Size", member.EffectiveSize);
+                    AppendDbParameterSetting(sb, "Precision", member.Precision);
+                    AppendDbParameterSetting(sb, "Scale", member.Scale);
 
                     sb.Append("p.Direction = global::System.Data.ParameterDirection.").Append(direction switch
                     {
@@ -1288,7 +1266,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                     break;
                 case WriteArgsMode.Update:
-                    if (member.DapperSpecialType is DapperSpecialType.DbString)
+                    if (member.IsDbString)
                     {
                         ctx.GeneratorContext.IncludeGenerationType(IncludedGeneration.DbStringHelpers);
 
@@ -1319,7 +1297,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 case WriteArgsMode.PostProcess:
                     // we already eliminated args that we don't need to look at
                     sb.Append(source).Append(".").Append(member.CodeName).Append(" = Parse<")
-                        .Append(member.CodeType).Append(">(ps[");
+                        .Append(member.TypeName).Append(">(ps[");
                     if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
                     else sb.Append(parameterIndex);
                     sb.Append("].Value);").NewLine();
@@ -1346,35 +1324,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         if (value is not null)
         {
             sb.Append("p.").Append(memberName).Append(" = ").Append(value.GetValueOrDefault()).Append(";").NewLine();
-        }
-    }
-
-    private static void AppendShapeLambda(CodeWriter sb, ITypeSymbol parameterType)
-    {
-        var members = parameterType.GetMembers();
-        int count = CodeWriter.CountGettableInstanceMembers(members);
-        switch (count)
-        {
-            case 0:
-                sb.Append("static () => (object?)null");
-                break;
-            default:
-                bool first = true;
-                sb.Append("static () => new {");
-                foreach (var member in members)
-                {
-                    if (CodeWriter.IsGettableInstanceMember(member, out var type))
-                    {
-                        sb.Append(first ? " " : ", ").Append(member.Name).Append(" = default(").Append(type).Append(")");
-                        if (type.IsReferenceType && type.NullableAnnotation == NullableAnnotation.None)
-                        {
-                            sb.Append("!");
-                        }
-                        first = false;
-                    }
-                }
-                sb.Append(" }");
-                break;
         }
     }
 
@@ -1489,6 +1438,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     internal abstract class SourceState
     {
+        // note: the incremental driver caches these values per node and decides re-runs by
+        // equality, so every subclass must provide *structural* equality (see ModelShapeTests)
         public LocationSnapshot Location { get; }
         protected SourceState(in LocationSnapshot location) => Location = location;
     }
@@ -1501,6 +1452,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public OperationFlags Flags { get; }
         public SkippedSourceState(in LocationSnapshot location, OperationFlags flags) : base(location)
             => Flags = flags;
+
+        public bool Equals(SkippedSourceState? other) => other is not null
+            && Location.Equals(other.Location) && Flags == other.Flags;
+        public override bool Equals(object? obj) => Equals(obj as SkippedSourceState);
+        public override int GetHashCode() => Location.GetHashCode() ^ (int)Flags;
     }
 
     internal sealed class FaultSourceState : SourceState
@@ -1509,6 +1465,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         public FaultSourceState(in LocationSnapshot location, Exception fault) : base(location)
             => Fault = fault;
+
+        public bool Equals(FaultSourceState? other) => other is not null
+            && Location.Equals(other.Location)
+            && Fault.GetType() == other.Fault.GetType()
+            && string.Equals(Fault.Message, other.Fault.Message, StringComparison.Ordinal);
+        public override bool Equals(object? obj) => Equals(obj as FaultSourceState);
+        public override int GetHashCode() => Location.GetHashCode();
     }
 
     internal sealed class SuccessSourceState : SourceState
@@ -1521,12 +1484,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public string ParameterMap { get; }
         public InterceptedMethod Method { get; }
         public RowPlan? ResultPlan { get; }
-        public ITypeSymbol? ParameterType { get; }
+        public ParamPlan? ParameterPlan { get; }
         public AdditionalCommandState? AdditionalCommandState { get; }
 
         public SuccessSourceState(in LocationSnapshot location, string interceptorFilePath, int languageVersion,
             InterceptedMethod method, OperationFlags flags, string? sql,
-            RowPlan? resultPlan, ITypeSymbol? parameterType, string parameterMap,
+            RowPlan? resultPlan, ParamPlan? parameterPlan, string parameterMap,
             AdditionalCommandState? additionalCommandState) : base(location)
         {
             InterceptorFilePath = interceptorFilePath;
@@ -1534,18 +1497,38 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             Flags = flags;
             Sql = sql;
             ResultPlan = resultPlan;
-            ParameterType = parameterType;
+            ParameterPlan = parameterPlan;
             Method = method;
             ParameterMap = parameterMap;
             AdditionalCommandState = additionalCommandState;
         }
 
-        public (OperationFlags Flags, InterceptedMethod Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) Group()
-            => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location, AdditionalCommandState);
+        public (OperationFlags Flags, InterceptedMethod Method, ParamPlan? ParameterPlan, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) Group()
+            => new(Flags, Method, ParameterPlan, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location, AdditionalCommandState);
+
+        public bool Equals(SuccessSourceState? other) => other is not null
+            && Location.Equals(other.Location)
+            && string.Equals(InterceptorFilePath, other.InterceptorFilePath, StringComparison.Ordinal)
+            && LanguageVersion == other.LanguageVersion
+            && Flags == other.Flags
+            && string.Equals(Sql, other.Sql, StringComparison.Ordinal)
+            && string.Equals(ParameterMap, other.ParameterMap, StringComparison.Ordinal)
+            && Method.Equals(other.Method)
+            && Equals(ResultPlan, other.ResultPlan)
+            && Equals(ParameterPlan, other.ParameterPlan)
+            && Equals(AdditionalCommandState, other.AdditionalCommandState);
+        public override bool Equals(object? obj) => Equals(obj as SuccessSourceState);
+        public override int GetHashCode()
+        {
+            var hash = Location.GetHashCode();
+            hash = (hash * -47) + (int)Flags;
+            hash = (hash * -47) + Method.GetHashCode();
+            return hash;
+        }
     }
     private sealed class CommonComparer :
         IComparer<LocationSnapshot>,
-        IEqualityComparer<(OperationFlags Flags, InterceptedMethod Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState)>
+        IEqualityComparer<(OperationFlags Flags, InterceptedMethod Method, ParamPlan? ParameterPlan, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState)>
     {
         public static readonly CommonComparer Instance = new();
         private CommonComparer() { }
@@ -1567,15 +1550,15 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         public bool Equals(
 
-            (OperationFlags Flags, InterceptedMethod Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) x,
-            (OperationFlags Flags, InterceptedMethod Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) y) => x.Flags == y.Flags
+            (OperationFlags Flags, InterceptedMethod Method, ParamPlan? ParameterPlan, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) x,
+            (OperationFlags Flags, InterceptedMethod Method, ParamPlan? ParameterPlan, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) y) => x.Flags == y.Flags
                 && x.ParameterMap == y.ParameterMap
                 && x.Method.Equals(y.Method)
-                && SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType)
+                && Equals(x.ParameterPlan, y.ParameterPlan)
                 && Nullable.Equals(x.UniqueLocation, y.UniqueLocation)
                 && Equals(x.AdditionalCommandState, y.AdditionalCommandState);
 
-        public int GetHashCode((OperationFlags Flags, InterceptedMethod Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) obj)
+        public int GetHashCode((OperationFlags Flags, InterceptedMethod Method, ParamPlan? ParameterPlan, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) obj)
         {
             var hash = (int)obj.Flags;
             hash *= -47;
@@ -1583,9 +1566,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             hash *= -47;
             hash += obj.Method.GetHashCode();
             hash *= -47;
-            if (obj.ParameterType is not null)
+            if (obj.ParameterPlan is not null)
             {
-                hash += SymbolEqualityComparer.Default.GetHashCode(obj.ParameterType);
+                hash += obj.ParameterPlan.GetHashCode();
             }
             hash *= -47;
             if (obj.UniqueLocation is not null)

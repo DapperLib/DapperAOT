@@ -7,12 +7,12 @@ using System.Linq;
 
 namespace Dapper.Internal;
 
-internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, string Map, int Index, int CacheCount, AdditionalCommandState? AdditionalCommandState)>
+internal readonly struct CommandFactoryState : IEnumerable<(ParamPlan Plan, string Map, int Index, int CacheCount, AdditionalCommandState? AdditionalCommandState)>
 {
 
-    public CommandFactoryState(Compilation compilation) => systemObject = compilation.GetSpecialType(SpecialType.System_Object);
-    private readonly ITypeSymbol systemObject;
-    private readonly Dictionary<(ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState), (int Index, int CacheCount)> parameterTypes = new(ParameterTypeMapComparer.Instance);
+    public CommandFactoryState(Compilation compilation) => systemObject = ParamPlan.Create(compilation.GetSpecialType(SpecialType.System_Object))!;
+    private readonly ParamPlan systemObject;
+    private readonly Dictionary<(ParamPlan Plan, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState), (int Index, int CacheCount)> parameterTypes = new(ParameterTypeMapComparer.Instance);
 
     public int Count()
     {
@@ -25,22 +25,22 @@ internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, st
         return total;
     }
 
-    public IEnumerator<(ITypeSymbol Type, string Map, int Index, int CacheCount, AdditionalCommandState? AdditionalCommandState)> GetEnumerator()
+    public IEnumerator<(ParamPlan Plan, string Map, int Index, int CacheCount, AdditionalCommandState? AdditionalCommandState)> GetEnumerator()
     {
         // retain discovery order
-        return parameterTypes.OrderBy(x => x.Value.Index).Select(x => (x.Key.Type, x.Key.Map, x.Value.Index, x.Value.CacheCount, x.Key.AdditionalCommandState)).GetEnumerator();
+        return parameterTypes.OrderBy(x => x.Value.Index).Select(x => (x.Key.Plan, x.Key.Map, x.Value.Index, x.Value.CacheCount, x.Key.AdditionalCommandState)).GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public int GetIndex(ITypeSymbol type, string map, bool cache, AdditionalCommandState? additionalCommandState, out int? subIndex)
+    public int GetIndex(ParamPlan plan, string map, bool cache, AdditionalCommandState? additionalCommandState, out int? subIndex)
     {
-        if (string.IsNullOrWhiteSpace(map) && type.IsReferenceType)
+        if (string.IsNullOrWhiteSpace(map) && plan.IsReferenceType)
         {
             // just use object if there's nothing to map
-            type = systemObject;
+            plan = systemObject;
         }
-        var key = (type!, map, cache, additionalCommandState);
+        var key = (plan!, map, cache, additionalCommandState);
         int index;
         if (parameterTypes.TryGetValue(key, out var value))
         {
@@ -64,22 +64,22 @@ internal readonly struct CommandFactoryState : IEnumerable<(ITypeSymbol Type, st
         return index;
     }
 
-    private sealed class ParameterTypeMapComparer : IEqualityComparer<(ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState)>
+    private sealed class ParameterTypeMapComparer : IEqualityComparer<(ParamPlan Plan, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState)>
     {
         public static readonly ParameterTypeMapComparer Instance = new();
         private ParameterTypeMapComparer() { }
 
-        public bool Equals((ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState) x, (ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState) y)
+        public bool Equals((ParamPlan Plan, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState) x, (ParamPlan Plan, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState) y)
             => StringComparer.InvariantCultureIgnoreCase.Equals(x.Map, y.Map)
-            && SymbolEqualityComparer.Default.Equals(x.Type, y.Type)
+            && x.Plan.Equals(y.Plan)
             && Equals(x.AdditionalCommandState, y.AdditionalCommandState)
             && x.Cached == y.Cached;
 
-        public int GetHashCode((ITypeSymbol Type, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState) obj)
+        public int GetHashCode((ParamPlan Plan, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState) obj)
             => (StringComparer.InvariantCultureIgnoreCase.GetHashCode(obj.Map)
-            ^ SymbolEqualityComparer.Default.GetHashCode(obj.Type))
+            ^ obj.Plan.GetHashCode())
             ^ (obj.AdditionalCommandState is null ? 0 : obj.AdditionalCommandState.GetHashCode())
             * (obj.Cached ? -1 : 1);
-            
+
     }
 }

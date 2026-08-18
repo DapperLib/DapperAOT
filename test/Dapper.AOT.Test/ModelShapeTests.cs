@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -21,7 +21,10 @@ public class ModelShapeTests
 
     public static IEnumerable<object[]> ModelTypes()
         => typeof(Dapper.CodeAnalysis.DapperAnalyzer).Assembly.GetTypes()
-            .Where(t => t.Namespace == ModelNamespace && !t.IsEnum && !IsCompilerGenerated(t))
+            .Where(t => (t.Namespace == ModelNamespace
+                    // the cached pipeline states themselves are also model, wherever they live
+                    || typeof(Dapper.CodeAnalysis.DapperInterceptorGenerator.SourceState).IsAssignableFrom(t))
+                && !t.IsEnum && !IsCompilerGenerated(t))
             .Select(t => new object[] { t });
 
     static bool IsCompilerGenerated(Type type) => type.Name.StartsWith("<");
@@ -79,7 +82,15 @@ public class ModelShapeTests
     [Theory, MemberData(nameof(ModelTypes))]
     public void ModelTypeIsEquatable(Type type)
     {
-        if (type.IsInterface || type.IsAbstract || type.IsNested) return; // (nested helpers like enumerators are not cached values)
+        if (type.IsInterface || type.IsAbstract || type.Name == "Enumerator") return; // (the enumerator helper is not a cached value)
+        if (typeof(Dapper.CodeAnalysis.DapperInterceptorGenerator.SourceState).IsAssignableFrom(type)
+            || type.IsNested)
+        {
+            // nested/state types use Equals overrides rather than IEquatable; the override is what matters
+            var equalsMethod = type.GetMethod("Equals", [type]);
+            Assert.True(equalsMethod is not null, type.Name + " should declare structural equality");
+            return;
+        }
         // structural equality is what makes the incremental cache work at all
         var equatable = typeof(IEquatable<>).MakeGenericType(type);
         Assert.True(equatable.IsAssignableFrom(type), $"{type.Name} should implement IEquatable<{type.Name}>");
