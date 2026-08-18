@@ -96,5 +96,16 @@ beats today's state.
   side (WriteCommandFactory ~450 lines: member accessors, DbType/size/direction facts,
   anonymous shape witness, multi-exec element/cast, UnsafeAccessor-adjacent bits). Same
   recipe; roughly twice the surface of the row side.
+- **Increment 3c-ii parameter side done** (pushed): `ParameterType` → `ParamPlan`/`ParamMember`
+  (command-factory emission incl. Add-mode sizing decisions, DbString/cancellation, the
+  anonymous shape witness, multi-exec element plan). `CommandFactoryState` keys on plan
+  equality. **Zero Roslyn objects remain in the cached model.** The states also gained
+  structural equality (reference equality was still defeating the node-level cache), and the
+  shape test now covers the SourceState family. Byte-identical throughout (`f8d3a61f`).
+- **Remaining for phase 2**: increment 4 only - the interceptor generator's output step still
+  combines the raw `CompilationProvider` (used for: DbCommand type discovery/
+  GetSpecialCommandFlags, GetCommandFactory, AllowUnsafe, assembly name, PreGeneratedCodeWriter,
+  and the CommandFactoryState systemObject plan). Project those into an equatable environment
+  (the TypeAccessor generator shows the pattern) and the recompute half is done too.
 - Next was: increment 3a — `LocationSnapshot` into the interceptor generator's `SuccessSourceState`
   (plus projecting the interceptor file path at parse, since emit asks the `SourceTree` for it).
