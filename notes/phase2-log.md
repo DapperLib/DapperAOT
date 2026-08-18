@@ -119,5 +119,12 @@ beats today's state.
   fields — both halves were needed for node-level caching; the `HasPublicSettableInstanceMember`
   readonly-field quirk is preserved-as-was and flagged; ordering of the DbCommand special
   types follows the same HashSet enumeration as before (projection just moved it earlier).
+- **Incremental-caching tests added** (on #188, at review request): three driver-tracked
+  cases - unrelated-file edit → all output steps Cached; same-file edit *below* the
+  call-site → cached (this is the case that specifically needs the states' structural
+  equality, since Parse re-runs and yields fresh instances); real shape edit → re-runs and
+  output changes. Finding while writing it: editing the SQL *literal* does not change the
+  generated text (SQL flows through as an argument), so the "real edit" probe must change
+  shape, not SQL.
 - Next was: increment 3a — `LocationSnapshot` into the interceptor generator's `SuccessSourceState`
   (plus projecting the interceptor file path at parse, since emit asks the `SourceTree` for it).
