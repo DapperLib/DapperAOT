@@ -5,9 +5,11 @@ Every one of these is observable behavior that real code depends on; each needs 
 AOT position: **replicate**, **replicate with constraints**, or **refuse loudly** (analyzer
 error, never silent divergence).
 
-Source of truth: `Dapper/Dapper/SqlMapper.cs` (`PackListParameters`, `GetInListRegex`,
-`GetLiteralTokens`, `ReplaceLiterals`, `SanitizeParameterValue`, the pseudo-positional
-rewrite) and `SqlMapper.Settings`. Line refs are as of `72a54c4`.
+The contract here is **observable behavior only**: the SQL text and parameter set that reach
+the provider. The regexes and rewrite internals cited below (from `Dapper/Dapper/SqlMapper.cs`
+— `PackListParameters`, `GetInListRegex`, `GetLiteralTokens`, `SanitizeParameterValue`, the
+pseudo-positional rewrite — line refs as of `72a54c4`) are *evidence* of that behavior, not
+something to replicate structurally. AOT is free to implement all of this however it likes.
 
 ## 1. Parameter prefixes
 

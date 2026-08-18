@@ -28,6 +28,20 @@ build time. See [type-vs-generic.md](type-vs-generic.md).
 | [type-vs-generic.md](type-vs-generic.md) | `Type`-based vs `<T>` APIs, and the "announce your types" design space |
 | [test-suite-audit.md](test-suite-audit.md) | the Dapper test files as acceptance corpus, and what blocks each |
 
+## Scope: the public API, by observable behavior
+
+Parity is defined over Dapper's **public API** (`Dapper/PublicAPI.Shipped.txt` is the
+checklist) and the **observable behavior** of each member: the SQL text and parameter set
+that reach the provider, and the values that come back. How Dapper implements any of it —
+internal types, regexes, caches — is irrelevant, except as *evidence* of the observable
+behavior. Two consequences:
+
+- internal implementation types (e.g. the dynamic-row class) need behavioral fidelity (the
+  returned object's public contracts), never type fidelity;
+- public-but-infrastructure members (`PackListParameters`, `FindOrAddParameter`,
+  `TypeHandlerCache<T>`, ...) are in scope *because they are public* — Contrib-style
+  extenders call them — even though they exist to serve Dapper's own generated IL.
+
 ## Honesty rules
 
 - A status in these tables is only worth having if it was **verified against code** — the

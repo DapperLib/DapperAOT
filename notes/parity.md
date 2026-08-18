@@ -51,6 +51,7 @@ Two levers change several complexity scores and are worth naming up front:
 | `ReadChar` / `ReadNullableChar` / `SanitizeParameterValue` | ✅ | — | — | plain static helpers, AOT-safe as-is; nothing to intercept |
 | `PurgeQueryCache` / `GetCachedSQL*` / `GetHashCollissions` / `QueryCachePurged` | 🚫 | **zero** | — | there is no ref-emit plan cache in AOT |
 | `Format` / `ReplaceLiterals` | ❓ | low | low | falls out of the literal-injection work (see [tokens.md](tokens.md)) |
+| public infrastructure statics: `PackListParameters`, `FindOrAddParameter`, `LookupDbType`, `HasTypeHandler`, `GetTypeName`/`SetTypeName`, `SetDbType`, `TypeHandlerCache<T>.Parse/SetValue`, `ThrowDataException`, `ThrowNullCustomQueryParameter` | ❓ | low | low | in scope because they are public (Contrib-style extenders call them), even though they exist to serve Dapper's generated IL. Mostly plain AOT-safe statics; the `Type`-keyed ones (`LookupDbType`, `TypeHandlerCache`) fold into announced types / the type-handler story |
 
 ## 2. Parameters (input side)
 
@@ -84,7 +85,7 @@ Two levers change several complexity scores and are worth naming up front:
 | constructor binding, `[ExplicitConstructor]` | ✅ | — | — | plus factory methods (AOT extension) |
 | `required` / init-only members | ✅ | — | — | `RequiredProperties` fixture |
 | fields | ❓ | low | low | verify |
-| `dynamic` rows (`DapperRow` fidelity) | ⚠️ | high | med | Dapper's row is `IDictionary<string,object>` + `IReadOnlyDictionary`, tolerates add/remove, specific null/missing semantics — pin the matrix with tests |
+| `dynamic` rows — behavioral fidelity | ⚠️ | high | med | the row *type* is internal and irrelevant; the observable contract is: `dynamic` member access, `IDictionary<string,object>` + `IReadOnlyDictionary<string,object>`, tolerates add/remove, specific null/missing semantics — pin that matrix with tests against AOT's row |
 | tuple results | ❌ | med | med | DAP013; design already framed by `[BindTupleByName]` |
 | enum results (string→enum case-insens., widening, `ShortEnum`) | ⚠️❓ | high | low-med | Dapper recently changed precedence (prefer type handlers, #2200) — match the *new* behavior |
 | `MatchNamesWithUnderscores` | ❓ | med-high | low | snake_case databases; needs a compile-time equivalent (global option/attr) |
