@@ -518,7 +518,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             methodIndex, factories.Count(), readers.Count()));
     }
 
-    private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers, OperationFlags flags, ImmutableArray<string> queryColumns)
+    private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers, OperationFlags flags, in EquatableArray<string> queryColumns)
     {
         sb.Append("return ").AppendReader(resultType, readers, flags, queryColumns)
             .Append(".GetRowParser(reader, startIndex, length, returnNullIfFirstMissing);").NewLine();
@@ -675,44 +675,27 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0066:Convert switch statement to expression", Justification = "Readability")]
-    private static void WriteCommandProperties(in GenerateState ctx, CodeWriter sb, string source, ImmutableArray<CommandProperty> properties, int index = 0)
+    private static void WriteCommandProperties(in GenerateState ctx, CodeWriter sb, string source, in EquatableArray<CommandProperty> properties, int index = 0)
     {
-        foreach (var grp in properties.GroupBy(x => x.CommandType, SymbolEqualityComparer.Default))
+        foreach (var grp in properties.GroupBy(x => x.CommandTypeName, StringComparer.Ordinal))
         {
-            var type = (INamedTypeSymbol)grp.Key!;
-            bool isDbCmd = type is
-            {
-                Name: "DbCommand", ContainingType: null, Arity: 0, TypeKind: TypeKind.Class, ContainingNamespace:
-                {
-                    Name: "Common",
-                    ContainingNamespace:
-                    {
-                        Name: "Data",
-                        ContainingNamespace:
-                        {
-                            Name: "System",
-                            ContainingNamespace.IsGlobalNamespace: true
-                        }
-                    }
-                }
-            };
-
-            bool firstForType = true; // defer starting the if-test in case all invalid
+            bool isDbCmd = false, firstForType = true; // defer starting the if-test in case all invalid
             foreach (var prop in grp)
             {
+                isDbCmd = prop.IsDbCommand;
                 if (IsReserved(prop.Name))
                 {
-                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CommandPropertyReserved, prop.Location, prop.Name));
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CommandPropertyReserved, prop.Location.AsLocation(), prop.Name));
                     continue;
                 }
-                else if (!HasPublicSettableInstanceMember(type, prop.Name))
+                else if (!prop.MemberExists)
                 {
-                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CommandPropertyNotFound, prop.Location, type.Name, prop.Name));
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.CommandPropertyNotFound, prop.Location.AsLocation(), prop.CommandTypeShortName, prop.Name));
                     continue;
                 }
                 if (firstForType && !isDbCmd)
                 {
-                    sb.NewLine().Append("if (cmd is ").Append(type).Append(" cmd").Append(index).Append(")").Indent();
+                    sb.NewLine().Append("if (cmd is ").Append(grp.Key).Append(" cmd").Append(index).Append(")").Indent();
                     firstForType = false;
                 }
 
@@ -747,21 +730,6 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
         }
 
-        static bool HasPublicSettableInstanceMember(ITypeSymbol type, string name)
-        {
-            foreach (var member in type.GetMembers())
-            {
-                if (member.IsStatic || member.Name != name || member.DeclaredAccessibility != Accessibility.Public) continue;
-                return member.Kind switch
-                {
-                    SymbolKind.Field when member is IFieldSymbol field => field.IsReadOnly,
-                    SymbolKind.Property when member is IPropertySymbol prop => prop.SetMethod is not null,
-                    _ => false,
-                };
-            }
-            return false;
-        }
-
         static bool IsReserved(string name)
         {
             switch (name)
@@ -785,7 +753,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index, OperationFlags flags, ImmutableArray<string> queryColumns, Location? location)
+    private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index, OperationFlags flags, EquatableArray<string> queryColumns, Location? location)
     {
         var map = MemberMap.CreateForResults(type, location);
         if (map is null) return;

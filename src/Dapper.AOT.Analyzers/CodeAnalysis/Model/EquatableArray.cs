@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -15,13 +15,15 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IRea
     where T : IEquatable<T>
 {
     private readonly T[]? _items;
-    public static EquatableArray<T> Empty => default;
+    public static EquatableArray<T> Empty => new([]);
 
-    public EquatableArray(T[] items) => _items = items is { Length: 0 } ? null : items;
+    public EquatableArray(T[]? items) => _items = items;
 
     public int Length => _items?.Length ?? 0;
     public int Count => Length;
     public bool IsEmpty => Length == 0;
+    /// <summary>Distinct from empty, mirroring ImmutableArray: "not specified at all".</summary>
+    public bool IsDefault => _items is null;
     public T this[int index] => _items![index];
 
     public bool Equals(EquatableArray<T> other)
@@ -41,7 +43,7 @@ internal readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IRea
 
     public override int GetHashCode()
     {
-        if (_items is null) return 0;
+        if (_items is null) return -1; // default is distinct from empty
         int hash = _items.Length;
         foreach (var item in _items)
         {

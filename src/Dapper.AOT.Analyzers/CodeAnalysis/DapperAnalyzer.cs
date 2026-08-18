@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using Dapper.CodeAnalysis.Model;
 using Dapper.Internal.Roslyn;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
@@ -872,10 +873,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        ImmutableArray<CommandProperty> cmdProps;
+        EquatableArray<CommandProperty> cmdProps = default;
         if (cmdPropsCount != 0)
         {
-            var builder = ImmutableArray.CreateBuilder<CommandProperty>(cmdPropsCount);
+            var builder = new List<CommandProperty>(cmdPropsCount);
             foreach (var attrib in methodAttribs)
             {
                 if (IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == Types.CommandPropertyAttribute
@@ -885,19 +886,15 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     && attrib.ConstructorArguments[0].Value is string name
                     && attrib.ConstructorArguments[1].Value is object value)
                 {
-                    builder.Add(new(cmdType, name, value, location));
+                    builder.Add(CommandProperty.Create(cmdType, name, value, location));
                 }
             }
-            cmdProps = builder.ToImmutable();
-        }
-        else
-        {
-            cmdProps = ImmutableArray<CommandProperty>.Empty;
+            cmdProps = new(builder.ToArray());
         }
 
-
-        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && queryColumns.IsDefault
-            ? null : new(rowCountHint, rowCountHintMember?.Member?.Name, batchSize, cmdProps, queryColumns);
+        var queryColumnsModel = queryColumns.IsDefault ? default : new EquatableArray<string>(queryColumns.AsSpan().ToArray());
+        return cmdProps.IsEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && queryColumnsModel.IsDefault
+            ? null : new(rowCountHint, rowCountHintMember?.Member?.Name, batchSize, cmdProps, queryColumnsModel);
     }
 
     static void ValidateParameters(MemberMap? parameters, OperationFlags flags, Action<Diagnostic> onDiagnostic)
