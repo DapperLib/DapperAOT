@@ -191,11 +191,19 @@ run burns ~4.5 minutes per provider apparently draining pending rows on reader c
 halves point at how the generated First path picks CommandBehavior vs vanilla's deliberate
 choices (`Settings.UseSingleRowOptimization` exists precisely because of this trap).
 
+## Round 7b: confirmation run with the proc-mode fix
+
+**612 passed / 150 failed** (down from 170; the proc-mode fix recovered 20). Every remaining
+failure class maps onto a planned phase-3 feature: ParameterTests ×23/provider (tokens:
+list expansion, TVPs, custom params), TypeHandlerTests ×16 (type-handler story), MiscTests
+×16 (coercions + tokens), Async/Literal (literals), plus the First-pipeline drain pair and
+the small tail. Nothing unexplained.
+
 ## Scoreboard (to update as things land)
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | 725 honest | 494 (68.1%) | ✅ | 612/760 (148 fail, runtime-only) | — |
+| net10.0 | 725 honest | 533 (73.5%) | ✅ | 612/762 (150 fail, runtime-only) | — |
 | net8.0 | > 387 | 387 claimed | ✅ | — | — |
 | net481 | > 405 | 405 claimed | ✅ (needs PR #184) | — | — |
 
