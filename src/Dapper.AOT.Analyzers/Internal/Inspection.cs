@@ -745,6 +745,67 @@ internal static class Inspection
         }
     }
 
+    /// <summary>
+    /// Mirrors the row-factory emitter's construction decision: is there any way the generated
+    /// code can create an instance of this result type? (structs and inbuilt row types always can)
+    /// </summary>
+    internal static bool IsUnconstructableResultType(ITypeSymbol? resultType, IAssemblySymbol? assembly)
+    {
+        if (resultType is not INamedTypeSymbol named || named.IsValueType) return false;
+        if (CodeWriter.IsInbuiltResultType(named, out _)) return false;
+        var map = MemberMap.CreateForResults(named);
+        if (map is null) return false;
+
+        if (map.Constructor is { } ctor)
+        {   // the emitter passes an argument per member carrying ConstructorParameterOrder;
+            // if the constructor demands more, the emitted call will not compile
+            return CountMapped(map, factory: false) < RequiredParameterCount(ctor);
+        }
+        if (map.FactoryMethod is { } factoryMethod)
+        {
+            return CountMapped(map, factory: true) < RequiredParameterCount(factoryMethod);
+        }
+        // otherwise the emitter emits parameterless construction: new T() / new T { ... }
+        if (named.IsAbstract || named.TypeKind == TypeKind.Interface) return true;
+        foreach (var candidate in named.InstanceConstructors)
+        {
+            if (!candidate.Parameters.IsEmpty) continue;
+            switch (candidate.DeclaredAccessibility)
+            {
+                case Accessibility.Public:
+                    return false;
+                case Accessibility.Internal:
+                case Accessibility.ProtectedOrInternal:
+                    if (assembly is not null && SymbolEqualityComparer.Default.Equals(candidate.ContainingAssembly, assembly))
+                    {
+                        return false;
+                    }
+                    break;
+            }
+        }
+        return true;
+
+        static int CountMapped(MemberMap map, bool factory)
+        {
+            int count = 0;
+            foreach (var member in map.Members)
+            {
+                if (!member.IsMapped) continue;
+                if ((factory ? member.FactoryMethodParameterOrder : member.ConstructorParameterOrder) is not null) count++;
+            }
+            return count;
+        }
+        static int RequiredParameterCount(IMethodSymbol method)
+        {
+            int count = 0;
+            foreach (var p in method.Parameters)
+            {
+                if (!p.IsOptional) count++;
+            }
+            return count;
+        }
+    }
+
     public enum ConstructorResult
     {
         NoneFound,

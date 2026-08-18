@@ -665,6 +665,16 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
+        if (!flags.HasAny(OperationFlags.DoNotGenerate)
+            && flags.HasAny(OperationFlags.Query | OperationFlags.GetRowParser)
+            && IsUnconstructableResultType(resultType, ctx.SemanticModel.Compilation.Assembly))
+        {
+            // the emitted row factory could not create the instance (this is what vanilla Dapper
+            // handles via runtime type-handlers etc); leave the call-site alone
+            flags |= OperationFlags.DoNotGenerate;
+            reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UnconstructableResultType, callLocation, resultType!.ToDisplayString()));
+        }
+
         if (flags.HasAny(OperationFlags.Query) && (IsEnabled(ctx, op, Types.StrictTypesAttribute, out _)))
         {
             flags |= OperationFlags.StrictTypes;

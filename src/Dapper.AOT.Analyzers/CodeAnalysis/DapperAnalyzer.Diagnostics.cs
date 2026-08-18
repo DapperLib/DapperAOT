@@ -56,6 +56,7 @@ partial class DapperAnalyzer
         AmbiguousProperties = LibraryWarning("DAP046", "Ambiguous properties", "Properties have same name '{0}' after normalization and can be conflated"),
         AmbiguousFields = LibraryWarning("DAP047", "Ambiguous fields", "Fields have same name '{0}' after normalization and can be conflated"),
         MoveFromDbString = LibraryWarning("DAP048", "Move from DbString to DbValue", "DbString achieves the same as [DbValue] does. Use it instead."),
+        UnconstructableResultType = LibraryWarning("DAP050", "Result type cannot be constructed", "Type '{0}' cannot be constructed by generated code; it needs an accessible parameterless constructor, or a constructor/factory method whose parameters match its members"),
         UnableToBindQueryColumns = LibraryError("DAP049", "Unable to bind query columns", "Something went terribly wrong"),
 
         // SQL parse specific
