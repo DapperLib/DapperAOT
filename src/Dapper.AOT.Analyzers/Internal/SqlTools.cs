@@ -61,19 +61,20 @@ internal static class SqlTools
             return [];
         }
 
-        if (!ParameterRegex.IsMatch(sql))
+        var parameterMatches = ParameterRegex.Matches(sql);
+        var literalMatches = LiteralTokens.Matches(sql);
+        if (parameterMatches.Count == 0 && literalMatches.Count == 0)
         {
             return [];
         }
-        var matches = ParameterRegex.Matches(sql);
-        if (matches.Count == 0)
+        var arr = new string[parameterMatches.Count + literalMatches.Count];
+        for (int i = 0; i < parameterMatches.Count; i++)
         {
-            return [];
+            arr[i] = parameterMatches[i].Groups[1].Value;
         }
-        var arr = new string[matches.Count];
-        for (int i = 0; i < arr.Length; i++)
+        for (int i = 0; i < literalMatches.Count; i++)
         {
-            arr[i] = matches[i].Groups[1].Value;
+            arr[parameterMatches.Count + i] = literalMatches[i].Groups[1].Value;
         }
         return arr;
     }

@@ -11,6 +11,7 @@ public class SqlTests
     [InlineData("foo @bar", "bar")]
     [InlineData("foo @bar,@blap, :bloop", "bar blap bloop")]
     [InlineData("foo (@bar)", "bar")]
+    [InlineData("select Id from Users where UserTypeId = {=Admin}", "Admin")]
     [InlineData("""
         select *
         from SomeTable
