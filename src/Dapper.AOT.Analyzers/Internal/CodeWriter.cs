@@ -330,7 +330,7 @@ internal sealed class CodeWriter
 
     internal CodeWriter AppendReader(ITypeSymbol? resultType, RowReaderState readers, OperationFlags flags, ImmutableArray<string> queryColumns)
     {
-        if (IsInbuilt(resultType, out var helper))
+        if (IsInbuiltResultType(resultType, out var helper))
         {
             return Append("global::Dapper.RowFactory.Inbuilt.").Append(helper);
         }
@@ -338,8 +338,9 @@ internal sealed class CodeWriter
         {
             return Append("RowFactory").Append(readers.GetIndex(resultType!, flags, queryColumns)).Append(".Instance");
         }
+    }
 
-        static bool IsInbuilt(ITypeSymbol? type, out string? helper)
+    internal static bool IsInbuiltResultType(ITypeSymbol? type, out string? helper)
         {
             if (type is null || type.TypeKind == TypeKind.Dynamic)
             {
@@ -405,7 +406,5 @@ internal sealed class CodeWriter
             }
             helper = null;
             return false;
-
-        }
     }
 }

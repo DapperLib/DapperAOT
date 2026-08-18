@@ -20,7 +20,7 @@ public class DAP036 : Verifier<DapperAnalyzer>
             {
                 _ = conn.Query<NoConstructors>("storedproc");
                 _ = conn.Query<SingleImplicit>("storedproc");
-                _ = conn.Query<MultipleImplicit>("storedproc");
+                _ = conn.{|#1:Query<MultipleImplicit>|}("storedproc");
 
                 _ = conn.Query<RecordClass>("storedproc");
                 _ = conn.Query<RecordStruct>("storedproc");
@@ -60,6 +60,7 @@ public class DAP036 : Verifier<DapperAnalyzer>
         }
         """, DefaultConfig, [
             Diagnostic(Diagnostics.ConstructorAmbiguous).WithLocation(0).WithArguments("MultipleImplicit"),
+            Diagnostic(Diagnostics.UnconstructableResultType).WithLocation(1).WithArguments("MultipleImplicit"),
     ]);
 
 }
