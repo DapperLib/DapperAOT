@@ -199,6 +199,22 @@ list expansion, TVPs, custom params), TypeHandlerTests ×16 (type-handler story)
 ×16 (coercions + tokens), Async/Literal (literals), plus the First-pipeline drain pair and
 the small tail. Nothing unexplained.
 
+## Round 8: the First-pipeline divergence, root-caused and fixed (PR #196)
+
+The suite's `QueryFirst_PerformanceAndCorrectness` failure decomposed into two bugs with one
+root cause, pinned by a side-by-side repro (vanilla and AOT on the same connection):
+Dapper.AOT hardcoded `CommandBehavior.SingleResult` (+`SingleRow` on First), where vanilla
+strips **both by default** (`Settings.AllowedCommandBehaviors = ~(SingleResult|SingleRow)`;
+the optimizations are opt-in) - because with those flags SqlClient cancels the remainder of
+the batch on close: `select *; raiserror(...)` produced *no exception* under AOT while
+vanilla threw `SqlException`, and the flags interplay made async one-row reads ~10x slower
+(568ms → 57ms at 100k rows in the repro; minutes at the suite's 500k). Fix: SequentialAccess
+only, matching vanilla's effective default, with the opt-in knob location noted in code.
+
+Lesson worth keeping: parity.md §4 had this exact row as "AOT chooses behaviors itself;
+probably fine, verify" - the behavioral suite is what turned "probably fine" into two
+confirmed bugs and a 10x.
+
 ## Scoreboard (to update as things land)
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
