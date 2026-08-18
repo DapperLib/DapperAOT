@@ -1,4 +1,4 @@
-using Dapper.CodeAnalysis;
+﻿using Dapper.CodeAnalysis;
 using Dapper.Internal;
 using Microsoft.CodeAnalysis;
 using System;
@@ -56,7 +56,6 @@ internal readonly struct CommandProperty : IEquatable<CommandProperty>
             location is null ? default : new LocationSnapshot(location));
     }
 
-    // note: preserved exactly from the emit-time check it replaces, quirks and all
     private static bool HasPublicSettableInstanceMember(ITypeSymbol type, string name)
     {
         foreach (var member in type.GetMembers())
@@ -64,7 +63,7 @@ internal readonly struct CommandProperty : IEquatable<CommandProperty>
             if (member.IsStatic || member.Name != name || member.DeclaredAccessibility != Accessibility.Public) continue;
             return member.Kind switch
             {
-                SymbolKind.Field when member is IFieldSymbol field => field.IsReadOnly,
+                SymbolKind.Field when member is IFieldSymbol field => !field.IsReadOnly,
                 SymbolKind.Property when member is IPropertySymbol prop => prop.SetMethod is not null,
                 _ => false,
             };

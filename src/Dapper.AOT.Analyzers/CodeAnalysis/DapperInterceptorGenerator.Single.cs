@@ -11,10 +11,10 @@ public sealed partial class DapperInterceptorGenerator
     static void WriteSingleImplementation(
         CodeWriter sb,
         InterceptedMethod method,
-        ITypeSymbol? resultType,
+        RowPlan? resultPlan,
         OperationFlags flags,
         OperationFlags commandTypeMode,
-        ITypeSymbol? parameterType,
+        ParamPlan? parameterType,
         string map, bool cache,
         in EquatableArray<MethodParam> methodParameters,
         in CommandFactoryState factories,
@@ -93,7 +93,7 @@ public sealed partial class DapperInterceptorGenerator
                         break;
                 }
             }
-            sb.AppendReader(resultType, readers, flags, additionalCommandState?.QueryColumns ?? default);
+            sb.AppendReader(resultPlan, readers, flags);
         }
         else if (flags.HasAny(OperationFlags.Execute))
         {
@@ -105,7 +105,7 @@ public sealed partial class DapperInterceptorGenerator
             sb.Append(isAsync ? "Async" : "");
             if (method.Arity == 1)
             {
-                sb.Append("<").Append(resultType).Append(">");
+                sb.Append("<").Append(resultPlan?.TypeName).Append(">");
             }
             sb.Append("(");
             WriteTypedArg(sb, parameterType);
@@ -120,9 +120,9 @@ public sealed partial class DapperInterceptorGenerator
             {
                 sb.Append(", rowCountHint: ").Append(additionalCommandState.RowCountHint);
             }
-            else if (parameterType is not null && !parameterType.IsAnonymousType)
+            else if (parameterType is not null && !parameterType.IsAnonymous)
             {
-                sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param!).").Append(additionalCommandState.RowCountHintMemberName);
+                sb.Append(", rowCountHint: ((").Append(parameterType.TypeName).Append(")param!).").Append(additionalCommandState.RowCountHintMemberName);
             }
         }
         if (isAsync && HasParam(methodParameters, "cancellationToken"))
@@ -146,15 +146,15 @@ public sealed partial class DapperInterceptorGenerator
         }
         sb.Append(";").NewLine();
 
-        static CodeWriter WriteTypedArg(CodeWriter sb, ITypeSymbol? parameterType)
+        static CodeWriter WriteTypedArg(CodeWriter sb, ParamPlan? parameterType)
         {
-            if (parameterType is null || parameterType.IsAnonymousType)
+            if (parameterType is null || parameterType.IsAnonymous)
             {
                 sb.Append("param");
             }
             else
             {
-                sb.Append("(").Append(parameterType).Append(")param!");
+                sb.Append("(").Append(parameterType.TypeName).Append(")param!");
             }
             return sb;
         }
