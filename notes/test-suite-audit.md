@@ -17,8 +17,11 @@ ideally AOT-publishable without warnings.
   drive to 100% is that ratio (per test assembly), then the test pass rate, then the AOT
   publish warning count — in that order. A passing test with an un-intercepted call site is
   measuring vanilla Dapper, not us.
-- Some tests assert *Dapper internals* (cache counts, `Identity`, deserializer internals);
-  those need triage into "port", "skip under AOT", or "equivalent AOT assertion".
+- **Decided:** tests that assert *Dapper internals* (cache counts, `Identity`, deserializer
+  internals) are expected to be **adjusted, not maintained** — those side-effect numbers are
+  not part of the contract, and several describe machinery AOT doesn't have. Per test: skip
+  under AOT, or replace with an assertion about the observable behavior it was standing in
+  for. "100% of the corpus" means 100% of the *behavioral* corpus.
 
 ## Per-file first-pass audit
 
