@@ -10,7 +10,7 @@ namespace Dapper.Internal;
 internal readonly struct CommandFactoryState : IEnumerable<(ParamPlan Plan, string Map, int Index, int CacheCount, AdditionalCommandState? AdditionalCommandState)>
 {
 
-    public CommandFactoryState(Compilation compilation) => systemObject = ParamPlan.Create(compilation.GetSpecialType(SpecialType.System_Object))!;
+    public CommandFactoryState(ParamPlan systemObjectPlan) => systemObject = systemObjectPlan;
     private readonly ParamPlan systemObject;
     private readonly Dictionary<(ParamPlan Plan, string Map, bool Cached, AdditionalCommandState? AdditionalCommandState), (int Index, int CacheCount)> parameterTypes = new(ParameterTypeMapComparer.Instance);
 

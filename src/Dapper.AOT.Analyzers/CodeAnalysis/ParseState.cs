@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Dapper.CodeAnalysis.Model;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 using System;
@@ -66,14 +67,14 @@ internal readonly struct GenerateState
 {
     public GenerateState(GenerateContextProxy proxy)
     {
-        Compilation = proxy.Compilation;
+        Environment = DapperInterceptorGenerator.CreateEnvironment(proxy.Compilation);
         Nodes = proxy.Nodes;
         ctx = default;
         this.proxy = proxy;
     }
-    public GenerateState(SourceProductionContext ctx, in (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+    public GenerateState(SourceProductionContext ctx, in (InterceptorEnvironment Environment, ImmutableArray<SourceState> Nodes) state)
     {
-        Compilation = state.Compilation;
+        Environment = state.Environment;
         Nodes = state.Nodes;
         this.ctx = ctx;
         proxy = null;
@@ -81,7 +82,7 @@ internal readonly struct GenerateState
     private readonly SourceProductionContext ctx;
     private readonly GenerateContextProxy? proxy;
     public readonly ImmutableArray<SourceState> Nodes;
-    public readonly Compilation Compilation;
+    public readonly InterceptorEnvironment Environment;
     public readonly GeneratorContext GeneratorContext = new();
 
     internal void ReportDiagnostic(Diagnostic diagnostic)
@@ -108,12 +109,6 @@ internal readonly struct GenerateState
         }
     }
 
-    // see https://github.com/dotnet/roslyn/blob/main/docs/features/interceptors.md#file-paths
-    internal string GetInterceptorFilePath(SyntaxTree? tree)
-    {
-        if (tree is null) return "";
-        return Compilation.Options.SourceReferenceResolver?.NormalizePath(tree.FilePath, baseFilePath: null) ?? tree.FilePath;
-    }
 }
 
 

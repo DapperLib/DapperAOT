@@ -56,10 +56,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     
     public override void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        // note the cached values are all plain data (see ModelShapeTests): symbols are fully
+        // projected during parse, and the raw Compilation must not feed the output step
         var nodes = context.SyntaxProvider.CreateSyntaxProvider(PreFilter, Parse)
                     .Where(x => x is not null)
                     .Select((x, _) => x!);
-        var combined = context.CompilationProvider.Combine(nodes.Collect());
+        var env = context.CompilationProvider.Select(static (c, _) => CreateEnvironment(c));
+        var combined = env.Combine(nodes.Collect());
         context.RegisterImplementationSourceOutput(combined, Generate);
     }
 
@@ -207,6 +210,37 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     }
 
 
+    internal static InterceptorEnvironment CreateEnvironment(Compilation compilation)
+    {
+        var dbCommandTypes = IdentifyDbCommandTypes(compilation, out var needsCommandPrep);
+        EquatableArray<SpecialDbCommandType> special = default;
+        if (!dbCommandTypes.IsDefaultOrEmpty)
+        {
+            var builder = new List<SpecialDbCommandType>();
+            foreach (var type in dbCommandTypes)
+            {
+                var flags = GetSpecialCommandFlags(type);
+                if (flags != SpecialCommandFlags.None)
+                {
+                    builder.Add(new SpecialDbCommandType(CodeWriter.GetAppendTypeName(type), type.Name,
+                        (flags & SpecialCommandFlags.BindByName) != 0,
+                        (flags & SpecialCommandFlags.InitialLONGFetchSize) != 0));
+                }
+            }
+            if (builder.Count != 0) special = new(builder.ToArray());
+        }
+        var baseFactory = GetCommandFactory(compilation, out var canConstruct);
+        return new InterceptorEnvironment(
+            allowUnsafe: compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe,
+            assemblyName: compilation.AssemblyName,
+            hasInterceptsLocationAttribute: PreGeneratedCodeWriter.HasInterceptsLocationAttribute(compilation),
+            needsCommandPrep: needsCommandPrep,
+            baseCommandFactoryName: baseFactory,
+            baseFactoryCanConstruct: canConstruct,
+            specialCommandTypes: special,
+            systemObjectPlan: ParamPlan.Create(compilation.GetSpecialType(SpecialType.System_Object))!);
+    }
+
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
     {
         foreach (var attribute in compilation.SourceModule.GetAttributes())
@@ -275,7 +309,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         
     }
 
-    private void Generate(SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+    private void Generate(SourceProductionContext ctx, (InterceptorEnvironment Environment, ImmutableArray<SourceState> Nodes) state)
     {
         try
         {
@@ -317,9 +351,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return;
         }
 
-        var dbCommandTypes = IdentifyDbCommandTypes(ctx.Compilation, out var needsCommandPrep);
+        var env = ctx.Environment;
+        bool needsCommandPrep = env.NeedsCommandPrep;
 
-        bool allowUnsafe = ctx.Compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
+        bool allowUnsafe = env.AllowUnsafe;
         var sb = new CodeWriter().Append("#nullable enable").NewLine()
             .Append("#pragma warning disable IDE0078 // unnecessary suppression is necessary").NewLine()
             .Append("#pragma warning disable CS9270 // SDK-dependent change to interceptors usage").NewLine()
@@ -327,7 +362,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             .Append("file static class DapperGeneratedInterceptors").Indent().NewLine();
         int methodIndex = 0, callSiteCount = 0;
 
-        var factories = new CommandFactoryState(ctx.Compilation);
+        var factories = new CommandFactoryState(env.SystemObjectPlan);
         var readers = new RowReaderState();
 
         foreach (var grp in ctx.Nodes.OfType<SuccessSourceState>().Where(x => !x.Flags.HasAny(OperationFlags.DoNotGenerate)).GroupBy(x => x.Group(), CommonComparer.Instance))
@@ -451,7 +486,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             sb.Outdent().NewLine().NewLine();
         }
 
-        var baseCommandFactory = GetCommandFactory(ctx.Compilation, out var canConstruct) ?? DapperBaseCommandFactory;
+        var baseCommandFactory = env.BaseCommandFactoryName ?? DapperBaseCommandFactory;
+        var canConstruct = env.BaseFactoryCanConstruct;
         if (needsCommandPrep || !canConstruct)
         {
             // at least one command-type needs special handling; do that
@@ -461,24 +497,20 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 sb.Append("public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)").Indent().NewLine()
                 .Append("var cmd = base.GetCommand(connection, sql, commandType, args);");
                 int cmdTypeIndex = 0;
-                foreach (var type in dbCommandTypes)
+                foreach (var special in env.SpecialCommandTypes)
                 {
-                    var flags = GetSpecialCommandFlags(type);
-                    if (flags != SpecialCommandFlags.None)
+                    sb.NewLine().Append("// apply special per-provider command initialization logic for ").Append(special.ShortName).NewLine()
+                        .Append(cmdTypeIndex == 0 ? "" : "else ").Append("if (cmd is ").Append(special.TypeName).Append(" cmd").Append(cmdTypeIndex).Append(")").Indent().NewLine();
+                    if (special.BindByName)
                     {
-                        sb.NewLine().Append("// apply special per-provider command initialization logic for ").Append(type.Name).NewLine()
-                            .Append(cmdTypeIndex == 0 ? "" : "else ").Append("if (cmd is ").Append(type).Append(" cmd").Append(cmdTypeIndex).Append(")").Indent().NewLine();
-                        if ((flags & SpecialCommandFlags.BindByName) != 0)
-                        {
-                            sb.Append("cmd").Append(cmdTypeIndex).Append(".BindByName = true;").NewLine();
-                        }
-                        if ((flags & SpecialCommandFlags.InitialLONGFetchSize) != 0)
-                        {
-                            sb.Append("cmd").Append(cmdTypeIndex).Append(".InitialLONGFetchSize = -1;").NewLine();
-                        }
-                        sb.Outdent().NewLine();
-                        cmdTypeIndex++;
+                        sb.Append("cmd").Append(cmdTypeIndex).Append(".BindByName = true;").NewLine();
                     }
+                    if (special.InitialLONGFetchSize)
+                    {
+                        sb.Append("cmd").Append(cmdTypeIndex).Append(".InitialLONGFetchSize = -1;").NewLine();
+                    }
+                    sb.Outdent().NewLine();
+                    cmdTypeIndex++;
                 }
                 sb.Append("return cmd;").Outdent().NewLine();
             }
@@ -511,10 +543,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         sb.Outdent().Outdent(); // ends our generated file-scoped class and the namespace
         
-        var preGeneratedCodeWriter = new PreGeneratedCodeWriter(sb, ctx.Compilation);
+        var preGeneratedCodeWriter = new PreGeneratedCodeWriter(sb, env.HasInterceptsLocationAttribute);
         preGeneratedCodeWriter.Write(ctx.GeneratorContext.IncludedGenerationTypes);
 
-        ctx.AddSource((ctx.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.ToString());
+        ctx.AddSource((env.AssemblyName ?? "package") + ".generated.cs", sb.ToString());
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null,
             callSiteCount, callSiteCount + unsupported + skippedViaDiagnostics, unsupported, skippedViaDiagnostics,
             methodIndex, factories.Count(), readers.Count()));
