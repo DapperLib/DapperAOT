@@ -535,6 +535,33 @@ internal static class Inspection
     {
         None = 0,
         DbString = 1 << 0,
+        CustomQueryParameter = 1 << 1, // SqlMapper.ICustomQueryParameter: the value binds itself
+    }
+
+    internal static bool IsCustomQueryParameter(ITypeSymbol? type)
+    {
+        static bool IsTheInterface(ITypeSymbol symbol) => symbol is INamedTypeSymbol
+        {
+            Name: "ICustomQueryParameter",
+            Arity: 0,
+            TypeKind: TypeKind.Interface,
+            ContainingType:
+            {
+                Name: "SqlMapper",
+                ContainingNamespace:
+                {
+                    Name: "Dapper",
+                    ContainingNamespace.IsGlobalNamespace: true
+                }
+            }
+        };
+        if (type is null) return false;
+        if (IsTheInterface(type)) return true;
+        foreach (var iface in type.AllInterfaces)
+        {
+            if (IsTheInterface(iface)) return true;
+        }
+        return false;
     }
 
     internal static bool IsCancellationToken(ITypeSymbol? type)
@@ -623,6 +650,8 @@ internal static class Inspection
                     }
                 }) return DapperSpecialType.DbString;
                 
+                if (IsCustomQueryParameter(CodeType)) return DapperSpecialType.CustomQueryParameter;
+
                 return DapperSpecialType.None;
             } 
         }
