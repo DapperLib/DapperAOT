@@ -281,6 +281,25 @@ public class RowFactory<T> : RowFactory
         return state.Parse;
     }
 
+    /// <summary>
+    /// Gets the row parser for a specific row on a data reader. This allows for type switching every row based on, for example, a TypeId column.
+    /// You could return a collection of the base type but have each more specific.
+    /// </summary>
+    /// <param name="reader">The data reader to get the parser for the current row from; this must be a <see cref="DbDataReader"/>.</param>
+    /// <param name="startIndex">The start column index of the object (default: 0).</param>
+    /// <param name="length">The length of columns to read (default: -1 = all fields following startIndex).</param>
+    /// <param name="returnNullIfFirstMissing">Return null if the value of the first column is <c>null</c>.</param>
+    /// <returns>A parser for this specific object from this row.</returns>
+    public Func<IDataReader, T> GetRowParser(IDataReader reader,
+            int startIndex = 0, int length = -1, bool returnNullIfFirstMissing = false)
+    {
+        var typed = GetRowParser(AsDbDataReader(reader), startIndex, length, returnNullIfFirstMissing);
+        return r => typed(AsDbDataReader(r));
+
+        static DbDataReader AsDbDataReader(IDataReader reader) => reader as DbDataReader
+            ?? throw new ArgumentException("A DbDataReader is required", nameof(reader));
+    }
+
     private abstract class RowParserState
     {
         // manual capture state for row reader; initialized with tokenized column metadata, then
