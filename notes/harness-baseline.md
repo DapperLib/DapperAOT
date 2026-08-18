@@ -199,6 +199,13 @@ list expansion, TVPs, custom params), TypeHandlerTests ×16 (type-handler story)
 ×16 (coercions + tokens), Async/Literal (literals), plus the First-pipeline drain pair and
 the small tail. Nothing unexplained.
 
+## Round 8b: confirmation - suite duration 9m28s → **17 seconds**
+
+With #195+#196 combined: 616 passed / 146 failed. The behavior fix recovered the
+SingleRowTests pair plus two async dynamic reads, and gave the whole behavioral loop its
+speed back. Remaining failures unchanged in shape: tokens (ParameterTests ×23/provider,
+Literal ×5, chunks of Misc/Async), type handlers (×16), coercion tail.
+
 ## Round 8: the First-pipeline divergence, root-caused and fixed (PR #196)
 
 The suite's `QueryFirst_PerformanceAndCorrectness` failure decomposed into two bugs with one
@@ -219,7 +226,7 @@ confirmed bugs and a 10x.
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | 725 honest | 533 (73.5%) | ✅ | 612/762 (150 fail, runtime-only) | — |
+| net10.0 | 725 honest | 533 (73.5%) | ✅ | 616/762 (146 fail; suite runs in 17s) | — |
 | net8.0 | > 387 | 387 claimed | ✅ | — | — |
 | net481 | > 405 | 405 claimed | ✅ (needs PR #184) | — | — |
 
