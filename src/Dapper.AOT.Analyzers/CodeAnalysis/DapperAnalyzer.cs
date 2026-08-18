@@ -726,6 +726,15 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, argLocation, failing!.ToDisplayString(), NameAccessibility(failing)));
                 }
+                else if (Inspection.IsCollectionType(paramType, out _)
+                    && !(flags.HasAny(OperationFlags.Execute) && !flags.HasAny(OperationFlags.Scalar)))
+                {
+                    // enumerable parameters mean multi-exec, which is only valid for Execute;
+                    // vanilla Dapper throws for the rest ("An enumerable sequence of parameters ...
+                    // is not allowed in this context"), so: leave the call-site alone rather than
+                    // generating a command over the collection's own members
+                    flags |= OperationFlags.DoNotGenerate;
+                }
             }
         }
         return callLocation;
