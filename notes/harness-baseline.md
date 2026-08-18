@@ -137,11 +137,28 @@ broadly sound — failures concentrate precisely where the parity table said the
 also re-validates the phase-3 order (tokens and type handlers carry real runtime weight, not
 just call-site counts).
 
+## Round 6: DAP051 + the corpus restructure (decision: pre-a then a)
+
+Marc's call: first make the nested-DTO problem obvious to users - **DAP051** (PR #192) splits
+the "generic only by containment" shape out of DAP016, names the culprit container in the
+message, links a docs page with the concrete before/after (move `Dog` out), and is a
+*warning* (Info is invisible in MSBuild output). Then restructure the suite: every such DTO
+(84 types, 12 files) moved into per-file non-generic `XxxTestsTypes` containers with
+using-static imports - zero behavioral change, unqualified usages intact. NullTests and
+ProcedureTests stay nested deliberately as pinned DAP051-ceiling representatives.
+
+Result: **494 of 725 handled (68.1%)**, up from 53.4%; DAP051 collapses 272 → 4 (the pins).
+The sweep immediately exposed a new generator bug on a first-time shape - a `dynamic`-typed
+member emitted illegal `typeof(dynamic)` (CS1962) - fixed as PR #193 with a golden fixture.
+Remaining skip buckets: DAP015 ×114 (untyped params - DynamicParameters is now unambiguously
+phase-3 #1), DAP013/14 ×40 (tuples), DAP016 ×28 (genuinely-generic incl. helper methods),
+DAP017 ×22 (private types), DAP037 ×20 + DAP050 ×12 (construction), DAP036 ×4.
+
 ## Scoreboard (to update as things land)
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | 725 honest | 387 (53.4%) | ✅ | 676/760 (84 fail, all runtime-only) | — |
+| net10.0 | 725 honest | 494 (68.1%) | ✅ | behavioral re-run pending | — |
 | net8.0 | > 387 | 387 claimed | ✅ | — | — |
 | net481 | > 405 | 405 claimed | ✅ (needs PR #184) | — | — |
 
