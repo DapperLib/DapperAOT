@@ -46,7 +46,9 @@ Two levers change several complexity scores and are worth naming up front:
 | `Parse<T>` / `Parse(Type)` / `Parse` (dynamic) | ❌ ❓ | low | low | same reader machinery, different entry point |
 | `AsTableValuedParameter` (`DataTable` / `SqlDataRecord`) | ❓ | med | med | SQL Server crowd; pairs with `ICustomQueryParameter` |
 | `AsList<T>` | n/a | — | — | trivial helper; confirm it doesn't count as a candidate site |
-| `GetTypeDeserializer` / `CreateParamInfoGenerator` / `ReadChar` etc | 🚫 | **zero** | — | reflection-era machinery; no meaning under AOT |
+| `GetTypeDeserializer(Type, reader, startBound, length, ...)` | ❌ | low-med | low* | a valid raw-materializer API, not mere plumbing: with announced types it's the same dispatch map, returning a boxed `Func<DbDataReader, object>`. Its generic strengthening **already exists**: `GetRowParser<T>` (same slicing knobs), which AOT supports |
+| `CreateParamInfoGenerator(Identity, ...)` | ❌ | low | med | the raw parameter-binder factory; **no generic counterpart exists in Dapper** — see "Strengthened APIs" in [type-vs-generic.md](type-vs-generic.md) for the proposed `<T>` form |
+| `ReadChar` / `ReadNullableChar` / `SanitizeParameterValue` | ✅ | — | — | plain static helpers, AOT-safe as-is; nothing to intercept |
 | `PurgeQueryCache` / `GetCachedSQL*` / `GetHashCollissions` / `QueryCachePurged` | 🚫 | **zero** | — | there is no ref-emit plan cache in AOT |
 | `Format` / `ReplaceLiterals` | ❓ | low | low | falls out of the literal-injection work (see [tokens.md](tokens.md)) |
 

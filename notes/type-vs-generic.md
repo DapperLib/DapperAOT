@@ -61,6 +61,35 @@ Design points to settle:
   usage (constructor selection, member binding) — reuse the existing machinery, don't fork
   it.
 
+## Strengthened APIs: generic counterparts for the raw surface
+
+Announced types make the `Type`-based APIs *work*, but the better long-term answer for the
+common case is that people never touch `Type` at all: every raw API should have a generic
+counterpart, so `Type` is only for genuinely-runtime flows (discriminators, plugin-ish code).
+The inventory today is lopsided:
+
+| raw (`Type`-based) API | generic counterpart | status |
+| --- | --- | --- |
+| `Query(Type, ...)` etc | `Query<T>` etc | exists, supported |
+| `Parse(Type)` / `Parse` | `Parse<T>` | exists |
+| `GetTypeDeserializer(Type, reader, startBound, length, returnNullIfFirstMissing)` | `GetRowParser<T>(reader, startIndex, length, returnNullIfFirstMissing)` | **exists** — same knobs, better shape; AOT supports it. `GetTypeDeserializer` survives as the boxed form via announced types |
+| `CreateParamInfoGenerator(Identity, ...)` → `Action<IDbCommand, object>` | *(none)* | **missing** — the write-side hole |
+
+So the concrete "do we need a new generic API?" answer is: **yes, one — the parameter
+binder.** Something like `GetParameterBinder<T>(sql?)` → `Action<IDbCommand, T>` (name tbd;
+the `sql` argument exists because binding is SQL-dependent — list expansion, literals, and
+member filtering all key off the command text). Notably `Identity` — the awkward part of the
+raw API's signature — exists to key the *runtime cache*, which is exactly the concept AOT
+deletes; the strengthened API should not carry it.
+
+There is a second candidate answer already in the codebase: the Dapper.AOT runtime's own
+`CommandFactory<T>` / `RowFactory<T>` *are* the strengthened pair, but the FAQ currently
+disclaims them ("we might radically change that API at any time"). Part of unification is
+deciding whether to **bless that surface as the supported, documented API** — in which case
+the legacy raw APIs (`GetTypeDeserializer`, `CreateParamInfoGenerator`) become thin
+announced-type shims over it, and the new generic API lands in Dapper (or Dapper.AOT) as its
+public face.
+
 ## Relationship to `dynamic`
 
 `Query` (non-generic, no `Type` argument → `dynamic` rows) is already generated and does
