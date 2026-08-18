@@ -87,10 +87,29 @@ included), the truth behind the former "100%":
 | net8.0 | 387 | 725 | 53.4% | 82 | 256 |
 | net481 | 405 | 757 | 53.5% | 84 | 268 |
 
-So the corpus number to drive to 100% starts at **53%**. The 82 unsupported-API sites are the
-`QueryMultiple`/multi-map/`ExecuteReader` families (parity.md §1); the 256 diagnostic skips
-are dominated by the DAP012/DAP015/DAP016/DAP017/DAP050 shapes plus untyped parameters —
-harvesting that breakdown per-id into the audit table is the remaining phase-1 analysis step.
+So the corpus number to drive to 100% starts at **53%**. Harvested breakdown (net10.0,
+diagnostic occurrences; the refusal ids default to *Info* and needed elevating in the harness
+globalconfig to be visible at all — worth knowing before trusting any warning tally):
+
+| bucket | count | meaning |
+| --- | --- | --- |
+| DAP016 | 272 | **types nested inside `XxxTests<TProvider>`** — the DTO itself is generic-free; only its containment involves the type parameter. A corpus-shape artifact, not real-world weight: see the decision below |
+| DAP015 | 100 | untyped parameters (`DynamicParameters` / `object`) — confirms DynamicParameters as phase-3 #1 |
+| DAP001: `QueryMultiple(Async)` | 54 | unsupported API |
+| DAP001: multi-map `Query<...>` | 52 | unsupported API |
+| DAP001: `ExecuteReader(Async)` | 42 | unsupported API |
+| DAP013/DAP014 | 40 | tuple results/params |
+| DAP017 | 22 | non-public types (private DTOs in the test classes) |
+| DAP037/DAP036 | 20 | construction gaps (scalar-ish results, type-handler territory) |
+
+**Decision needed on the DAP016 bucket** (the single largest): the honest options are (a)
+adjust the *suite* — move the nested DTOs to namespace scope, which changes zero observable
+behavior and is in the same spirit as "announce your types"; (b) generator support for
+call-sites whose types are open over the *containing* class's type parameters — hard, and
+possibly not expressible with interceptors at all (the interceptor method cannot see the
+enclosing class's type parameters); or (c) accept the ceiling. (a) looks right, but it is a
+change to Dapper's test layout, so it is an explicit call, not something to slip in.
+Similarly DAP017's 22 sites are private test DTOs, where `internal` would do.
 
 ## Scoreboard (to update as things land)
 
