@@ -645,7 +645,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 if (InvolvesGenericTypeParameter(resultType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, callLocation, resultType!.ToDisplayString()));
+                    ReportGenericTypeParameter(reportDiagnostic, resultType!, callLocation);
                 }
                 else if (resultTuple)
                 {
@@ -725,7 +725,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 else if (InvolvesGenericTypeParameter(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, argLocation, paramType!.ToDisplayString()));
+                    ReportGenericTypeParameter(reportDiagnostic, paramType!, argLocation);
                 }
                 else if (IsMissingOrObjectOrDynamic(paramType) || IsDynamicParameters(paramType, out _))
                 {
@@ -759,7 +759,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                         if (InvolvesGenericTypeParameter(memberType))
                         {
                             flags |= OperationFlags.DoNotGenerate;
-                            reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, argLocation, memberType.ToDisplayString()));
+                            ReportGenericTypeParameter(reportDiagnostic, memberType, argLocation);
                             break;
                         }
                         if (!IsPublicOrAssemblyLocal(memberType, ctx, out var failingMember))
@@ -895,6 +895,21 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         var queryColumnsModel = queryColumns.IsDefault ? default : new EquatableArray<string>(queryColumns.AsSpan().ToArray());
         return cmdProps.IsEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && queryColumnsModel.IsDefault
             ? null : new(rowCountHint, rowCountHintMember?.Member?.Name, batchSize, cmdProps, queryColumnsModel);
+    }
+
+    static void ReportGenericTypeParameter(Action<Diagnostic>? reportDiagnostic, ITypeSymbol type, Location? location)
+    {
+        if (reportDiagnostic is null) return;
+        if (IsGenericByContainmentOnly(type, out var container))
+        {
+            // the common accidental shape, with a concrete fix: move the type out
+            reportDiagnostic(Diagnostic.Create(Diagnostics.NestedInGenericType, location,
+                type.ToDisplayString(), container!.ToDisplayString()));
+        }
+        else
+        {
+            reportDiagnostic(Diagnostic.Create(Diagnostics.GenericTypeParameter, location, type.ToDisplayString()));
+        }
     }
 
     static void ValidateParameters(MemberMap? parameters, OperationFlags flags, Action<Diagnostic> onDiagnostic)
