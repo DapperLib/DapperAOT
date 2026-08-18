@@ -80,11 +80,10 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
 
     private object? GetRawValue(string name)
     {
+        // try-get semantics: vanilla's DapperRow returns null for a missing member (a
+        // value-type dynamic cast is then what produces the RuntimeBinderException)
         var index = GetOrdinal(name);
-        if (index < 0) Throw(name);
-        return values[index];
-
-        static void Throw(string name) => throw new KeyNotFoundException($"Member '{name}' not found");
+        return index < 0 ? null : values[index];
     }
 
     private void SetValue(string name, object? value)
@@ -187,7 +186,17 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
     protected override DbDataReader GetDbDataReader(int i) => throw new NotSupportedException();
 
     public override object GetValue(int i) => values[i] ?? DBNull.Value;
-    public override object this[string name] => GetRawValue(name) ?? DBNull.Value;
+    public override object this[string name]
+    {
+        get
+        {
+            var index = GetOrdinal(name);
+            if (index < 0) Throw(name);
+            return values[index] ?? DBNull.Value;
+
+            static void Throw(string name) => throw new KeyNotFoundException($"Member '{name}' not found");
+        }
+    }
     public override object this[int i] => values[i] ?? DBNull.Value;
 
     private T As<T>(int i) => CommandUtils.As<T>(values[i]);

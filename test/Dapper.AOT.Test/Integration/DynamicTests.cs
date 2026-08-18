@@ -20,10 +20,13 @@ public class DynamicTests : IDisposable
         Assert.NotNull(wilma);
         Assert.Equal("Wilma", (string)wilma.Name);
         Assert.True((int)wilma.Id > 0);
-        Assert.Throws<KeyNotFoundException>(() => _ = wilma.NotExist);
+        // a missing member is null, like vanilla Dapper's DapperRow; casting that
+        // null to a value type is what throws (from the binder, not from us)
+        Assert.Null((object?)wilma.NotExist);
+        Assert.Throws<Microsoft.CSharp.RuntimeBinder.RuntimeBinderException>(() => _ = (int)wilma.NotExist);
 
-        // dynamic records are mutable, like vanilla Dapper's DapperRow: an existing
-        // member can be replaced, and a new member added
+        // dynamic records are mutable, like vanilla's DapperRow: an existing member
+        // can be replaced, and a new member added and removed
         wilma.Name = "abc";
         Assert.Equal("abc", (string)wilma.Name);
         wilma.NotExist = 123;
@@ -32,7 +35,7 @@ public class DynamicTests : IDisposable
         IDictionary<string, object?> lookup = wilma;
         Assert.True(lookup.Remove("NotExist"));
         Assert.False(lookup.Remove("NotExist"));
-        Assert.Throws<KeyNotFoundException>(() => _ = wilma.NotExist);
+        Assert.Null((object?)wilma.NotExist);
     }
 }
 
