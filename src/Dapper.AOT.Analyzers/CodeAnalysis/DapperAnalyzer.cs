@@ -735,6 +735,30 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     // generating a command over the collection's own members
                     flags |= OperationFlags.DoNotGenerate;
                 }
+
+                if (!flags.HasAny(OperationFlags.DoNotGenerate))
+                {
+                    // the *member* types get named in the generated code too (for example in the
+                    // anonymous-type shape witness), so they need the same checks as the parameter
+                    // type itself; note for multi-exec the members come from the element type
+                    var memberHost = IsCollectionType(paramType, out var elementType) ? elementType : paramType;
+                    foreach (var member in GetMembers(forParameters: true, memberHost, null, null))
+                    {
+                        if (member.CodeType is not { } memberType) continue;
+                        if (InvolvesGenericTypeParameter(memberType))
+                        {
+                            flags |= OperationFlags.DoNotGenerate;
+                            reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, argLocation, memberType.ToDisplayString()));
+                            break;
+                        }
+                        if (!IsPublicOrAssemblyLocal(memberType, ctx, out var failingMember))
+                        {
+                            flags |= OperationFlags.DoNotGenerate;
+                            reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, argLocation, failingMember!.ToDisplayString(), NameAccessibility(failingMember)));
+                            break;
+                        }
+                    }
+                }
             }
         }
         return callLocation;
