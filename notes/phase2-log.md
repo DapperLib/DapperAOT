@@ -61,5 +61,16 @@ beats today's state.
   unchanged + harness hash equal (`f8d3a61f`).
   **[NOTE]** the Bash harness un-escapes backslashes in commands, which broke two heredocs
   before being identified — long edit scripts now go via a file, not a heredoc.
+- **Increment 3b done** (pushed): `IMethodSymbol Method` out of the cached state -
+  `InterceptedMethod`/`MethodParam` plain models; grouping by structural equality;
+  `CodeWriter.GetAppendTypeName` added as the canonical projection helper. Byte-identical
+  both ways again (`f8d3a61f`).
+- Remaining in the cached model: `ITypeSymbol? ResultType`, `ITypeSymbol? ParameterType`,
+  and `AdditionalCommandState` (which reaches MemberMap: symbols + an IOperation). That is
+  increment 3c - the big projection (row factories, command factories, member maps) - plus
+  4 (CompilationProvider out of the output step: DbCommand type discovery, AllowUnsafe,
+  assembly name, pre-generated helpers). 3c is protobuf-net-plan-scale work; the shape test
+  already guards everything in the Model namespace, and 2+3a+3b are independently mergeable
+  if the session ends here.
 - Next was: increment 3a — `LocationSnapshot` into the interceptor generator's `SuccessSourceState`
   (plus projecting the interceptor file path at parse, since emit asks the `SourceTree` for it).
