@@ -111,11 +111,36 @@ enclosing class's type parameters); or (c) accept the ceiling. (a) looks right, 
 change to Dapper's test layout, so it is an explicit call, not something to slip in.
 Similarly DAP017's 22 sites are private test DTOs, where `internal` would do.
 
+## Round 5: the first behavioral run (local SQL Server 2022)
+
+Control (vanilla, `main` worktree): **760 passed, 0 failed, 29 skipped** (unavailable
+providers), 22s. Same suite with AOT interception on: **676 passed, 84 failed** — 42 per SQL
+Server provider, perfectly symmetric.
+
+**Every one of the 84 compiled clean.** This is the measurement caveat made flesh: the
+call-sites were "handled", and the failure only exists at runtime. Breakdown by class:
+
+- **list expansion** (`in @ids`, empty arrays, string_split, padding): the largest group —
+  `ArgumentException: No mapping exists from object type System.Int32[]...` — the generated
+  code binds the array member as a raw parameter value; ParameterTests/AsyncTests/MiscTests;
+- **literals** (`{=name}`): LiteralTests + LiteralInAsync etc;
+- **TVPs / `SqlDataRecord` / `ICustomQueryParameter`**: bound raw, same ArgumentException shape;
+- **type handlers** (AnsiString default, `RemoveTypeMap`, IEnumerable handler): 4/provider;
+- **a small coercion tail worth individual triage**: OverflowException ×2, InvalidCastException
+  ×2, RuntimeBinderException ×2 (dynamic single-row), one transaction-inheritance case, one
+  DataReader case — these may be genuine behavioral divergences at handled sites rather than
+  known feature gaps, i.e. exactly the class nothing but this run can find.
+
+The encouraging half: 676 tests pass *with 387 interceptions live*, so interception itself is
+broadly sound — failures concentrate precisely where the parity table said the gaps are, which
+also re-validates the phase-3 order (tokens and type handlers carry real runtime weight, not
+just call-site counts).
+
 ## Scoreboard (to update as things land)
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | > 387 (denominator understated) | 387 claimed | ✅ | — | — |
+| net10.0 | 725 honest | 387 (53.4%) | ✅ | 676/760 (84 fail, all runtime-only) | — |
 | net8.0 | > 387 | 387 claimed | ✅ | — | — |
 | net481 | > 405 | 405 claimed | ✅ (needs PR #184) | — | — |
 
