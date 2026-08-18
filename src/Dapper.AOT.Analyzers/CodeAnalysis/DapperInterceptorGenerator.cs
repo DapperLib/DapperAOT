@@ -98,16 +98,22 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (ctx.Node is not InvocationExpressionSyntax ie
                 || ctx.SemanticModel.GetOperation(ie) is not IInvocationOperation op
                 || !op.IsDapperMethod(out var flags)
-                || flags.HasAny(OperationFlags.NotAotSupported | OperationFlags.DoNotGenerate)
+                || flags.HasAny(OperationFlags.DoNotGenerate)
                 || !Inspection.IsEnabled(ctx, op, Types.DapperAotAttribute, out var aotAttribExists))
             {
                 return null;
+            }
+            if (flags.HasAny(OperationFlags.NotAotSupported))
+            {
+                // not our API (yet); count it, so the scorecard stays honest
+                return new SkippedSourceState(ie.GetLocation(), flags);
             }
 
             var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var argExpression, reportDiagnostic: null, out var resultType, exitFirstFailure: true);
             if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
-                return null;
+                // diagnostics (from the analyzer's identical pass) told us to leave it alone
+                return new SkippedSourceState(location, flags);
             }
 
 
@@ -262,9 +268,22 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnknownError, fault.Location, ex.Message, ex.StackTrace));
         }
 
+        int unsupported = 0, skippedViaDiagnostics = 0;
+        foreach (var skip in ctx.Nodes.OfType<SkippedSourceState>())
+        {
+            if (skip.Flags.HasAny(OperationFlags.NotAotSupported)) unsupported++;
+            else skippedViaDiagnostics++;
+        }
+
         if (!CheckPrerequisites(ctx)) // also reports per-item diagnostics
         {
-            // failed checks; do nothing
+            // failed checks; nothing to generate, but still say what we saw - and every
+            // enabled call-site (including ones we *could* have handled) goes unhandled
+            if (!ctx.Nodes.IsDefaultOrEmpty)
+            {
+                int total = unsupported + skippedViaDiagnostics + ctx.Nodes.OfType<SuccessSourceState>().Count();
+                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, 0, total, unsupported, skippedViaDiagnostics, 0, 0, 0));
+            }
             return;
         }
 
@@ -468,7 +487,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         preGeneratedCodeWriter.Write(ctx.GeneratorContext.IncludedGenerationTypes);
 
         ctx.AddSource((ctx.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.ToString());
-        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, callSiteCount, ctx.Nodes.Length, methodIndex, factories.Count(), readers.Count()));
+        ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null,
+            callSiteCount, callSiteCount + unsupported + skippedViaDiagnostics, unsupported, skippedViaDiagnostics,
+            methodIndex, factories.Count(), readers.Count()));
     }
 
     private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers, OperationFlags flags, ImmutableArray<string> queryColumns)
@@ -1492,6 +1513,16 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     {
         public Location? Location { get; }
         protected SourceState(Location? location) => Location = location;
+    }
+
+    internal sealed class SkippedSourceState : SourceState
+    {
+        // a call-site that Dapper.AOT is *not* handling - either the API is not supported at
+        // all, or diagnostics made us leave it alone; retained so the DAP000 scorecard can
+        // count honestly rather than quietly shrinking the denominator
+        public OperationFlags Flags { get; }
+        public SkippedSourceState(Location? location, OperationFlags flags) : base(location)
+            => Flags = flags;
     }
 
     internal sealed class FaultSourceState : SourceState
