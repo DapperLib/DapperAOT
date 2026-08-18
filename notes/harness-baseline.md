@@ -199,6 +199,36 @@ list expansion, TVPs, custom params), TypeHandlerTests ×16 (type-handler story)
 ×16 (coercions + tokens), Async/Literal (literals), plus the First-pipeline drain pair and
 the small tail. Nothing unexplained.
 
+## Round 10: custom parameters (PR #198) + two real bugs it uncovered - 658/793
+
+ICustomQueryParameter members (PR #198, stacked on #197): the value adds itself via
+`AddParameter(command, name)`, null reference members throw with vanilla's message, struct
+members skip the null test, and the #197 guards generalise to "self-binding members"
+(expandable or custom). Cleared the TVP/custom-param group. A bare `DataTable` member is
+deliberately out of scope - vanilla routes it through its default-registered
+`DataTableHandler`, so it belongs to the type-handler story.
+
+Making custom parameters work at all exposed two real bugs the unit suites could not see:
+
+- **Dapper.AOT never cleared `cmd.Parameters` on teardown** (PR #199). Vanilla's finally
+  blocks all do `cmd?.Parameters.Clear()` ("Add-tastic"), and it is load-bearing: a
+  caller-supplied `DbParameter` otherwise stays owned by the dead command's collection and
+  the next use throws. First fix in `UnifiedCommand.Cleanup` was insufficient - the query
+  and execute pipelines dispose via `SyncCommandState`/`AsyncCommandState`, which never
+  pass through it - so the state Dispose paths clear too. Recycled commands are nulled out
+  of the state first, so their parameters are kept for in-place update, unchanged.
+- **the #2225 overload dispatched statically** (amended on that PR). A subclass that hides
+  `AddParameters` and re-implements `IDynamicParameters` - the `DynamicParameterWithIntTVP`
+  pattern in the suite itself - was skipped by the direct call; it now routes via
+  `((SqlMapper.IDynamicParameters)this)`, matching vanilla execution. Test added there.
+
+**658 passed / 106 failed** (616 -> 638 -> 652 -> 658 this evening; denominator grew to 793
+with the new #2225 tests). Interception still 533/725. Remaining ParameterTests x5/provider:
+DataTable pair (type-handler story), SqlDecimal (read-side coercion), legacy `?` token,
+SupportInit (ISupportInitialize, read-side). Larger classes: TypeHandler x16, Misc x15
+(dynamic-row DBNull/mutability, privates/fields, coercions), Literal x5 + Async literal x3
+(coordinate with external #191), Async dynamic x2.
+
 ## Round 9: list expansion (PR #197) - 638/762, in-list group cleared
 
 With #195+#196+#197 combined: **638 passed / 124 failed** (up from 616/146; the in-list
@@ -246,7 +276,7 @@ confirmed bugs and a 10x.
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | 725 honest | 533 (73.5%) | ✅ | 638/762 (124 fail; suite runs in 18s) | — |
+| net10.0 | 725 honest | 533 (73.5%) | ✅ | 658/793 (106 fail; suite runs in ~18s) | — |
 | net8.0 | > 387 | 387 claimed | ✅ | — | — |
 | net481 | > 405 | 405 claimed | ✅ (needs PR #184) | — | — |
 
