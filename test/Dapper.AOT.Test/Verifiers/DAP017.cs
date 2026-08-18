@@ -95,4 +95,23 @@ public class DAP017 : Verifier<DapperAnalyzer>
             Diagnostic(Diagnostics.NonPublicType).WithLocation(10).WithArguments("NestedInternal.InnerPrivate", "private"),
             Diagnostic(Diagnostics.NonPublicType).WithLocation(11).WithArguments("NestedInternal.InnerPrivateStruct", "private"),
     ]);
+
+    [Fact] // member types are named in generated code (e.g. the anonymous-type shape witness)
+    public Task NonPublicMemberType() => CSVerifyAsync("""
+        using Dapper;
+        using System.Data.Common;
+
+        internal class HasPrivateMember
+        {
+            [DapperAot]
+            class AotEnabled
+            {
+                void ViaAnonymous(DbConnection conn, Inner value) => conn.Execute("somesql", {|#0:new { value }|});
+                void PublicMemberIsFine(DbConnection conn, int value) => conn.Execute("somesql", new { value });
+            }
+            private class Inner { public int Id {get;set;} }
+        }
+        """, DefaultConfig, [
+            Diagnostic(Diagnostics.NonPublicType).WithLocation(0).WithArguments("HasPrivateMember.Inner", "private"),
+    ]);
 }
