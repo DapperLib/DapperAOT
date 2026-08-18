@@ -335,16 +335,17 @@ internal sealed class CodeWriter
         return s;
     }
 
-    internal CodeWriter AppendReader(ITypeSymbol? resultType, RowReaderState readers, OperationFlags flags, in EquatableArray<string> queryColumns)
+    internal CodeWriter AppendReader(RowPlan? plan, RowReaderState readers, OperationFlags flags)
     {
-        if (IsInbuiltResultType(resultType, out var helper))
+        if (plan is null)
+        {   // an untyped result is read as dynamic
+            return Append("global::Dapper.RowFactory.Inbuilt.Dynamic");
+        }
+        if (plan.InbuiltHelper is { } helper)
         {
             return Append("global::Dapper.RowFactory.Inbuilt.").Append(helper);
         }
-        else
-        {
-            return Append("RowFactory").Append(readers.GetIndex(resultType!, flags, queryColumns)).Append(".Instance");
-        }
+        return Append("RowFactory").Append(readers.GetIndex(plan, flags)).Append(".Instance");
     }
 
     internal static bool IsInbuiltResultType(ITypeSymbol? type, out string? helper)

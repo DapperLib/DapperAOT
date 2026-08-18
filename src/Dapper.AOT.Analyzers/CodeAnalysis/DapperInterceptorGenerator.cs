@@ -166,7 +166,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             Debug.Assert(!flags.HasAny(OperationFlags.DoNotGenerate), "should have already exited");
             int languageVersion = ctx.Node.SyntaxTree.Options is CSharpParseOptions csOptions ? (int)csOptions.LanguageVersion : -1;
             return new SuccessSourceState(new LocationSnapshot(location), InterceptorFilePath(ctx, location), languageVersion,
-                ProjectMethod(op.TargetMethod), flags, sql, resultType, argExpression?.Type, parameterMap, additionalState);
+                ProjectMethod(op.TargetMethod), flags, sql,
+                RowPlan.Create(resultType, additionalState?.QueryColumns ?? default),
+                argExpression?.Type, parameterMap, additionalState);
         }
         catch (Exception ex)
         {
@@ -377,11 +379,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     _ => grp.Key.ParameterMap,
                 }).NewLine();
             }
-            ITypeSymbol? resultType = null;
+            RowPlan? resultPlan = null;
             if (flags.HasAny(OperationFlags.TypedResult))
             {
-                resultType = grp.First().ResultType!;
-                sb.Append("// returns data: ").Append(resultType).NewLine();
+                resultPlan = grp.First().ResultPlan!;
+                sb.Append("// returns data: ").Append(resultPlan.TypeName).NewLine();
             }
 
             // assertions
@@ -439,11 +441,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             if (flags.HasAny(OperationFlags.GetRowParser))
             {
-                WriteGetRowParser(sb, resultType, readers, grp.Key.Flags, grp.Key.AdditionalCommandState?.QueryColumns ?? default);
+                WriteGetRowParser(sb, resultPlan, readers, grp.Key.Flags);
             }
             else if (!TryWriteMultiExecImplementation(sb, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, fixedSql, additionalCommandState))
             {
-                WriteSingleImplementation(sb, method, resultType, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql, additionalCommandState);
+                WriteSingleImplementation(sb, method, resultPlan, flags, commandTypeMode, parameterType, grp.Key.ParameterMap, grp.Key.UniqueLocation is not null, methodParameters, factories, readers, fixedSql, additionalCommandState);
             }
 
             sb.Outdent().NewLine().NewLine();
@@ -499,7 +501,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         foreach (var tuple in readers)
         {
-            WriteRowFactory(ctx, sb, tuple.Type, tuple.Index, tuple.Flags, tuple.QueryColumns, null /* TODO */);
+            WriteRowFactory(sb, tuple.Plan, tuple.Index, tuple.Flags);
         }
 
         foreach (var tuple in factories)
@@ -518,9 +520,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             methodIndex, factories.Count(), readers.Count()));
     }
 
-    private static void WriteGetRowParser(CodeWriter sb, ITypeSymbol? resultType, in RowReaderState readers, OperationFlags flags, in EquatableArray<string> queryColumns)
+    private static void WriteGetRowParser(CodeWriter sb, RowPlan? resultPlan, in RowReaderState readers, OperationFlags flags)
     {
-        sb.Append("return ").AppendReader(resultType, readers, flags, queryColumns)
+        sb.Append("return ").AppendReader(resultPlan, readers, flags)
             .Append(".GetRowParser(reader, startIndex, length, returnNullIfFirstMissing);").NewLine();
     }
 
@@ -753,14 +755,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         }
     }
 
-    private static void WriteRowFactory(in GenerateState context, CodeWriter sb, ITypeSymbol type, int index, OperationFlags flags, EquatableArray<string> queryColumns, Location? location)
+    private static void WriteRowFactory(CodeWriter sb, RowPlan plan, int index, OperationFlags flags)
     {
-        var map = MemberMap.CreateForResults(type, location);
-        if (map is null) return;
+        var members = plan.Members;
+        var queryColumns = plan.QueryColumns;
 
-        var members = map.MapQueryColumns(queryColumns);
-
-        if (members.IsDefaultOrEmpty && map.Constructor is null && map.FactoryMethod is null)
+        if (members.IsEmpty && !plan.UseConstructor && !plan.UseFactoryMethod)
         {
             // error is emitted, but we still generate default RowFactory to not emit more errors for this type
             WriteRowFactoryHeader();
@@ -769,31 +769,19 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return;
         }
 
-        var hasInitOnlyMembers = members.Any(member => member.IsInitOnly);
-        var hasRequiredMembers = members.Any(member => member.IsRequired);
-        var hasGetOnlyMembers = members.Any(member => member is { IsGettable: true, IsSettable: false, IsInitOnly: false });
-        var useConstructorDeferred = map.Constructor is not null;
-        var useFactoryMethodDeferred = map.FactoryMethod is not null;
-        
-        // Implementation detail: 
-        // constructor takes advantage over factory method.
-        var useDeferredConstruction = useConstructorDeferred || useFactoryMethodDeferred || hasInitOnlyMembers || hasGetOnlyMembers || hasRequiredMembers;
+        var useDeferredConstruction = plan.UseDeferredConstruction;
 
         WriteRowFactoryHeader();
 
         WriteTokenizeMethod();
-        WriteReadMethod(context);
+        WriteReadMethod();
 
         WriteRowFactoryFooter();
 
         void WriteRowFactoryHeader()
         {
-            sb.Append("private sealed class RowFactory").Append(index).Append(" : global::Dapper.RowFactory").Append("<").Append(type).Append(">")
+            sb.Append("private sealed class RowFactory").Append(index).Append(" : global::Dapper.RowFactory").Append("<").Append(plan.TypeName).Append(">")
             .Indent().NewLine();
-            if (location is not null)
-            {
-                sb.Append("// specific to ").Append(location.ToString());
-            }
             if (flags != 0)
             {
                 sb.Append("// flags: ").Append(flags.ToString()).NewLine();
@@ -854,8 +842,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         }
                         else
                         {
-                            sb.Append("token = type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(token)
-                            .Append(" : ").Append(token + map.Members.Length).Append(";")
+                            sb.Append("token = type == typeof(").Append(member.NonNullTypeName).Append(") ? ").Append(token)
+                            .Append(" : ").Append(token + plan.TotalMemberCount).Append(";")
                             .Append(token == 0 ? " // two tokens for right-typed and type-flexible" : "");
                         }
                         sb.NewLine().Append("break;").Outdent(false).NewLine();
@@ -885,8 +873,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         var member = members[i];
                         if (member.IsMapped)
                         {
-                            sb.Append(i).Append(" => type == typeof(").Append(Inspection.MakeNonNullable(member.CodeType)).Append(") ? ").Append(i)
-                                .Append(" : ").Append(i + map.Members.Length).Append(",").NewLine();
+                            sb.Append(i).Append(" => type == typeof(").Append(member.NonNullTypeName).Append(") ? ").Append(i)
+                                .Append(" : ").Append(i + plan.TotalMemberCount).Append(",").NewLine();
                         }
                     }
                     sb.Append("_ => -1,").Outdent().Append(";").Outdent().NewLine();
@@ -895,18 +883,18 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             sb.Append("return null;").Outdent().NewLine();
         }
-        void WriteReadMethod(in GenerateState context)
+        void WriteReadMethod()
         {
             const string DeferredConstructionVariableName = "value";
 
-            sb.Append("public override ").Append(type).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
+            sb.Append("public override ").Append(plan.TypeName).Append(" Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)").Indent().NewLine();
 
             int token = 0;
             var deferredMethodArgumentsOrdered = new SortedList<int, string>();
 
             if (useDeferredConstruction)
             {
-                // don't create an instance now, but define the variables to create an instance later like 
+                // don't create an instance now, but define the variables to create an instance later like
                 // ```
                 // Type? member0 = default;
                 // Type? member1 = default;
@@ -918,19 +906,19 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     {
                         var variableName = DeferredConstructionVariableName + token;
 
-                        if (Inspection.CouldBeNullable(member.CodeType)) sb.Append(CodeWriter.GetTypeName(member.CodeType.WithNullableAnnotation(NullableAnnotation.Annotated)));
-                        else sb.Append(CodeWriter.GetTypeName(member.CodeType));
+                        if (member.CouldBeNullable) sb.Append(member.AnnotatedTypeName);
+                        else sb.Append(member.TypeName);
 
                         sb.Append(' ').Append(variableName).Append(" = default")
                             // if "default" will violate NRT: add a !
-                            .Append(member.CodeType.IsReferenceType && member.CodeType.NullableAnnotation == NullableAnnotation.NotAnnotated ? "!" : "")
+                            .Append(member.NeedsDefaultBang ? "!" : "")
                             .Append(";").NewLine();
 
-                        if (useConstructorDeferred && member.ConstructorParameterOrder is not null)
+                        if (plan.UseConstructor && member.ConstructorParameterOrder is not null)
                         {
                             deferredMethodArgumentsOrdered.Add(member.ConstructorParameterOrder.Value, variableName);
                         }
-                        else if (useFactoryMethodDeferred && member.FactoryMethodParameterOrder is not null)
+                        else if (plan.UseFactoryMethod && member.FactoryMethodParameterOrder is not null)
                         {
                             deferredMethodArgumentsOrdered.Add(member.FactoryMethodParameterOrder.Value, variableName);
                         }
@@ -941,8 +929,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             else
             {
                 // we are not using a constructor, so we need to create an instance now
-                sb.Append(type.NullableAnnotation == NullableAnnotation.Annotated
-                    ? type.WithNullableAnnotation(NullableAnnotation.None) : type).Append(" result = new();").NewLine();
+                sb.Append(plan.NonNullTypeName).Append(" result = new();").NewLine();
             }
 
             if (!queryColumns.IsDefault && flags.HasAny(OperationFlags.StrictTypes))
@@ -962,10 +949,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             {
                 if (member.IsMapped)
                 {
-                    var memberType = member.CodeType;
-
-                    member.GetDbType(out var readerMethod);
-                    var nullCheck = Inspection.CouldBeNullable(memberType) ? $"reader.IsDBNull(columnOffset) ? ({CodeWriter.GetTypeName(memberType.WithNullableAnnotation(NullableAnnotation.Annotated))})null : " : "";
+                    var nullCheck = member.CouldBeNullable ? $"reader.IsDBNull(columnOffset) ? ({member.AnnotatedTypeName})null : " : "";
                     sb.Append("case ").Append(token).Append(":").NewLine().Indent(false);
 
                     // write `result.X = ` or `member0 = `
@@ -974,13 +958,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     sb.Append(" = ");
 
                     sb.Append(nullCheck);
-                    if (readerMethod is null)
+                    if (member.ReaderMethod is null)
                     {
-                        sb.Append("reader.GetFieldValue<").Append(memberType).Append(">(columnOffset);");
+                        sb.Append("reader.GetFieldValue<").Append(member.TypeName).Append(">(columnOffset);");
                     }
                     else
                     {
-                        sb.Append("reader.").Append(readerMethod).Append("(columnOffset);");
+                        sb.Append("reader.").Append(member.ReaderMethod).Append("(columnOffset);");
                     }
 
 
@@ -989,7 +973,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     // optionally emit type-forgiving version
                     if (!flags.HasAny(OperationFlags.StrictTypes))
                     {
-                        sb.Append("case ").Append(token + map.Members.Length).Append(":").NewLine().Indent(false);
+                        sb.Append("case ").Append(token + plan.TotalMemberCount).Append(":").NewLine().Indent(false);
 
                         // write `result.X = ` or `member0 = `
                         if (useDeferredConstruction) sb.Append(DeferredConstructionVariableName).Append(token);
@@ -998,7 +982,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         sb.Append(" = ")
                             .Append(nullCheck)
                             .Append("GetValue<")
-                            .Append(Inspection.MakeNonNullable(memberType)).Append(">(reader, columnOffset);").NewLine()
+                            .Append(member.NonNullTypeName).Append(">(reader, columnOffset);").NewLine()
                             .Append("break;").NewLine().Outdent(false);
                     }
                 }
@@ -1020,21 +1004,21 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 // or in case of factory method:
                 // return Type.Create(member0, member1, member2, ...)
                 // ```
-                
-                if (useConstructorDeferred)
+
+                if (plan.UseConstructor)
                 {
                     // `return new Type(member0, member1, member2, ...);`
-                    sb.Append("return new ").Append(type).Append('('); 
+                    sb.Append("return new ").Append(plan.TypeName).Append('(');
                     WriteDeferredMethodArgs();
                     sb.Append(')');
                     WriteDeferredInitialization();
                     sb.Append(";").Outdent();
                 }
-                else if (useFactoryMethodDeferred)
+                else if (plan.UseFactoryMethod)
                 {
                     // `return Type.FactoryCreate(member0, member1, member2, ...);`
-                    sb.Append("return ").Append(type)
-                      .Append('.').Append(map.FactoryMethod!.Name).Append('(');
+                    sb.Append("return ").Append(plan.TypeName)
+                      .Append('.').Append(plan.FactoryMethodName).Append('(');
                     WriteDeferredMethodArgs();
                     sb.Append(')').Append(";").Outdent();
                 }
@@ -1046,16 +1030,16 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     //      Member1 = value1,
                     //      Member2 = value2
                     // }
-                    sb.Append("return new ").Append(type);
+                    sb.Append("return new ").Append(plan.TypeName);
                     WriteDeferredInitialization();
                     sb.Append(";").Outdent();
                 }
 
                 void WriteDeferredInitialization()
-                {   
+                {
                     // if all members are constructor arguments, no need to set them again
                     if (deferredMethodArgumentsOrdered!.Count == members.Length) return;
-                    
+
                     sb.Indent().NewLine();
                     token = -1;
                     foreach (var member in members)
@@ -1069,11 +1053,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                     sb.Outdent(withScope: false).Append("}");
                 }
-                
+
                 void WriteDeferredMethodArgs()
                 {
                     if (deferredMethodArgumentsOrdered!.Count == 0) return;
-                    
+
                     // write `member0, member1, member2, ...` part of method
                     foreach (var constructorArg in deferredMethodArgumentsOrdered!)
                     {
@@ -1536,20 +1520,20 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public string? Sql { get; }
         public string ParameterMap { get; }
         public InterceptedMethod Method { get; }
-        public ITypeSymbol? ResultType { get; }
+        public RowPlan? ResultPlan { get; }
         public ITypeSymbol? ParameterType { get; }
         public AdditionalCommandState? AdditionalCommandState { get; }
 
         public SuccessSourceState(in LocationSnapshot location, string interceptorFilePath, int languageVersion,
             InterceptedMethod method, OperationFlags flags, string? sql,
-            ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap,
+            RowPlan? resultPlan, ITypeSymbol? parameterType, string parameterMap,
             AdditionalCommandState? additionalCommandState) : base(location)
         {
             InterceptorFilePath = interceptorFilePath;
             LanguageVersion = languageVersion;
             Flags = flags;
             Sql = sql;
-            ResultType = resultType;
+            ResultPlan = resultPlan;
             ParameterType = parameterType;
             Method = method;
             ParameterMap = parameterMap;

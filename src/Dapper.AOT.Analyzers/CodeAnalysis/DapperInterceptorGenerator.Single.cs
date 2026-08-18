@@ -11,7 +11,7 @@ public sealed partial class DapperInterceptorGenerator
     static void WriteSingleImplementation(
         CodeWriter sb,
         InterceptedMethod method,
-        ITypeSymbol? resultType,
+        RowPlan? resultPlan,
         OperationFlags flags,
         OperationFlags commandTypeMode,
         ITypeSymbol? parameterType,
@@ -93,7 +93,7 @@ public sealed partial class DapperInterceptorGenerator
                         break;
                 }
             }
-            sb.AppendReader(resultType, readers, flags, additionalCommandState?.QueryColumns ?? default);
+            sb.AppendReader(resultPlan, readers, flags);
         }
         else if (flags.HasAny(OperationFlags.Execute))
         {
@@ -105,7 +105,7 @@ public sealed partial class DapperInterceptorGenerator
             sb.Append(isAsync ? "Async" : "");
             if (method.Arity == 1)
             {
-                sb.Append("<").Append(resultType).Append(">");
+                sb.Append("<").Append(resultPlan?.TypeName).Append(">");
             }
             sb.Append("(");
             WriteTypedArg(sb, parameterType);
