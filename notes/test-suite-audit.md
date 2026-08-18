@@ -66,6 +66,10 @@ table was drawn from file names and Dapper source knowledge, not yet from a run.
 
 ## Suggested sequencing (by corpus unblocked per unit of work)
 
+0. **Fix the generator capture model first** ([generator-audit.md](generator-audit.md)): the
+   cached pipeline values hold Roslyn symbols/nodes (retention + cache defeat). Everything
+   below adds parse-time state; build it on the fixed model, not twice.
+
 1. **DynamicParameters** — unblocks `ParameterTests`, `ProcedureTests`, `SqlBuilderTests`;
    biggest single win and forces the output-parameter design.
 2. **List expansion + literals + pseudo-positional** (one work item: the SQL-rewrite runtime
