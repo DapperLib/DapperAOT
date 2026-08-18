@@ -126,5 +126,10 @@ beats today's state.
   output changes. Finding while writing it: editing the SQL *literal* does not change the
   generated text (SQL flows through as an argument), so the "real edit" probe must change
   shape, not SQL.
+- **The readonly-field quirk is fixed** (PR #190, stacked on #188, approved by Marc): the
+  `[CommandProperty]` member probe said readonly fields were assignable and mutable ones were
+  not; now inverted to sense, with a theory covering all five member shapes (the two field
+  cases fail without the fix). Kept out of the rework PRs deliberately - behavior change vs
+  byte-identical contract. Review stack: **#187 → #188 → #190**.
 - Next was: increment 3a — `LocationSnapshot` into the interceptor generator's `SuccessSourceState`
   (plus projecting the interceptor file path at parse, since emit asks the `SourceTree` for it).
