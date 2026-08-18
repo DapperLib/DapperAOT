@@ -8,6 +8,8 @@ using System.Threading;
 
 namespace Dapper.Internal;
 
+using Dapper.CodeAnalysis.Model;
+
 internal sealed class CodeWriter
 {
     static CodeWriter? s_Spare;
@@ -66,6 +68,11 @@ internal sealed class CodeWriter
         }
         return this;
     }
+
+    /// <summary>The string <see cref="Append(ITypeSymbol?, bool)"/> would emit for this type.</summary>
+    internal static string GetAppendTypeName(ITypeSymbol value) => value.IsAnonymousType
+        ? value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+        : GetTypeName(value);
 
     public static string GetTypeName(ITypeSymbol? value)
     {
@@ -328,7 +335,7 @@ internal sealed class CodeWriter
         return s;
     }
 
-    internal CodeWriter AppendReader(ITypeSymbol? resultType, RowReaderState readers, OperationFlags flags, ImmutableArray<string> queryColumns)
+    internal CodeWriter AppendReader(ITypeSymbol? resultType, RowReaderState readers, OperationFlags flags, in EquatableArray<string> queryColumns)
     {
         if (IsInbuiltResultType(resultType, out var helper))
         {

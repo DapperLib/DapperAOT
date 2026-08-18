@@ -1,4 +1,5 @@
-﻿using Dapper.Internal;
+﻿using Dapper.CodeAnalysis.Model;
+using Dapper.Internal;
 using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
 
@@ -12,7 +13,7 @@ public sealed partial class DapperInterceptorGenerator
         OperationFlags commandTypeMode,
         ITypeSymbol? parameterType,
         string map, bool cache,
-        ImmutableArray<IParameterSymbol> methodParameters,
+        EquatableArray<MethodParam> methodParameters,
         CommandFactoryState factories,
         string? fixedSql,
         AdditionalCommandState? additionalCommandState)
