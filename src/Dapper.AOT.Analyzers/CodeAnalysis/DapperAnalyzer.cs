@@ -737,9 +737,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     if (!HasIdentityFreeAddParameters(paramType))
                     {
                         // no way to invoke the bag protocol externally on this Dapper version;
-                        // leave the call-site on vanilla Dapper
+                        // leave the call-site on vanilla Dapper, saying exactly what is missing
+                        // (never emit code that cannot compile against the referenced Dapper)
                         flags |= OperationFlags.DoNotGenerate;
-                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UntypedParameter, argLocation));
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.FeatureNeedsNewerDapper, argLocation,
+                            "DynamicParameters", "DynamicParameters.AddParameters(IDbCommand)"));
                     }
                     // else: supported - the generated factory delegates to the bag itself
                 }

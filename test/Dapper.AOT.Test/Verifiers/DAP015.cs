@@ -28,6 +28,9 @@ public class DAP015 : Verifier<DapperAnalyzer>
         }
         """, DefaultConfig, [
             Diagnostic(Diagnostics.UntypedParameter).WithLocation(0),
-            Diagnostic(Diagnostics.UntypedParameter).WithLocation(1)]);
+            // DynamicParameters is no longer 'untyped': it gets the specific needs-newer-Dapper
+            // guidance (or works outright, once the referenced Dapper has the self-apply API)
+            Diagnostic(Diagnostics.FeatureNeedsNewerDapper).WithLocation(1)
+                .WithArguments("DynamicParameters", "DynamicParameters.AddParameters(IDbCommand)")]);
 
 }
