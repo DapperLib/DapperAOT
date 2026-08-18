@@ -27,6 +27,7 @@ build time. See [type-vs-generic.md](type-vs-generic.md).
 | [tokens.md](tokens.md) | special string-token handling: `@ids` expansion, `{=literal}`, `?foo?`, etc |
 | [type-vs-generic.md](type-vs-generic.md) | `Type`-based vs `<T>` APIs, and the "announce your types" design space |
 | [test-suite-audit.md](test-suite-audit.md) | the Dapper test files as acceptance corpus, and what blocks each |
+| [harness-baseline.md](harness-baseline.md) | real numbers from the suite with AOT enabled (Dapper repo, `aot-harness` branch) |
 
 ## Scope: the public API, by observable behavior
 
