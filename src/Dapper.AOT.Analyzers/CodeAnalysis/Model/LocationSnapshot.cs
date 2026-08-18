@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using System;
 
@@ -15,8 +15,10 @@ namespace Dapper.CodeAnalysis.Model;
 internal readonly struct LocationSnapshot : IEquatable<LocationSnapshot>
 {
     public readonly string Path; // the source path as the tree knows it (not path-mapped)
+    public readonly string MappedPath; // per GetMappedLineSpan: honors #line and path-mapping
     public readonly int SpanStart, SpanLength;
     public readonly int StartLine, StartChar, EndLine, EndChar; // zero-based, per LinePosition
+    public readonly int MappedStartLine;
 
     public LocationSnapshot(Location location)
     {
@@ -28,6 +30,9 @@ internal readonly struct LocationSnapshot : IEquatable<LocationSnapshot>
         StartChar = span.StartLinePosition.Character;
         EndLine = span.EndLinePosition.Line;
         EndChar = span.EndLinePosition.Character;
+        var mapped = location.GetMappedLineSpan();
+        MappedPath = mapped.Path;
+        MappedStartLine = mapped.StartLinePosition.Line;
     }
 
     public bool IsDefault => Path is null;
@@ -39,9 +44,11 @@ internal readonly struct LocationSnapshot : IEquatable<LocationSnapshot>
 
     public bool Equals(LocationSnapshot other)
         => string.Equals(Path, other.Path, StringComparison.Ordinal)
+        && string.Equals(MappedPath, other.MappedPath, StringComparison.Ordinal)
         && SpanStart == other.SpanStart && SpanLength == other.SpanLength
         && StartLine == other.StartLine && StartChar == other.StartChar
-        && EndLine == other.EndLine && EndChar == other.EndChar;
+        && EndLine == other.EndLine && EndChar == other.EndChar
+        && MappedStartLine == other.MappedStartLine;
 
     public override bool Equals(object? obj) => obj is LocationSnapshot other && Equals(other);
     public override int GetHashCode()

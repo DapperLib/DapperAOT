@@ -1,4 +1,5 @@
 ﻿using Dapper.CodeAnalysis.Abstractions;
+using Dapper.CodeAnalysis.Model;
 using Dapper.CodeAnalysis.Writers;
 using Dapper.Internal;
 using Dapper.Internal.Roslyn;
@@ -90,6 +91,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return null;
         }
     }
+    // see https://github.com/dotnet/roslyn/blob/main/docs/features/interceptors.md#file-paths
+    // (the parse-time projection of GenerateState.GetInterceptorFilePath)
+    private static string InterceptorFilePath(in ParseState ctx, Location location)
+    {
+        if (location.SourceTree is not { } tree) return "";
+        return ctx.SemanticModel.Compilation.Options.SourceReferenceResolver?.NormalizePath(tree.FilePath, baseFilePath: null) ?? tree.FilePath;
+    }
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Chosen API")]
     internal SourceState? Parse(ParseState ctx)
     {
@@ -106,14 +115,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (flags.HasAny(OperationFlags.NotAotSupported))
             {
                 // not our API (yet); count it, so the scorecard stays honest
-                return new SkippedSourceState(ie.GetLocation(), flags);
+                return new SkippedSourceState(new LocationSnapshot(ie.GetLocation()), flags);
             }
 
             var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var argExpression, reportDiagnostic: null, out var resultType, exitFirstFailure: true);
             if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
                 // diagnostics (from the analyzer's identical pass) told us to leave it alone
-                return new SkippedSourceState(location, flags);
+                return new SkippedSourceState(new LocationSnapshot(location), flags);
             }
 
 
@@ -139,14 +148,16 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             var additionalState = AdditionalCommandState.Parse(Inspection.GetSymbol(ctx, op), map, null);
 
             Debug.Assert(!flags.HasAny(OperationFlags.DoNotGenerate), "should have already exited");
-            return new SuccessSourceState(location, op.TargetMethod, flags, sql, resultType, argExpression?.Type, parameterMap, additionalState);
+            int languageVersion = ctx.Node.SyntaxTree.Options is CSharpParseOptions csOptions ? (int)csOptions.LanguageVersion : -1;
+            return new SuccessSourceState(new LocationSnapshot(location), InterceptorFilePath(ctx, location), languageVersion,
+                op.TargetMethod, flags, sql, resultType, argExpression?.Type, parameterMap, additionalState);
         }
         catch (Exception ex)
         {
-            Location? loc = null;
+            LocationSnapshot loc = default;
             try
             {
-                loc = ctx.Node.GetLocation();
+                loc = new LocationSnapshot(ctx.Node.GetLocation());
             }
             catch { } // best effort only
             return new FaultSourceState(loc, ex);
@@ -231,11 +242,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         if (ctx.Nodes.IsDefaultOrEmpty) return false; // nothing to do
 
         // find the first enabled thing with a C# parse options
-        if (ctx.Nodes.OfType<SuccessSourceState>().FirstOrDefault()?.Location?.SourceTree?.Options is not CSharpParseOptions options) return false; // not C#
+        var firstSuccess = ctx.Nodes.OfType<SuccessSourceState>().FirstOrDefault();
+        if (firstSuccess is null || firstSuccess.LanguageVersion < 0) return false; // not C#
 
         bool success = true;
 
-        var version = options.LanguageVersion;
+        var version = (LanguageVersion)firstSuccess.LanguageVersion;
         if (version != LanguageVersion.Default && version < LanguageVersion.CSharp11)
         {
             ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.LanguageVersionTooLow, null));
@@ -265,7 +277,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         foreach (var fault in ctx.Nodes.OfType<FaultSourceState>())
         {
             var ex = fault.Fault;
-            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnknownError, fault.Location, ex.Message, ex.StackTrace));
+            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnknownError, fault.Location.AsLocation(), ex.Message, ex.StackTrace));
         }
 
         int unsupported = 0, skippedViaDiagnostics = 0;
@@ -309,10 +321,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
             foreach (var op in grp.OrderBy(row => row.Location, CommonComparer.Instance))
             {
-                var loc = op.Location.GetLineSpan();
-                var start = loc.StartLinePosition;
+                var loc = op.Location;
                 sb.Append("[global::System.Runtime.CompilerServices.InterceptsLocationAttribute(")
-                    .AppendVerbatimLiteral(ctx.GetInterceptorFilePath(op.Location.SourceTree)).Append(", ").Append(start.Line + 1).Append(", ").Append(start.Character + 1).Append(")]").NewLine();
+                    .AppendVerbatimLiteral(op.InterceptorFilePath).Append(", ").Append(loc.StartLine + 1).Append(", ").Append(loc.StartChar + 1).Append(")]").NewLine();
                 usageCount++;
             }
 
@@ -370,8 +381,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     fixedSql = origin.Sql; // expect exactly one SQL
                     sb.Append("global::System.Diagnostics.Debug.Assert(sql == ")
                         .AppendVerbatimLiteral(fixedSql).Append(");").NewLine();
-                    var path = origin.Location.GetMappedLineSpan();
-                    fixedSql = $"-- {path.Path}#{path.StartLinePosition.Line + 1}\r\n{fixedSql}";
+                    fixedSql = $"-- {origin.Location.MappedPath}#{origin.Location.MappedStartLine + 1}\r\n{fixedSql}";
                 }
                 else
                 {
@@ -1511,8 +1521,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
     internal abstract class SourceState
     {
-        public Location? Location { get; }
-        protected SourceState(Location? location) => Location = location;
+        public LocationSnapshot Location { get; }
+        protected SourceState(in LocationSnapshot location) => Location = location;
     }
 
     internal sealed class SkippedSourceState : SourceState
@@ -1521,7 +1531,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         // all, or diagnostics made us leave it alone; retained so the DAP000 scorecard can
         // count honestly rather than quietly shrinking the denominator
         public OperationFlags Flags { get; }
-        public SkippedSourceState(Location? location, OperationFlags flags) : base(location)
+        public SkippedSourceState(in LocationSnapshot location, OperationFlags flags) : base(location)
             => Flags = flags;
     }
 
@@ -1529,13 +1539,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     {
         public Exception Fault { get; }
 
-        public FaultSourceState(Location? location, Exception fault) : base(location)
+        public FaultSourceState(in LocationSnapshot location, Exception fault) : base(location)
             => Fault = fault;
     }
 
     internal sealed class SuccessSourceState : SourceState
     {
-        public new Location Location => base.Location!; // assert non-null
+        public string InterceptorFilePath { get; } // normalized per the interceptors spec
+        public int LanguageVersion { get; } // raw LanguageVersion value; -1 when not C#
 
         public OperationFlags Flags { get; }
         public string? Sql { get; }
@@ -1545,10 +1556,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public ITypeSymbol? ParameterType { get; }
         public AdditionalCommandState? AdditionalCommandState { get; }
 
-        public SuccessSourceState(Location location, IMethodSymbol method, OperationFlags flags, string? sql,
+        public SuccessSourceState(in LocationSnapshot location, string interceptorFilePath, int languageVersion,
+            IMethodSymbol method, OperationFlags flags, string? sql,
             ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap,
             AdditionalCommandState? additionalCommandState) : base(location)
         {
+            InterceptorFilePath = interceptorFilePath;
+            LanguageVersion = languageVersion;
             Flags = flags;
             Sql = sql;
             ResultType = resultType;
@@ -1558,25 +1572,42 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             AdditionalCommandState = additionalCommandState;
         }
 
-        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) Group()
+        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) Group()
             => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location, AdditionalCommandState);
     }
-    private sealed class CommonComparer : LocationComparer, IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState)>
+    private sealed class CommonComparer :
+        IComparer<LocationSnapshot>,
+        IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState)>
     {
         public static readonly CommonComparer Instance = new();
         private CommonComparer() { }
 
+        public int Compare(LocationSnapshot x, LocationSnapshot y)
+        {
+            // same semantics as the old Location-based LocationComparer: path, then start, then end
+            var delta = StringComparer.InvariantCulture.Compare(x.Path, y.Path);
+            if (delta == 0)
+            {
+                delta = (x.StartLine, x.StartChar).CompareTo((y.StartLine, y.StartChar));
+            }
+            if (delta == 0)
+            {
+                delta = (x.EndLine, x.EndChar).CompareTo((y.EndLine, y.EndChar));
+            }
+            return delta;
+        }
+
         public bool Equals(
 
-            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) x,
-            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) y) => x.Flags == y.Flags
+            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) x,
+            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) y) => x.Flags == y.Flags
                 && x.ParameterMap == y.ParameterMap
                 && SymbolEqualityComparer.Default.Equals(x.Method, y.Method)
                 && SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType)
-                && x.UniqueLocation == y.UniqueLocation
+                && Nullable.Equals(x.UniqueLocation, y.UniqueLocation)
                 && Equals(x.AdditionalCommandState, y.AdditionalCommandState);
 
-        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, Location? UniqueLocation, AdditionalCommandState? AdditionalCommandState) obj)
+        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) obj)
         {
             var hash = (int)obj.Flags;
             hash *= -47;
