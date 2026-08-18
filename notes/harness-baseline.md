@@ -199,6 +199,27 @@ list expansion, TVPs, custom params), TypeHandlerTests ×16 (type-handler story)
 ×16 (coercions + tokens), Async/Literal (literals), plus the First-pipeline drain pair and
 the small tail. Nothing unexplained.
 
+## Round 11: dynamic-record fidelity (PR #200) - 672/793
+
+`DynamicRecord` diverged from vanilla's `DapperRow` three ways, all caught by the suite
+and none by the unit tests: a null column came back as `DBNull` from the dynamic and
+dictionary surfaces (vanilla hands back null; `(int?)row.A` threw RuntimeBinderException);
+dynamic records refused mutation (vanilla supports member set, add and remove - the DLR
+detail is that a set-binding must *yield* the assigned value, since assignment is an
+expression); and a missing member threw `KeyNotFoundException` where vanilla's indexer is
+TryGetValue-and-return - null, with the *value-type cast* being what throws, from the
+binder. The `DbDataRecord` surface keeps its ADO.NET contract (`GetValue` restores
+`DBNull`; the string indexer still throws), since vanilla has no counterpart there.
+Runtime-lib only, branched from main - no stacking. The fields array is shared per shape
+(it is the Tokenize state), so structural mutation copies before diverging.
+
+**672 passed / 92 failed.** The evening's arc: 616 -> 638 (#197) -> 652 (#198) -> 658
+(#199 + the #2225 amendment) -> 672 (#200). Remaining classes: TypeHandler x16/provider,
+Misc x11 (privates/fields, inheritance, Int16/Int32 coercions, nullable char in/out,
+unexpected-data message, multi-exec object[]), Literal x5 + async x3, ParameterTests x5
+(DataTable pair = type-handler story, SqlDecimal read-side, legacy `?` token,
+ISupportInitialize), Constructor x2, small tail.
+
 ## Round 10: custom parameters (PR #198) + two real bugs it uncovered - 658/793
 
 ICustomQueryParameter members (PR #198, stacked on #197): the value adds itself via
@@ -276,7 +297,7 @@ confirmed bugs and a 10x.
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | 725 honest | 533 (73.5%) | ✅ | 658/793 (106 fail; suite runs in ~18s) | — |
+| net10.0 | 725 honest | 533 (73.5%) | ✅ | 672/793 (92 fail; suite runs in ~18s) | — |
 | net8.0 | > 387 | 387 claimed | ✅ | — | — |
 | net481 | > 405 | 405 claimed | ✅ (needs PR #184) | — | — |
 
