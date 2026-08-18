@@ -87,5 +87,14 @@ beats today's state.
   is plain. Those two feed the row-factory/command-factory emitters, which consume symbols
   deeply (MemberMap/ElementMember); projecting them is the protobuf-net-plan-scale increment
   (3c-ii), best started fresh rather than at a session tail.
+- **Increment 3c-ii result side done** (pushed on stacked branch `phase2-model-plans`;
+  checkpoint PR #187 covers everything before it): `ResultType` → `RowPlan`/`RowMember` -
+  the full row-factory projection (member types/db-names/reader-methods, ctor/factory
+  choice, deferred construction, inbuilt-helper detection, query-column mapping).
+  `RowReaderState` now de-dupes on plan equality. Byte-identical (`f8d3a61f`) on first run.
+  **One cached symbol remains in the entire model: `ParameterType`** - the command-factory
+  side (WriteCommandFactory ~450 lines: member accessors, DbType/size/direction facts,
+  anonymous shape witness, multi-exec element/cast, UnsafeAccessor-adjacent bits). Same
+  recipe; roughly twice the surface of the row side.
 - Next was: increment 3a — `LocationSnapshot` into the interceptor generator's `SuccessSourceState`
   (plus projecting the interceptor file path at parse, since emit asks the `SourceTree` for it).
