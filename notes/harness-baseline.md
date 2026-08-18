@@ -76,6 +76,22 @@ DAP018 ×26, DAP048 ×16, DAP036/037 ×20 as downgraded errors). Next instrument
 scorecard (the 387 denominator still excludes never-attempted APIs), then actually *running*
 the suite against a database, which is where silent divergence shows.
 
+## Round 4: the honest scorecard (PR #185)
+
+With DAP000 counting every enabled call-site (unsupported APIs and diagnostic-refused sites
+included), the truth behind the former "100%":
+
+| leg | handled | of | ratio | unsupported API | skipped via diagnostics |
+| --- | --- | --- | --- | --- | --- |
+| net10.0 | 387 | 725 | **53.4%** | 82 | 256 |
+| net8.0 | 387 | 725 | 53.4% | 82 | 256 |
+| net481 | 405 | 757 | 53.5% | 84 | 268 |
+
+So the corpus number to drive to 100% starts at **53%**. The 82 unsupported-API sites are the
+`QueryMultiple`/multi-map/`ExecuteReader` families (parity.md §1); the 256 diagnostic skips
+are dominated by the DAP012/DAP015/DAP016/DAP017/DAP050 shapes plus untyped parameters —
+harvesting that breakdown per-id into the audit table is the remaining phase-1 analysis step.
+
 ## Scoreboard (to update as things land)
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
