@@ -1054,7 +1054,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect))
         {
             parseFlags = flags.HasAny(OperationFlags.StoredProcedure) ? SqlParseOutputFlags.MaybeQuery : SqlParseOutputFlags.Query;
-            mode = ParameterMode.All;
+            // a DynamicParameters-style bag supplies its own parameters at execution: defer,
+            // exactly as for command-text (otherwise the map ends up empty and the call-site
+            // gets the parameterless fallback factory)
+            mode = IsDynamicParameters(map?.DeclaredType, out _) ? ParameterMode.Defer : ParameterMode.All;
         }
         else
         {
