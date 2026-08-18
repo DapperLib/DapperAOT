@@ -99,6 +99,26 @@ Dapper and AOT both infer text-vs-proc when `commandType` is unspecified
 (`WhitespaceOrReserved` heuristic — shared regex, `DapperAotExtensions.cs:59`). Believed
 equivalent; pin with a corpus test.
 
+## Runtime-provided SQL (Marc's question, 2026-08-18)
+
+The member set is always known at build time even when the SQL is not; only each member's
+*role* varies (bind / inject / expand / unused). Three-tier emission:
+
+1. constant SQL with tokens → fully baked injection/expansion code, zero runtime decision;
+2. constant SQL without tokens → today's code, zero overhead;
+3. runtime SQL → keep the statically-typed per-member code for each possible role, gated by
+   a runtime role-assignment scan of the SQL, **memoized per call-site factory** with a
+   single-slot cache (`ReferenceEquals` then string equality) - the dominant "runtime"
+   string is built once and reused, so the steady state is one reference compare.
+
+Precedent: deferred-map call-sites already emit runtime `Include(sql, commandType, name)`
+tests - runtime SQL interrogation is an existing pattern here, extended not invented. Never
+worse than vanilla (which runtime-scans too, cached per Identity in a global dictionary;
+per-composed-call SQL misses that cache as well). Cost named honestly: tier-3 factories
+carry both role implementations for members that *could* be literal (value-typed) or
+expandable (enumerable), so runtime-SQL call-sites get fatter factories; members that can
+never play those roles pay nothing.
+
 ## Decision table (to fill in as designs land)
 
 | token | AOT position | design sketch |
