@@ -67,6 +67,11 @@ internal sealed class CodeWriter
         return this;
     }
 
+    /// <summary>The string <see cref="Append(ITypeSymbol?, bool)"/> would emit for this type.</summary>
+    internal static string GetAppendTypeName(ITypeSymbol value) => value.IsAnonymousType
+        ? value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+        : GetTypeName(value);
+
     public static string GetTypeName(ITypeSymbol? value)
     {
         static bool IsNonNullableValueType(ITypeSymbol type)

@@ -1,4 +1,5 @@
-﻿using Dapper.Internal;
+﻿using Dapper.CodeAnalysis.Model;
+using Dapper.Internal;
 using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
@@ -9,13 +10,13 @@ public sealed partial class DapperInterceptorGenerator
 {
     static void WriteSingleImplementation(
         CodeWriter sb,
-        IMethodSymbol method,
+        InterceptedMethod method,
         ITypeSymbol? resultType,
         OperationFlags flags,
         OperationFlags commandTypeMode,
         ITypeSymbol? parameterType,
         string map, bool cache,
-        in ImmutableArray<IParameterSymbol> methodParameters,
+        in EquatableArray<MethodParam> methodParameters,
         in CommandFactoryState factories,
         in RowReaderState readers,
         string? fixedSql,
@@ -137,15 +138,7 @@ public sealed partial class DapperInterceptorGenerator
         {
             // there are some NRT oddities in Dapper itself; shim over everything
             // (we know that DapperAOT has "T? {First|Single}OrDefault<T>[Async]" and "T? ExecuteScalar<T>[Async]")
-            bool addNullForgiving;
-            if (method.ReturnType.IsAsync(out var t))
-            {
-                addNullForgiving = t is not null && t.NullableAnnotation != NullableAnnotation.Annotated;
-            }
-            else
-            {
-                addNullForgiving = method.ReturnType.NullableAnnotation != NullableAnnotation.Annotated;
-            }
+            bool addNullForgiving = method.ReturnValueNeedsNullForgiving;
             if (addNullForgiving)
             {
                 sb.Append("!");
@@ -167,7 +160,7 @@ public sealed partial class DapperInterceptorGenerator
         }
     }
 
-    private static bool HasParam(ImmutableArray<IParameterSymbol> methodParameters, string name)
+    private static bool HasParam(in EquatableArray<MethodParam> methodParameters, string name)
     {
         foreach (var p in methodParameters)
         {
@@ -179,6 +172,6 @@ public sealed partial class DapperInterceptorGenerator
         return false;
     }
 
-    private static string Forward(ImmutableArray<IParameterSymbol> methodParameters, string name)
+    private static string Forward(in EquatableArray<MethodParam> methodParameters, string name)
         => HasParam(methodParameters, name) ? name : "default";
 }

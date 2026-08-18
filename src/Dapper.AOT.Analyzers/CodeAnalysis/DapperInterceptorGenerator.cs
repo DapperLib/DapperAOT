@@ -99,6 +99,22 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         return ctx.SemanticModel.Compilation.Options.SourceReferenceResolver?.NormalizePath(tree.FilePath, baseFilePath: null) ?? tree.FilePath;
     }
 
+    private static InterceptedMethod ProjectMethod(IMethodSymbol method)
+    {
+        var args = method.Parameters;
+        var parameters = new MethodParam[args.Length];
+        for (int i = 0; i < args.Length; i++)
+        {
+            parameters[i] = new MethodParam(CodeWriter.GetAppendTypeName(args[i].Type), args[i].Name);
+        }
+        // the NRT shim over Dapper oddities: is the (awaited) return value annotated?
+        bool needsNullForgiving = method.ReturnType.IsAsync(out var awaited)
+            ? awaited is not null && awaited.NullableAnnotation != NullableAnnotation.Annotated
+            : method.ReturnType.NullableAnnotation != NullableAnnotation.Annotated;
+        return new InterceptedMethod(CodeWriter.GetAppendTypeName(method.ReturnType), method.Name,
+            method.IsExtensionMethod, method.Arity, needsNullForgiving, new EquatableArray<MethodParam>(parameters));
+    }
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Chosen API")]
     internal SourceState? Parse(ParseState ctx)
     {
@@ -150,7 +166,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             Debug.Assert(!flags.HasAny(OperationFlags.DoNotGenerate), "should have already exited");
             int languageVersion = ctx.Node.SyntaxTree.Options is CSharpParseOptions csOptions ? (int)csOptions.LanguageVersion : -1;
             return new SuccessSourceState(new LocationSnapshot(location), InterceptorFilePath(ctx, location), languageVersion,
-                op.TargetMethod, flags, sql, resultType, argExpression?.Type, parameterMap, additionalState);
+                ProjectMethod(op.TargetMethod), flags, sql, resultType, argExpression?.Type, parameterMap, additionalState);
         }
         catch (Exception ex)
         {
@@ -343,7 +359,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             for (int i = 0; i < parameters.Length; i++)
             {
                 if (i != 0) sb.Append(", ");
-                else if (method.IsExtensionMethod) sb.Append("this ");
+                else if (method.IsExtension) sb.Append("this ");
                 sb.Append(parameters[i].Type).Append(" ").Append(parameters[i].Name);
             }
             sb.Append(")").Indent().NewLine();
@@ -1551,13 +1567,13 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public OperationFlags Flags { get; }
         public string? Sql { get; }
         public string ParameterMap { get; }
-        public IMethodSymbol Method { get; }
+        public InterceptedMethod Method { get; }
         public ITypeSymbol? ResultType { get; }
         public ITypeSymbol? ParameterType { get; }
         public AdditionalCommandState? AdditionalCommandState { get; }
 
         public SuccessSourceState(in LocationSnapshot location, string interceptorFilePath, int languageVersion,
-            IMethodSymbol method, OperationFlags flags, string? sql,
+            InterceptedMethod method, OperationFlags flags, string? sql,
             ITypeSymbol? resultType, ITypeSymbol? parameterType, string parameterMap,
             AdditionalCommandState? additionalCommandState) : base(location)
         {
@@ -1572,12 +1588,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             AdditionalCommandState = additionalCommandState;
         }
 
-        public (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) Group()
+        public (OperationFlags Flags, InterceptedMethod Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) Group()
             => new(Flags, Method, ParameterType, ParameterMap, (Flags & (OperationFlags.CacheCommand | OperationFlags.IncludeLocation)) == 0 ? null : Location, AdditionalCommandState);
     }
     private sealed class CommonComparer :
         IComparer<LocationSnapshot>,
-        IEqualityComparer<(OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState)>
+        IEqualityComparer<(OperationFlags Flags, InterceptedMethod Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState)>
     {
         public static readonly CommonComparer Instance = new();
         private CommonComparer() { }
@@ -1599,21 +1615,21 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         public bool Equals(
 
-            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) x,
-            (OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) y) => x.Flags == y.Flags
+            (OperationFlags Flags, InterceptedMethod Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) x,
+            (OperationFlags Flags, InterceptedMethod Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) y) => x.Flags == y.Flags
                 && x.ParameterMap == y.ParameterMap
-                && SymbolEqualityComparer.Default.Equals(x.Method, y.Method)
+                && x.Method.Equals(y.Method)
                 && SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType)
                 && Nullable.Equals(x.UniqueLocation, y.UniqueLocation)
                 && Equals(x.AdditionalCommandState, y.AdditionalCommandState);
 
-        public int GetHashCode((OperationFlags Flags, IMethodSymbol Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) obj)
+        public int GetHashCode((OperationFlags Flags, InterceptedMethod Method, ITypeSymbol? ParameterType, string ParameterMap, LocationSnapshot? UniqueLocation, AdditionalCommandState? AdditionalCommandState) obj)
         {
             var hash = (int)obj.Flags;
             hash *= -47;
             hash += obj.ParameterMap.GetHashCode();
             hash *= -47;
-            hash += SymbolEqualityComparer.Default.GetHashCode(obj.Method);
+            hash += obj.Method.GetHashCode();
             hash *= -47;
             if (obj.ParameterType is not null)
             {
