@@ -72,5 +72,20 @@ beats today's state.
   assembly name, pre-generated helpers). 3c is protobuf-net-plan-scale work; the shape test
   already guards everything in the Model namespace, and 2+3a+3b are independently mergeable
   if the session ends here.
+- **Increment 3c-i done** (pushed): `AdditionalCommandState`/`CommandProperty` plain and
+  moved into the Model namespace (now under the shape test); member-exists and is-DbCommand
+  probes run at parse; QueryColumns/CommandProperties on `EquatableArray`, which had to learn
+  default-vs-empty (QueryColumns semantics distinguish them). Byte-identical again.
+  **[CORRECTION]** an earlier chat message called QueryColumns equality a latent reference-
+  equality bug - wrong: `AdditionalCommandState` had proper element-wise static helpers; the
+  conversion is for shape-consistency, not a bug fix.
+  **[NOTE]** `HasPublicSettableInstanceMember` returns true for *readonly* fields
+  (`field.IsReadOnly` looks inverted) - preserved as-is for byte-identical output; flag for
+  a separate look.
+- Remaining cached symbols after 3c-i: exactly two - `ITypeSymbol? ResultType` and
+  `ITypeSymbol? ParameterType` on `SuccessSourceState`. Everything else in the cached model
+  is plain. Those two feed the row-factory/command-factory emitters, which consume symbols
+  deeply (MemberMap/ElementMember); projecting them is the protobuf-net-plan-scale increment
+  (3c-ii), best started fresh rather than at a session tail.
 - Next was: increment 3a — `LocationSnapshot` into the interceptor generator's `SuccessSourceState`
   (plus projecting the interceptor file path at parse, since emit asks the `SourceTree` for it).
