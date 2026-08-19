@@ -18,8 +18,8 @@ internal static class SqlTools
 
     internal static readonly Regex LiteralTokens = new(@"(?<![\p{L}\p{N}_])\{=([\p{L}\p{N}_]+)\}", SharedRegexOptions);
 
-    public static ImmutableHashSet<string> GetUniqueParameters(string? sql)
-        => ImmutableHashSet.Create(StringComparer.InvariantCultureIgnoreCase, GetParameters(sql));
+    public static ImmutableHashSet<string> GetUniqueParameters(string? sql, bool includeLiteralTokens = false)
+        => ImmutableHashSet.Create(StringComparer.InvariantCultureIgnoreCase, GetParameters(sql, includeLiteralTokens));
 
     public static bool IncludeParameter(string map, string name, out bool test)
     {
@@ -54,7 +54,7 @@ internal static class SqlTools
 
     }
 
-    public static string[] GetParameters(string? sql)
+    public static string[] GetParameters(string? sql, bool includeLiteralTokens = false)
     {
         if (string.IsNullOrWhiteSpace(sql))
         {
@@ -62,6 +62,20 @@ internal static class SqlTools
         }
 
         var parameterMatches = ParameterRegex.Matches(sql);
+        if (!includeLiteralTokens)
+        {
+            if (parameterMatches.Count == 0)
+            {
+                return [];
+            }
+            var parameters = new string[parameterMatches.Count];
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                parameters[i] = parameterMatches[i].Groups[1].Value;
+            }
+            return parameters;
+        }
+
         var literalMatches = LiteralTokens.Matches(sql);
         if (parameterMatches.Count == 0 && literalMatches.Count == 0)
         {
