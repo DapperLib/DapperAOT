@@ -1,4 +1,5 @@
-﻿using Dapper.Internal;
+﻿using Dapper.CodeAnalysis.Model;
+using Dapper.Internal;
 using Dapper.Internal.Roslyn;
 using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
@@ -9,13 +10,13 @@ public sealed partial class DapperInterceptorGenerator
 {
     static void WriteSingleImplementation(
         CodeWriter sb,
-        IMethodSymbol method,
-        ITypeSymbol? resultType,
+        InterceptedMethod method,
+        RowPlan? resultPlan,
         OperationFlags flags,
         OperationFlags commandTypeMode,
-        ITypeSymbol? parameterType,
+        ParamPlan? parameterType,
         string map, bool cache,
-        in ImmutableArray<IParameterSymbol> methodParameters,
+        in EquatableArray<MethodParam> methodParameters,
         in CommandFactoryState factories,
         in RowReaderState readers,
         string? fixedSql,
@@ -92,7 +93,7 @@ public sealed partial class DapperInterceptorGenerator
                         break;
                 }
             }
-            sb.AppendReader(resultType, readers, flags, additionalCommandState?.QueryColumns ?? default);
+            sb.AppendReader(resultPlan, readers, flags);
         }
         else if (flags.HasAny(OperationFlags.Execute))
         {
@@ -104,7 +105,7 @@ public sealed partial class DapperInterceptorGenerator
             sb.Append(isAsync ? "Async" : "");
             if (method.Arity == 1)
             {
-                sb.Append("<").Append(resultType).Append(">");
+                sb.Append("<").Append(resultPlan?.TypeName).Append(">");
             }
             sb.Append("(");
             WriteTypedArg(sb, parameterType);
@@ -119,9 +120,9 @@ public sealed partial class DapperInterceptorGenerator
             {
                 sb.Append(", rowCountHint: ").Append(additionalCommandState.RowCountHint);
             }
-            else if (parameterType is not null && !parameterType.IsAnonymousType)
+            else if (parameterType is not null && !parameterType.IsAnonymous)
             {
-                sb.Append(", rowCountHint: ((").Append(parameterType).Append(")param!).").Append(additionalCommandState.RowCountHintMemberName);
+                sb.Append(", rowCountHint: ((").Append(parameterType.TypeName).Append(")param!).").Append(additionalCommandState.RowCountHintMemberName);
             }
         }
         if (isAsync && HasParam(methodParameters, "cancellationToken"))
@@ -137,15 +138,7 @@ public sealed partial class DapperInterceptorGenerator
         {
             // there are some NRT oddities in Dapper itself; shim over everything
             // (we know that DapperAOT has "T? {First|Single}OrDefault<T>[Async]" and "T? ExecuteScalar<T>[Async]")
-            bool addNullForgiving;
-            if (method.ReturnType.IsAsync(out var t))
-            {
-                addNullForgiving = t is not null && t.NullableAnnotation != NullableAnnotation.Annotated;
-            }
-            else
-            {
-                addNullForgiving = method.ReturnType.NullableAnnotation != NullableAnnotation.Annotated;
-            }
+            bool addNullForgiving = method.ReturnValueNeedsNullForgiving;
             if (addNullForgiving)
             {
                 sb.Append("!");
@@ -153,21 +146,21 @@ public sealed partial class DapperInterceptorGenerator
         }
         sb.Append(";").NewLine();
 
-        static CodeWriter WriteTypedArg(CodeWriter sb, ITypeSymbol? parameterType)
+        static CodeWriter WriteTypedArg(CodeWriter sb, ParamPlan? parameterType)
         {
-            if (parameterType is null || parameterType.IsAnonymousType)
+            if (parameterType is null || parameterType.IsAnonymous)
             {
                 sb.Append("param");
             }
             else
             {
-                sb.Append("(").Append(parameterType).Append(")param!");
+                sb.Append("(").Append(parameterType.TypeName).Append(")param!");
             }
             return sb;
         }
     }
 
-    private static bool HasParam(ImmutableArray<IParameterSymbol> methodParameters, string name)
+    private static bool HasParam(in EquatableArray<MethodParam> methodParameters, string name)
     {
         foreach (var p in methodParameters)
         {
@@ -179,6 +172,6 @@ public sealed partial class DapperInterceptorGenerator
         return false;
     }
 
-    private static string Forward(ImmutableArray<IParameterSymbol> methodParameters, string name)
+    private static string Forward(in EquatableArray<MethodParam> methodParameters, string name)
         => HasParam(methodParameters, name) ? name : "default";
 }

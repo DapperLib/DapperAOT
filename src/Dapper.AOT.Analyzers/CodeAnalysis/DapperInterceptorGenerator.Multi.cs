@@ -1,4 +1,5 @@
-﻿using Dapper.Internal;
+﻿using Dapper.CodeAnalysis.Model;
+using Dapper.Internal;
 using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
 
@@ -10,9 +11,9 @@ public sealed partial class DapperInterceptorGenerator
         CodeWriter sb,
         OperationFlags flags,
         OperationFlags commandTypeMode,
-        ITypeSymbol? parameterType,
+        ParamPlan? parameterType,
         string map, bool cache,
-        ImmutableArray<IParameterSymbol> methodParameters,
+        EquatableArray<MethodParam> methodParameters,
         CommandFactoryState factories,
         string? fixedSql,
         AdditionalCommandState? additionalCommandState)
@@ -23,16 +24,16 @@ public sealed partial class DapperInterceptorGenerator
             return false;
         }
 
-        if (Inspection.IsCollectionType(parameterType, out var elementType, out var castType))
+        if (parameterType is { IsCollection: true, Element: { } elementPlan, CastType: { } castType })
         {
-            WriteMultiExecExpression(elementType!, castType);
+            WriteMultiExecExpression(elementPlan, castType);
             return true;
         }
 
         // no multi type found to cast to, so not using multiexec
         return false;
 
-        void WriteMultiExecExpression(ITypeSymbol elementType, string castType)
+        void WriteMultiExecExpression(ParamPlan elementType, string castType)
         {
             // return Command<type>
             sb.Append("return global::Dapper.DapperAotExtensions.Command");
@@ -55,7 +56,7 @@ public sealed partial class DapperInterceptorGenerator
             sb.Append(");").NewLine();
         }
 
-        void WriteBatchCommandArguments(ITypeSymbol elementType)
+        void WriteBatchCommandArguments(ParamPlan elementType)
         {
             // cnn, transaction, sql
             sb.Append("(cnn, ").Append(Forward(methodParameters, "transaction")).Append(", ");

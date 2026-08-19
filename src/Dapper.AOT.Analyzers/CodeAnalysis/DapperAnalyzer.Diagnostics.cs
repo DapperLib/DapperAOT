@@ -25,6 +25,7 @@ partial class DapperAnalyzer
         DapperAotTupleParameter = LibraryInfo("DAP014", "Tuple-type parameter", "Tuple-type parameters are not currently supported"),
         UntypedParameter = LibraryInfo("DAP015", "Untyped parameter", "The parameter type could not be resolved"),
         GenericTypeParameter = LibraryInfo("DAP016", "Generic type parameter", "Generic type parameters ({0}) are not currently supported"),
+        NestedInGenericType = LibraryWarning("DAP051", "Type is only generic by containment", "Type '{0}' is generic only because it is declared inside generic type '{1}'; if it does not need the enclosing type parameters, move it to non-generic scope"),
         NonPublicType = LibraryInfo("DAP017", "Non-accessible type", "Type '{0}' is not accessible; {1} types are not currently supported"),
         SqlParametersNotDetected = SqlWarning("DAP018", "SQL parameters not detected", "Parameters are being supplied, but no parameters were detected in the command"),
         // unused: DAP019
@@ -56,6 +57,7 @@ partial class DapperAnalyzer
         AmbiguousProperties = LibraryWarning("DAP046", "Ambiguous properties", "Properties have same name '{0}' after normalization and can be conflated"),
         AmbiguousFields = LibraryWarning("DAP047", "Ambiguous fields", "Fields have same name '{0}' after normalization and can be conflated"),
         MoveFromDbString = LibraryWarning("DAP048", "Move from DbString to DbValue", "DbString achieves the same as [DbValue] does. Use it instead."),
+        UnconstructableResultType = LibraryWarning("DAP050", "Result type cannot be constructed", "Type '{0}' cannot be constructed by generated code; it needs an accessible parameterless constructor, or a constructor/factory method whose parameters match its members"),
         UnableToBindQueryColumns = LibraryError("DAP049", "Unable to bind query columns", "Something went terribly wrong"),
 
         // SQL parse specific

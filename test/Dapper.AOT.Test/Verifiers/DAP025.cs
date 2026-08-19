@@ -59,4 +59,12 @@ public class DAP025 : Verifier<DapperAnalyzer>
         INTO #MyTemporaryTable FROM MyTable
         """, SqlAnalysis.SqlParseInputFlags.ExpectNoQuery);
 
+    [Fact]
+    public Task ReportUnionWhenNoQueryExpected() => SqlVerifyAsync("""
+        select 1
+        union all
+        select 2
+        """, SqlAnalysis.SqlParseInputFlags.ExpectNoQuery,
+            Diagnostic(Diagnostics.ExecuteCommandWithQuery).WithLocation(Execute));
+
 }

@@ -79,6 +79,7 @@ public class DAP037 : Verifier<DapperAnalyzer>
         }
         """", DefaultConfig, [
             Diagnostic(Diagnostics.UserTypeNoSettableMembersFound).WithLocation(0).WithArguments("NoSettable"),
+            Diagnostic(Diagnostics.UnconstructableResultType).WithLocation(0).WithArguments("NoSettable"),
             Diagnostic(Diagnostics.UserTypeNoSettableMembersFound).WithLocation(1).WithArguments("ReadOnlyField"),
             Diagnostic(Diagnostics.UserTypeNoSettableMembersFound).WithLocation(2).WithArguments(""),
     ]);

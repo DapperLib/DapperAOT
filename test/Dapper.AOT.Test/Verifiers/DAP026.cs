@@ -60,4 +60,16 @@ public class DAP026 : Verifier<DapperAnalyzer>
         """, SqlAnalysis.SqlParseInputFlags.ExpectQuery,
             Diagnostic(Diagnostics.QueryCommandMissingQuery).WithLocation(Execute));
 
+    [Fact] // false positive scenario, https://github.com/DapperLib/DapperAOT/issues/152
+    public Task DoNotReportForUnionAll() => SqlVerifyAsync("""
+        select 1
+        union all
+        select 2
+        """, SqlAnalysis.SqlParseInputFlags.ExpectQuery);
+
+    [Fact]
+    public Task DoNotReportForParenthesizedQuery() => SqlVerifyAsync("""
+        (select 1)
+        """, SqlAnalysis.SqlParseInputFlags.ExpectQuery);
+
 }

@@ -1,4 +1,5 @@
-﻿using Dapper.CodeAnalysis.Abstractions;
+using Dapper.CodeAnalysis.Abstractions;
+using Dapper.CodeAnalysis.Model;
 using Dapper.CodeAnalysis.Writers;
 using Dapper.Internal;
 using Dapper.Internal.Roslyn;
@@ -28,12 +29,21 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
 
     public override void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        // note the cached values are all plain data (see ModelShapeTests): symbols must be
+        // fully projected during parse, and the raw Compilation must not feed the output step
         var nodes = context.SyntaxProvider.CreateSyntaxProvider(PreFilter, Parse)
                     .Where(x => x is not null)
                     .Select((x, _) => x!);
-        var combined = context.CompilationProvider.Combine(nodes.Collect());
+        var env = context.CompilationProvider.Select(static (c, _) => CreateEnvironment(c));
+        var combined = env.Combine(nodes.Collect());
         context.RegisterImplementationSourceOutput(combined, Generate);
     }
+
+    private static GenerationEnvironment CreateEnvironment(Compilation compilation)
+        => new(
+            allowUnsafe: compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe,
+            assemblyName: compilation.AssemblyName,
+            hasInterceptsLocationAttribute: PreGeneratedCodeWriter.HasInterceptsLocationAttribute(compilation));
 
     private bool PreFilter(SyntaxNode node, CancellationToken cancellationToken)
     {
@@ -45,7 +55,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
         return false;
     }
 
-    private SourceState? Parse(GeneratorSyntaxContext ctx, CancellationToken cancellationToken)
+    private TypeAccessorModel? Parse(GeneratorSyntaxContext ctx, CancellationToken cancellationToken)
     {
         if (ctx.Node is not InvocationExpressionSyntax ie || ctx.SemanticModel.GetOperation(ie, cancellationToken) is not IInvocationOperation op)
         {
@@ -62,7 +72,13 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
             return null;
         }
 
-        return new SourceState(loc!, parameterType!, op.TargetMethod);
+        return new TypeAccessorModel(
+            new LocationSnapshot(loc!),
+            CodeWriter.GetTypeName(parameterType!),
+            isCollection: Inspection.IsCollectionType(parameterType, out _),
+            isPrimitive: Inspection.IsPrimitiveType(parameterType),
+            members: ConstructTypeMembers(parameterType!),
+            method: ProjectMethod(op.TargetMethod));
 
         bool TryParseParameterType(out ITypeSymbol? type)
         {
@@ -88,9 +104,28 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
         }
     }
 
-    private void Generate(SourceProductionContext context, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+    private static ForwarderMethod ProjectMethod(IMethodSymbol method)
     {
-        if (!IsGenerateInputValid(ref context, state))
+        var args = method.Parameters;
+        var parameters = new ForwarderParameter[args.Length];
+        for (int i = 0; i < args.Length; i++)
+        {
+            var arg = args[i];
+            bool isTypeAccessor = arg.Type is INamedTypeSymbol { IsGenericType: true, Arity: 1, Name: "TypeAccessor", ContainingType: null, ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } };
+            parameters[i] = new ForwarderParameter(AppendedForm(arg.Type), arg.Name, isTypeAccessor);
+        }
+        return new ForwarderMethod(AppendedForm(method.ReturnType), AppendedForm(method.ContainingType), method.Name,
+            new EquatableArray<ForwarderParameter>(parameters));
+
+        // the string CodeWriter.Append(ITypeSymbol) would have produced
+        static string AppendedForm(ITypeSymbol type) => type.IsAnonymousType
+            ? type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+            : CodeWriter.GetTypeName(type);
+    }
+
+    private void Generate(SourceProductionContext context, (GenerationEnvironment Env, ImmutableArray<TypeAccessorModel> Nodes) state)
+    {
+        if (!IsGenerateInputValid(ref context, state.Nodes))
         {
             Log?.Invoke(DiagnosticSeverity.Hidden, $"Generate input for '{nameof(TypeAccessorInterceptorGenerator)}' does not allow generation.");
             return;
@@ -99,45 +134,45 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
         var codeWriter = new CodeWriter();
         var sb = new TypeAccessorInterceptorCodeWriter(codeWriter);
 
-        sb.WriteFileHeader(state.Compilation);
+        sb.WriteFileHeader(state.Env.AllowUnsafe);
         sb.WriteInterceptorsClass(() =>
         {
             int typeCounter = -1, methodCounter = 0;
-            foreach (var group in state.Nodes.GroupBy(x => x, SourceStateByTypeComparer.Instance))
+            foreach (var group in state.Nodes.GroupBy(x => x.ParameterTypeName, StringComparer.Ordinal))
             {
                 typeCounter++;
 
-                var typeSymbol = group.Key.ParameterType;
+                var first = group.First();
 
                 // not allowing collections
-                if (Inspection.IsCollectionType(typeSymbol, out _))
+                if (first.IsCollection)
                 {
                     ReportDiagnosticInUsages(Diagnostics.TypeAccessorCollectionTypeNotAllowed);
                     continue;
                 }
 
                 // not allowing primitives
-                if (Inspection.IsPrimitiveType(typeSymbol))
+                if (first.IsPrimitive)
                 {
                     ReportDiagnosticInUsages(Diagnostics.TypeAccessorPrimitiveTypeNotAllowed);
                     continue;
                 }
 
-                var typeSymbolName = CodeWriter.GetTypeName(typeSymbol);
-                var members = ConstructTypeMembers(typeSymbol!);
+                var typeSymbolName = group.Key;
+                var members = first.Members;
                 if (members.Length == 0)
                 {
                     context.ReportDiagnostic(Diagnostic.Create(Diagnostics.TypeAccessorMembersNotParsed, null));
                     continue;
                 }
 
-                foreach (var methodGroup in group.GroupBy(x => x.Method, SymbolEqualityComparer.Default))
+                foreach (var methodGroup in group.GroupBy(x => x.Method))
                 {
                     foreach (var usage in methodGroup)
                     {
                         sb.WriteInterceptorsLocationAttribute(usage.Location);
                     }
-                    sb.WriteMethodForwarder((IMethodSymbol)methodGroup.Key!, typeCounter, ref methodCounter);
+                    sb.WriteMethodForwarder(methodGroup.Key, typeCounter, ref methodCounter);
                 }
 
                 var accessorSb = new CustomTypeAccessorClassCodeWriter(codeWriter);
@@ -158,47 +193,27 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
                 {
                     foreach (var usage in group)
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(diagnosticDescriptor, usage.Location));
+                        context.ReportDiagnostic(Diagnostic.Create(diagnosticDescriptor, usage.Location.AsLocation()));
                     }
                 }
             }
         });
 
-        var preGenerator = new PreGeneratedCodeWriter(codeWriter, state.Compilation);
+        var preGenerator = new PreGeneratedCodeWriter(codeWriter, state.Env.HasInterceptsLocationAttribute);
         preGenerator.Write(IncludedGeneration.InterceptsLocationAttribute);
 
-        context.AddSource((state.Compilation.AssemblyName ?? "package") + ".generated.cs", sb.GetSourceText());
+        context.AddSource((state.Env.AssemblyName ?? "package") + ".generated.cs", sb.GetSourceText());
     }
 
-    private static bool IsGenerateInputValid(ref SourceProductionContext ctx, (Compilation Compilation, ImmutableArray<SourceState> Nodes) state)
+    private static bool IsGenerateInputValid(ref SourceProductionContext ctx, ImmutableArray<TypeAccessorModel> nodes)
     {
-        if (state.Nodes.IsDefaultOrEmpty)
+        if (nodes.IsDefaultOrEmpty)
         {
             // TODO report diagnostics
             return false;
         }
 
         return true;
-    }
-
-    sealed class SourceState
-    {
-        public Location Location { get; }
-        public ITypeSymbol ParameterType { get; }
-        public IMethodSymbol Method { get; }
-
-        public SourceState(
-            Location location,
-            ITypeSymbol parameterType,
-            IMethodSymbol method)
-        {
-            Location = location;
-            ParameterType = parameterType;
-            Method = method;
-        }
-
-        public (ITypeSymbol ParameterType, Location? UniqueLocation) Group()
-            => new(ParameterType, Location);
     }
 
     [DebuggerDisplay("code: '{_sb.ToString()}'")]
@@ -210,9 +225,8 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
             _sb = codeWriter;
         }
 
-        public void WriteFileHeader(Compilation compilation)
+        public void WriteFileHeader(bool allowUnsafe)
         {
-            bool allowUnsafe = compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe;
             if (allowUnsafe)
             {
                 _sb.Append("#nullable enable").NewLine()
@@ -230,16 +244,14 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
             _sb.Outdent().Outdent();
         }
 
-        public void WriteInterceptorsLocationAttribute(Location location)
+        public void WriteInterceptorsLocationAttribute(in LocationSnapshot location)
         {
-            var loc = location.GetLineSpan();
-            var start = loc.StartLinePosition;
             _sb.Append("[global::System.Runtime.CompilerServices.InterceptsLocationAttribute(")
-                .AppendVerbatimLiteral(loc.Path).Append(", ").Append(start.Line + 1).Append(", ").Append(start.Character + 1).Append(")]")
+                .AppendVerbatimLiteral(location.Path).Append(", ").Append(location.StartLine + 1).Append(", ").Append(location.StartChar + 1).Append(")]")
                 .NewLine();
         }
 
-        public void WriteMethodForwarder(IMethodSymbol method, int customTypeNum, ref int methodNumber)
+        public void WriteMethodForwarder(in ForwarderMethod method, int customTypeNum, ref int methodNumber)
         {
             _sb.Append("internal static ").Append(method.ReturnType).Append(" ").Append("Forwarded").Append(methodNumber++).Append("(");
             int i = 0;
@@ -255,22 +267,13 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
             foreach (var arg in method.Parameters)
             {
                 _sb.Append(i == 0 ? "" : ", ").Append(arg.Name);
-                if (arg.Type is INamedTypeSymbol { IsGenericType: true, Arity: 1, Name: "TypeAccessor", ContainingType: null, ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } })
+                if (arg.IsTypeAccessorParam)
                 {
                     _sb.Append(" ?? ").Append(GetCustomTypeAccessorClassName(customTypeNum)).Append(".Instance");
                 }
                 i++;
             }
             _sb.Append(");").Outdent(false).NewLine().NewLine();
-
-            //_sb.Append("public static global::Dapper.ObjectAccessor<").Append(userTypeName).Append("> ")
-            //   .Append("CreateAccessor(").Append(userTypeName).Append(" obj, ")
-            //   .Append("global::Dapper.TypeAccessor<").Append(userTypeName).Append(">? accessor = null)")
-            //   .Indent().NewLine();
-
-            //_sb.Append("return new global::Dapper.ObjectAccessor<").Append(userTypeName).Append(">")
-            //   .Append("(obj, accessor ?? ").Append(GetCustomTypeAccessorClassName(customTypeNum)).Append(".Instance);")
-            //   .Outdent().NewLine().NewLine();
         }
 
         public SourceText GetSourceText() => SourceText.From(_sb.ToString(), Encoding.UTF8);
@@ -300,7 +303,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
         public void WriteMemberCount(int memberCount)
             => _sb.Append("public override int MemberCount => ").Append(memberCount).Append(";").NewLine();
 
-        public void WriteTryIndex(string userTypeName, MemberData[] members)
+        public void WriteTryIndex(string userTypeName, EquatableArray<AccessorMember> members)
         {
             var sb = _sb;
             sb.Append("public override int? TryIndex(string name, bool exact = false)")
@@ -342,7 +345,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
             }
         }
 
-        public void WriteGetName(string userTypeName, MemberData[] members)
+        public void WriteGetName(string userTypeName, EquatableArray<AccessorMember> members)
         {
             _sb.Append("public override string GetName(int index) => index switch")
                .Indent().NewLine();
@@ -356,7 +359,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
                .Outdent().Append(";").NewLine();
         }
 
-        public void WriteIndexer(string userTypeName, MemberData[] members)
+        public void WriteIndexer(string userTypeName, EquatableArray<AccessorMember> members)
         {
             _sb.Append("public override object? this[").Append(userTypeName).Append(" obj, int index]")
                .Indent().NewLine();
@@ -382,15 +385,15 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
             _sb.Outdent().NewLine();
         }
 
-        public void WriteIsNullable(MemberData[] members)
+        public void WriteIsNullable(EquatableArray<AccessorMember> members)
         {
             _sb.Append("public override bool IsNullable(int index) => index switch")
                .Indent().NewLine();
 
             var strBuilder = new StringBuilder();
-            foreach (var item in members.Where(x => x.IsNullable))
+            foreach (var item in members)
             {
-                strBuilder.Append(item.Number).Append(" or ");
+                if (item.IsNullable) strBuilder.Append(item.Number).Append(" or ");
             }
             if (strBuilder.Length > 0)
             {
@@ -399,9 +402,9 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
             }
 
             strBuilder.Clear();
-            foreach (var item in members.Where(x => !x.IsNullable))
+            foreach (var item in members)
             {
-                strBuilder.Append(item.Number).Append(" or ");
+                if (!item.IsNullable) strBuilder.Append(item.Number).Append(" or ");
             }
             if (strBuilder.Length > 0)
             {
@@ -413,15 +416,15 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
                .Outdent().Append(";").NewLine();
         }
 
-        public void WriteIsNull(string userTypeName, MemberData[] members)
+        public void WriteIsNull(string userTypeName, EquatableArray<AccessorMember> members)
         {
             _sb.Append("public override bool IsNull(").Append(userTypeName).Append(" obj, int index) => index switch")
                .Indent().NewLine();
 
             var strBuilder = new StringBuilder();
-            foreach (var item in members.Where(x => !x.IsNullable))
+            foreach (var item in members)
             {
-                strBuilder.Append(item.Number).Append(" or ");
+                if (!item.IsNullable) strBuilder.Append(item.Number).Append(" or ");
             }
             if (strBuilder.Length > 0)
             {
@@ -429,9 +432,10 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
                 _sb.Append(strBuilder.ToString()).Append(" => false,").NewLine();
             }
 
-            foreach (var member in members.Where(x => x.IsNullable))
+            foreach (var member in members)
             {
-                if (IsDBNull(member.TypeSymbol))
+                if (!member.IsNullable) continue;
+                if (member.IsDBNull)
                 {
                     // if member is of type DBNull, then it is always null => simply return true
                     _sb.Append(member.Number).Append(" => true,").NewLine();
@@ -439,7 +443,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
                 }
 
                 _sb.Append(member.Number).Append(" => obj.").Append(member.Name).Append(" is null");
-                if (member.TypeSymbol.IsSystemObject())
+                if (member.IsSystemObject)
                 {
                     _sb.Append(" or global::System.DBNull");
                 }
@@ -448,16 +452,9 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
 
             _sb.Append("_ => base.IsNull(obj, index)")
                .Outdent().Append(";").NewLine();
-
-            static bool IsDBNull(ITypeSymbol typeSymbol)
-            {
-                return typeSymbol.ContainingNamespace.ContainingNamespace?.IsGlobalNamespace == true
-                    && typeSymbol.ContainingNamespace.Name == "System"
-                    && typeSymbol.Name == "DBNull";
-            }
         }
 
-        public void WriteGetType(MemberData[] members)
+        public void WriteGetType(EquatableArray<AccessorMember> members)
         {
             _sb.Append("public override global::System.Type GetType(int index) => index switch")
                .Indent().NewLine();
@@ -478,7 +475,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
                .Outdent().Append(";").NewLine();
         }
 
-        public void WriteGetValue(string userTypeName, MemberData[] members)
+        public void WriteGetValue(string userTypeName, EquatableArray<AccessorMember> members)
         {
             _sb.Append("public override TValue GetValue<TValue>(").Append(userTypeName).Append(" obj, int index) => index switch")
                 .Indent().NewLine();
@@ -488,7 +485,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
                 _sb.Append(member.Number).Append(" when typeof(TValue) == typeof(").Append(member.Type).Append(")");
 
                 // if memberType is enum, we need to figure out an underlying type and check on it
-                var underlyingType = member.TypeSymbol.GetUnderlyingEnumTypeName();
+                var underlyingType = member.UnderlyingEnumTypeName;
                 if (underlyingType is not null)
                 {
                     _sb.Append(" || typeof(TValue) == typeof(").Append(underlyingType).Append(")");
@@ -501,7 +498,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
                .Outdent().Append(";").NewLine();
         }
 
-        public void WriteSetValue(string userTypeName, MemberData[] members)
+        public void WriteSetValue(string userTypeName, EquatableArray<AccessorMember> members)
         {
             _sb.Append("public override void SetValue<TValue>(").Append(userTypeName).Append(" obj, int index, TValue value)")
                .Indent().NewLine()
@@ -513,7 +510,7 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
                 _sb.Append("case ").Append(member.Number).Append(" when typeof(TValue) == typeof(").Append(member.Type).Append(")");
 
                 // if memberType is enum, we need to figure out an underlying type and check on it
-                var underlyingType = member.TypeSymbol.GetUnderlyingEnumTypeName();
+                var underlyingType = member.UnderlyingEnumTypeName;
                 if (underlyingType is not null)
                 {
                     _sb.Append(" || typeof(TValue) == typeof(").Append(underlyingType).Append(")");
@@ -531,9 +528,9 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
 
     private static string GetCustomTypeAccessorClassName(int num) => "DapperCustomTypeAccessor" + num;
 
-    private static MemberData[] ConstructTypeMembers(ITypeSymbol typeSymbol)
+    private static EquatableArray<AccessorMember> ConstructTypeMembers(ITypeSymbol typeSymbol)
     {
-        var members = new List<MemberData>();
+        var members = new List<AccessorMember>();
         int memberNumber = 0;
         HashSet<string> seenNames = new(StringComparer.Ordinal);
 
@@ -552,51 +549,30 @@ public sealed partial class TypeAccessorInterceptorGenerator : InterceptorGenera
 
                 if (type is IPropertySymbol property)
                 {
-                    members.Add(new()
-                    {
-                        Name = property.Name,
-                        Type = member.ToDisplayString(),
-                        TypeSymbol = property.Type,
-                        Number = memberNumber++,
-                        IsNullable = property.Type.IsNullable()
-                    });
+                    members.Add(Create(property.Name, member, property.Type, property.Type.IsNullable()));
                 }
                 if (type is IFieldSymbol field)
                 {
-                    members.Add(new()
-                    {
-                        Name = field.Name,
-                        Type = member.ToDisplayString(),
-                        TypeSymbol = field.Type,
-                        Number = memberNumber++,
-                        IsNullable = field.NullableAnnotation == NullableAnnotation.Annotated
-                    });
+                    members.Add(Create(field.Name, member, field.Type, field.NullableAnnotation == NullableAnnotation.Annotated));
                 }
+
+                AccessorMember Create(string name, ITypeSymbol displayType, ITypeSymbol memberType, bool isNullable)
+                    => new(memberNumber++, isNullable, name, displayType.ToDisplayString(),
+                        isDbNull: IsDBNull(memberType),
+                        isSystemObject: memberType.IsSystemObject(),
+                        underlyingEnumTypeName: memberType.GetUnderlyingEnumTypeName());
             }
 
             tier = tier.BaseType;
         }
 
-#pragma warning disable IDE0305 // Simplify collection initialization
-        return members.ToArray();
-#pragma warning restore IDE0305 // Simplify collection initialization
-    }
+        return new EquatableArray<AccessorMember>(members.ToArray());
 
-    [DebuggerDisplay("{TypeSymbol} {Name}")]
-    struct MemberData
-    {
-        public int Number;
-        public bool IsNullable;
-        public string Name;
-        public string Type;
-        public ITypeSymbol TypeSymbol;
-    }
-
-    sealed class SourceStateByTypeComparer : IEqualityComparer<SourceState>
-    {
-        public static readonly SourceStateByTypeComparer Instance = new();
-
-        public bool Equals(SourceState x, SourceState y) => SymbolEqualityComparer.Default.Equals(x.ParameterType, y.ParameterType);
-        public int GetHashCode(SourceState obj) => SymbolEqualityComparer.Default.GetHashCode(obj.ParameterType);
+        static bool IsDBNull(ITypeSymbol typeSymbol)
+        {
+            return typeSymbol.ContainingNamespace.ContainingNamespace?.IsGlobalNamespace == true
+                && typeSymbol.ContainingNamespace.Name == "System"
+                && typeSymbol.Name == "DBNull";
+        }
     }
 }

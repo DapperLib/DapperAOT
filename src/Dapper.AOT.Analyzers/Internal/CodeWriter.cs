@@ -8,6 +8,8 @@ using System.Threading;
 
 namespace Dapper.Internal;
 
+using Dapper.CodeAnalysis.Model;
+
 internal sealed class CodeWriter
 {
     static CodeWriter? s_Spare;
@@ -66,6 +68,11 @@ internal sealed class CodeWriter
         }
         return this;
     }
+
+    /// <summary>The string <see cref="Append(ITypeSymbol?, bool)"/> would emit for this type.</summary>
+    internal static string GetAppendTypeName(ITypeSymbol value) => value.IsAnonymousType
+        ? value.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+        : GetTypeName(value);
 
     public static string GetTypeName(ITypeSymbol? value)
     {
@@ -328,18 +335,20 @@ internal sealed class CodeWriter
         return s;
     }
 
-    internal CodeWriter AppendReader(ITypeSymbol? resultType, RowReaderState readers, OperationFlags flags, ImmutableArray<string> queryColumns)
+    internal CodeWriter AppendReader(RowPlan? plan, RowReaderState readers, OperationFlags flags)
     {
-        if (IsInbuilt(resultType, out var helper))
+        if (plan is null)
+        {   // an untyped result is read as dynamic
+            return Append("global::Dapper.RowFactory.Inbuilt.Dynamic");
+        }
+        if (plan.InbuiltHelper is { } helper)
         {
             return Append("global::Dapper.RowFactory.Inbuilt.").Append(helper);
         }
-        else
-        {
-            return Append("RowFactory").Append(readers.GetIndex(resultType!, flags, queryColumns)).Append(".Instance");
-        }
+        return Append("RowFactory").Append(readers.GetIndex(plan, flags)).Append(".Instance");
+    }
 
-        static bool IsInbuilt(ITypeSymbol? type, out string? helper)
+    internal static bool IsInbuiltResultType(ITypeSymbol? type, out string? helper)
         {
             if (type is null || type.TypeKind == TypeKind.Dynamic)
             {
@@ -405,7 +414,5 @@ internal sealed class CodeWriter
             }
             helper = null;
             return false;
-
-        }
     }
 }
