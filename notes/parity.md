@@ -59,7 +59,7 @@ Two levers change several complexity scores and are worth naming up front:
 | --- | --- | --- | --- | --- |
 | anonymous types / concrete POCOs | ✅ | — | — | |
 | fields as members | ❓ | low | low | verify |
-| `DynamicParameters` | ❌ | **high** | high | **PR #195 open**: delegate to the bag's own protocol (pairs with Dapper #2225); covers subclasses via interface dispatch. Templates ride on the same path |
+| `DynamicParameters` | ✅ | — | — | delegates to the bag's own protocol, so templates, per-param options, `Get<T>` and output callbacks all ride along; subclasses covered via interface dispatch. Needs a Dapper with the identity-free overload (Dapper #2225) — probe-gated, DAP052 otherwise |
 | `SqlMapper.IDynamicParameters` (custom impls) | ❌ | low-med | med | interface receives the `IDbCommand`, so callable directly — blocked on `Identity` (Dapper-internal) in the signature; owning Dapper permits an AOT-friendly overload |
 | `SqlMapper.ICustomQueryParameter` | ❌ ❓ | med | low | **PR #198 open**: generated code calls it, with vanilla's null semantics; uncovered a teardown bug (**PR #199**: parameters must be cleared on dispose, as vanilla does) |
 | `IParameterLookup` / `IParameterCallbacks` | ❌ ❓ | low | low-med | obscure but public |
