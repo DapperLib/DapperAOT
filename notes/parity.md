@@ -65,7 +65,7 @@ Two levers change several complexity scores and are worth naming up front:
 | `IParameterLookup` / `IParameterCallbacks` | ❌ ❓ | low | low-med | obscure but public |
 | `DbString` | ✅ | — | — | DAP048 nudges to `[DbValue]`; keep the Dapper spelling, the corpus uses it |
 | output / return params via `[DbValue(Direction=...)]` | ⚠️ | — | — | AOT spelling works; Dapper spelling rides on `DynamicParameters` above |
-| list expansion (`in @ids`) | ❌ ❓ | **high** | med | **PR #197 open**: delegates to vanilla's `PackListParameters`, which owns the whole contract — no runtime rewrite helper needed after all. [tokens.md](tokens.md) §2 |
+| list expansion (`in @ids`) | ✅ | — | — | delegates to vanilla's `PackListParameters`, which owns the whole contract (rewrite, empty form, padding, split, DbString items). Self-binding guards: no command caching, no multi-exec, not alongside output params. [tokens.md](tokens.md) §2 |
 | literal injection (`{=name}`) | ❌ ❓ | med | low-med | formatting rules compile-time decidable. [tokens.md](tokens.md) §3 |
 | pseudo-positional (`?foo?`) | ❌ ❓ | low | med | OleDb/Access corner. [tokens.md](tokens.md) §4 |
 | enum / nullable / `char` / `Guid` params | ⚠️❓ | med | low | verify edge conversions vs Dapper |
@@ -102,12 +102,12 @@ Two levers change several complexity scores and are worth naming up front:
 | feature | AOT status | impact | complexity | notes |
 | --- | --- | --- | --- | --- |
 | `Settings.CommandTimeout` (global default) | ❓ | med | low | AOT has per-site args + `[CommandProperty]`; needs a global knob |
-| `Settings.InListStringSplitCount` | ❌ | med | low* | *after* list expansion; SQL Server plan-stability win |
-| `Settings.PadListExpansions` | ❌ | low-med | low* | same |
+| `Settings.InListStringSplitCount` | ✅ | — | — | honored for free: it lives inside `PackListParameters`, which list expansion delegates to |
+| `Settings.PadListExpansions` | ✅ | — | — | same — honored inside `PackListParameters` |
 | `Settings.UseSingleResult/UseSingleRowOptimization` | ❓ | low | low | **PR #196 open**: verification found a real divergence (AOT hardcoded the opt-in flags; swallowed trailing errors, 10x slower async) — now matches vanilla's default |
 | `Settings.FetchSize` (Oracle) | ⚠️ | low | low | `GlobalFetchSize` exists; verify |
 | `SqlMapper.ConnectionStringComparer` | 🚫? | **zero-ish** | — | exists to partition the runtime identity/cache — a concept AOT doesn't have |
-| `FeatureSupport` (per-provider null-array quirks) | ❓ | low | low | folds into list-expansion helper |
+| `FeatureSupport` (per-provider null-array quirks) | ✅ | — | — | honored inside `PackListParameters` (the arrays branch is its first test) |
 
 ## 5. Sibling packages in the Dapper repo
 
