@@ -104,7 +104,7 @@ Two levers change several complexity scores and are worth naming up front:
 | `Settings.CommandTimeout` (global default) | ❓ | med | low | AOT has per-site args + `[CommandProperty]`; needs a global knob |
 | `Settings.InListStringSplitCount` | ❌ | med | low* | *after* list expansion; SQL Server plan-stability win |
 | `Settings.PadListExpansions` | ❌ | low-med | low* | same |
-| `Settings.UseSingleResult/UseSingleRowOptimization` | ❓ | low | low | **PR #196 open**: verification found a real divergence (AOT hardcoded the opt-in flags; swallowed trailing errors, 10x slower async) — now matches vanilla's default |
+| `Settings.UseSingleResult/UseSingleRowOptimization` | ✅ | — | — | verification found a real divergence (AOT hardcoded the opt-in flags; swallowed trailing errors, 10x slower async); now matches vanilla's default — no flags. The runtime knobs stay unread, with the opt-in location noted in code |
 | `Settings.FetchSize` (Oracle) | ⚠️ | low | low | `GlobalFetchSize` exists; verify |
 | `SqlMapper.ConnectionStringComparer` | 🚫? | **zero-ish** | — | exists to partition the runtime identity/cache — a concept AOT doesn't have |
 | `FeatureSupport` (per-provider null-array quirks) | ❓ | low | low | folds into list-expansion helper |
