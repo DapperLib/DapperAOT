@@ -44,7 +44,7 @@ Two levers change several complexity scores and are worth naming up front:
 | `GetRowParser<T>(reader)` | ✅ | — | — | |
 | `GetRowParser(reader, Type concreteType, ...)` | ❌ | med | low* | discriminator/polymorphism pattern; dictionary lookup once types are announced |
 | `Parse<T>` / `Parse(Type)` / `Parse` (dynamic) | ❌ ❓ | low | low | same reader machinery, different entry point |
-| `AsTableValuedParameter` (`DataTable` / `SqlDataRecord`) | ❓ | med | med | SQL Server crowd; pairs with `ICustomQueryParameter` |
+| `AsTableValuedParameter` (`DataTable` / `SqlDataRecord`) | ❓ | med | med | **PR #198 open** covers it (the result *is* an `ICustomQueryParameter`); a bare `DataTable` member rides the type-handler story instead (vanilla registers `DataTableHandler` by default) |
 | `AsList<T>` | n/a | — | — | trivial helper; confirm it doesn't count as a candidate site |
 | `GetTypeDeserializer(Type, reader, startBound, length, ...)` | ❌ | low-med | low* | a valid raw-materializer API, not mere plumbing: with announced types it's the same dispatch map, returning a boxed `Func<DbDataReader, object>`. Its generic strengthening **already exists**: `GetRowParser<T>` (same slicing knobs), which AOT supports |
 | `CreateParamInfoGenerator(Identity, ...)` | ❌ | low | med | the raw parameter-binder factory; **no generic counterpart exists in Dapper** — see "Strengthened APIs" in [type-vs-generic.md](type-vs-generic.md) for the proposed `<T>` form |
@@ -59,13 +59,13 @@ Two levers change several complexity scores and are worth naming up front:
 | --- | --- | --- | --- | --- |
 | anonymous types / concrete POCOs | ✅ | — | — | |
 | fields as members | ❓ | low | low | verify |
-| `DynamicParameters` | ❌ | **high** | high | densest single gap: templates, `AddDynamicParams`, per-param DbType/direction/size/precision/scale, `Get<T>` post-execute, output callbacks. Candidate design: a real (hand-written, AOT-safe) implementation in the runtime lib that generated commands consume — generation only needed for template objects |
+| `DynamicParameters` | ❌ | **high** | high | **PR #195 open**: delegate to the bag's own protocol (pairs with Dapper #2225); covers subclasses via interface dispatch. Templates ride on the same path |
 | `SqlMapper.IDynamicParameters` (custom impls) | ❌ | low-med | med | interface receives the `IDbCommand`, so callable directly — blocked on `Identity` (Dapper-internal) in the signature; owning Dapper permits an AOT-friendly overload |
-| `SqlMapper.ICustomQueryParameter` | ❌ ❓ | med | low | interface is `AddParameter(IDbCommand, string)` — generated code can just call it |
+| `SqlMapper.ICustomQueryParameter` | ❌ ❓ | med | low | **PR #198 open**: generated code calls it, with vanilla's null semantics; uncovered a teardown bug (**PR #199**: parameters must be cleared on dispose, as vanilla does) |
 | `IParameterLookup` / `IParameterCallbacks` | ❌ ❓ | low | low-med | obscure but public |
 | `DbString` | ✅ | — | — | DAP048 nudges to `[DbValue]`; keep the Dapper spelling, the corpus uses it |
 | output / return params via `[DbValue(Direction=...)]` | ⚠️ | — | — | AOT spelling works; Dapper spelling rides on `DynamicParameters` above |
-| list expansion (`in @ids`) | ❌ ❓ | **high** | med | ubiquitous. Runtime rewrite helper (per-invocation list size); analyzer already detects the shape. [tokens.md](tokens.md) §2 |
+| list expansion (`in @ids`) | ❌ ❓ | **high** | med | **PR #197 open**: delegates to vanilla's `PackListParameters`, which owns the whole contract — no runtime rewrite helper needed after all. [tokens.md](tokens.md) §2 |
 | literal injection (`{=name}`) | ❌ ❓ | med | low-med | formatting rules compile-time decidable. [tokens.md](tokens.md) §3 |
 | pseudo-positional (`?foo?`) | ❌ ❓ | low | med | OleDb/Access corner. [tokens.md](tokens.md) §4 |
 | enum / nullable / `char` / `Guid` params | ⚠️❓ | med | low | verify edge conversions vs Dapper |
@@ -85,7 +85,7 @@ Two levers change several complexity scores and are worth naming up front:
 | constructor binding, `[ExplicitConstructor]` | ✅ | — | — | plus factory methods (AOT extension) |
 | `required` / init-only members | ✅ | — | — | `RequiredProperties` fixture |
 | fields | ❓ | low | low | verify |
-| `dynamic` rows — behavioral fidelity | ⚠️ | high | med | the row *type* is internal and irrelevant; the observable contract is: `dynamic` member access, `IDictionary<string,object>` + `IReadOnlyDictionary<string,object>`, tolerates add/remove, specific null/missing semantics — pin that matrix with tests against AOT's row |
+| `dynamic` rows — behavioral fidelity | ⚠️ | high | med | **PR #200 open**: null (not DBNull) on the dynamic surface, mutation (set/add/remove), missing member is null with the cast throwing — the whole matrix the suite pins |
 | tuple results | ❌ | med | med | DAP013; design already framed by `[BindTupleByName]` |
 | enum results (string→enum case-insens., widening, `ShortEnum`) | ⚠️❓ | high | low-med | Dapper recently changed precedence (prefer type handlers, #2200) — match the *new* behavior |
 | `MatchNamesWithUnderscores` | ❓ | med-high | low | snake_case databases; needs a compile-time equivalent (global option/attr) |
@@ -104,7 +104,7 @@ Two levers change several complexity scores and are worth naming up front:
 | `Settings.CommandTimeout` (global default) | ❓ | med | low | AOT has per-site args + `[CommandProperty]`; needs a global knob |
 | `Settings.InListStringSplitCount` | ❌ | med | low* | *after* list expansion; SQL Server plan-stability win |
 | `Settings.PadListExpansions` | ❌ | low-med | low* | same |
-| `Settings.UseSingleResult/UseSingleRowOptimization` | ❓ | low | low | AOT picks `CommandBehavior` itself; verify equivalence |
+| `Settings.UseSingleResult/UseSingleRowOptimization` | ❓ | low | low | **PR #196 open**: verification found a real divergence (AOT hardcoded the opt-in flags; swallowed trailing errors, 10x slower async) — now matches vanilla's default |
 | `Settings.FetchSize` (Oracle) | ⚠️ | low | low | `GlobalFetchSize` exists; verify |
 | `SqlMapper.ConnectionStringComparer` | 🚫? | **zero-ish** | — | exists to partition the runtime identity/cache — a concept AOT doesn't have |
 | `FeatureSupport` (per-provider null-array quirks) | ❓ | low | low | folds into list-expansion helper |
