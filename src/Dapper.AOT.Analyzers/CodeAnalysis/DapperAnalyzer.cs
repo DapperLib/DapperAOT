@@ -1159,7 +1159,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (byDbName is null)
         {
             // nothing found
-            if (flags.HasAll(OperationFlags.HasParameters | OperationFlags.Text))
+            if (flags.HasAll(OperationFlags.HasParameters | OperationFlags.Text)
+                && !NoSqlParametersSupplied(map))
             {
                 // has args, and is command-text
                 reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.SqlParametersNotDetected, map?.Location));
@@ -1192,4 +1193,9 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         return builder.ToImmutable();
 
     }
+
+    // members such as cancellation tokens are consumed by Dapper itself; they are never sent as SQL parameters
+    static bool NoSqlParametersSupplied(MemberMap? map)
+        => map is { IsUnknownParameters: false, Members.IsDefaultOrEmpty: false }
+        && map.Members.All(static member => member.Kind != ElementMemberKind.None);
 }
