@@ -25,7 +25,7 @@ partial struct Command<TArgs>
         SyncQueryState state = default;
         try
         {
-            state.ExecuteReader(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
+            state.ExecuteReader(GetCommand(args), CommandBehavior.SequentialAccess);
 
             List<TRow> results;
             if (state.Reader.Read())
@@ -70,7 +70,7 @@ partial struct Command<TArgs>
         try
         {
             cancellationToken = GetCancellationToken(args, cancellationToken);
-            await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
+            await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SequentialAccess, cancellationToken);
 
             List<TRow> results;
             if (await state.Reader.ReadAsync(cancellationToken))
@@ -110,7 +110,7 @@ partial struct Command<TArgs>
         try
         {
             cancellationToken = GetCancellationToken(args, cancellationToken);
-            await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess, cancellationToken);
+            await state.ExecuteReaderAsync(GetCommand(args), CommandBehavior.SequentialAccess, cancellationToken);
 
             if (await state.Reader.ReadAsync(cancellationToken))
             {
@@ -140,7 +140,7 @@ partial struct Command<TArgs>
         SyncQueryState state = default;
         try
         {
-            state.ExecuteReader(GetCommand(args), CommandBehavior.SingleResult | CommandBehavior.SequentialAccess);
+            state.ExecuteReader(GetCommand(args), CommandBehavior.SequentialAccess);
 
             if (state.Reader.Read())
             {
@@ -163,10 +163,13 @@ partial struct Command<TArgs>
     }
 
     // if we don't care if there's two rows, we can restrict to read one only
+    // note: deliberately *not* SingleResult/SingleRow, matching vanilla Dapper's defaults
+    // (Settings.UseSingleResultOptimization / UseSingleRowOptimization are opt-in there):
+    // both make SqlClient cancel the remainder of the batch on close, silently discarding
+    // trailing errors ("select ...; raiserror(...)"), and the combination measured 10x
+    // slower on the async one-row path; if opt-in knobs are ever wanted, they belong here
     static CommandBehavior SingleFlags(OneRowFlags flags)
-        => (flags & OneRowFlags.ThrowIfMultiple) == 0
-            ? CommandBehavior.SingleResult | CommandBehavior.SequentialAccess | CommandBehavior.SingleRow
-            : CommandBehavior.SingleResult | CommandBehavior.SequentialAccess;
+        => CommandBehavior.SequentialAccess;
 
     private TRow? QueryOneRow<TRow>(
         TArgs args,

@@ -1,4 +1,4 @@
-using Dapper.Internal;
+﻿using Dapper.Internal;
 using Microsoft.CodeAnalysis;
 using System;
 using System.Data;
@@ -19,13 +19,14 @@ internal sealed class ParamPlan : IEquatable<ParamPlan>
     public bool IsReferenceType { get; }
     public bool IsCancellationTokenType { get; }
     public string? ShapeLambda { get; } // the Cast(args, ...) witness, anonymous types only
+    public bool IsDynamicBag { get; } // DynamicParameters-style: the factory delegates to the bag itself
     public bool IsCollection { get; } // multi-exec candidate
     public string? CastType { get; }
     public ParamPlan? Element { get; } // multi-exec element (one level only)
     public EquatableArray<ParamMember> Members { get; }
 
     private ParamPlan(string typeName, string declaredType, bool isAnonymous, bool isReferenceType,
-        bool isCancellationTokenType, string? shapeLambda, bool isCollection, string? castType,
+        bool isCancellationTokenType, string? shapeLambda, bool isDynamicBag, bool isCollection, string? castType,
         ParamPlan? element, in EquatableArray<ParamMember> members)
     {
         TypeName = typeName;
@@ -34,6 +35,7 @@ internal sealed class ParamPlan : IEquatable<ParamPlan>
         IsReferenceType = isReferenceType;
         IsCancellationTokenType = isCancellationTokenType;
         ShapeLambda = shapeLambda;
+        IsDynamicBag = isDynamicBag;
         IsCollection = isCollection;
         CastType = castType;
         Element = element;
@@ -57,10 +59,12 @@ internal sealed class ParamPlan : IEquatable<ParamPlan>
             shapeLambda = sb.ToString();
         }
 
+        bool isDynamicBag = Inspection.IsDynamicParameters(type, out _) && Inspection.HasIdentityFreeAddParameters(type);
+
         bool isCollection = false;
         string? castType = null;
         ParamPlan? element = null;
-        if (allowCollection && Inspection.IsCollectionType(type, out var elementType, out var castTypeValue))
+        if (!isDynamicBag && allowCollection && Inspection.IsCollectionType(type, out var elementType, out var castTypeValue))
         {
             isCollection = true;
             castType = castTypeValue;
@@ -68,19 +72,22 @@ internal sealed class ParamPlan : IEquatable<ParamPlan>
         }
 
         EquatableArray<ParamMember> members = default;
-        var memberMap = MemberMap.CreateForParameters(type);
-        if (memberMap is not null && !memberMap.Members.IsDefaultOrEmpty)
+        if (!isDynamicBag)
         {
-            var arr = new ParamMember[memberMap.Members.Length];
-            for (int i = 0; i < arr.Length; i++)
+            var memberMap = MemberMap.CreateForParameters(type);
+            if (memberMap is not null && !memberMap.Members.IsDefaultOrEmpty)
             {
-                arr[i] = ParamMember.Create(memberMap.Members[i]);
+                var arr = new ParamMember[memberMap.Members.Length];
+                for (int i = 0; i < arr.Length; i++)
+                {
+                    arr[i] = ParamMember.Create(memberMap.Members[i]);
+                }
+                members = new EquatableArray<ParamMember>(arr);
             }
-            members = new EquatableArray<ParamMember>(arr);
         }
 
         return new(typeName, declaredType, type.IsAnonymousType, type.IsReferenceType,
-            Inspection.IsCancellationToken(type), shapeLambda, isCollection, castType, element, members);
+            Inspection.IsCancellationToken(type), shapeLambda, isDynamicBag, isCollection, castType, element, members);
     }
 
     private static void AppendShapeLambda(CodeWriter sb, ITypeSymbol parameterType)
@@ -119,6 +126,7 @@ internal sealed class ParamPlan : IEquatable<ParamPlan>
         && IsReferenceType == other.IsReferenceType
         && IsCancellationTokenType == other.IsCancellationTokenType
         && string.Equals(ShapeLambda, other.ShapeLambda, StringComparison.Ordinal)
+        && IsDynamicBag == other.IsDynamicBag
         && IsCollection == other.IsCollection
         && string.Equals(CastType, other.CastType, StringComparison.Ordinal)
         && Equals(Element, other.Element)

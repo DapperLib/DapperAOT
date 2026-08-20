@@ -274,7 +274,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             
             ValidateParameters(parameters, flags, onDiagnostic);
 
-            var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags);
+            var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags, includeLiteralTokens: true);
 
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(args), location);
 
@@ -727,10 +727,23 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     flags |= OperationFlags.DoNotGenerate;
                     ReportGenericTypeParameter(reportDiagnostic, paramType!, argLocation);
                 }
-                else if (IsMissingOrObjectOrDynamic(paramType) || IsDynamicParameters(paramType, out _))
+                else if (IsMissingOrObjectOrDynamic(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UntypedParameter, argLocation));
+                }
+                else if (IsDynamicParameters(paramType, out _))
+                {
+                    if (!HasIdentityFreeAddParameters(paramType))
+                    {
+                        // no way to invoke the bag protocol externally on this Dapper version;
+                        // leave the call-site on vanilla Dapper, saying exactly what is missing
+                        // (never emit code that cannot compile against the referenced Dapper)
+                        flags |= OperationFlags.DoNotGenerate;
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.FeatureNeedsNewerDapper, argLocation,
+                            "DynamicParameters", "DynamicParameters.AddParameters(IDbCommand)"));
+                    }
+                    // else: supported - the generated factory delegates to the bag itself
                 }
                 else if (!IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
                 {
@@ -1035,7 +1048,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, ref OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)
+    internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, ref OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags, bool includeLiteralTokens = false)
     {
         SortedDictionary<string, ElementMember>? byDbName = null;
         var filter = ImmutableHashSet<string>.Empty;
@@ -1043,7 +1056,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect))
         {
             parseFlags = flags.HasAny(OperationFlags.StoredProcedure) ? SqlParseOutputFlags.MaybeQuery : SqlParseOutputFlags.Query;
-            mode = ParameterMode.All;
+            // a DynamicParameters-style bag supplies its own parameters at execution: defer,
+            // exactly as for command-text (otherwise the map ends up empty and the call-site
+            // gets the parameterless fallback factory)
+            mode = IsDynamicParameters(map?.DeclaredType, out _) ? ParameterMode.Defer : ParameterMode.All;
         }
         else
         {
@@ -1059,7 +1075,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             else
             {
                 mode = ParameterMode.Filter;
-                filter = SqlTools.GetUniqueParameters(sql);
+                filter = SqlTools.GetUniqueParameters(sql, includeLiteralTokens);
             }
         }
         if (!flags.HasAny(OperationFlags.HasParameters))
@@ -1159,7 +1175,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (byDbName is null)
         {
             // nothing found
-            if (flags.HasAll(OperationFlags.HasParameters | OperationFlags.Text))
+            if (flags.HasAll(OperationFlags.HasParameters | OperationFlags.Text)
+                && SuppliesSqlParameters(map))
             {
                 // has args, and is command-text
                 reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.SqlParametersNotDetected, map?.Location));
@@ -1192,4 +1209,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         return builder.ToImmutable();
 
     }
+
+    // members such as cancellation tokens and row-counts are consumed by Dapper itself and are
+    // never sent as SQL parameters; only report "no parameters detected" when the args include
+    // at least one member that would actually bind (unknown/dynamic bags: assume they would)
+    static bool SuppliesSqlParameters(MemberMap? map)
+        => map is null
+        || map.IsUnknownParameters
+        || map.Members.IsDefaultOrEmpty
+        || map.Members.Any(static member => member.Kind == ElementMemberKind.None);
 }

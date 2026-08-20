@@ -293,6 +293,45 @@ internal static class Inspection
         return false;
     }
 
+    /// <summary>
+    /// Does this parameter-bag type expose the identity-free <c>AddParameters(IDbCommand)</c>
+    /// self-apply API (Dapper vNext)? When it does, the generated command factory can simply
+    /// delegate to the bag's own (vanilla) protocol; when it does not, the call-site must be
+    /// left on vanilla Dapper, since Identity cannot be constructed externally.
+    /// </summary>
+    public static bool HasIdentityFreeAddParameters(ITypeSymbol? type)
+    {
+        while (type is not null)
+        {
+            foreach (var member in type.GetMembers("AddParameters"))
+            {
+                if (member is IMethodSymbol
+                    {
+                        IsStatic: false, DeclaredAccessibility: Accessibility.Public,
+                        Parameters.Length: 1
+                    } method
+                    && method.Parameters[0].Type is INamedTypeSymbol
+                    {
+                        Name: "IDbCommand", TypeKind: TypeKind.Interface, ContainingType: null,
+                        ContainingNamespace:
+                        {
+                            Name: "Data",
+                            ContainingNamespace:
+                            {
+                                Name: "System",
+                                ContainingNamespace.IsGlobalNamespace: true
+                            }
+                        }
+                    })
+                {
+                    return true;
+                }
+            }
+            type = type.BaseType;
+        }
+        return false;
+    }
+
     public static bool IsPublicOrAssemblyLocal(ISymbol? symbol, in ParseState ctx, out ISymbol? failingSymbol)
         => IsPublicOrAssemblyLocal(symbol, ctx.SemanticModel.Compilation.Assembly, out failingSymbol);
 

@@ -59,7 +59,7 @@ Two levers change several complexity scores and are worth naming up front:
 | --- | --- | --- | --- | --- |
 | anonymous types / concrete POCOs | ✅ | — | — | |
 | fields as members | ❓ | low | low | verify |
-| `DynamicParameters` | ❌ | **high** | high | **PR #195 open**: delegate to the bag's own protocol (pairs with Dapper #2225); covers subclasses via interface dispatch. Templates ride on the same path |
+| `DynamicParameters` | ✅ | — | — | delegates to the bag's own protocol, so templates, per-param options, `Get<T>` and output callbacks all ride along; subclasses covered via interface dispatch. Needs a Dapper with the identity-free overload (Dapper #2225) — probe-gated, DAP052 otherwise |
 | `SqlMapper.IDynamicParameters` (custom impls) | ❌ | low-med | med | interface receives the `IDbCommand`, so callable directly — blocked on `Identity` (Dapper-internal) in the signature; owning Dapper permits an AOT-friendly overload |
 | `SqlMapper.ICustomQueryParameter` | ✅ | — | — | generated code calls `AddParameter(command, name)` with vanilla's null semantics; self-binding guards as for list expansion. Uncovered a teardown bug (PR #199: parameters must be cleared on dispose, as vanilla does) |
 | `IParameterLookup` / `IParameterCallbacks` | ❌ ❓ | low | low-med | obscure but public |
@@ -85,7 +85,7 @@ Two levers change several complexity scores and are worth naming up front:
 | constructor binding, `[ExplicitConstructor]` | ✅ | — | — | plus factory methods (AOT extension) |
 | `required` / init-only members | ✅ | — | — | `RequiredProperties` fixture |
 | fields | ❓ | low | low | verify |
-| `dynamic` rows — behavioral fidelity | ⚠️ | high | med | **PR #200 open**: null (not DBNull) on the dynamic surface, mutation (set/add/remove), missing member is null with the cast throwing — the whole matrix the suite pins |
+| `dynamic` rows — behavioral fidelity | ✅ | — | — | null (not DBNull) on the dynamic and dictionary surfaces, mutation (set/add/remove), missing member is null with the value-type cast throwing from the binder — the matrix the suite pins. The `DbDataRecord` surface keeps its ADO.NET contract |
 | tuple results | ❌ | med | med | DAP013; design already framed by `[BindTupleByName]` |
 | enum results (string→enum case-insens., widening, `ShortEnum`) | ⚠️❓ | high | low-med | Dapper recently changed precedence (prefer type handlers, #2200) — match the *new* behavior |
 | `MatchNamesWithUnderscores` | ❓ | med-high | low | snake_case databases; needs a compile-time equivalent (global option/attr) |
@@ -104,7 +104,7 @@ Two levers change several complexity scores and are worth naming up front:
 | `Settings.CommandTimeout` (global default) | ❓ | med | low | AOT has per-site args + `[CommandProperty]`; needs a global knob |
 | `Settings.InListStringSplitCount` | ✅ | — | — | honored for free: it lives inside `PackListParameters`, which list expansion delegates to |
 | `Settings.PadListExpansions` | ✅ | — | — | same — honored inside `PackListParameters` |
-| `Settings.UseSingleResult/UseSingleRowOptimization` | ❓ | low | low | **PR #196 open**: verification found a real divergence (AOT hardcoded the opt-in flags; swallowed trailing errors, 10x slower async) — now matches vanilla's default |
+| `Settings.UseSingleResult/UseSingleRowOptimization` | ✅ | — | — | verification found a real divergence (AOT hardcoded the opt-in flags; swallowed trailing errors, 10x slower async); now matches vanilla's default — no flags. The runtime knobs stay unread, with the opt-in location noted in code |
 | `Settings.FetchSize` (Oracle) | ⚠️ | low | low | `GlobalFetchSize` exists; verify |
 | `SqlMapper.ConnectionStringComparer` | 🚫? | **zero-ish** | — | exists to partition the runtime identity/cache — a concept AOT doesn't have |
 | `FeatureSupport` (per-provider null-array quirks) | ✅ | — | — | honored inside `PackListParameters` (the arrays branch is its first test) |
