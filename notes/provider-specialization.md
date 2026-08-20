@@ -188,19 +188,38 @@ internal static async Task<Customer> QuerySingle_Customer_id_Int32(
 }
 ```
 
-**The shared body takes the extracted values, not the argument object**, and that is not a stylistic
-choice — it is forced, and it turns out to be the good outcome. An anonymous type cannot be written
-as a parameter type, so a helper taking one is unwritable; passing `typed.id` instead sidesteps that
-entirely. The consequences are worth spelling out:
+**If the body is factored out, it must take the extracted values rather than the argument object** —
+that part is forced, not chosen. An anonymous type cannot be written as a parameter type, so a helper
+taking one is unwritable; passing `typed.id` sidesteps it.
 
-- **`sql` is a parameter, so call sites collapse.** Fifty `Query<Customer>(sql, new { id })` sites
-  across a codebase share *one* emitted method, not fifty copies of a reader loop. The obvious
-  objection to end-to-end emission — code size, and worse for AOT binaries — largely evaporates;
-- **the shape key is (operation, row type, parameter names and types)**, so differing SQL is free and
-  differing parameter *names* is what splits a shape ❓ (whether to key on names or pass them wants
-  deciding against real codebases);
-- **the interceptor stays trivial**, which keeps the per-call-site IL small even where shapes do not
-  share.
+### ...or just put the body inline
+
+The obvious alternative is to drop the second layer entirely: emit the body directly under
+`var typed = Cast(...)` in the interceptor and use `typed.id` from there. **It runs the same code**,
+and the specialization switch works identically. So the choice is narrower than it first looks, and
+worth stating honestly rather than assuming the factored form wins:
+
+| | inline in the interceptor | shared body per shape |
+| --- | --- | --- |
+| per-operation cost | same | same |
+| async state machines | **one type per call site** | one type per shape |
+| emitted source, compile time, golden fixtures | N near-identical bodies | one body |
+| debugging | N places | one place |
+| generator complexity | lower — no shape key, no signature to design | higher |
+
+The async state machine row is the most concrete: an inline body makes the interceptor `async`, so
+each call site carries its own state machine type, with the metadata and the ILC work that implies.
+Delegating lets the interceptor be a non-async `return Shapes.X(...)`, and the shape has one.
+
+**Whether that is worth the machinery depends entirely on how often shapes repeat**, and that number
+is unmeasured ❓. An earlier draft of this note asserted that fifty call sites would collapse to one;
+that was illustration presented as fact. If a real codebase repeats a given (operation, row type,
+parameter types) two or three times, the saving is modest and the inline form's simplicity probably
+wins. **Measure shape repetition across a few real repositories before choosing.**
+
+If the factored form is chosen, the shape key is (operation, row type, parameter names and types),
+so differing SQL is free — it is a parameter — and differing parameter *names* is what splits a
+shape, unless names are passed too ❓.
 
 ### Why it is worth a major
 
