@@ -1160,7 +1160,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         {
             // nothing found
             if (flags.HasAll(OperationFlags.HasParameters | OperationFlags.Text)
-                && !NoSqlParametersSupplied(map))
+                && SuppliesSqlParameters(map))
             {
                 // has args, and is command-text
                 reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.SqlParametersNotDetected, map?.Location));
@@ -1194,8 +1194,12 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
     }
 
-    // members such as cancellation tokens are consumed by Dapper itself; they are never sent as SQL parameters
-    static bool NoSqlParametersSupplied(MemberMap? map)
-        => map is { IsUnknownParameters: false, Members.IsDefaultOrEmpty: false }
-        && map.Members.All(static member => member.Kind != ElementMemberKind.None);
+    // members such as cancellation tokens and row-counts are consumed by Dapper itself and are
+    // never sent as SQL parameters; only report "no parameters detected" when the args include
+    // at least one member that would actually bind (unknown/dynamic bags: assume they would)
+    static bool SuppliesSqlParameters(MemberMap? map)
+        => map is null
+        || map.IsUnknownParameters
+        || map.Members.IsDefaultOrEmpty
+        || map.Members.Any(static member => member.Kind == ElementMemberKind.None);
 }
