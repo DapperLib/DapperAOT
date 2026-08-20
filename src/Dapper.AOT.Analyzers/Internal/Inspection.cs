@@ -342,6 +342,41 @@ internal static class Inspection
         return true;
     }
 
+    /// <summary>
+    /// The type itself is generic-free, but it is declared inside a generic type - so at the
+    /// call-site it is an open type purely by containment. This is the common accidental
+    /// shape (a DTO nested inside a generic helper class), and the fix is usually just to
+    /// move the type out; when true, <paramref name="genericContainer"/> is the culprit.
+    /// </summary>
+    public static bool IsGenericByContainmentOnly(ISymbol? symbol, out INamedTypeSymbol? genericContainer)
+    {
+        genericContainer = null;
+        if (symbol is not INamedTypeSymbol named || !InvolvesGenericTypeParameter(named))
+        {
+            return false;
+        }
+        // the type's own arguments must be clean...
+        if (named.Arity != 0)
+        {
+            foreach (var arg in named.TypeArguments)
+            {
+                if (InvolvesGenericTypeParameter(arg)) return false;
+            }
+        }
+        // ...so the involvement comes from a containing type
+        var container = named.ContainingType;
+        while (container is not null)
+        {
+            if (container.Arity != 0)
+            {
+                genericContainer = container;
+                return true;
+            }
+            container = container.ContainingType;
+        }
+        return false;
+    }
+
     public static bool InvolvesGenericTypeParameter(ISymbol? symbol)
     {
         while (symbol is not null)

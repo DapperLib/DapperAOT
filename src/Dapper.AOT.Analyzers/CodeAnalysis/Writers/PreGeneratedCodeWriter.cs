@@ -6,37 +6,28 @@ namespace Dapper.CodeAnalysis.Writers
 {
     internal struct PreGeneratedCodeWriter
     {
-        readonly Compilation _compilation;
+        readonly bool _hasInterceptsLocationAttribute;
         readonly CodeWriter _codeWriter;
 
         public PreGeneratedCodeWriter(
             CodeWriter codeWriter,
             Compilation compilation)
+            : this(codeWriter, HasInterceptsLocationAttribute(compilation))
+        { }
+
+        public PreGeneratedCodeWriter(
+            CodeWriter codeWriter,
+            bool hasInterceptsLocationAttribute)
         {
             _codeWriter = codeWriter;
-            _compilation = compilation;
+            _hasInterceptsLocationAttribute = hasInterceptsLocationAttribute;
         }
 
-        public void Write(IncludedGeneration includedGenerations)
+        /// <summary>Is <c>InterceptsLocationAttribute</c> already available to the consumer's compilation?</summary>
+        internal static bool HasInterceptsLocationAttribute(Compilation compilation)
         {
-            if (includedGenerations.HasAny(IncludedGeneration.InterceptsLocationAttribute))
-            {
-                WriteInterceptsLocationAttribute();
-            }
-
-            if (includedGenerations.HasAny(IncludedGeneration.DbStringHelpers))
-            {
-                _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InGeneration.DapperHelpers.cs"));
-            }
-        }
-
-        void WriteInterceptsLocationAttribute()
-        {
-            var attrib = _compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute");
-            if (!IsAvailable(attrib, _compilation))
-            {
-                _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InGeneration.InterceptsLocationAttribute.cs"));
-            }
+            var attrib = compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.InterceptsLocationAttribute");
+            return IsAvailable(attrib, compilation);
 
             static bool IsAvailable(INamedTypeSymbol? type, Compilation compilation)
             {
@@ -55,6 +46,27 @@ namespace Dapper.CodeAnalysis.Writers
                     default:
                         return false;
                 }
+            }
+        }
+
+        public void Write(IncludedGeneration includedGenerations)
+        {
+            if (includedGenerations.HasAny(IncludedGeneration.InterceptsLocationAttribute))
+            {
+                WriteInterceptsLocationAttribute();
+            }
+
+            if (includedGenerations.HasAny(IncludedGeneration.DbStringHelpers))
+            {
+                _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InGeneration.DapperHelpers.cs"));
+            }
+        }
+
+        void WriteInterceptsLocationAttribute()
+        {
+            if (!_hasInterceptsLocationAttribute)
+            {
+                _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InGeneration.InterceptsLocationAttribute.cs"));
             }
         }
     }

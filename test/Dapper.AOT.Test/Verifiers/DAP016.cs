@@ -47,6 +47,7 @@ public class DAP016 : Verifier<DapperAnalyzer>
         }
         class Poco { public int Id {get;set;} }
         """, DefaultConfig, [
-            Diagnostic(Diagnostics.GenericTypeParameter).WithLocation(0).WithArguments("GenericType<TX>.Nested")]);
+            // note: this shape now gets the more specific DAP051 (nested-in-generic) guidance
+            Diagnostic(Diagnostics.NestedInGenericType).WithLocation(0).WithArguments("GenericType<TX>.Nested", "GenericType<TX>")]);
 
 }

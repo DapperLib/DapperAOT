@@ -5,7 +5,7 @@ Warning CS0618 Interceptors/OmitAttribute.input.cs L7 C28
 Generator produced 1 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 1 of 1 possible call-sites using 1 interceptors, 0 commands and 0 readers
+Dapper.AOT handled 1 of 1 enabled call-sites (0 unsupported API, 0 skipped due to diagnostics) using 1 interceptors, 0 commands and 0 readers
 Output code has 1 diagnostics from 'Interceptors/OmitAttribute.input.cs':
 
 Warning CS0618 Interceptors/OmitAttribute.input.cs L7 C28

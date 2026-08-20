@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using Dapper.CodeAnalysis.Model;
 using Dapper.Internal.Roslyn;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
@@ -644,7 +645,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 if (InvolvesGenericTypeParameter(resultType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, callLocation, resultType!.ToDisplayString()));
+                    ReportGenericTypeParameter(reportDiagnostic, resultType!, callLocation);
                 }
                 else if (resultTuple)
                 {
@@ -724,7 +725,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 else if (InvolvesGenericTypeParameter(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, argLocation, paramType!.ToDisplayString()));
+                    ReportGenericTypeParameter(reportDiagnostic, paramType!, argLocation);
                 }
                 else if (IsMissingOrObjectOrDynamic(paramType) || IsDynamicParameters(paramType, out _))
                 {
@@ -758,7 +759,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                         if (InvolvesGenericTypeParameter(memberType))
                         {
                             flags |= OperationFlags.DoNotGenerate;
-                            reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, argLocation, memberType.ToDisplayString()));
+                            ReportGenericTypeParameter(reportDiagnostic, memberType, argLocation);
                             break;
                         }
                         if (!IsPublicOrAssemblyLocal(memberType, ctx, out var failingMember))
@@ -872,10 +873,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        ImmutableArray<CommandProperty> cmdProps;
+        EquatableArray<CommandProperty> cmdProps = default;
         if (cmdPropsCount != 0)
         {
-            var builder = ImmutableArray.CreateBuilder<CommandProperty>(cmdPropsCount);
+            var builder = new List<CommandProperty>(cmdPropsCount);
             foreach (var attrib in methodAttribs)
             {
                 if (IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == Types.CommandPropertyAttribute
@@ -885,19 +886,30 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     && attrib.ConstructorArguments[0].Value is string name
                     && attrib.ConstructorArguments[1].Value is object value)
                 {
-                    builder.Add(new(cmdType, name, value, location));
+                    builder.Add(CommandProperty.Create(cmdType, name, value, location));
                 }
             }
-            cmdProps = builder.ToImmutable();
+            cmdProps = new(builder.ToArray());
+        }
+
+        var queryColumnsModel = queryColumns.IsDefault ? default : new EquatableArray<string>(queryColumns.AsSpan().ToArray());
+        return cmdProps.IsEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && queryColumnsModel.IsDefault
+            ? null : new(rowCountHint, rowCountHintMember?.Member?.Name, batchSize, cmdProps, queryColumnsModel);
+    }
+
+    static void ReportGenericTypeParameter(Action<Diagnostic>? reportDiagnostic, ITypeSymbol type, Location? location)
+    {
+        if (reportDiagnostic is null) return;
+        if (IsGenericByContainmentOnly(type, out var container))
+        {
+            // the common accidental shape, with a concrete fix: move the type out
+            reportDiagnostic(Diagnostic.Create(Diagnostics.NestedInGenericType, location,
+                type.ToDisplayString(), container!.ToDisplayString()));
         }
         else
         {
-            cmdProps = ImmutableArray<CommandProperty>.Empty;
+            reportDiagnostic(Diagnostic.Create(Diagnostics.GenericTypeParameter, location, type.ToDisplayString()));
         }
-
-
-        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && queryColumns.IsDefault
-            ? null : new(rowCountHint, rowCountHintMember?.Member?.Name, batchSize, cmdProps, queryColumns);
     }
 
     static void ValidateParameters(MemberMap? parameters, OperationFlags flags, Action<Diagnostic> onDiagnostic)
@@ -1147,7 +1159,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (byDbName is null)
         {
             // nothing found
-            if (flags.HasAll(OperationFlags.HasParameters | OperationFlags.Text))
+            if (flags.HasAll(OperationFlags.HasParameters | OperationFlags.Text)
+                && SuppliesSqlParameters(map))
             {
                 // has args, and is command-text
                 reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.SqlParametersNotDetected, map?.Location));
@@ -1180,4 +1193,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         return builder.ToImmutable();
 
     }
+
+    // members such as cancellation tokens and row-counts are consumed by Dapper itself and are
+    // never sent as SQL parameters; only report "no parameters detected" when the args include
+    // at least one member that would actually bind (unknown/dynamic bags: assume they would)
+    static bool SuppliesSqlParameters(MemberMap? map)
+        => map is null
+        || map.IsUnknownParameters
+        || map.Members.IsDefaultOrEmpty
+        || map.Members.Any(static member => member.Kind == ElementMemberKind.None);
 }

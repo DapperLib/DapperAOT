@@ -123,6 +123,8 @@ namespace Dapper.Internal
 
             if (cmd is not null)
             {
+                // match vanilla's teardown: release caller-supplied parameter objects
+                cmd.Parameters.Clear();
                 if (conn is not null && (_flags & FLAG_CLOSE_CONNECTION) != 0)
                 {
                     // need to close the connection and dispose the command
@@ -178,7 +180,12 @@ namespace Dapper.Internal
         {
             var cmd = Command;
             Command = null;
-            cmd?.Dispose();
+            if (cmd is not null)
+            {
+                // match vanilla's teardown: release caller-supplied parameter objects
+                cmd.Parameters.Clear();
+                cmd.Dispose();
+            }
 
             var conn = connection;
             connection = null;
