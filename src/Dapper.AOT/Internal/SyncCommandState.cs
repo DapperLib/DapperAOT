@@ -62,7 +62,12 @@ namespace Dapper.Internal
         {
             var cmd = Command;
             Command = null;
-            cmd?.Dispose();
+            if (cmd is not null)
+            {
+                // match vanilla's teardown: release caller-supplied parameter objects
+                cmd.Parameters.Clear();
+                cmd.Dispose();
+            }
 
             var conn = connection;
             connection = null;

@@ -219,7 +219,14 @@ public readonly struct UnifiedCommand
 
     internal void Cleanup()
     {
-        dbCommand?.Dispose();
+        if (dbCommand is not null)
+        {
+            // match vanilla Dapper's teardown: a parameter object the caller supplied
+            // (ICustomQueryParameter, DynamicParameters.Add(DbParameter), etc) must not
+            // stay owned by a dead command's collection, or it cannot be reused
+            dbCommand.Parameters.Clear();
+            dbCommand.Dispose();
+        }
 #if NET6_0_OR_GREATER
         batch?.Dispose();
 #endif
