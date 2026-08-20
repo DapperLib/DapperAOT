@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace Dapper.CodeAnalysis.Model;
 
@@ -11,6 +11,8 @@ internal sealed class InterceptorEnvironment : IEquatable<InterceptorEnvironment
     public bool AllowUnsafe { get; }
     public string? AssemblyName { get; }
     public bool HasInterceptsLocationAttribute { get; }
+    public bool HasModuleInitializer { get; } // ModuleInitializerAttribute available (net5+, or consumer polyfill)
+    public bool HasVanillaTypeHandlers { get; } // SqlMapper.HasTypeHandler/LookupDbType present in the referenced Dapper
     public bool NeedsCommandPrep { get; }
     public string? BaseCommandFactoryName { get; } // [CommandFactory<T>] at module level, if any
     public bool BaseFactoryCanConstruct { get; }
@@ -18,12 +20,15 @@ internal sealed class InterceptorEnvironment : IEquatable<InterceptorEnvironment
     public ParamPlan SystemObjectPlan { get; } // the parameterless command-factory fallback
 
     public InterceptorEnvironment(bool allowUnsafe, string? assemblyName, bool hasInterceptsLocationAttribute,
+        bool hasModuleInitializer, bool hasVanillaTypeHandlers,
         bool needsCommandPrep, string? baseCommandFactoryName, bool baseFactoryCanConstruct,
         in EquatableArray<SpecialDbCommandType> specialCommandTypes, ParamPlan systemObjectPlan)
     {
         AllowUnsafe = allowUnsafe;
         AssemblyName = assemblyName;
         HasInterceptsLocationAttribute = hasInterceptsLocationAttribute;
+        HasModuleInitializer = hasModuleInitializer;
+        HasVanillaTypeHandlers = hasVanillaTypeHandlers;
         NeedsCommandPrep = needsCommandPrep;
         BaseCommandFactoryName = baseCommandFactoryName;
         BaseFactoryCanConstruct = baseFactoryCanConstruct;
@@ -35,6 +40,8 @@ internal sealed class InterceptorEnvironment : IEquatable<InterceptorEnvironment
         && AllowUnsafe == other.AllowUnsafe
         && string.Equals(AssemblyName, other.AssemblyName, StringComparison.Ordinal)
         && HasInterceptsLocationAttribute == other.HasInterceptsLocationAttribute
+        && HasModuleInitializer == other.HasModuleInitializer
+        && HasVanillaTypeHandlers == other.HasVanillaTypeHandlers
         && NeedsCommandPrep == other.NeedsCommandPrep
         && string.Equals(BaseCommandFactoryName, other.BaseCommandFactoryName, StringComparison.Ordinal)
         && BaseFactoryCanConstruct == other.BaseFactoryCanConstruct

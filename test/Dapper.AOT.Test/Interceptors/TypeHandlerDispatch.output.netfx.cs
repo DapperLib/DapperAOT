@@ -5,32 +5,31 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Cancellation.input.cs", 12, 30)]
-        internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.MyType>> QueryAsync0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TypeHandlerDispatch.input.cs", 14, 24)]
+        internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
-            // Query, Async, TypedResult, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
-            // takes parameter: global::System.Threading.CancellationToken
-            // returns data: global::Foo.MyType
+            // Execute, HasParameters, Text, KnownParameters
+            // takes parameter: global::Foo.EventRow
+            // parameter map: At Name
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
             global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
             global::System.Diagnostics.Debug.Assert(param is not null);
 
-            return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
-                global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).QueryBufferedAsync((global::System.Threading.CancellationToken)param!, RowFactory0.Instance));
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).Execute((global::Foo.EventRow)param!);
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Cancellation.input.cs", 13, 30)]
-        internal static global::System.Threading.Tasks.Task<int> ExecuteAsync1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TypeHandlerDispatch.input.cs", 17, 24)]
+        internal static global::System.Collections.Generic.IEnumerable<global::Foo.EventRow> Query1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
-            // Execute, Async, HasParameters, Text, KnownParameters
-            // takes parameter: <anonymous type: int id, CancellationToken cancellation>
-            // parameter map: id
+            // Query, TypedResult, Buffered, Text, BindResultsByName
+            // returns data: global::Foo.EventRow
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
             global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
-            global::System.Diagnostics.Debug.Assert(param is not null);
+            global::System.Diagnostics.Debug.Assert(buffered is true);
+            global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).ExecuteAsync(param);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory0.Instance);
 
         }
 
@@ -53,7 +52,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         private static readonly CommonCommandFactory<object?> DefaultCommandFactory = new();
 
-        private sealed class RowFactory0 : global::Dapper.RowFactory<global::Foo.MyType>
+        private sealed class RowFactory0 : global::Dapper.RowFactory<global::Foo.EventRow>
         {
             internal static readonly RowFactory0 Instance = new();
             private RowFactory0() {}
@@ -66,8 +65,11 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                     var type = reader.GetFieldType(columnOffset);
                     switch (NormalizedHash(name))
                     {
-                        case 926444256U when NormalizedEquals(name, "id"):
-                            token = type == typeof(int) ? 0 : 1; // two tokens for right-typed and type-flexible
+                        case 1462048136U when NormalizedEquals(name, "at"):
+                            token = type == typeof(global::Foo.LocalDate) ? 0 : 2; // two tokens for right-typed and type-flexible
+                            break;
+                        case 2369371622U when NormalizedEquals(name, "name"):
+                            token = type == typeof(string) ? 1 : 3;
                             break;
 
                     }
@@ -77,18 +79,24 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 }
                 return null;
             }
-            public override global::Foo.MyType Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
+            public override global::Foo.EventRow Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
             {
-                global::Foo.MyType result = new();
+                global::Foo.EventRow result = new();
                 foreach (var token in tokens)
                 {
                     switch (token)
                     {
                         case 0:
-                            result.Id = reader.GetInt32(columnOffset);
+                            result.At = reader.IsDBNull(columnOffset) ? (global::Foo.LocalDate?)null : reader.GetFieldValue<global::Foo.LocalDate>(columnOffset);
+                            break;
+                        case 2:
+                            result.At = reader.IsDBNull(columnOffset) ? (global::Foo.LocalDate?)null : GetValue<global::Foo.LocalDate>(reader, columnOffset);
                             break;
                         case 1:
-                            result.Id = GetValue<int>(reader, columnOffset);
+                            result.Name = reader.IsDBNull(columnOffset) ? (string?)null : reader.GetString(columnOffset);
+                            break;
+                        case 3:
+                            result.Name = reader.IsDBNull(columnOffset) ? (string?)null : GetValue<string>(reader, columnOffset);
                             break;
 
                     }
@@ -101,43 +109,56 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        private sealed class CommandFactory0 : CommonCommandFactory<global::System.Threading.CancellationToken>
+        private sealed class CommandFactory0 : CommonCommandFactory<global::Foo.EventRow>
         {
             internal static readonly CommandFactory0 Instance = new();
-            public override global::System.Threading.CancellationToken GetCancellationToken(global::System.Threading.CancellationToken args) => args;
-            public override bool CanPrepare => true;
-
-        }
-
-        private sealed class CommandFactory1 : CommonCommandFactory<object?> // <anonymous type: int id, CancellationToken cancellation>
-        {
-            internal static readonly CommandFactory1 Instance = new();
-            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, object? args)
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.EventRow args)
             {
-                var typed = Cast(args, static () => new { id = default(int), cancellation = default(global::System.Threading.CancellationToken) }); // expected shape
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
+                #pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage
+                var dbTypeAt = global::Dapper.SqlMapper.LookupDbType(typeof(global::Foo.LocalDate), "At", false, out var typeHandlerAt);
+                #pragma warning restore CS0618
                 p = cmd.CreateParameter();
-                p.ParameterName = "id";
-                p.DbType = global::System.Data.DbType.Int32;
+                p.ParameterName = "At";
                 p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(typed.id);
+                if (typeHandlerAt is not null)
+                {
+                    typeHandlerAt.SetValue(p, (object?)args.At ?? global::System.DBNull.Value);
+                }
+                else
+                {
+                    if (dbTypeAt is not null) p.DbType = dbTypeAt.GetValueOrDefault();
+                    p.Value = AsValue(args.At);
+
+                }
+                ps.Add(p);
+
+                p = cmd.CreateParameter();
+                p.ParameterName = "Name";
+                p.DbType = global::System.Data.DbType.String;
+                p.Direction = global::System.Data.ParameterDirection.Input;
+                SetValueWithDefaultSize(p, args.Name);
                 ps.Add(p);
 
             }
-            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, object? args)
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.EventRow args)
             {
-                var typed = Cast(args, static () => new { id = default(int), cancellation = default(global::System.Threading.CancellationToken) }); // expected shape
                 var ps = cmd.Parameters;
-                ps[0].Value = AsValue(typed.id);
+                #pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage
+                _ = global::Dapper.SqlMapper.LookupDbType(typeof(global::Foo.LocalDate), "At", false, out var typeHandlerAt);
+                #pragma warning restore CS0618
+                if (typeHandlerAt is not null)
+                {
+                    typeHandlerAt.SetValue(ps[0], (object?)args.At ?? global::System.DBNull.Value);
+                }
+                else
+                {
+                    ps[0].Value = AsValue(args.At);
+                }
+                ps[1].Value = AsValue(args.Name);
 
             }
-            public override global::System.Threading.CancellationToken GetCancellationToken(object? args)
-            {
-                var typed = Cast(args, static () => new { id = default(int), cancellation = default(global::System.Threading.CancellationToken) }); // expected shape
-                return typed.cancellation;
-            }
-            public override bool CanPrepare => true;
 
         }
 
