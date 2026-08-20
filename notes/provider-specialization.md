@@ -13,10 +13,12 @@ anything here must keep the acceptance corpus green.
 Allocation per operation, PostgreSQL 17 over loopback, two workloads: a single-row primary-key
 lookup and a 100-row scan, materialising a three-column POCO (`int`, `string`, `double?`).
 
+(The Dapper.AOT row is the **default** configuration. `[CacheCommand]` changes it — see below.)
+
 | stack | single row | ratio | 100 rows | ratio |
 | --- | ---: | ---: | ---: | ---: |
 | vanilla Dapper | 1,888 B | 1.00 | 17,995 B | 1.00 |
-| **Dapper.AOT, today** | **1,927 B** | **1.02** | **14,143 B** | **0.79** |
+| **Dapper.AOT, default** | **1,927 B** | **1.02** | **14,143 B** | **0.79** |
 | hand-tuned ADO.NET | 1,035 B | 0.55 | 11,311 B | 0.63 |
 | no ADO.NET at all | 943 B | 0.50 | 11,207 B | 0.62 |
 
@@ -40,10 +42,11 @@ for allocation (counted, not timed) and useless for timing. With a normal job th
 ±5-8 µs and the differences resolve cleanly. The constant round trip is in fact what *helps*: it is a
 fixed offset, so the difference between two stacks is the work they do.
 
-**One result wants an owner's eye, not a conclusion**: Dapper.AOT shows no single-row allocation win
-over vanilla (1,927 vs 1,888). Either the command cache does not engage for this shape, or the
-benchmark's usage is unrepresentative. Worth resolving before sizing any of the work below, since it
-may already be a bug rather than a missing feature.
+**Dapper.AOT shows no single-row allocation win over vanilla here (1,927 vs 1,888), and that is now
+explained**: this is the default configuration, which neither re-uses nor prepares commands.
+`[CacheCommand]` recovers part of it and preparation is unclaimed entirely — see the two measured
+sections below. The comparison to make is therefore against `[DapperAot, CacheCommand]`, not against
+the default.
 
 ## What "hand-tuned" actually did
 
@@ -507,13 +510,20 @@ the command is not actually being reused.
 Ordered so that each step is measurable on its own, and so the provider-agnostic wins land before the
 provider-specific machinery exists.
 
-**Step 0 — resolve the anomaly.** Establish why Dapper.AOT shows no single-row allocation win over
-vanilla. Until that is understood, every number below is being measured against an unknown baseline.
-*Exit: the 1,927 B is attributed, and is either fixed or explained.*
+**Step 0 — done.** The anomaly is explained: the default configuration neither re-uses nor prepares
+commands. `[CacheCommand]` exists and recovers ~190 B of the ~380 B object re-use is worth; nothing
+reaches preparation. So the baseline for every comparison is `[DapperAot, CacheCommand]`, and the
+remaining headroom is smaller than the default suggested but still large.
 
-**Step 1 — the agnostic techniques.** Items 1, 2, 5, 6, 7: command reuse, preparation, typed getters,
-`SequentialAccess` + arity, `IsDBNull` before a typed get. No provider knowledge required.
-*Exit: the single-row and 100-row allocation figures move, measured on the same harness.*
+**Step 1 — preparation.** On its own, ahead of everything else, because it is ~90% of the timing
+spread and ~242 B, and because nothing acts on `CanPrepare` today. It also needs no provider
+knowledge and no new API. The one design constraint is that parameters must be declared *before*
+`Prepare()`, so whatever drives it has to run after `AddParameters` and before the first execution.
+*Exit: a prepared path exists and the ~33 µs shows up on the harness.*
+
+**Step 1b — the remaining agnostic techniques.** Items 5, 6, 7: typed getters, `SequentialAccess` +
+arity, `IsDBNull` before a typed get. Plus whatever `[CacheCommand]` is leaving on the table.
+*Exit: allocation moves; timing is not expected to, and that is the point of measuring both.*
 
 **Step 2 — provider detection.** Static-type-at-call-site detection with silent fallback, and the
 per-provider table above filled in by symbol resolution rather than memory.
@@ -540,11 +550,18 @@ after the work, it is a reasonable place to stop.
 
 Same harness shape throughout, so results stay comparable:
 
-- **allocation per operation** is the primary axis, being latency-independent;
+- **both axes, always.** They rank the work differently — preparation dominates timing while
+  command re-use and specialized parameters are allocation-only — so measuring one and inferring the
+  other is how a plan gets mis-ordered. This note did exactly that once;
+- **a normal BenchmarkDotNet job, never `--job short`.** Short is fine for allocation, which is
+  counted rather than timed, and produces error bars wider than the entire effect for timing. That
+  mistake is what produced the retracted "the timings say nothing" claim;
 - **the same two workloads** — a single-row primary-key lookup and a 100-row scan — so a change can
   be attributed to per-execution or per-row cost;
-- **the same four stacks**, so the ceiling stays visible and it is obvious when a step has captured
-  most of what is available;
-- **throughput under saturation** is worth adding ❓, since it is the regime where per-operation CPU
-  stops hiding behind the round trip. Note that client and server sharing a machine compete for CPU
-  at saturation, so pin them apart (`--cpuset-cpus`) before quoting anything from it.
+- **`[DapperAot, CacheCommand]` as the baseline**, not the bare default, or the headroom is
+  overstated;
+- **the ceiling stacks kept in the table** — hand-tuned ADO.NET and the no-ADO.NET prototype — so it
+  stays obvious when a step has captured most of what is available;
+- **throughput under saturation** is still worth adding ❓, since it is the regime where client CPU
+  becomes the limiter. Client and server sharing a machine compete for CPU there, so pin them apart
+  (`--cpuset-cpus`) before quoting anything from it.
