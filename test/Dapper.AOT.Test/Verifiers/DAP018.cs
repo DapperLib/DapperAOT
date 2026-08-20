@@ -75,4 +75,61 @@ public class DAP018(ITestOutputHelper log) : Verifier<DapperAnalyzer>(log)
             }
         }
         """", DefaultConfig, []);
+
+    [Fact]
+    public Task NoFalsePositive_Issue169_CancellationTokenOnly() => CSVerifyAsync(
+        // https://github.com/DapperLib/DapperAOT/issues/169
+        """"
+        using Dapper;
+        using Microsoft.Data.SqlClient;
+        using System.Threading;
+        using System.Threading.Tasks;
+
+        [DapperAot]
+        public static class MyType
+        {
+            public static Task<int> Count(SqlConnection conn, CancellationToken cancellationToken)
+                => conn.QuerySingleAsync<int>(
+                    """select count(*) from CAD.TBL_APLICACAO""",
+                    new { cancellationToken });
+        }
+        """", DefaultConfig, []);
+
+    [Fact] // the boundary the fix must not cross: a member that *would* bind, alongside the
+    // token, with SQL that has no detected parameters - the warning still stands
+    public Task StillWarns_Issue169_RealParameterAlongsideCancellationToken() => CSVerifyAsync(
+        """"
+        using Dapper;
+        using Microsoft.Data.SqlClient;
+        using System.Threading;
+        using System.Threading.Tasks;
+
+        [DapperAot]
+        public static class MyType
+        {
+            public static Task<int> Count(SqlConnection conn, int cod, CancellationToken cancellationToken)
+                => conn.QuerySingleAsync<int>(
+                    """select count(*) from CAD.TBL_APLICACAO""",
+                    {|#0:new { APP_COD = cod, cancellationToken }|});
+        }
+        """", DefaultConfig, [Diagnostic(Diagnostics.SqlParametersNotDetected).WithLocation(0)]);
+
+    [Fact]
+    public Task NoFalsePositive_Issue169_CancellationTokenPlusRealParameter() => CSVerifyAsync(
+        // https://github.com/DapperLib/DapperAOT/issues/169
+        """"
+        using Dapper;
+        using Microsoft.Data.SqlClient;
+        using System.Threading;
+        using System.Threading.Tasks;
+
+        [DapperAot]
+        public static class MyType
+        {
+            public static Task<int> Count(SqlConnection conn, int cod, CancellationToken cancellationToken)
+                => conn.QuerySingleAsync<int>(
+                    """select count(*) from CAD.TBL_APLICACAO APP where (APP.APP_COD = @APP_COD)""",
+                    new { APP_COD = cod, cancellationToken });
+        }
+        """", DefaultConfig, []);
 }
