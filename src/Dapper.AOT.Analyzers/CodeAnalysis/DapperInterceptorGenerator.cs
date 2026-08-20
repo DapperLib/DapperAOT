@@ -596,6 +596,18 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         {
             sb.Append("public override global::System.Threading.CancellationToken GetCancellationToken(").Append(declaredType).Append(" args) => args;").NewLine();
         }
+        if (type.IsDynamicBag)
+        {
+            // the bag already implements the entire vanilla protocol (per-parameter settings,
+            // templates, literals, RemoveUnused, output storage for Get<T>); delegate to it
+            sb.Append("public override void AddParameters(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args)")
+                .Indent(false).NewLine().Append("=> args.AddParameters(cmd.Command!);").Outdent(false).NewLine().NewLine();
+            sb.Append("public override bool RequirePostProcess => true;").NewLine().NewLine();
+            sb.Append("public override void PostProcess(in global::Dapper.UnifiedCommand cmd, ").Append(declaredType).Append(" args, int rowCount)").Indent().NewLine()
+                .Append("if (args is global::Dapper.SqlMapper.IParameterCallbacks callbacks) callbacks.OnCompleted();").Outdent().NewLine();
+            sb.Outdent().NewLine().NewLine();
+            return;
+        }
         var flags = WriteArgsFlags.None;
         if (string.IsNullOrWhiteSpace(map))
         {

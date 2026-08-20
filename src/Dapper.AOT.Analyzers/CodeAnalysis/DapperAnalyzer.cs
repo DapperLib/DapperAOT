@@ -727,10 +727,23 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     flags |= OperationFlags.DoNotGenerate;
                     ReportGenericTypeParameter(reportDiagnostic, paramType!, argLocation);
                 }
-                else if (IsMissingOrObjectOrDynamic(paramType) || IsDynamicParameters(paramType, out _))
+                else if (IsMissingOrObjectOrDynamic(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UntypedParameter, argLocation));
+                }
+                else if (IsDynamicParameters(paramType, out _))
+                {
+                    if (!HasIdentityFreeAddParameters(paramType))
+                    {
+                        // no way to invoke the bag protocol externally on this Dapper version;
+                        // leave the call-site on vanilla Dapper, saying exactly what is missing
+                        // (never emit code that cannot compile against the referenced Dapper)
+                        flags |= OperationFlags.DoNotGenerate;
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.FeatureNeedsNewerDapper, argLocation,
+                            "DynamicParameters", "DynamicParameters.AddParameters(IDbCommand)"));
+                    }
+                    // else: supported - the generated factory delegates to the bag itself
                 }
                 else if (!IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
                 {
@@ -1043,7 +1056,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect))
         {
             parseFlags = flags.HasAny(OperationFlags.StoredProcedure) ? SqlParseOutputFlags.MaybeQuery : SqlParseOutputFlags.Query;
-            mode = ParameterMode.All;
+            // a DynamicParameters-style bag supplies its own parameters at execution: defer,
+            // exactly as for command-text (otherwise the map ends up empty and the call-site
+            // gets the parameterless fallback factory)
+            mode = IsDynamicParameters(map?.DeclaredType, out _) ? ParameterMode.Defer : ParameterMode.All;
         }
         else
         {
