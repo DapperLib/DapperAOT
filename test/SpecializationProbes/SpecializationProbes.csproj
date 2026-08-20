@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The probes behind notes/provider-specialization.md. Each one answers a language or runtime
+    question that the note would otherwise be asserting from memory, and each prints the table that
+    appears there, so the claims can be re-checked rather than believed.
+
+    Nothing here touches a database or references Dapper: these are compiler and JIT questions.
+    Deliberately not listed in Build.csproj, matching test/Usage*, so it costs CI nothing.
+
+    Run it with `dotnet run` from this directory, in Release.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <!-- required by the function-pointer probe; see IndirectionCost.cs for why that matters -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>
