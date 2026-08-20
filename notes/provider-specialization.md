@@ -32,11 +32,13 @@ The last row is a research prototype that speaks the PostgreSQL wire protocol di
 `DbCommand`, `DbParameter` or `DbDataReader` anywhere in the path; it is here only to show where the
 ceiling is.
 
-**Why no timings.** Over loopback a round trip is ~475 µs on this setup, and a hundred extra rows
-cost 30 µs — so per-operation client cost sits inside a shadow a hundred times its size and the
-timing column says nothing about any of these stacks. Allocation is latency-independent and is the
-honest axis for this comparison. Throughput under saturation is the other honest axis and is
-**unmeasured** ❓.
+**Timings are in the follow-up section below, and they matter more than this table does.** An
+earlier draft of this note claimed the wall-clock "says nothing" because a ~475 µs round trip
+dominates. That was wrong, and it was a conclusion drawn from a badly configured instrument — the
+runs behind it used BenchmarkDotNet's *short* job, three warmup and three iterations, which is fine
+for allocation (counted, not timed) and useless for timing. With a normal job the error bars fall to
+±5-8 µs and the differences resolve cleanly. The constant round trip is in fact what *helps*: it is a
+fixed offset, so the difference between two stacks is the work they do.
 
 **One result wants an owner's eye, not a conclusion**: Dapper.AOT shows no single-row allocation win
 over vanilla (1,927 vs 1,888). Either the command cache does not engage for this shape, or the
@@ -352,13 +354,45 @@ is on.
 Run-to-run jitter on allocation is around 3%, so the deltas above are real; the emitted-versus-
 hand-tuned gap of ~165 B is closer to the floor and should not be over-read.
 
-**Allocation is not perf, and the honest position is that perf is not yet measured.** Wall-clock says
-nothing here — the round trip dominates by a hundredfold. Client CPU per operation was attempted and
-is only good to ±5-10%, because process CPU time is quantised to the ~15.6 ms scheduler tick;
-directionally the CPU gaps looked much smaller than the byte gaps, but not enough to quote ❓. **The
-instrument that would answer it is throughput under saturation**, where client CPU becomes the
-limiter rather than hiding behind the wait. That wants building, with the client and server pinned to
-different cores, since they otherwise compete.
+### And the timings, which reorder the whole list
+
+Measured with a normal BenchmarkDotNet job — error bars ±5-8 µs on a ~500 µs operation, so a 30 µs
+difference is several sigma rather than noise:
+
+| single row | mean | vs Dapper | allocated |
+| --- | ---: | ---: | ---: |
+| Dapper | 515.9 µs | 1.00 | 1,942 B |
+| `[DapperAot]` | 509.6 µs | 0.99 | 2,008 B |
+| `[DapperAot, CacheCommand]` | 513.4 µs | 1.00 | 1,796 B |
+| `[DapperAot, CacheCommand, StrictTypes]` | 511.7 µs | 0.99 | 1,796 B |
+| ADO.NET hand-tuned | 485.9 µs | 0.94 | 1,105 B |
+| **emitted, reused + prepared** | **479.6 µs** | **0.93** | 1,241 B |
+| emitted, reused, **not** prepared | 512.2 µs | 0.99 | 1,486 B |
+| emitted, fresh command | 506.9 µs | 0.98 | 1,869 B |
+| no ADO.NET at all | 479.6 µs | 0.93 | 912 B |
+
+**`Prepare()` is nearly the entire timing story.** Same code, only preparation differing: 512.2 µs
+against 479.6 µs, a **32.6 µs** saving that is about **90% of the 36 µs spread across every stack
+measured**. Everything else — command reuse, typed parameters, typed getters, the provider switch —
+shares the remainder.
+
+The corollary matters as much:
+
+- **command object reuse buys no time**, only bytes: 506.9 µs fresh against 512.2 µs reused is
+  nothing, within noise. `[CacheCommand]` likewise, 513.4 against 509.6;
+- **positional parameters buy no time either**, 486.5 against 479.6 with named marginally ahead,
+  which agrees with the allocation result.
+
+So the two axes rank the work differently, and preparation is first on both: largest single item on
+allocation after object reuse (~242 B), and almost the whole of the timing spread. **Nothing
+currently reaches it** — `CanPrepare` is emitted as `true` and nothing acts on the flag.
+
+**Why preparation is worth more than it looks:** it removes per-execution parse and plan work on the
+*server*, so it is not client CPU at all. That buys server capacity as well as latency, and unlike a
+client-side saving it does not shrink as the network gets slower.
+
+Throughput under saturation remains unmeasured ❓ and is still worth having, since it is the regime
+where client CPU becomes the limiter — but it is no longer the only instrument available.
 
 **Positional parameters were tested and do not pay here.** A caller writes `@id`; a generator knows
 the mapping at build time and could emit the query rewritten to `$1` with unnamed parameters, so the
