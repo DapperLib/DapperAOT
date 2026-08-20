@@ -296,6 +296,51 @@ essentially what this emits — command created once and reused, prepared, typed
 getters, no factory indirection, no erasure. So **1,927 B → 1,035 B is the estimate for this
 proposal specifically**, not a general aspiration.
 
+### Validating the shape (measured)
+
+The shape above was written out by hand — interceptor-constrained entry, binder in a
+`static readonly` delegate, shared body with the provider type test — and measured against the same
+PostgreSQL workload as the opening table. Single-row lookup:
+
+| stack | allocated | vs Dapper.AOT |
+| --- | ---: | ---: |
+| Dapper | 1,865 B | |
+| Dapper.AOT | 1,971 B | — |
+| **emitted shape, fresh command per call** | **1,848 B** | -6% |
+| **emitted shape, command reused** | **1,224 B** | **-37%** |
+| ADO.NET hand-tuned | 1,094 B | -44% |
+| no ADO.NET at all | 1,001 B | -49% |
+
+Three things fall out, and the second is the important one:
+
+- **the design reaches the target.** 1,224 B lands within ~10% of hand-tuned, so the three-layer
+  shape does not cost anything meaningful over hand-written code. The thought process holds;
+- **command reuse is ~70% of the whole gap.** Identical code, only the command policy differing:
+  1,848 B fresh against 1,224 B reused, or ~625 B of the ~890 B. Everything else — typed parameters,
+  typed getters, `SequentialAccess`, the provider switch — shares the remaining ~265 B;
+- **and fresh-command lands on Dapper.AOT's number** (1,848 against 1,971), which is evidence that
+  **Dapper.AOT is not reusing commands in this shape**. That is step 0, answered by measurement
+  rather than by profiling, and it reframes the work: item 1 of the technique list is not one item
+  among seven, it is most of the prize.
+
+Run-to-run jitter is around 5%, so the emitted-versus-hand-tuned gap of ~130 B is near the noise
+floor and should not be over-read. The reuse gap of ~625 B is far above it.
+
+**Positional parameters were tested and do not pay here.** A caller writes `@id`; a generator knows
+the mapping at build time and could emit the query rewritten to `$1` with unnamed parameters, so the
+driver never maps names to positions. Measured: 1,283 B positional against 1,224 B named — no
+benefit, marginally worse. Npgsql appears to resolve the mapping once at `Prepare` and cache it on
+the command ❓, leaving nothing to save per execution. Worth noting the test was the
+prepared-and-reused case, which is the *best* case for that caching; the idea could still pay on
+non-prepared or fresh-command paths, which the finding above suggests is where much real code sits.
+
+**One constraint the exercise turned up the hard way:** parameters must be declared *before*
+`Prepare()`. PostgreSQL records the parameter list at parse time, so a binder that adds parameters
+lazily on first execution cannot also prepare — the server answers `bind message supplies 0
+parameters, but prepared statement requires 1`. This is precisely why `AddParameters` and
+`UpdateParameters` are separate concerns; collapsing them into "add if absent, update otherwise"
+breaks preparation.
+
 ### What it costs
 
 - **behaviour migrates from the library to the generator.** Timeout, transaction handling, buffered
