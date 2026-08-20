@@ -181,11 +181,9 @@ Two arguments for it, and neither is "the code is more obvious", though it is:
       var typed = Cast(args, static () => new { id = default(int) });
   ```
 
-  Generated inline code has the anonymous type *in scope* and needs neither the erasure nor the cast.
-  A consequence worth testing rather than assuming ❓: `param` currently crosses a non-inlined
-  boundary as `object?`, so it definitively escapes; behind a generic `TArgs` interceptor with the
-  body inline it may stop escaping and become a stack-allocation candidate under .NET 9/10 escape
-  analysis. The current shape *forecloses* that, which is the certain half of the claim;
+  Generated inline code has the anonymous type *in scope*, so the erasure costs a `castclass` rather
+  than an allocation. **Note that is all it costs** — see "the args object is not the prize" below,
+  which tested the tempting follow-on idea and closed it;
 - **provider specialization stops being a plumbing problem.** With factories it needs a
   provider-specific factory hierarchy or generic gymnastics; with explicit emission,
   `new NpgsqlParameter<int> { TypedValue = args.id }` is a line of code and the detection switch
@@ -195,6 +193,54 @@ Two arguments for it, and neither is "the code is more obvious", though it is:
 essentially what full explicit emission looks like — command created once and reused, prepared,
 typed parameter, typed getters, no factory indirection, no erasure. So 1,927 B → 1,035 B is the
 estimate for this specific proposal, not a general aspiration.
+
+### The args object is not the prize (tested, and closed)
+
+The tempting next step is to stop erasing the argument object: add a generic-args overload so `TArgs`
+is the anonymous type rather than `object?`, hoping the object then stops escaping and gets
+stack-allocated. **Three measurements say no.** Recorded so it is not re-proposed.
+
+**1. The dominant read shape cannot reach such an overload at all.** Compiled against real-looking
+call sites, with both overloads present:
+
+| call site | binds to |
+| --- | --- |
+| `cnn.Query<Customer>(sql, new { id })` | **the existing `Query<T>(string, object?)`** |
+| `cnn.Execute(sql, new { id })` | the generic `Execute<TArgs>` |
+| `cnn.Execute(sql, null)` | the existing `object?` overload |
+| `cnn.Execute(sql, objectTypedLocal)` | the existing `object?` overload |
+
+`Query<Customer>(...)` supplies one type argument, so a two-parameter `Query<TResult, TArgs>` is not
+a candidate — **explicit type arguments must supply every type parameter, and C# has no partial
+inference**. Nor can the call be written explicitly, because the anonymous type has no name to give.
+So the shape that dominates Dapper reads is unreachable by construction, not by oversight.
+
+Two useful side findings if a generic-args overload is ever wanted for *other* reasons: it binds
+**without** `[OverloadResolutionPriority]`, since an identity conversion already beats
+conversion-to-`object`; and `DynamicParameters`-shaped arguments would start binding to it, which
+Dapper handles specially today and would need an explicit carve-out ❓.
+
+**2. The object is small.** Measured: `new { id = 42 }` is **24 B**, `new { id, name }` is 32 B, an
+ordinary named args class is 24 B. Against the ~890 B that separates Dapper.AOT today from
+hand-tuned ADO.NET, the argument object is **under 3% of the gap**.
+
+**3. Stack allocation does not happen anyway.** Probed on this runtime with an anonymous object that
+is created, has one field read, and never crosses a call boundary — as non-escaping as the shape
+gets — against the same object passed as `object`:
+
+```
+inlined, never crosses a boundary       24.0 B per iteration
+passed as object (today's shape)        24.0 B per iteration
+```
+
+No difference. The hoped-for saving is not there to collect ❓ (one runtime, one shape — but the
+direction is clear enough to stop).
+
+**So the ~890 B is somewhere else**, and that is where the work belongs: command, parameter
+collection and parameter objects per execution, the reader, the async state machines, and the boxing
+of parameter *values* — which is items 1, 2 and 3 of the technique list, not the argument object.
+The step-0 anomaly points the same way: no single-row win over vanilla is what one would expect if
+the command is not actually being reused.
 
 ### The costs, which are real
 
