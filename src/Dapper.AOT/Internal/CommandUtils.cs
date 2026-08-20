@@ -157,11 +157,26 @@ internal static class CommandUtils
             }
             else if (typeof(T) == typeof(DateTime))
             {
+#if NET6_0_OR_GREATER
+                // Npgsql 10 hands back DateOnly for "date" columns; not IConvertible
+                if (value is DateOnly dateOnlySource)
+                {
+                    DateTime fromDateOnly = dateOnlySource.ToDateTime(TimeOnly.MinValue);
+                    return Unsafe.As<DateTime, T>(ref fromDateOnly);
+                }
+#endif
                 DateTime t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
                 return Unsafe.As<DateTime, T>(ref t);
             }
             else if (typeof(T) == typeof(DateTime?))
             {
+#if NET6_0_OR_GREATER
+                if (value is DateOnly dateOnlySource)
+                {
+                    DateTime? fromDateOnly = dateOnlySource.ToDateTime(TimeOnly.MinValue);
+                    return Unsafe.As<DateTime?, T>(ref fromDateOnly);
+                }
+#endif
                 DateTime? t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
                 return Unsafe.As<DateTime?, T>(ref t);
             }
@@ -187,6 +202,12 @@ internal static class CommandUtils
                     var fromSpan = TimeOnly.FromTimeSpan(timeSpan);
                     return Unsafe.As<TimeOnly, T>(ref fromSpan);
                 }
+                if (value is DateOnly)
+                {
+                    // a date has no time component; same answer a zero-time DateTime gives
+                    TimeOnly zero = default;
+                    return Unsafe.As<TimeOnly, T>(ref zero);
+                }
 
                 DateTime t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
                 var timeOnly = TimeOnly.FromDateTime(t);
@@ -198,6 +219,11 @@ internal static class CommandUtils
                 {
                     var fromSpan = TimeOnly.FromTimeSpan(timeSpan);
                     return Unsafe.As<TimeOnly, T>(ref fromSpan);
+                }
+                if (value is DateOnly)
+                {
+                    TimeOnly? zero = default(TimeOnly);
+                    return Unsafe.As<TimeOnly?, T>(ref zero);
                 }
 
                 DateTime? t = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
