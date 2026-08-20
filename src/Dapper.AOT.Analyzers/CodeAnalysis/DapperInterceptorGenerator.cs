@@ -187,7 +187,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         static string BuildParameterMap(in ParseState ctx, IInvocationOperation op, string? sql, ref OperationFlags flags, MemberMap? map, Location loc, out SqlParseOutputFlags parseFlags)
         {
             // check the arg type
-            var args = DapperAnalyzer.SharedGetParametersToInclude(map, ref flags, sql, null, out parseFlags);
+            // Literal injection is not implemented; literal tokens must not become bound parameters.
+            var args = DapperAnalyzer.SharedGetParametersToInclude(map, ref flags, sql, null, out parseFlags, includeLiteralTokens: false);
             if (args is null) return "?"; // deferred
             var arr = args.Value;
 

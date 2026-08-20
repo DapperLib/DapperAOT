@@ -274,7 +274,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             
             ValidateParameters(parameters, flags, onDiagnostic);
 
-            var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags);
+            var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags, includeLiteralTokens: true);
 
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(args), location);
 
@@ -1035,7 +1035,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, ref OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)
+    internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, ref OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags, bool includeLiteralTokens = false)
     {
         SortedDictionary<string, ElementMember>? byDbName = null;
         var filter = ImmutableHashSet<string>.Empty;
@@ -1059,7 +1059,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             else
             {
                 mode = ParameterMode.Filter;
-                filter = SqlTools.GetUniqueParameters(sql);
+                filter = SqlTools.GetUniqueParameters(sql, includeLiteralTokens);
             }
         }
         if (!flags.HasAny(OperationFlags.HasParameters))

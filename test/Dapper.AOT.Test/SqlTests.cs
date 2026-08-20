@@ -11,6 +11,10 @@ public class SqlTests
     [InlineData("foo @bar", "bar")]
     [InlineData("foo @bar,@blap, :bloop", "bar blap bloop")]
     [InlineData("foo (@bar)", "bar")]
+    [InlineData("select Id from Users where UserTypeId = {=Admin}", "")]
+    [InlineData("select Id from Users where UserTypeId = {=Admin}", "Admin", true)]
+    [InlineData("select Id from Users where UserTypeId = {=Admin} and A = @a", "a")]
+    [InlineData("select Id from Users where UserTypeId = {=Admin} and A = @a", "a Admin", true)]
     [InlineData("""
         select *
         from SomeTable
@@ -20,9 +24,9 @@ public class SqlTests
     [InlineData("""
        do thing;
        """, "")]
-    public void DetectParameters(string sql, string expected)
+    public void DetectParameters(string sql, string expected, bool includeLiteralTokens = false)
     {
-        Assert.Equal(expected, string.Join(" ", SqlTools.GetParameters(sql)));
+        Assert.Equal(expected, string.Join(" ", SqlTools.GetParameters(sql, includeLiteralTokens)));
     }
 
 
