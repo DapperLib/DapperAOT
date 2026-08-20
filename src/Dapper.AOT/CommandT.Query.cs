@@ -34,7 +34,7 @@ partial struct Command<TArgs>
                     ? CommandUtils.UnsafeSlice(stackalloc int[RowFactory.MAX_STACK_TOKENS], state.Reader.FieldCount)
                     : state.Lease();
 
-                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, readWriteTokens, 0);
+                var tokenState = (rowFactory = RowFactory<TRow>.Resolve(rowFactory)).Tokenize(state.Reader, readWriteTokens, 0);
                 results = RowFactory.GetRowBuffer<TRow>(rowCountHint);
                 ReadOnlySpan<int> readOnlyTokens = readWriteTokens; // avoid multiple conversions
                 do
@@ -75,7 +75,7 @@ partial struct Command<TArgs>
             List<TRow> results;
             if (await state.Reader.ReadAsync(cancellationToken))
             {
-                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
+                var tokenState = (rowFactory = RowFactory<TRow>.Resolve(rowFactory)).Tokenize(state.Reader, state.Lease(), 0);
                 results = RowFactory.GetRowBuffer<TRow>(rowCountHint);
                 do
                 {
@@ -114,7 +114,7 @@ partial struct Command<TArgs>
 
             if (await state.Reader.ReadAsync(cancellationToken))
             {
-                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
+                var tokenState = (rowFactory = RowFactory<TRow>.Resolve(rowFactory)).Tokenize(state.Reader, state.Lease(), 0);
                 do
                 {
                     yield return rowFactory.Read(state.Reader, state.Tokens, 0, tokenState);
@@ -144,7 +144,7 @@ partial struct Command<TArgs>
 
             if (state.Reader.Read())
             {
-                var tokenState = (rowFactory ??= RowFactory<TRow>.Default).Tokenize(state.Reader, state.Lease(), 0);
+                var tokenState = (rowFactory = RowFactory<TRow>.Resolve(rowFactory)).Tokenize(state.Reader, state.Lease(), 0);
                 do
                 {
                     yield return rowFactory.Read(state.Reader, state.Tokens, 0, tokenState);
@@ -184,7 +184,7 @@ partial struct Command<TArgs>
             TRow? result = default;
             if (state.Reader.Read())
             {
-                result = (rowFactory ??= RowFactory<TRow>.Default).Read(state.Reader, ref state.Leased);
+                result = (rowFactory = RowFactory<TRow>.Resolve(rowFactory)).Read(state.Reader, ref state.Leased);
                 state.Return();
 
                 if (state.Reader.Read())
@@ -228,7 +228,7 @@ partial struct Command<TArgs>
             TRow? result = default;
             if (await state.Reader.ReadAsync(cancellationToken))
             {
-                result = (rowFactory ??= RowFactory<TRow>.Default).Read(state.Reader, ref state.Leased);
+                result = (rowFactory = RowFactory<TRow>.Resolve(rowFactory)).Read(state.Reader, ref state.Leased);
                 state.Return();
 
                 if (await state.Reader.ReadAsync(cancellationToken))

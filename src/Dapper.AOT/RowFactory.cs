@@ -60,7 +60,17 @@ public abstract class RowFactory
     /// or methods like <see cref="DbDataReader.GetInt32(int)"/> would <b>not</b> be appropriate
     /// </summary>
     protected static T GetValue<T>(DbDataReader reader, int fieldOffset)
-        => CommandUtils.As<T>(reader.GetValue(fieldOffset));
+    {
+        var value = reader.GetValue(fieldOffset);
+        // a runtime-registered Dapper type-handler wins over conversion, matching vanilla;
+        // this is the flexible (type-mismatch) path, so the lookup is off the hot exact path
+        if (value is not null and not DBNull
+            && TypeHandlerBridge.TryParse(typeof(T), value, out var parsed))
+        {
+            return (T)parsed!;
+        }
+        return CommandUtils.As<T>(value);
+    }
 
     /// <summary>
     /// Gets a value directly, using the most appropriate helper method when available (<see cref="DbDataReader.GetInt32(int)"/> etc),
@@ -155,6 +165,14 @@ public class RowFactory<T> : RowFactory
 {
     private static RowFactory<T>? _default;
     internal static RowFactory<T> Default => _default ??= new();
+
+    /// <summary>
+    /// A whole-type runtime Dapper type-handler wins over a generated (member-binding)
+    /// factory, matching vanilla, where the handler is consulted before any member binding;
+    /// the default factory's flexible read path performs the actual handler dispatch
+    /// </summary>
+    internal static RowFactory<T> Resolve(RowFactory<T>? factory)
+        => factory is null || TypeHandlerBridge.Has(typeof(T)) ? Default : factory;
     /// <summary>
     /// Create a new instance
     /// </summary>

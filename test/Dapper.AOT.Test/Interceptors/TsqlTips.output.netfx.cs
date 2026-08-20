@@ -288,7 +288,21 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 var typed = Cast(args, static () => new { ids = default(int[])! }); // expected shape
                 var ps = cmd.Parameters;
                 #pragma warning disable CS0618 // list-expansion: this *is* the library usage
-                global::Dapper.SqlMapper.PackListParameters(cmd.Command!, "ids", typed.ids);
+                _ = global::Dapper.SqlMapper.LookupDbType(typeof(int[]), "ids", false, out var typeHandlerids);
+                // a runtime type-handler for the collection type wins over expansion,
+                // which is the order vanilla's own decision procedure applies
+                if (typeHandlerids is not null)
+                {
+                    var hp = cmd.CreateParameter();
+                    hp.ParameterName = "ids";
+                    hp.Direction = global::System.Data.ParameterDirection.Input;
+                    typeHandlerids.SetValue(hp, (object?)typed.ids ?? global::System.DBNull.Value);
+                    ps.Add(hp);
+                }
+                else
+                {
+                    global::Dapper.SqlMapper.PackListParameters(cmd.Command!, "ids", typed.ids);
+                }
                 #pragma warning restore CS0618
 
             }
@@ -326,5 +340,31 @@ namespace System.Runtime.CompilerServices
             _ = lineNumber;
             _ = columnNumber;
         }
+    }
+}
+namespace System.Runtime.CompilerServices
+{
+    // down-level polyfill; the compiler matches this attribute by full name
+    [global::System.AttributeUsage(global::System.AttributeTargets.Method, Inherited = false)]
+    internal sealed class ModuleInitializerAttribute : global::System.Attribute { }
+}
+
+namespace Dapper.Aot.Generated
+{
+    // installs the runtime type-handler bridge: SqlMapper.AddTypeHandler registrations reach
+    // Dapper.AOT's readers through these callbacks, compiled against *this* project's Dapper
+    // (which may be Dapper or Dapper.StrongName - the library cannot reference either)
+    file static class TypeHandlerBridgeInitializer
+    {
+        [global::System.Runtime.CompilerServices.ModuleInitializer]
+        internal static void Initialize() => global::Dapper.TypeHandlerBridge.Configure(
+            static type => global::Dapper.SqlMapper.HasTypeHandler(type),
+            static (type, value) =>
+            {
+#pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage
+                _ = global::Dapper.SqlMapper.LookupDbType(type, "", false, out var handler);
+#pragma warning restore CS0618
+                return handler is null ? value : handler.Parse(type, value);
+            });
     }
 }

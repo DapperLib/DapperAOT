@@ -280,6 +280,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             allowUnsafe: compilation.Options is CSharpCompilationOptions cSharp && cSharp.AllowUnsafe,
             assemblyName: compilation.AssemblyName,
             hasInterceptsLocationAttribute: PreGeneratedCodeWriter.HasInterceptsLocationAttribute(compilation),
+            hasModuleInitializer: compilation.GetTypeByMetadataName("System.Runtime.CompilerServices.ModuleInitializerAttribute") is not null,
+            hasVanillaTypeHandlers: compilation.GetTypeByMetadataName("Dapper.SqlMapper") is { } sqlMapper
+                && !sqlMapper.GetMembers("HasTypeHandler").IsEmpty
+                && !sqlMapper.GetMembers("LookupDbType").IsEmpty,
             needsCommandPrep: needsCommandPrep,
             baseCommandFactoryName: baseFactory,
             baseFactoryCanConstruct: canConstruct,
@@ -589,6 +593,18 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         sb.Outdent().Outdent(); // ends our generated file-scoped class and the namespace
         
+        if (env.HasVanillaTypeHandlers)
+        {
+            // runtime SqlMapper.AddTypeHandler registrations reach the AOT readers through a
+            // bridge installed from generated code, which compiles against the consumer's own
+            // Dapper (the lib cannot reference it: Dapper vs Dapper.StrongName would split)
+            ctx.GeneratorContext.IncludeGenerationType(IncludedGeneration.TypeHandlerBridge);
+            if (!env.HasModuleInitializer)
+            {
+                ctx.GeneratorContext.IncludeGenerationType(IncludedGeneration.ModuleInitializerAttribute);
+            }
+        }
+
         var preGeneratedCodeWriter = new PreGeneratedCodeWriter(sb, env.HasInterceptsLocationAttribute);
         preGeneratedCodeWriter.Write(ctx.GeneratorContext.IncludedGenerationTypes);
 
@@ -1329,9 +1345,77 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         // string_split settings, and provider array support
                         flags &= ~WriteArgsFlags.CanPrepare; // parameter shape varies by list size
                         sb.Append("#pragma warning disable CS0618 // list-expansion: this *is* the library usage").NewLine()
+                          .Append("_ = global::Dapper.SqlMapper.LookupDbType(typeof(").Append(member.TypeOfName)
+                          .Append("), ").AppendVerbatimLiteral(member.DbName)
+                          .Append(", false, out var typeHandler").Append(member.CodeName).Append(");").NewLine()
+                          .Append("// a runtime type-handler for the collection type wins over expansion,").NewLine()
+                          .Append("// which is the order vanilla's own decision procedure applies").NewLine()
+                          .Append("if (typeHandler").Append(member.CodeName).Append(" is not null)").Indent().NewLine()
+                          .Append("var hp = cmd.CreateParameter();").NewLine()
+                          .Append("hp.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine()
+                          .Append("hp.Direction = global::System.Data.ParameterDirection.Input;").NewLine()
+                          .Append("typeHandler").Append(member.CodeName).Append(".SetValue(hp, (object?)")
+                          .Append(source).Append(".").Append(member.CodeName).Append(" ?? global::System.DBNull.Value);").NewLine()
+                          .Append("ps.Add(hp);").Outdent().NewLine()
+                          .Append("else").Indent().NewLine()
                           .Append("global::Dapper.SqlMapper.PackListParameters(cmd.Command!, ").AppendVerbatimLiteral(member.DbName)
-                          .Append(", ").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine()
+                          .Append(", ").Append(source).Append(".").Append(member.CodeName).Append(");").Outdent().NewLine()
                           .Append("#pragma warning restore CS0618").NewLine();
+                        break;
+                    }
+                    if (!member.HasDbType && !member.IsDbString && member.TypeOfName != "object" && member.TypeOfName != "char")
+                    {
+                        // an unrecognized member type: defer to vanilla's own decision procedure at
+                        // execution time - runtime type-handlers (SqlMapper.AddTypeHandler), the
+                        // AddTypeMap remap, and PreferTypeHandlersForEnums all live in there.
+                        // demand:false, deliberately: when nothing matches we keep today's raw bind,
+                        // because modern providers natively handle types vanilla's map does not
+                        // (DateOnly, until Dapper ships the re-enable) - revisit for message parity
+                        flags &= ~WriteArgsFlags.CanPrepare;
+                        var suffix = member.CodeName;
+                        sb.Append("#pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage").NewLine()
+                          .Append("var dbType").Append(suffix).Append(" = global::Dapper.SqlMapper.LookupDbType(typeof(")
+                          .Append(member.TypeOfName).Append("), ").AppendVerbatimLiteral(member.DbName)
+                          .Append(", false, out var typeHandler").Append(suffix).Append(");").NewLine()
+                          .Append("#pragma warning restore CS0618").NewLine();
+                        sb.Append("p = cmd.CreateParameter();").NewLine();
+                        sb.Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
+                        AppendDbParameterSetting(sb, "Size", member.EffectiveSize);
+                        AppendDbParameterSetting(sb, "Precision", member.Precision);
+                        AppendDbParameterSetting(sb, "Scale", member.Scale);
+                        sb.Append("p.Direction = global::System.Data.ParameterDirection.").Append(direction switch
+                        {
+                            ParameterDirection.Input => nameof(ParameterDirection.Input),
+                            ParameterDirection.InputOutput => nameof(ParameterDirection.InputOutput),
+                            ParameterDirection.Output => nameof(ParameterDirection.Output),
+                            ParameterDirection.ReturnValue => nameof(ParameterDirection.ReturnValue),
+                            _ => direction.ToString(),
+                        }).Append(";").NewLine();
+                        sb.Append("if (typeHandler").Append(suffix).Append(" is not null)").Indent().NewLine()
+                          .Append("typeHandler").Append(suffix).Append(".SetValue(p, (object?)")
+                          .Append(source).Append(".").Append(member.CodeName).Append(" ?? global::System.DBNull.Value);").Outdent().NewLine()
+                          .Append("else").Indent().NewLine()
+                          .Append("if (dbType").Append(suffix).Append(" is not null) p.DbType = dbType").Append(suffix).Append(".GetValueOrDefault();").NewLine();
+                        switch (direction)
+                        {
+                            case ParameterDirection.Input:
+                            case ParameterDirection.InputOutput:
+                                sb.Append("p.Value = AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine();
+                                break;
+                            default:
+                                sb.Append("p.Value = global::System.DBNull.Value;").NewLine();
+                                break;
+                        }
+                        sb.Outdent().NewLine();
+                        sb.Append("ps.Add(p);").NewLine();
+                        switch (direction)
+                        {
+                            case ParameterDirection.InputOutput:
+                            case ParameterDirection.Output:
+                            case ParameterDirection.ReturnValue:
+                                flags |= WriteArgsFlags.NeedsPostProcess;
+                                break;
+                        }
                         break;
                     }
                     sb.Append("p = cmd.CreateParameter();").NewLine();
@@ -1419,6 +1503,38 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         break;
                     }
 
+                    if (!member.HasDbType && !member.IsDbString && member.TypeOfName != "object" && member.TypeOfName != "char")
+                    {
+                        // mirror the Add-mode runtime dispatch; the parameter shape is stable
+                        // (always exactly one), so command reuse stays legal
+                        sb.Append("#pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage").NewLine()
+                          .Append("_ = global::Dapper.SqlMapper.LookupDbType(typeof(").Append(member.TypeOfName)
+                          .Append("), ").AppendVerbatimLiteral(member.DbName)
+                          .Append(", false, out var typeHandler").Append(member.CodeName).Append(");").NewLine()
+                          .Append("#pragma warning restore CS0618").NewLine()
+                          .Append("if (typeHandler").Append(member.CodeName).Append(" is not null)").Indent().NewLine()
+                          .Append("typeHandler").Append(member.CodeName).Append(".SetValue(ps[");
+                        if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
+                        else sb.Append(parameterIndex);
+                        sb.Append("], (object?)").Append(source).Append(".").Append(member.CodeName).Append(" ?? global::System.DBNull.Value);").Outdent().NewLine()
+                          .Append("else").Indent().NewLine()
+                          .Append("ps[");
+                        if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
+                        else sb.Append(parameterIndex);
+                        sb.Append("].Value = ");
+                        switch (direction)
+                        {
+                            case ParameterDirection.Input:
+                            case ParameterDirection.InputOutput:
+                                sb.Append("AsValue(").Append(source).Append(".").Append(member.CodeName).Append(");");
+                                break;
+                            default:
+                                sb.Append("global::System.DBNull.Value;");
+                                break;
+                        }
+                        sb.Outdent().NewLine();
+                        break;
+                    }
                     sb.Append("ps[");
                     if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
                     else sb.Append(parameterIndex);

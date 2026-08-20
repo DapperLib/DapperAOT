@@ -74,3 +74,25 @@ enforces it). Tier 2 = their design, re-done as plain-data plans, with credit.
 
 Tier 1 first: it is what the test suite actually measures, needs no consumer changes,
 and works with every shipped Dapper.
+
+## Outcomes (recorded after implementation)
+
+- **695 -> 705/793**: the whole runtime-handler family cleared (Issue136, Issue1959 x4,
+  Issue253 x2, Issue461, SO24740733 x2, Issue149, the enum-preference test), plus the bare
+  `DataTable` TVP pair and the Xml tests - vanilla registers `DataTableHandler` and the XML
+  handlers *by default*, so the dispatch reaches them for free.
+- **`demand: false`, not vanilla's `demand: true`**, deliberately: when nothing matches we
+  keep the previous raw bind, because modern providers natively handle types vanilla's map
+  does not (DateOnly until the Dapper re-enable ships being the live case). Message parity
+  for genuinely-unusable types (TestUnexpectedDataMessage) is deferred to that bump.
+- **A handler receives DBNull, never null** - `SqlMapper.TypeHandler<T>`'s explicit
+  interface impl special-cases DBNull and NREs on a raw null (struct cast); vanilla's IL
+  coalesces first, so we do too.
+- **`char`/`char?` stay excluded from dispatch**: their map entry is StringFixedLength
+  *with* SetType, and applying it pads the round-trip (TestCharInputAndOutput). Vanilla
+  converts char members to length-1 strings on the way out - coercion-tail work, not
+  handler work.
+- **The build-exit lesson, again**: the first measurement showed zero movement because the
+  harness build had silently failed (generated `typeof` on an annotated reference type is
+  CS8639, on `dynamic` CS1962 - hence `ParamMember.TypeOfName`, mirroring `RowMember`'s)
+  and `--no-build` ran stale binaries. Check the exit code, not the presence of output.
