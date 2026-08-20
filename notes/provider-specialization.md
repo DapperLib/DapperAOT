@@ -546,6 +546,25 @@ helpers.*
 distance to "no ADO.NET at all" was 9% on the single-row path in the measurement above. If that holds
 after the work, it is a reasonable place to stop.
 
+## Where the code is
+
+Claims in this note come from two places, and they are not equally checkable — worth stating rather
+than leaving a reader to assume.
+
+**The language and runtime claims are reproducible here.**
+[`test/SpecializationProbes`](../test/SpecializationProbes) prints the tables above: which overload an
+ordinary Dapper call site binds to, what an argument object costs, whether a non-escaping one gets
+stack-allocated, and what the two indirections cost. It has no dependencies and touches no database.
+It is deliberately absent from `Build.csproj`, matching `test/Usage*`, so it costs CI nothing; run it
+with `dotnet run -c Release` from that directory.
+
+**The database measurements are not.** The four-stack table, the emitted-shape validation, the
+`[CacheCommand]`/`[StrictTypes]` comparison and the timings all come from a harness in a **private**
+repository, run against PostgreSQL 17 in Docker on one machine. So they are evidence for planning and
+they are **not independently verifiable by a reader of this note**. The harness would need porting —
+it is a BenchmarkDotNet project plus a small provider — before any of those numbers is quoted
+publicly.
+
 ## How to measure
 
 Same harness shape throughout, so results stay comparable:
