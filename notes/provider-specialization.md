@@ -158,19 +158,51 @@ Two consequences worth taking seriously:
 
 The concrete readers are available everywhere, so items 5 and 6 specialize for all four.
 
-## How the emission should be structured
+## The major: emit end-to-end method bodies
 
-A separate question from *what* to emit, and it has a bearing on how reachable the numbers above
-actually are.
+The larger option, and the one that makes everything above straightforward rather than fiddly:
+**stop emitting factories for runtime plumbing to drive, and emit the whole operation as a method**
+— create or reuse the command, set parameters, execute, loop, materialise, dispose — with the
+runtime library reduced to helpers.
 
-### The case for full explicit emission
+### The shape
 
-Today the generator emits a `CommandFactory` subclass and a `RowFactory`, and hands them to runtime
-plumbing that owns the command lifecycle and the reader loop. An alternative for a major is to emit
-the **whole operation explicitly** — create or reuse the command, set parameters, execute, loop,
-materialise, dispose — as generated code, with the runtime library reduced to helpers.
+Two layers. The interceptor is per call site and does almost nothing; the body is shared.
 
-Two arguments for it, and neither is "the code is more obvious", though it is:
+```csharp
+// interceptor: per call site, tiny, and the only place the anonymous type is in scope
+[InterceptsLocation(...)]
+internal static Task<Customer> Intercept_7(this DbConnection cnn, string sql, object? param, ...)
+{
+    var typed = Cast(param, static () => new { id = default(int) });
+    return Shapes.QuerySingle_Customer_id_Int32(cnn, sql, typed.id, ...);
+}
+
+// shared: one per (shape, provider). No anonymous type in the signature, so it is nameable.
+internal static async Task<Customer> QuerySingle_Customer_id_Int32(
+    DbConnection cnn, string sql, int id, ...)
+{
+    var cmd = cnn.CreateCommand();
+    if (cmd is NpgsqlCommand pg) { /* NpgsqlParameter<int>, typed getters, prepared */ }
+    else                        { /* exactly today's agnostic path */ }
+}
+```
+
+**The shared body takes the extracted values, not the argument object**, and that is not a stylistic
+choice — it is forced, and it turns out to be the good outcome. An anonymous type cannot be written
+as a parameter type, so a helper taking one is unwritable; passing `typed.id` instead sidesteps that
+entirely. The consequences are worth spelling out:
+
+- **`sql` is a parameter, so call sites collapse.** Fifty `Query<Customer>(sql, new { id })` sites
+  across a codebase share *one* emitted method, not fifty copies of a reader loop. The obvious
+  objection to end-to-end emission — code size, and worse for AOT binaries — largely evaporates;
+- **the shape key is (operation, row type, parameter names and types)**, so differing SQL is free and
+  differing parameter *names* is what splits a shape ❓ (whether to key on names or pass them wants
+  deciding against real codebases);
+- **the interceptor stays trivial**, which keeps the per-call-site IL small even where shapes do not
+  share.
+
+### Why it is worth a major
 
 - **it removes a type-erasure tax the current design imposes.** An anonymous type cannot be named as
   a type argument on a runtime type, so the factory for `new { id = 42 }` degrades to
@@ -181,18 +213,37 @@ Two arguments for it, and neither is "the code is more obvious", though it is:
       var typed = Cast(args, static () => new { id = default(int) });
   ```
 
-  Generated inline code has the anonymous type *in scope*, so the erasure costs a `castclass` rather
-  than an allocation. **Note that is all it costs** — see "the args object is not the prize" below,
-  which tested the tempting follow-on idea and closed it;
+  The erasure costs a `castclass` rather than an allocation — see the closed item below — but it also
+  forces the *shape* of everything downstream;
 - **provider specialization stops being a plumbing problem.** With factories it needs a
-  provider-specific factory hierarchy or generic gymnastics; with explicit emission,
-  `new NpgsqlParameter<int> { TypedValue = args.id }` is a line of code and the detection switch
-  above is an `if`.
+  provider-specific factory hierarchy or generic gymnastics; with an emitted body,
+  `new NpgsqlParameter<int> { TypedValue = id }` is a line and the detection switch is an `if`;
+- **the optimisation surfaces become local and readable.** Every allocation on the path is in
+  generated source that can be read and diffed, rather than distributed across a library the
+  generator cannot see into. The step-0 anomaly is exactly the kind of question that becomes
+  answerable by reading instead of profiling.
 
 **And the payoff is already estimated.** The "hand-tuned ADO.NET" row in the opening table is
-essentially what full explicit emission looks like — command created once and reused, prepared,
-typed parameter, typed getters, no factory indirection, no erasure. So 1,927 B → 1,035 B is the
-estimate for this specific proposal, not a general aspiration.
+essentially what this emits — command created once and reused, prepared, typed parameter, typed
+getters, no factory indirection, no erasure. So **1,927 B → 1,035 B is the estimate for this
+proposal specifically**, not a general aspiration.
+
+### What it costs
+
+- **behaviour migrates from the library to the generator.** Timeout, transaction handling, buffered
+  versus unbuffered, cancellation, error wrapping, connection open/close policy — all hard-won, all
+  currently in one place. Re-emitting it correctly *and* keeping it in step is the actual work here,
+  and the Dapper test suite as acceptance corpus is the instrument for it. This is why the major sits
+  downstream of the parity work rather than parallel to it;
+- **generated code freezes at generation time**, where a library fix ships by package bump. Probably
+  acceptable, but it changes how fixes reach people and should be a decision rather than a discovery;
+- **code size**, much reduced by the shared-body shape above, but not zero: each distinct shape still
+  carries a body per specialized provider.
+
+By [plan.md](plan.md)'s own ordering rule — nothing that adds parse-time state lands before phase 2
+completes — a change of this size is phase 3 at the earliest.
+
+## Closed ideas
 
 ### The args object is not the prize (tested, and closed)
 
@@ -254,23 +305,6 @@ of parameter *values* — which is items 1, 2 and 3 of the technique list, not t
 The step-0 anomaly points the same way: no single-row win over vanilla is what one would expect if
 the command is not actually being reused.
 
-### The costs, which are real
-
-- **code size.** N call sites getting N copies of a reader loop is bad, and worse for AOT binaries.
-  The mitigation that keeps most of the benefit: emit **one concrete non-virtual method per (shape,
-  provider)** and have call sites — and the detection switch — dispatch to it. Devirtualization and
-  the erasure win survive; the duplication is paid once per shape rather than once per call site;
-- **behaviour migrates from the library to the generator.** Timeout, transaction handling, buffered
-  versus unbuffered, cancellation, error wrapping, connection open/close policy — all hard-won, all
-  currently in one place. Re-emitting it correctly *and* keeping it in step is the actual work, and
-  the Dapper test suite as acceptance corpus is the instrument for it. That is why this is downstream
-  of the parity work rather than parallel to it;
-- **generated code freezes at generation time**, where a library fix ships by package bump. Probably
-  acceptable, but it changes how fixes reach people and should be a decision rather than a discovery.
-
-By [plan.md](plan.md)'s own ordering rule — nothing that adds parse-time state lands before phase 2
-completes — a change of this size is phase 3 at the earliest.
-
 ## Non-goals
 
 - **The connection model.** Generated code sits on ADO.NET, so pooling, multiplexing and socket count
@@ -303,6 +337,13 @@ generated output, with no behavioural difference.*
 for now, which makes it a smaller and better-bounded piece of work than it first looks — and a good
 one to do first precisely because it is bounded.
 *Exit: no boxing of value-type parameters on an Npgsql path; acceptance corpus green.*
+
+**Step 3b — the major, if it is wanted.** Emitting end-to-end bodies is not required by steps 1-3;
+they can land on the current factory shape. It is what makes them *cheap to write* and makes step 2's
+detection switch an `if` rather than a factory hierarchy, so the honest question is whether to do
+steps 1-3 twice or once. Doing the major first costs more up front and less overall ❓.
+*Exit: the acceptance corpus is green through emitted bodies, with the runtime library reduced to
+helpers.*
 
 **Step 4 — re-measure, and decide whether more is worth it.** With steps 1–3 landed, the remaining
 distance to "no ADO.NET at all" was 9% on the single-row path in the measurement above. If that holds
