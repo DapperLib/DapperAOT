@@ -85,7 +85,7 @@ Two levers change several complexity scores and are worth naming up front:
 | constructor binding, `[ExplicitConstructor]` | ✅ | — | — | plus factory methods (AOT extension) |
 | `required` / init-only members | ✅ | — | — | `RequiredProperties` fixture |
 | fields | ❓ | low | low | verify |
-| `dynamic` rows — behavioral fidelity | ⚠️ | high | med | **PR #200 open**: null (not DBNull) on the dynamic surface, mutation (set/add/remove), missing member is null with the cast throwing — the whole matrix the suite pins |
+| `dynamic` rows — behavioral fidelity | ✅ | — | — | null (not DBNull) on the dynamic and dictionary surfaces, mutation (set/add/remove), missing member is null with the value-type cast throwing from the binder — the matrix the suite pins. The `DbDataRecord` surface keeps its ADO.NET contract |
 | tuple results | ❌ | med | med | DAP013; design already framed by `[BindTupleByName]` |
 | enum results (string→enum case-insens., widening, `ShortEnum`) | ⚠️❓ | high | low-med | Dapper recently changed precedence (prefer type handlers, #2200) — match the *new* behavior |
 | `MatchNamesWithUnderscores` | ❓ | med-high | low | snake_case databases; needs a compile-time equivalent (global option/attr) |
