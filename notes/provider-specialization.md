@@ -90,21 +90,41 @@ for doing this in Dapper.AOT rather than anywhere else.
 
 ## Detecting the provider
 
-Two candidate signals, and they answer different questions:
+The static type at the call site proves it when it is a concrete provider type
+(`NpgsqlConnection.QuerySingle<T>(...)`), and that is the easy case: specialize, no test.
 
-- **the static type at the call site** — `NpgsqlConnection.QuerySingle<T>(...)` tells us exactly.
-  This is the reliable one, and it is per-call-site, so a codebase mixing providers is handled
-  correctly with no configuration;
-- **the compilation's reference set** — resolvable via symbol lookup. Useful when the call site is
-  typed as `DbConnection` and only one provider is referenced.
+**It is not the common case.** A great deal of real code takes `DbConnection` or `IDbConnection`
+from DI, and a rule of "specialize only when the static type proves it" would decline most of the
+codebases this is meant to help. So where the static type does not prove it, and the consumer
+*references* a provider we specialize for, emit a runtime type test with the agnostic path as the
+`else`:
 
-Rules that seem right, to be confirmed against real code ❓:
+```csharp
+if (cmd is NpgsqlCommand npgCmd) { /* specialized */ }
+else                             { /* exactly what is emitted today */ }
+```
 
-- **specialize only when the connection's static type is a known provider type.** A call site typed
-  as `DbConnection` keeps today's provider-agnostic emission, which stays correct;
+Three details that decide whether this is sound:
+
+- **test the command, not the connection.** `NpgsqlParameter<T>` needs an `NpgsqlCommand`, and
+  `cnn.CreateCommand()` is typed `DbCommand` whatever the connection is. Testing the thing about to
+  be used is one test either way and does not rely on inferring one type from another;
+- **wrapped connections fall out correctly, and that is a feature.** MiniProfiler, OpenTelemetry-style
+  decorators and any other wrapping command fail the test and take the agnostic arm, keeping exactly
+  today's behaviour. Worth saying out loud, because "does this break my profiler" is the first
+  question someone will ask;
+- **the test is free in context.** One type check against a database round trip, and monomorphic at
+  each call site, so it predicts perfectly.
+
+The remaining rules:
+
 - **detect by symbol resolution, never by package name or version.** `NpgsqlParameter<T>` either
   resolves in this compilation or it does not; that is the only question that matters, and it makes
   version skew a non-issue rather than a support matrix;
+- **the reference set decides which arms exist.** No Npgsql reference, no Npgsql arm — it would not
+  compile anyway. Most codebases reference one provider; some reference two (SQL Server plus SQLite
+  for tests). **Cap the number of specialized arms** rather than emitting an open-ended cross
+  product; past the cap, emit agnostic only ❓ (the cap wants picking against real codebases);
 - **fall back silently.** An unrecognised provider, or a recognised one whose specialized types do
   not resolve, emits exactly what is emitted today. Specialization is an optimisation, never a
   behavioural change, and never a build break.
@@ -137,6 +157,61 @@ Two consequences worth taking seriously:
   further work here.
 
 The concrete readers are available everywhere, so items 5 and 6 specialize for all four.
+
+## How the emission should be structured
+
+A separate question from *what* to emit, and it has a bearing on how reachable the numbers above
+actually are.
+
+### The case for full explicit emission
+
+Today the generator emits a `CommandFactory` subclass and a `RowFactory`, and hands them to runtime
+plumbing that owns the command lifecycle and the reader loop. An alternative for a major is to emit
+the **whole operation explicitly** — create or reuse the command, set parameters, execute, loop,
+materialise, dispose — as generated code, with the runtime library reduced to helpers.
+
+Two arguments for it, and neither is "the code is more obvious", though it is:
+
+- **it removes a type-erasure tax the current design imposes.** An anonymous type cannot be named as
+  a type argument on a runtime type, so the factory for `new { id = 42 }` degrades to
+  `CommandFactory<object?>` and casts back:
+
+  ```csharp
+  private sealed class CommandFactory0 : CommandFactory<object?> // <anonymous type: int id>
+      var typed = Cast(args, static () => new { id = default(int) });
+  ```
+
+  Generated inline code has the anonymous type *in scope* and needs neither the erasure nor the cast.
+  A consequence worth testing rather than assuming ❓: `param` currently crosses a non-inlined
+  boundary as `object?`, so it definitively escapes; behind a generic `TArgs` interceptor with the
+  body inline it may stop escaping and become a stack-allocation candidate under .NET 9/10 escape
+  analysis. The current shape *forecloses* that, which is the certain half of the claim;
+- **provider specialization stops being a plumbing problem.** With factories it needs a
+  provider-specific factory hierarchy or generic gymnastics; with explicit emission,
+  `new NpgsqlParameter<int> { TypedValue = args.id }` is a line of code and the detection switch
+  above is an `if`.
+
+**And the payoff is already estimated.** The "hand-tuned ADO.NET" row in the opening table is
+essentially what full explicit emission looks like — command created once and reused, prepared,
+typed parameter, typed getters, no factory indirection, no erasure. So 1,927 B → 1,035 B is the
+estimate for this specific proposal, not a general aspiration.
+
+### The costs, which are real
+
+- **code size.** N call sites getting N copies of a reader loop is bad, and worse for AOT binaries.
+  The mitigation that keeps most of the benefit: emit **one concrete non-virtual method per (shape,
+  provider)** and have call sites — and the detection switch — dispatch to it. Devirtualization and
+  the erasure win survive; the duplication is paid once per shape rather than once per call site;
+- **behaviour migrates from the library to the generator.** Timeout, transaction handling, buffered
+  versus unbuffered, cancellation, error wrapping, connection open/close policy — all hard-won, all
+  currently in one place. Re-emitting it correctly *and* keeping it in step is the actual work, and
+  the Dapper test suite as acceptance corpus is the instrument for it. That is why this is downstream
+  of the parity work rather than parallel to it;
+- **generated code freezes at generation time**, where a library fix ships by package bump. Probably
+  acceptable, but it changes how fixes reach people and should be a decision rather than a discovery.
+
+By [plan.md](plan.md)'s own ordering rule — nothing that adds parse-time state lands before phase 2
+completes — a change of this size is phase 3 at the earliest.
 
 ## Non-goals
 
