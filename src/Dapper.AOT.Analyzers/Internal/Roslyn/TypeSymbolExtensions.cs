@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Dapper.Internal.Roslyn;
 
@@ -13,7 +14,7 @@ internal static class TypeSymbolExtensions
         Func<IMethodSymbol, bool>? filter = null)
     {
         if (typeSymbol is null) yield break;
-        
+
         foreach (var methodSymbol in typeSymbol.GetMembers()
                      .OfType<IMethodSymbol>()
                      .Where(m => m.MethodKind is MethodKind.Ordinary or MethodKind.DeclareMethod))
@@ -202,7 +203,7 @@ internal static class TypeSymbolExtensions
     /// True, if passed <param name="typeSymbol"/> implements <see cref="IReadOnlyList{T}"/>. False otherwise
     /// </returns>
     /// <param name="searchedTypeSymbol">if found, an interface type symbol</param>
-    public static bool ImplementsIReadOnlyList(this ITypeSymbol? typeSymbol, out ITypeSymbol? searchedTypeSymbol) 
+    public static bool ImplementsIReadOnlyList(this ITypeSymbol? typeSymbol, out ITypeSymbol? searchedTypeSymbol)
         => typeSymbol.ImplementsInterface(SpecialType.System_Collections_Generic_IReadOnlyList_T, out searchedTypeSymbol);
 
     private static bool ImplementsInterface(
@@ -252,6 +253,29 @@ internal static class TypeSymbolExtensions
         }
 
         found = null;
+        return false;
+    }
+
+    internal static bool TryGetPrimaryConstructor(
+        this INamedTypeSymbol typeSymbol,
+        out IMethodSymbol? primaryConstructor)
+    {
+        // from Roslyn
+        // https://github.com/dotnet/roslyn/blob/b6d2dc0d1be19ea0169f710bb370479734f746b9/src/Workspaces/SharedUtilitiesAndExtensions/Compiler/CSharp/Extensions/ITypeSymbolExtensions.cs#L40
+        if (typeSymbol.TypeKind is TypeKind.Class or TypeKind.Struct)
+        {
+            // A bit hacky to determine the parameters of primary constructor associated with a given record.
+            // Simplifying is tracked by: https://github.com/dotnet/roslyn/issues/53092. Note: When the issue is
+            // handled, we can remove the logic here and handle things in GetParameters extension. BUT if GetParameters
+            // extension method gets updated to handle records, we need to test EVERY usage of the extension method and
+            // make sure the change is applicable to all these usages.
+
+            primaryConstructor = typeSymbol.InstanceConstructors.FirstOrDefault(
+                c => c.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is TypeDeclarationSyntax);
+            return primaryConstructor is not null;
+        }
+
+        primaryConstructor = null;
         return false;
     }
 }
