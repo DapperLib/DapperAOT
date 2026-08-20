@@ -44,7 +44,7 @@ Two levers change several complexity scores and are worth naming up front:
 | `GetRowParser<T>(reader)` | ✅ | — | — | |
 | `GetRowParser(reader, Type concreteType, ...)` | ❌ | med | low* | discriminator/polymorphism pattern; dictionary lookup once types are announced |
 | `Parse<T>` / `Parse(Type)` / `Parse` (dynamic) | ❌ ❓ | low | low | same reader machinery, different entry point |
-| `AsTableValuedParameter` (`DataTable` / `SqlDataRecord`) | ❓ | med | med | **PR #198 open** covers it (the result *is* an `ICustomQueryParameter`); a bare `DataTable` member rides the type-handler story instead (vanilla registers `DataTableHandler` by default) |
+| `AsTableValuedParameter` (`DataTable` / `SqlDataRecord`) | ⚠️ | low | — | the result *is* an `ICustomQueryParameter`, so covered above; a bare `DataTable` member rides the type-handler story instead (vanilla registers `DataTableHandler` by default) |
 | `AsList<T>` | n/a | — | — | trivial helper; confirm it doesn't count as a candidate site |
 | `GetTypeDeserializer(Type, reader, startBound, length, ...)` | ❌ | low-med | low* | a valid raw-materializer API, not mere plumbing: with announced types it's the same dispatch map, returning a boxed `Func<DbDataReader, object>`. Its generic strengthening **already exists**: `GetRowParser<T>` (same slicing knobs), which AOT supports |
 | `CreateParamInfoGenerator(Identity, ...)` | ❌ | low | med | the raw parameter-binder factory; **no generic counterpart exists in Dapper** — see "Strengthened APIs" in [type-vs-generic.md](type-vs-generic.md) for the proposed `<T>` form |
@@ -61,11 +61,11 @@ Two levers change several complexity scores and are worth naming up front:
 | fields as members | ❓ | low | low | verify |
 | `DynamicParameters` | ✅ | — | — | delegates to the bag's own protocol, so templates, per-param options, `Get<T>` and output callbacks all ride along; subclasses covered via interface dispatch. Needs a Dapper with the identity-free overload (Dapper #2225) — probe-gated, DAP052 otherwise |
 | `SqlMapper.IDynamicParameters` (custom impls) | ❌ | low-med | med | interface receives the `IDbCommand`, so callable directly — blocked on `Identity` (Dapper-internal) in the signature; owning Dapper permits an AOT-friendly overload |
-| `SqlMapper.ICustomQueryParameter` | ❌ ❓ | med | low | **PR #198 open**: generated code calls it, with vanilla's null semantics; uncovered a teardown bug (**PR #199**: parameters must be cleared on dispose, as vanilla does) |
+| `SqlMapper.ICustomQueryParameter` | ✅ | — | — | generated code calls `AddParameter(command, name)` with vanilla's null semantics; self-binding guards as for list expansion. Uncovered a teardown bug (PR #199: parameters must be cleared on dispose, as vanilla does) |
 | `IParameterLookup` / `IParameterCallbacks` | ❌ ❓ | low | low-med | obscure but public |
 | `DbString` | ✅ | — | — | DAP048 nudges to `[DbValue]`; keep the Dapper spelling, the corpus uses it |
 | output / return params via `[DbValue(Direction=...)]` | ⚠️ | — | — | AOT spelling works; Dapper spelling rides on `DynamicParameters` above |
-| list expansion (`in @ids`) | ❌ ❓ | **high** | med | **PR #197 open**: delegates to vanilla's `PackListParameters`, which owns the whole contract — no runtime rewrite helper needed after all. [tokens.md](tokens.md) §2 |
+| list expansion (`in @ids`) | ✅ | — | — | delegates to vanilla's `PackListParameters`, which owns the whole contract (rewrite, empty form, padding, split, DbString items). Self-binding guards: no command caching, no multi-exec, not alongside output params. [tokens.md](tokens.md) §2 |
 | literal injection (`{=name}`) | ❌ ❓ | med | low-med | formatting rules compile-time decidable. [tokens.md](tokens.md) §3 |
 | pseudo-positional (`?foo?`) | ❌ ❓ | low | med | OleDb/Access corner. [tokens.md](tokens.md) §4 |
 | enum / nullable / `char` / `Guid` params | ⚠️❓ | med | low | verify edge conversions vs Dapper |
@@ -102,12 +102,12 @@ Two levers change several complexity scores and are worth naming up front:
 | feature | AOT status | impact | complexity | notes |
 | --- | --- | --- | --- | --- |
 | `Settings.CommandTimeout` (global default) | ❓ | med | low | AOT has per-site args + `[CommandProperty]`; needs a global knob |
-| `Settings.InListStringSplitCount` | ❌ | med | low* | *after* list expansion; SQL Server plan-stability win |
-| `Settings.PadListExpansions` | ❌ | low-med | low* | same |
+| `Settings.InListStringSplitCount` | ✅ | — | — | honored for free: it lives inside `PackListParameters`, which list expansion delegates to |
+| `Settings.PadListExpansions` | ✅ | — | — | same — honored inside `PackListParameters` |
 | `Settings.UseSingleResult/UseSingleRowOptimization` | ✅ | — | — | verification found a real divergence (AOT hardcoded the opt-in flags; swallowed trailing errors, 10x slower async); now matches vanilla's default — no flags. The runtime knobs stay unread, with the opt-in location noted in code |
 | `Settings.FetchSize` (Oracle) | ⚠️ | low | low | `GlobalFetchSize` exists; verify |
 | `SqlMapper.ConnectionStringComparer` | 🚫? | **zero-ish** | — | exists to partition the runtime identity/cache — a concept AOT doesn't have |
-| `FeatureSupport` (per-provider null-array quirks) | ❓ | low | low | folds into list-expansion helper |
+| `FeatureSupport` (per-provider null-array quirks) | ✅ | — | — | honored inside `PackListParameters` (the arrays branch is its first test) |
 
 ## 5. Sibling packages in the Dapper repo
 

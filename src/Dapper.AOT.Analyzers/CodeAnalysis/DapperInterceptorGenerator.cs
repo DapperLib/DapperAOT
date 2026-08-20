@@ -102,6 +102,33 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         return ctx.SemanticModel.Compilation.Options.SourceReferenceResolver?.NormalizePath(tree.FilePath, baseFilePath: null) ?? tree.FilePath;
     }
 
+    // expandable (in @ids) and custom (ICustomQueryParameter) members bind themselves,
+    // contributing an unknowable number of parameters; the guards below treat them alike
+    private static bool HasSelfBindingMember(ParamPlan? plan)
+    {
+        if (plan is not null)
+        {
+            foreach (var member in plan.Members)
+            {
+                if (member.IsMapped && (member.IsExpandable || member.IsCustom)) return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool HasNonInputMember(ParamPlan? plan)
+    {
+        if (plan is not null)
+        {
+            foreach (var member in plan.Members)
+            {
+                if (member.IsMapped && !member.IsCancellation && !member.IsRowCount
+                    && member.Direction != System.Data.ParameterDirection.Input) return true;
+            }
+        }
+        return false;
+    }
+
     private static InterceptedMethod ProjectMethod(IMethodSymbol method)
     {
         var args = method.Parameters;
@@ -152,6 +179,20 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             var map = MemberMap.CreateForParameters(argExpression);
             var parameterMap = BuildParameterMap(ctx, op, sql, ref flags, map, location, out var parseFlags);
 
+            var parameterPlan = ParamPlan.Create(argExpression?.Type);
+            if (parameterPlan is { IsCollection: true, Element: { } element } && HasSelfBindingMember(element))
+            {
+                // multi-exec batch reuse updates parameters in-place, which cannot re-bind a
+                // self-binding member; leave such call-sites on vanilla Dapper
+                return new SkippedSourceState(new LocationSnapshot(location), flags);
+            }
+            if (HasSelfBindingMember(parameterPlan) && HasNonInputMember(parameterPlan))
+            {
+                // PostProcess addresses output/return parameters by *index*, and an expanded
+                // list contributes a runtime-variable number of parameters before them; leave
+                // such call-sites on vanilla Dapper rather than read back the wrong slot
+                return new SkippedSourceState(new LocationSnapshot(location), flags);
+            }
             if (flags.HasAny(OperationFlags.CacheCommand))
             {
                 bool canBeCached = true;
@@ -159,6 +200,10 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 if (string.IsNullOrWhiteSpace(sql) || parameterMap == "?" || !flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect | OperationFlags.Text))
                 {
                     canBeCached = false;
+                }
+                else if (HasSelfBindingMember(parameterPlan))
+                {
+                    canBeCached = false; // self-binding members change the parameter shape per call
                 }
 
                 if (!canBeCached) flags &= ~OperationFlags.CacheCommand;
@@ -171,7 +216,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             return new SuccessSourceState(new LocationSnapshot(location), InterceptorFilePath(ctx, location), languageVersion,
                 ProjectMethod(op.TargetMethod), flags, sql,
                 RowPlan.Create(resultType, additionalState?.QueryColumns ?? default),
-                ParamPlan.Create(argExpression?.Type), parameterMap, additionalState);
+                parameterPlan, parameterMap, additionalState);
         }
         catch (Exception ex)
         {
@@ -1162,6 +1207,24 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         var planMembers = parameterType.Members;
         if (planMembers.IsEmpty) return;
 
+        // Add mode uses a shared "p" local, declared at method scope because the per-member
+        // Include(...) guards each open their own block; a factory whose members all expand
+        // (PackListParameters) never touches it, and declaring it then is CS0168
+        bool needsParameterLocal = false;
+        if (mode == WriteArgsMode.Add)
+        {
+            foreach (var member in planMembers)
+            {
+                if (member.IsMapped && !member.IsCancellation && !member.IsRowCount
+                    && !member.IsExpandable && !member.IsCustom
+                    && SqlTools.IncludeParameter(map, member.CodeName, out _))
+                {
+                    needsParameterLocal = true;
+                    break;
+                }
+            }
+        }
+
         foreach (var member in planMembers)
         {
             if (!member.IsMapped) continue;
@@ -1216,11 +1279,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (first && mode != WriteArgsMode.GetCancellationToken)
             {
                 sb.Append("var ps = cmd.Parameters;").NewLine();
-                switch (mode)
+                if (needsParameterLocal)
                 {
-                    case WriteArgsMode.Add:
-                        sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
-                        break;
+                    sb.Append("global::System.Data.Common.DbParameter p;").NewLine();
                 }
                 first = false;
             }
@@ -1244,6 +1305,35 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             switch (mode)
             {
                 case WriteArgsMode.Add:
+                    if (member.IsCustom)
+                    {
+                        // ICustomQueryParameter (TVPs etc): the value adds itself; it declares
+                        // no DbType, so the command cannot be prepared. The null throw matches
+                        // vanilla Dapper's, which has no way to name a parameter it never got.
+                        flags &= ~WriteArgsFlags.CanPrepare;
+                        if (!member.IsValueType)
+                        {
+                            sb.Append("if (").Append(source).Append(".").Append(member.CodeName)
+                              .Append(" is null) throw new global::System.InvalidOperationException(\"Member '")
+                              .Append(member.CodeName).Append("' is an ICustomQueryParameter and cannot be null\");").NewLine();
+                        }
+                        sb.Append(source).Append(".").Append(member.CodeName).Append(".AddParameter(cmd.Command!, ")
+                          .AppendVerbatimLiteral(member.DbName).Append(");").NewLine();
+                        break;
+                    }
+                    if (member.IsExpandable)
+                    {
+                        // list-expansion (where X in @ids): delegate to Dapper's own implementation,
+                        // which owns the whole contract - SQL rewrite (including the empty-list and
+                        // optimize-hint forms), per-item parameters, DbString items, padding and
+                        // string_split settings, and provider array support
+                        flags &= ~WriteArgsFlags.CanPrepare; // parameter shape varies by list size
+                        sb.Append("#pragma warning disable CS0618 // list-expansion: this *is* the library usage").NewLine()
+                          .Append("global::Dapper.SqlMapper.PackListParameters(cmd.Command!, ").AppendVerbatimLiteral(member.DbName)
+                          .Append(", ").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine()
+                          .Append("#pragma warning restore CS0618").NewLine();
+                        break;
+                    }
                     sb.Append("p = cmd.CreateParameter();").NewLine();
                     sb.Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
 
@@ -1311,6 +1401,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     }
                     break;
                 case WriteArgsMode.Update:
+                    if (member.IsExpandable || member.IsCustom)
+                    {
+                        // update is only reachable via command-cache reuse and batch, both of
+                        // which are refused for self-binding members at parse
+                        break;
+                    }
                     if (member.IsDbString)
                     {
                         ctx.GeneratorContext.IncludeGenerationType(IncludedGeneration.DbStringHelpers);

@@ -152,6 +152,9 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
     public string DbName { get; }
     public ParameterDirection Direction { get; }
     public bool IsDbString { get; }
+    public bool IsExpandable { get; } // enumerable member: list-expansion (in @ids) applies
+    public bool IsCustom { get; } // SqlMapper.ICustomQueryParameter: the value binds itself
+    public bool IsValueType { get; } // of the member's own type; decides the null test
     public bool HasDbType { get; } // no DbType => cannot Prepare
     public string? DbTypeName { get; } // for "p.DbType = global::System.Data.DbType.X;"
     public int? EffectiveSize { get; } // after the [n]varchar(max) adjustment
@@ -161,7 +164,8 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
     public string TypeName { get; } // emitted (Append) form, for Parse<T> in post-process
 
     private ParamMember(bool isMapped, bool isCancellation, bool isRowCount, string codeName, string dbName,
-        ParameterDirection direction, bool isDbString, bool hasDbType, string? dbTypeName, int? effectiveSize,
+        ParameterDirection direction, bool isDbString, bool isExpandable, bool isCustom, bool isValueType,
+        bool hasDbType, string? dbTypeName, int? effectiveSize,
         bool useSetValueWithDefaultSize, byte? precision, byte? scale, string typeName)
     {
         IsMapped = isMapped;
@@ -171,6 +175,9 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
         DbName = dbName;
         Direction = direction;
         IsDbString = isDbString;
+        IsExpandable = isExpandable;
+        IsCustom = isCustom;
+        IsValueType = isValueType;
         HasDbType = hasDbType;
         DbTypeName = dbTypeName;
         EffectiveSize = effectiveSize;
@@ -184,7 +191,7 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
     {
         if (!member.IsMapped)
         {
-            return new(false, false, false, "", "", default, false, false, null, null, false, null, null, "");
+            return new(false, false, false, "", "", default, false, false, false, false, false, null, null, false, null, null, "");
         }
         var dbType = member.GetDbType(out _);
         var size = member.TryGetValue<int>("Size");
@@ -208,7 +215,8 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
             }
         }
         return new(true, member.IsCancellation, member.IsRowCount, member.CodeName, member.DbName,
-            member.Direction, member.DapperSpecialType is DapperSpecialType.DbString,
+            member.Direction, member.DapperSpecialType is DapperSpecialType.DbString, member.IsExpandable,
+            member.DapperSpecialType is DapperSpecialType.CustomQueryParameter, member.CodeType!.IsValueType,
             dbType is not null, dbType?.ToString(), size, useSetValueWithDefaultSize,
             member.TryGetValue<byte>("Precision"), member.TryGetValue<byte>("Scale"),
             CodeWriter.GetAppendTypeName(member.CodeType!));
@@ -221,6 +229,9 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
         && string.Equals(DbName, other.DbName, StringComparison.Ordinal)
         && Direction == other.Direction
         && IsDbString == other.IsDbString
+        && IsExpandable == other.IsExpandable
+        && IsCustom == other.IsCustom
+        && IsValueType == other.IsValueType
         && HasDbType == other.HasDbType
         && string.Equals(DbTypeName, other.DbTypeName, StringComparison.Ordinal)
         && EffectiveSize == other.EffectiveSize

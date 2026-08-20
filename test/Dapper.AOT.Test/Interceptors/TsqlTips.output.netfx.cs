@@ -287,19 +287,15 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             {
                 var typed = Cast(args, static () => new { ids = default(int[])! }); // expected shape
                 var ps = cmd.Parameters;
-                global::System.Data.Common.DbParameter p;
-                p = cmd.CreateParameter();
-                p.ParameterName = "ids";
-                p.Direction = global::System.Data.ParameterDirection.Input;
-                p.Value = AsValue(typed.ids);
-                ps.Add(p);
+                #pragma warning disable CS0618 // list-expansion: this *is* the library usage
+                global::Dapper.SqlMapper.PackListParameters(cmd.Command!, "ids", typed.ids);
+                #pragma warning restore CS0618
 
             }
             public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, object? args)
             {
                 var typed = Cast(args, static () => new { ids = default(int[])! }); // expected shape
                 var ps = cmd.Parameters;
-                ps[0].Value = AsValue(typed.ids);
 
             }
 
