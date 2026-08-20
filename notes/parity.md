@@ -44,7 +44,7 @@ Two levers change several complexity scores and are worth naming up front:
 | `GetRowParser<T>(reader)` | ✅ | — | — | |
 | `GetRowParser(reader, Type concreteType, ...)` | ❌ | med | low* | discriminator/polymorphism pattern; dictionary lookup once types are announced |
 | `Parse<T>` / `Parse(Type)` / `Parse` (dynamic) | ❌ ❓ | low | low | same reader machinery, different entry point |
-| `AsTableValuedParameter` (`DataTable` / `SqlDataRecord`) | ❓ | med | med | **PR #198 open** covers it (the result *is* an `ICustomQueryParameter`); a bare `DataTable` member rides the type-handler story instead (vanilla registers `DataTableHandler` by default) |
+| `AsTableValuedParameter` (`DataTable` / `SqlDataRecord`) | ⚠️ | low | — | the result *is* an `ICustomQueryParameter`, so covered above; a bare `DataTable` member rides the type-handler story instead (vanilla registers `DataTableHandler` by default) |
 | `AsList<T>` | n/a | — | — | trivial helper; confirm it doesn't count as a candidate site |
 | `GetTypeDeserializer(Type, reader, startBound, length, ...)` | ❌ | low-med | low* | a valid raw-materializer API, not mere plumbing: with announced types it's the same dispatch map, returning a boxed `Func<DbDataReader, object>`. Its generic strengthening **already exists**: `GetRowParser<T>` (same slicing knobs), which AOT supports |
 | `CreateParamInfoGenerator(Identity, ...)` | ❌ | low | med | the raw parameter-binder factory; **no generic counterpart exists in Dapper** — see "Strengthened APIs" in [type-vs-generic.md](type-vs-generic.md) for the proposed `<T>` form |
@@ -61,7 +61,7 @@ Two levers change several complexity scores and are worth naming up front:
 | fields as members | ❓ | low | low | verify |
 | `DynamicParameters` | ❌ | **high** | high | **PR #195 open**: delegate to the bag's own protocol (pairs with Dapper #2225); covers subclasses via interface dispatch. Templates ride on the same path |
 | `SqlMapper.IDynamicParameters` (custom impls) | ❌ | low-med | med | interface receives the `IDbCommand`, so callable directly — blocked on `Identity` (Dapper-internal) in the signature; owning Dapper permits an AOT-friendly overload |
-| `SqlMapper.ICustomQueryParameter` | ❌ ❓ | med | low | **PR #198 open**: generated code calls it, with vanilla's null semantics; uncovered a teardown bug (**PR #199**: parameters must be cleared on dispose, as vanilla does) |
+| `SqlMapper.ICustomQueryParameter` | ✅ | — | — | generated code calls `AddParameter(command, name)` with vanilla's null semantics; self-binding guards as for list expansion. Uncovered a teardown bug (PR #199: parameters must be cleared on dispose, as vanilla does) |
 | `IParameterLookup` / `IParameterCallbacks` | ❌ ❓ | low | low-med | obscure but public |
 | `DbString` | ✅ | — | — | DAP048 nudges to `[DbValue]`; keep the Dapper spelling, the corpus uses it |
 | output / return params via `[DbValue(Direction=...)]` | ⚠️ | — | — | AOT spelling works; Dapper spelling rides on `DynamicParameters` above |
