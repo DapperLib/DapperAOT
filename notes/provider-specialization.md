@@ -203,22 +203,34 @@ stack-allocated. **Three measurements say no.** Recorded so it is not re-propose
 **1. The dominant read shape cannot reach such an overload at all.** Compiled against real-looking
 call sites, with both overloads present:
 
-| call site | binds to |
-| --- | --- |
-| `cnn.Query<Customer>(sql, new { id })` | **the existing `Query<T>(string, object?)`** |
-| `cnn.Execute(sql, new { id })` | the generic `Execute<TArgs>` |
-| `cnn.Execute(sql, null)` | the existing `object?` overload |
-| `cnn.Execute(sql, objectTypedLocal)` | the existing `object?` overload |
+| call site | explicit type arg? | binds to |
+| --- | :-: | --- |
+| `cnn.Query<Customer>(sql, new { id })` | yes | **the existing `Query<T>(string, object?)`** |
+| `cnn.Execute(sql, new { id })` | no | the generic `Execute<TArgs>` |
+| `cnn.Query(sql, new { id })` (dynamic) | no | the generic `Query<TArgs>` |
+| `cnn.ExecuteScalar(sql, new { id })` | no | the generic `ExecuteScalar<TArgs>` |
+| `cnn.Execute(sql, null)` | no | the existing `object?` overload |
+| `cnn.Execute(sql, objectTypedLocal)` | no | the existing `object?` overload |
 
-`Query<Customer>(...)` supplies one type argument, so a two-parameter `Query<TResult, TArgs>` is not
-a candidate — **explicit type arguments must supply every type parameter, and C# has no partial
-inference**. Nor can the call be written explicitly, because the anonymous type has no name to give.
-So the shape that dominates Dapper reads is unreachable by construction, not by oversight.
+**The line is whether the call site states a type argument**, and the two sides fail differently:
 
-Two useful side findings if a generic-args overload is ever wanted for *other* reasons: it binds
-**without** `[OverloadResolutionPriority]`, since an identity conversion already beats
-conversion-to-`object`; and `DynamicParameters`-shaped arguments would start binding to it, which
-Dapper handles specially today and would need an explicit carve-out ❓.
+- **explicit type argument** — `Query<Customer>(...)` supplies one, so a two-parameter
+  `Query<TResult, TArgs>` is not a candidate at all: **explicit type arguments must supply every type
+  parameter, and C# has no partial inference**. Nor can the call be written explicitly, because the
+  anonymous type has no name to give. So the shape that dominates Dapper *reads* is unreachable by
+  construction rather than by oversight, and `[OverloadResolutionPriority]` is **moot** here — there
+  is nothing to prioritise;
+- **no explicit type argument** — the generic overload binds, and does so **without**
+  `[OverloadResolutionPriority]`, because an identity conversion already beats conversion-to-`object`.
+  Verified for `Execute`, dynamic-returning `Query`, and `ExecuteScalar`.
+
+So a generic-args overload is available for exactly the non-generic-result methods — most of the
+write path, plus dynamic reads — and for nothing else. `null` and `object`-typed locals keep today's
+overload either way, which is the behaviour one wants.
+
+One risk if such an overload is ever added for other reasons: `DynamicParameters`-shaped arguments
+would start binding to it, and Dapper handles those specially today, so it would need an explicit
+carve-out ❓.
 
 **2. The object is small.** Measured: `new { id = 42 }` is **24 B**, `new { id, name }` is 32 B, an
 ordinary named args class is 24 B. Against the ~890 B that separates Dapper.AOT today from
