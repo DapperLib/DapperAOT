@@ -221,6 +221,55 @@ If the factored form is chosen, the shape key is (operation, row type, parameter
 so differing SQL is free — it is a parameter — and differing parameter *names* is what splits a
 shape, unless names are passed too ❓.
 
+### Passing the binder in, rather than baking it in
+
+A variant worth recording, because it fixes the sharing problem the two forms above both have. Rather
+than the shared body taking the extracted values — which puts the parameter types in its signature —
+pass the arguments as `object` plus a **binder** that knows how to destructure them:
+
+```csharp
+internal static async Task<Customer> QuerySingle_Customer(
+    DbConnection cnn, string sql, object args, Action<DbCommand, object> bind, ...)
+```
+
+**That erases the argument shape out of the shared body entirely**, so the shape key collapses from
+*(operation, row type, parameter names and types)* to just *(operation, row type)*. Every
+`Query<Customer>` in a codebase shares one body regardless of what it passes. A post-process binder
+for output parameters fits the same way.
+
+Function pointers are the obvious primitive, and measurement does not support them:
+
+```
+                                 alloc/call   cost/call
+inline body                        24.0 B      1.94 ns
+via delegate* parameter            24.0 B      7.09 ns   (+5.15)
+via static readonly delegate       24.0 B      4.04 ns   (+2.10)
+```
+
+- **neither indirection allocates.** A `static readonly` delegate is built once at type init, so the
+  per-call cost is zero either way — the 24 B is the caller's argument object in all three;
+- **the function pointer measured *slower* than the delegate**, most likely because the JIT can
+  speculatively inline through a delegate with a stable target and cannot do the same for a pointer
+  arriving as a parameter ❓ (one microbenchmark, and a trivial body exaggerates call overhead — but
+  enough to retire "pointers because they are faster");
+- **and it is all noise at the scale that matters.** 2-5 ns against a ~475 µs round trip is ~0.001%.
+  Choose on code size and generator complexity, not speed.
+
+So **the delegate form is the better default**, not the fallback: it needs no `AllowUnsafeBlocks`, no
+detection of it, and no second emission path. Worth knowing that function pointers *would* impose
+that — a consumer without `AllowUnsafeBlocks` gets **CS0214** from generated code, and that is a
+compilation-wide switch a generated file cannot opt into on its own.
+
+One simplification found while checking: **the binder does not need a per-provider signature.**
+Function-pointer parameters are contravariant, so narrowing is rejected outright (`CS8757`) and a
+`delegate*<NpgsqlConnection, ...>` would force a separate shared body per provider. Unnecessary — the
+binder can take `DbCommand` and cast internally, because the shared body has already proven the type
+in its `if (cmd is NpgsqlCommand)` branch. One binder signature serves every provider.
+
+The cost of this variant is that the binder is an opaque call in the middle of the body, so the JIT
+cannot optimise across it the way it can for a fully inline body. Against a database round trip that
+is irrelevant; it is recorded because it is the one real difference.
+
 ### Why it is worth a major
 
 - **it removes a type-erasure tax the current design imposes.** An anonymous type cannot be named as
