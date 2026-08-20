@@ -315,16 +315,50 @@ Three things fall out, and the second is the important one:
 
 - **the design reaches the target.** 1,224 B lands within ~10% of hand-tuned, so the three-layer
   shape does not cost anything meaningful over hand-written code. The thought process holds;
-- **command reuse is ~70% of the whole gap.** Identical code, only the command policy differing:
-  1,848 B fresh against 1,224 B reused, or ~625 B of the ~890 B. Everything else — typed parameters,
-  typed getters, `SequentialAccess`, the provider switch — shares the remaining ~265 B;
-- **and fresh-command lands on Dapper.AOT's number** (1,848 against 1,971), which is evidence that
-  **Dapper.AOT is not reusing commands in this shape**. That is step 0, answered by measurement
-  rather than by profiling, and it reframes the work: item 1 of the technique list is not one item
-  among seven, it is most of the prize.
+- **command handling is most of the gap, and it splits in two.** Measured by varying only the
+  command policy on otherwise identical code:
 
-Run-to-run jitter is around 5%, so the emitted-versus-hand-tuned gap of ~130 B is near the noise
-floor and should not be over-read. The reuse gap of ~625 B is far above it.
+  | single row | allocated | delta |
+  | --- | ---: | ---: |
+  | fresh command per call | 1,832 B | |
+  | reused command, **not** prepared | 1,450 B | **-382** (object reuse) |
+  | reused command, prepared | 1,208 B | **-242** (preparation) |
+
+  Two comparable, independent wins rather than one. "Command reuse" as a single item understates it.
+
+### `[CacheCommand]` and `[StrictTypes]`, measured
+
+Both exist already, and the plain `[DapperAot]` row above is therefore the *default*, not the best
+available. Asking for them explicitly:
+
+| single row | allocated |
+| --- | ---: |
+| `[DapperAot]` | 1,881 B |
+| `[DapperAot, CacheCommand]` | **1,691 B** |
+| `[DapperAot, CacheCommand, StrictTypes]` | 1,749 B |
+
+- **`[CacheCommand]` works, and captures about half of what object reuse is worth** — 190 B of the
+  ~380 B available. Why it does not reach the rest is worth knowing before building anything ❓;
+- **`[StrictTypes]` showed no reliable gain on top** — 1,749 against 1,691 is inside run-to-run
+  jitter, and worse in that run;
+- **nothing reaches preparation.** `CanPrepare` is emitted as `true`, but the ~242 B that preparing
+  is worth does not appear in any configuration measured. That looks like the single largest
+  unclaimed item, and it needs no new API — only for something to act on the flag ❓.
+
+So the default-versus-configured distinction matters: an unqualified "Dapper.AOT allocates X" is
+about the default, and the gap to hand-tuned is smaller than the default suggests once `[CacheCommand]`
+is on.
+
+Run-to-run jitter on allocation is around 3%, so the deltas above are real; the emitted-versus-
+hand-tuned gap of ~165 B is closer to the floor and should not be over-read.
+
+**Allocation is not perf, and the honest position is that perf is not yet measured.** Wall-clock says
+nothing here — the round trip dominates by a hundredfold. Client CPU per operation was attempted and
+is only good to ±5-10%, because process CPU time is quantised to the ~15.6 ms scheduler tick;
+directionally the CPU gaps looked much smaller than the byte gaps, but not enough to quote ❓. **The
+instrument that would answer it is throughput under saturation**, where client CPU becomes the
+limiter rather than hiding behind the wait. That wants building, with the client and server pinned to
+different cores, since they otherwise compete.
 
 **Positional parameters were tested and do not pay here.** A caller writes `@id`; a generator knows
 the mapping at build time and could emit the query rewritten to `$1` with unnamed parameters, so the
@@ -333,6 +367,12 @@ benefit, marginally worse. Npgsql appears to resolve the mapping once at `Prepar
 the command ❓, leaving nothing to save per execution. Worth noting the test was the
 prepared-and-reused case, which is the *best* case for that caching; the idea could still pay on
 non-prepared or fresh-command paths, which the finding above suggests is where much real code sits.
+
+**Two decisions about it, if it is ever built.** It should land *after or as part of* the emission
+work rather than being retrofitted onto the current library — the rewrite has to happen where the
+SQL is emitted, and doing it twice is wasted effort. And it applies **only where the SQL is a
+compile-time constant literal**: a generator cannot rewrite a string it cannot see, so anything
+built, interpolated or passed in keeps the caller's syntax.
 
 **One constraint the exercise turned up the hard way:** parameters must be declared *before*
 `Prepare()`. PostgreSQL records the parameter list at parse time, so a binder that adds parameters
