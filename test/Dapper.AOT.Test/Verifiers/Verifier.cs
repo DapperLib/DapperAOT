@@ -34,11 +34,11 @@ public abstract class Verifier(ITestOutputHelper? log)
     internal Task CSVerifyAsync<TAnalyzer>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         DiagnosticResult[] expected, SqlSyntax sqlSyntax, SqlParseInputFlags sqlParseInputFlags = SqlParseInputFlags.None, bool refDapperAot = true,
-        string? pinDapperPackageVersion = null)
+        string? pinDapperPackageVersion = null, string[]? additionalSources = null)
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
         var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>();
-        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot, pinDapperPackageVersion);
+        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot, pinDapperPackageVersion, additionalSources);
     }
     internal Task CSVerifyAsync<TAnalyzer, TCodeFix>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
@@ -71,9 +71,16 @@ public abstract class Verifier(ITestOutputHelper? log)
     internal Task ExecuteAsync(AnalyzerTest<DefaultVerifier> test, string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         DiagnosticResult[] expected, SqlSyntax sqlSyntax, SqlParseInputFlags sqlParseInputFlags, bool refDapperAot,
-        string? pinDapperPackageVersion = null)
+        string? pinDapperPackageVersion = null, string[]? additionalSources = null)
     {
         test.TestCode = source;
+        if (additionalSources is not null)
+        {
+            foreach (var additionalSource in additionalSources)
+            {
+                test.TestState.Sources.Add(additionalSource);
+            }
+        }
 
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (expected is not null)
@@ -214,8 +221,8 @@ public class Verifier<TAnalyzer>(ITestOutputHelper? log = null) : Verifier(log) 
     internal Task CSVerifyAsync(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer, SqlParseInputFlags sqlParseInputFlags = SqlParseInputFlags.None, bool refDapperAot = true,
-        string? pinDapperPackageVersion = null)
-        => base.CSVerifyAsync<TAnalyzer>(source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot, pinDapperPackageVersion);
+        string? pinDapperPackageVersion = null, string[]? additionalSources = null)
+        => base.CSVerifyAsync<TAnalyzer>(source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot, pinDapperPackageVersion, additionalSources);
 
     new internal Task CSVerifyAsync<TCodeFix>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,

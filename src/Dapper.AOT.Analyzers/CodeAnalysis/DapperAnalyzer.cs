@@ -432,6 +432,17 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
 
             location ??= ctx.Operation.Syntax.GetLocation();
 
+            // a constant declared in generated code would have its SQL diagnostics dropped by the driver;
+            // re-home them onto the call-site argument so they stay visible (inline/same-file keep the token)
+            // https://github.com/DapperLib/DapperAOT/issues/177
+            var sqlLocation = location;
+            if (sqlSyntax is not null && sqlSyntax.SyntaxTree != sqlSource.Syntax.SyntaxTree
+                && IsGeneratedDocument(sqlSyntax.SyntaxTree, ctx.Compilation, ctx.CancellationToken))
+            {
+                sqlLocation = sqlSource.Syntax.GetLocation();
+                sqlSyntax = null;
+            }
+
             if (DebugSqlFlags is not null)
             {
                 var debugModeFlags = DebugSqlFlags.Value;
@@ -459,7 +470,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                         forgiveSyntaxErrors = true; // we're just taking a punt, honestly
                         goto case SqlSyntax.SqlServer;
                     case SqlSyntax.SqlServer:
-                        var proc = new OperationAnalysisContextTSqlProcessor(ctx, null, flags, location, sqlSyntax);
+                        var proc = new OperationAnalysisContextTSqlProcessor(ctx, null, flags, sqlLocation, sqlSyntax);
                         proc.Execute(sql!, parameters);
                         parseFlags = proc.Flags;
                         // paramMembers);
