@@ -42,8 +42,10 @@ internal readonly struct DynamicRecordField
 internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, object?>, IDictionary<string, object?>,
     IDynamicMetaObjectProvider
 {
-    private readonly DynamicRecordField[] fields;
-    private readonly object[] values;
+    // the fields array is shared between every record of the shape (it is the Tokenize
+    // state), so structural mutation (add/remove) must copy-on-write before diverging
+    private DynamicRecordField[] fields;
+    private object?[] values;
     private string[]? namesCopy;
     public DynamicRecord(DynamicRecordField[] fields, DbDataReader source, int columnOffset)
     {
@@ -54,19 +56,72 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
         }
         else
         {
-            values = new object[fields.Length];
-            if (columnOffset == 0 && source.FieldCount == values.Length)
+            var typed = new object[fields.Length];
+            if (columnOffset == 0 && source.FieldCount == typed.Length)
             {
-                source.GetValues(values);
+                source.GetValues(typed);
             }
             else
             {
-                for (int i = 0; i < values.Length; i++)
+                for (int i = 0; i < typed.Length; i++)
                 {
-                    values[i] = source.GetValue(columnOffset++);
+                    typed[i] = source.GetValue(columnOffset++);
                 }
             }
+            values = typed;
+            for (int i = 0; i < values.Length; i++)
+            {
+                // the dictionary and dynamic surfaces hand back null, not DBNull, matching
+                // vanilla Dapper's DapperRow; the DbDataRecord surface restores DBNull
+                if (values[i] is DBNull) values[i] = null;
+            }
         }
+    }
+
+    private object? GetRawValue(string name)
+    {
+        // try-get semantics: vanilla's DapperRow returns null for a missing member (a
+        // value-type dynamic cast is then what produces the RuntimeBinderException)
+        var index = GetOrdinal(name);
+        return index < 0 ? null : values[index];
+    }
+
+    private void SetValue(string name, object? value)
+    {
+        var i = GetOrdinal(name);
+        if (i >= 0)
+        {
+            values[i] = value;
+            return;
+        }
+        // grow; the fields array may still be the shared per-shape one, so always copy
+        var len = fields.Length;
+        var newFields = new DynamicRecordField[len + 1];
+        Array.Copy(fields, newFields, len);
+        newFields[len] = new DynamicRecordField(name, value?.GetType() ?? typeof(object), "");
+        var newValues = new object?[len + 1];
+        Array.Copy(values, newValues, len);
+        newValues[len] = value;
+        fields = newFields;
+        values = newValues;
+        namesCopy = null;
+    }
+
+    private bool Remove(string name)
+    {
+        var i = GetOrdinal(name);
+        if (i < 0) return false;
+        var len = fields.Length;
+        var newFields = new DynamicRecordField[len - 1];
+        Array.Copy(fields, newFields, i);
+        Array.Copy(fields, i + 1, newFields, i, len - i - 1);
+        var newValues = new object?[len - 1];
+        Array.Copy(values, newValues, i);
+        Array.Copy(values, i + 1, newValues, i, len - i - 1);
+        fields = newFields;
+        values = newValues;
+        namesCopy = null;
+        return true;
     }
     public override int GetOrdinal(string name)
     {
@@ -92,7 +147,7 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
 
     public IEnumerable<string> Keys => GetSafeNamesCopy();
 
-    public IEnumerable<object> Values => values;
+    public IEnumerable<object?> Values => values;
 
     public int Count => FieldCount;
 
@@ -116,31 +171,33 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
 
     ICollection<object?> IDictionary<string, object?>.Values => values;
 
-    bool ICollection<KeyValuePair<string, object?>>.IsReadOnly => true;
+    bool ICollection<KeyValuePair<string, object?>>.IsReadOnly => false;
 
     object? IDictionary<string, object?>.this[string key]
     {
-        get => this[key];
-        set => throw new NotSupportedException();
+        get => GetRawValue(key);
+        set => SetValue(key, value); // set-or-add, matching vanilla's DapperRow
     }
+
+    object? IReadOnlyDictionary<string, object?>.this[string key] => GetRawValue(key);
 
     public override string GetName(int i) => fields[i].Name;
     public override Type GetFieldType(int i) => fields[i].Type;
     protected override DbDataReader GetDbDataReader(int i) => throw new NotSupportedException();
 
-    public override object GetValue(int i) => values[i];
+    public override object GetValue(int i) => values[i] ?? DBNull.Value;
     public override object this[string name]
     {
         get
         {
             var index = GetOrdinal(name);
             if (index < 0) Throw(name);
-            return values[index];
+            return values[index] ?? DBNull.Value;
 
             static void Throw(string name) => throw new KeyNotFoundException($"Member '{name}' not found");
         }
     }
-    public override object this[int i] => values[i];
+    public override object this[int i] => values[i] ?? DBNull.Value;
 
     private T As<T>(int i) => CommandUtils.As<T>(values[i]);
     public override bool GetBoolean(int i) => As<bool>(i);
@@ -171,7 +228,7 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
     public override long GetBytes(int i, long dataIndex, byte[]? buffer, int bufferIndex, int length)
     {
         if (buffer is null) return 0;
-        byte[] blob = (byte[])values[i];
+        byte[] blob = (byte[])GetValue(i);
         Buffer.BlockCopy(blob, CheckOffsetAndComputeLength(blob.Length, dataIndex, ref length), buffer, bufferIndex, length);
         return length;
     }
@@ -184,7 +241,7 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
         }
         else
         {
-            char[] clob = (char[])values[i];
+            char[] clob = (char[])GetValue(i);
             Array.Copy(clob, CheckOffsetAndComputeLength(clob.Length, dataIndex, ref length), buffer, bufferIndex, length);
         }
         return length;
@@ -214,13 +271,18 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    void IDictionary<string, object?>.Add(string key, object? value) => throw new NotSupportedException();
+    void IDictionary<string, object?>.Add(string key, object? value) => SetValue(key, value);
 
-    bool IDictionary<string, object?>.Remove(string key) => throw new NotSupportedException();
+    bool IDictionary<string, object?>.Remove(string key) => Remove(key);
 
-    void ICollection<KeyValuePair<string, object?>>.Add(KeyValuePair<string, object?> item) => throw new NotSupportedException();
+    void ICollection<KeyValuePair<string, object?>>.Add(KeyValuePair<string, object?> item) => SetValue(item.Key, item.Value);
 
-    void ICollection<KeyValuePair<string, object?>>.Clear() => throw new NotSupportedException();
+    void ICollection<KeyValuePair<string, object?>>.Clear()
+    {
+        fields = Array.Empty<DynamicRecordField>();
+        values = Array.Empty<object>();
+        namesCopy = null;
+    }
 
     bool ICollection<KeyValuePair<string, object?>>.Contains(KeyValuePair<string, object?> item)
         => TryGetValue(item.Key, out var value) && Equals(value, item.Value);
@@ -233,19 +295,23 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
         }
     }
 
-    bool ICollection<KeyValuePair<string, object?>>.Remove(KeyValuePair<string, object?> item) => throw new NotSupportedException();
+    bool ICollection<KeyValuePair<string, object?>>.Remove(KeyValuePair<string, object?> item)
+        => TryGetValue(item.Key, out var value) && Equals(value, item.Value) && Remove(item.Key);
 
     DynamicMetaObject IDynamicMetaObjectProvider.GetMetaObject(Expression parameter)
         => new DynamicRecordMetaObject(parameter, BindingRestrictions.Empty, this);
 
     private sealed class DynamicRecordMetaObject : DynamicMetaObject
     {
-        private static readonly MethodInfo getValueMethod;
+        private static readonly MethodInfo getValueMethod, setValueMethod;
         static DynamicRecordMetaObject()
         {
-            IReadOnlyDictionary<string, object> tmp = new Dictionary<string, object> { { "", "" } };
-            _ = tmp[""]; // to ensure the indexer is not trimmed away
+            IDictionary<string, object> tmp = new Dictionary<string, object> { { "", "" } };
+            _ = tmp[""]; // to ensure the indexers are not trimmed away
+            tmp[""] = "";
             getValueMethod = typeof(IReadOnlyDictionary<string, object>).GetProperty("Item")?.GetGetMethod()
+                ?? throw new InvalidOperationException("Unable to resolve indexer");
+            setValueMethod = typeof(IDictionary<string, object>).GetProperty("Item")?.GetSetMethod()
                 ?? throw new InvalidOperationException("Unable to resolve indexer");
         }
 
@@ -283,7 +349,19 @@ internal sealed class DynamicRecord : DbDataRecord, IReadOnlyDictionary<string, 
         }
 
         public override DynamicMetaObject BindSetMember(SetMemberBinder binder, DynamicMetaObject value)
-            => throw new NotSupportedException("Dynamic records are considered read-only currently");
+        {
+            // the binding must *produce* the assigned value (assignment is an expression);
+            // the indexer's set returns void, so wrap it in a block yielding the value
+            var valueArg = Expression.Convert(value.Expression, typeof(object));
+            var call = Expression.Call(
+                Expression.Convert(Expression, LimitType),
+                setValueMethod,
+                Expression.Constant(binder.Name),
+                valueArg);
+            return new DynamicMetaObject(
+                Expression.Block(typeof(object), call, valueArg),
+                BindingRestrictions.GetTypeRestriction(Expression, LimitType));
+        }
 
         // Needed for Visual basic dynamic support
         public override DynamicMetaObject BindInvokeMember(InvokeMemberBinder binder, DynamicMetaObject[] args)

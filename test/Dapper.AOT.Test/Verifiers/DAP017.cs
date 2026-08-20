@@ -10,6 +10,7 @@ public class DAP017 : Verifier<DapperAnalyzer>
     [Fact]
     public Task NonPublicType() => CSVerifyAsync("""
         using Dapper;
+        using System.Collections.Generic;
         using System.Data.Common;
 
         internal class NestedInternal
@@ -25,6 +26,10 @@ public class DAP017 : Verifier<DapperAnalyzer>
                 void ArgsF(DbConnection conn, NestedInternal.InnerProtected args) => conn.Execute("somesql", {|#2:args|});
                 void ArgsG(DbConnection conn, NestedInternal.InnerProtectedInternal args) => conn.Execute("somesql", args);
                 void ArgsH(DbConnection conn, NestedInternal.InnerPrivateProtected args) => conn.Execute("somesql", {|#3:args|});
+                void ArgsI(DbConnection conn, List<NestedInternal.InnerPrivate> args) => conn.Execute("somesql", {|#8:args|});
+                void ArgsJ(DbConnection conn, List<OuterPublic> args) => conn.Execute("somesql", args);
+                void ArgsK(DbConnection conn, List<List<NestedInternal.InnerPrivate>> args) => conn.Execute("somesql", {|#9:args|});
+                void ArgsL(DbConnection conn, NestedInternal.InnerPrivate[] args) => conn.Execute("somesql", {|#10:args|});
 
                 void QueryA(DbConnection conn) => _ = conn.Query<OuterPublic>("somesql");
                 void QueryB(DbConnection conn) => _ = conn.Query<OuterInternal>("somesql");
@@ -34,6 +39,7 @@ public class DAP017 : Verifier<DapperAnalyzer>
                 void QueryF(DbConnection conn) => _ = conn.{|#6:Query<InnerProtected>|}("somesql");
                 void QueryG(DbConnection conn) => _ = conn.Query<InnerProtectedInternal>("somesql");
                 void QueryH(DbConnection conn) => _ = conn.{|#7:Query<InnerPrivateProtected>|}("somesql");
+                void QueryI(DbConnection conn) => _ = conn.{|#11:Query<InnerPrivateStruct?>|}("somesql");
 
             }
             [DapperAot(false)]
@@ -47,6 +53,10 @@ public class DAP017 : Verifier<DapperAnalyzer>
                 void ArgsF(DbConnection conn, NestedInternal.InnerProtected args) => conn.Execute("somesql", args);
                 void ArgsG(DbConnection conn, NestedInternal.InnerProtectedInternal args) => conn.Execute("somesql", args);
                 void ArgsH(DbConnection conn, NestedInternal.InnerPrivateProtected args) => conn.Execute("somesql", args);
+                void ArgsI(DbConnection conn, List<NestedInternal.InnerPrivate> args) => conn.Execute("somesql", args);
+                void ArgsJ(DbConnection conn, List<OuterPublic> args) => conn.Execute("somesql", args);
+                void ArgsK(DbConnection conn, List<List<NestedInternal.InnerPrivate>> args) => conn.Execute("somesql", args);
+                void ArgsL(DbConnection conn, NestedInternal.InnerPrivate[] args) => conn.Execute("somesql", args);
 
                 void QueryA(DbConnection conn) => _ = conn.Query<OuterPublic>("somesql");
                 void QueryB(DbConnection conn) => _ = conn.Query<OuterInternal>("somesql");
@@ -56,6 +66,7 @@ public class DAP017 : Verifier<DapperAnalyzer>
                 void QueryF(DbConnection conn) => _ = conn.Query<InnerProtected>("somesql");
                 void QueryG(DbConnection conn) => _ = conn.Query<InnerProtectedInternal>("somesql");
                 void QueryH(DbConnection conn) => _ = conn.Query<InnerPrivateProtected>("somesql");
+                void QueryI(DbConnection conn) => _ = conn.Query<InnerPrivateStruct?>("somesql");
             }
             public class InnerPublic { public int Id {get;set;} }
             protected class InnerProtected {}
@@ -65,6 +76,7 @@ public class DAP017 : Verifier<DapperAnalyzer>
             {
                 public class InnerInnerPublic {}
             }
+            private struct InnerPrivateStruct { public int Id {get;set;} }
         }
 
         public class OuterPublic { public int Id {get;set;} }
@@ -78,5 +90,28 @@ public class DAP017 : Verifier<DapperAnalyzer>
             Diagnostic(Diagnostics.NonPublicType).WithLocation(5).WithArguments("NestedInternal.InnerPrivate", "private"),
             Diagnostic(Diagnostics.NonPublicType).WithLocation(6).WithArguments("NestedInternal.InnerProtected", "protected"),
             Diagnostic(Diagnostics.NonPublicType).WithLocation(7).WithArguments("NestedInternal.InnerPrivateProtected", "private protected"),
+            Diagnostic(Diagnostics.NonPublicType).WithLocation(8).WithArguments("NestedInternal.InnerPrivate", "private"),
+            Diagnostic(Diagnostics.NonPublicType).WithLocation(9).WithArguments("NestedInternal.InnerPrivate", "private"),
+            Diagnostic(Diagnostics.NonPublicType).WithLocation(10).WithArguments("NestedInternal.InnerPrivate", "private"),
+            Diagnostic(Diagnostics.NonPublicType).WithLocation(11).WithArguments("NestedInternal.InnerPrivateStruct", "private"),
+    ]);
+
+    [Fact] // member types are named in generated code (e.g. the anonymous-type shape witness)
+    public Task NonPublicMemberType() => CSVerifyAsync("""
+        using Dapper;
+        using System.Data.Common;
+
+        internal class HasPrivateMember
+        {
+            [DapperAot]
+            class AotEnabled
+            {
+                void ViaAnonymous(DbConnection conn, Inner value) => conn.Execute("somesql", {|#0:new { value }|});
+                void PublicMemberIsFine(DbConnection conn, int value) => conn.Execute("somesql", new { value });
+            }
+            private class Inner { public int Id {get;set;} }
+        }
+        """, DefaultConfig, [
+            Diagnostic(Diagnostics.NonPublicType).WithLocation(0).WithArguments("HasPrivateMember.Inner", "private"),
     ]);
 }

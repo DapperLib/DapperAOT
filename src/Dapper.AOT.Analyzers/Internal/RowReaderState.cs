@@ -1,30 +1,30 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Dapper.CodeAnalysis.Model;
+using Dapper.CodeAnalysis;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 
 namespace Dapper.Internal;
 
-internal readonly struct RowReaderState : IEnumerable<(ITypeSymbol Type, OperationFlags Flags, ImmutableArray<string> QueryColumns, int Index)>
+internal readonly struct RowReaderState : IEnumerable<(RowPlan Plan, OperationFlags Flags, int Index)>
 {
     public RowReaderState() { }
-    private readonly Dictionary<(ITypeSymbol Type, OperationFlags Flags, ImmutableArray<string> QueryColumns), int> resultTypes = new (KeyComparer.Instance);
+    private readonly Dictionary<(RowPlan Plan, OperationFlags Flags), int> resultTypes = new(KeyComparer.Instance);
 
     public int Count() => resultTypes.Count;
 
-    public IEnumerator<(ITypeSymbol Type, OperationFlags Flags, ImmutableArray<string> QueryColumns, int Index)> GetEnumerator()
+    public IEnumerator<(RowPlan Plan, OperationFlags Flags, int Index)> GetEnumerator()
     {
         // retain discovery order
-        return resultTypes.OrderBy(x => x.Value).Select(x => (x.Key.Type, x.Key.Flags, x.Key.QueryColumns, x.Value)).GetEnumerator();
+        return resultTypes.OrderBy(x => x.Value).Select(x => (x.Key.Plan, x.Key.Flags, x.Value)).GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public int GetIndex(ITypeSymbol type, OperationFlags flags, ImmutableArray<string> queryColumns)
+    public int GetIndex(RowPlan plan, OperationFlags flags)
     {
         const OperationFlags SIGNIFICANT_FLAGS = OperationFlags.StrictTypes; // restrict to flags that impact the reader
-        var key = (type, flags & SIGNIFICANT_FLAGS, queryColumns);
+        var key = (plan, flags & SIGNIFICANT_FLAGS);
         if (!resultTypes.TryGetValue(key, out var index))
         {
             resultTypes.Add(key, index = resultTypes.Count);
@@ -32,15 +32,15 @@ internal readonly struct RowReaderState : IEnumerable<(ITypeSymbol Type, Operati
         return index;
     }
 
-    private sealed class KeyComparer : IEqualityComparer<(ITypeSymbol Type, OperationFlags Flags, ImmutableArray<string> QueryColumns)>
+    private sealed class KeyComparer : IEqualityComparer<(RowPlan Plan, OperationFlags Flags)>
     {
         private KeyComparer() { }
         public static readonly KeyComparer Instance = new();
 
-        bool IEqualityComparer<(ITypeSymbol Type, OperationFlags Flags, ImmutableArray<string> QueryColumns)>.Equals((ITypeSymbol Type, OperationFlags Flags, ImmutableArray<string> QueryColumns) x, (ITypeSymbol Type, OperationFlags Flags, ImmutableArray<string> QueryColumns) y)
-            => SymbolEqualityComparer.Default.Equals(x.Type, y.Type) && x.Flags == y.Flags && AdditionalCommandState.Equals(x.QueryColumns, y.QueryColumns);
+        bool IEqualityComparer<(RowPlan Plan, OperationFlags Flags)>.Equals((RowPlan Plan, OperationFlags Flags) x, (RowPlan Plan, OperationFlags Flags) y)
+            => x.Plan.Equals(y.Plan) && x.Flags == y.Flags;
 
-        int IEqualityComparer<(ITypeSymbol Type, OperationFlags Flags, ImmutableArray<string> QueryColumns)>.GetHashCode((ITypeSymbol Type, OperationFlags Flags, ImmutableArray<string> QueryColumns) obj)
-            => SymbolEqualityComparer.Default.GetHashCode(obj.Type) ^ (int)obj.Flags ^ AdditionalCommandState.GetHashCode(obj.QueryColumns);
+        int IEqualityComparer<(RowPlan Plan, OperationFlags Flags)>.GetHashCode((RowPlan Plan, OperationFlags Flags) obj)
+            => obj.Plan.GetHashCode() ^ (int)obj.Flags;
     }
 }

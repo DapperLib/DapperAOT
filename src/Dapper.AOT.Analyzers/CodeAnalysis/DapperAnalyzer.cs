@@ -1,4 +1,5 @@
 ﻿using Dapper.Internal;
+using Dapper.CodeAnalysis.Model;
 using Dapper.Internal.Roslyn;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
@@ -273,7 +274,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             
             ValidateParameters(parameters, flags, onDiagnostic);
 
-            var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags);
+            var args = SharedGetParametersToInclude(parameters, ref flags, sql, onDiagnostic, out var parseFlags, includeLiteralTokens: true);
 
             ValidateSql(ctx, sqlSource, GetModeFlags(flags), SqlParameters.From(args), location);
 
@@ -655,7 +656,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 if (InvolvesGenericTypeParameter(resultType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, callLocation, resultType!.ToDisplayString()));
+                    ReportGenericTypeParameter(reportDiagnostic, resultType!, callLocation);
                 }
                 else if (resultTuple)
                 {
@@ -674,6 +675,16 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, callLocation, failing!.ToDisplayString(), NameAccessibility(failing)));
                 }
             }
+        }
+
+        if (!flags.HasAny(OperationFlags.DoNotGenerate)
+            && flags.HasAny(OperationFlags.Query | OperationFlags.GetRowParser)
+            && IsUnconstructableResultType(resultType, ctx.SemanticModel.Compilation.Assembly))
+        {
+            // the emitted row factory could not create the instance (this is what vanilla Dapper
+            // handles via runtime type-handlers etc); leave the call-site alone
+            flags |= OperationFlags.DoNotGenerate;
+            reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UnconstructableResultType, callLocation, resultType!.ToDisplayString()));
         }
 
         if (flags.HasAny(OperationFlags.Query) && (IsEnabled(ctx, op, Types.StrictTypesAttribute, out _)))
@@ -725,17 +736,63 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 else if (InvolvesGenericTypeParameter(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
-                    reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.GenericTypeParameter, argLocation, paramType!.ToDisplayString()));
+                    ReportGenericTypeParameter(reportDiagnostic, paramType!, argLocation);
                 }
-                else if (IsMissingOrObjectOrDynamic(paramType) || IsDynamicParameters(paramType, out _))
+                else if (IsMissingOrObjectOrDynamic(paramType))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.UntypedParameter, argLocation));
+                }
+                else if (IsDynamicParameters(paramType, out _))
+                {
+                    if (!HasIdentityFreeAddParameters(paramType))
+                    {
+                        // no way to invoke the bag protocol externally on this Dapper version;
+                        // leave the call-site on vanilla Dapper, saying exactly what is missing
+                        // (never emit code that cannot compile against the referenced Dapper)
+                        flags |= OperationFlags.DoNotGenerate;
+                        reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.FeatureNeedsNewerDapper, argLocation,
+                            "DynamicParameters", "DynamicParameters.AddParameters(IDbCommand)"));
+                    }
+                    // else: supported - the generated factory delegates to the bag itself
                 }
                 else if (!IsPublicOrAssemblyLocal(paramType, ctx, out var failing))
                 {
                     flags |= OperationFlags.DoNotGenerate;
                     reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, argLocation, failing!.ToDisplayString(), NameAccessibility(failing)));
+                }
+                else if (Inspection.IsCollectionType(paramType, out _)
+                    && !(flags.HasAny(OperationFlags.Execute) && !flags.HasAny(OperationFlags.Scalar)))
+                {
+                    // enumerable parameters mean multi-exec, which is only valid for Execute;
+                    // vanilla Dapper throws for the rest ("An enumerable sequence of parameters ...
+                    // is not allowed in this context"), so: leave the call-site alone rather than
+                    // generating a command over the collection's own members
+                    flags |= OperationFlags.DoNotGenerate;
+                }
+
+                if (!flags.HasAny(OperationFlags.DoNotGenerate))
+                {
+                    // the *member* types get named in the generated code too (for example in the
+                    // anonymous-type shape witness), so they need the same checks as the parameter
+                    // type itself; note for multi-exec the members come from the element type
+                    var memberHost = IsCollectionType(paramType, out var elementType) ? elementType : paramType;
+                    foreach (var member in GetMembers(forParameters: true, memberHost, null, null))
+                    {
+                        if (member.CodeType is not { } memberType) continue;
+                        if (InvolvesGenericTypeParameter(memberType))
+                        {
+                            flags |= OperationFlags.DoNotGenerate;
+                            ReportGenericTypeParameter(reportDiagnostic, memberType, argLocation);
+                            break;
+                        }
+                        if (!IsPublicOrAssemblyLocal(memberType, ctx, out var failingMember))
+                        {
+                            flags |= OperationFlags.DoNotGenerate;
+                            reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.NonPublicType, argLocation, failingMember!.ToDisplayString(), NameAccessibility(failingMember)));
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -840,10 +897,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        ImmutableArray<CommandProperty> cmdProps;
+        EquatableArray<CommandProperty> cmdProps = default;
         if (cmdPropsCount != 0)
         {
-            var builder = ImmutableArray.CreateBuilder<CommandProperty>(cmdPropsCount);
+            var builder = new List<CommandProperty>(cmdPropsCount);
             foreach (var attrib in methodAttribs)
             {
                 if (IsDapperAttribute(attrib) && attrib.AttributeClass!.Name == Types.CommandPropertyAttribute
@@ -853,19 +910,30 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     && attrib.ConstructorArguments[0].Value is string name
                     && attrib.ConstructorArguments[1].Value is object value)
                 {
-                    builder.Add(new(cmdType, name, value, location));
+                    builder.Add(CommandProperty.Create(cmdType, name, value, location));
                 }
             }
-            cmdProps = builder.ToImmutable();
+            cmdProps = new(builder.ToArray());
+        }
+
+        var queryColumnsModel = queryColumns.IsDefault ? default : new EquatableArray<string>(queryColumns.AsSpan().ToArray());
+        return cmdProps.IsEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && queryColumnsModel.IsDefault
+            ? null : new(rowCountHint, rowCountHintMember?.Member?.Name, batchSize, cmdProps, queryColumnsModel);
+    }
+
+    static void ReportGenericTypeParameter(Action<Diagnostic>? reportDiagnostic, ITypeSymbol type, Location? location)
+    {
+        if (reportDiagnostic is null) return;
+        if (IsGenericByContainmentOnly(type, out var container))
+        {
+            // the common accidental shape, with a concrete fix: move the type out
+            reportDiagnostic(Diagnostic.Create(Diagnostics.NestedInGenericType, location,
+                type.ToDisplayString(), container!.ToDisplayString()));
         }
         else
         {
-            cmdProps = ImmutableArray<CommandProperty>.Empty;
+            reportDiagnostic(Diagnostic.Create(Diagnostics.GenericTypeParameter, location, type.ToDisplayString()));
         }
-
-
-        return cmdProps.IsDefaultOrEmpty && rowCountHint <= 0 && rowCountHintMember is null && batchSize is null && queryColumns.IsDefault
-            ? null : new(rowCountHint, rowCountHintMember?.Member?.Name, batchSize, cmdProps, queryColumns);
     }
 
     static void ValidateParameters(MemberMap? parameters, OperationFlags flags, Action<Diagnostic> onDiagnostic)
@@ -991,7 +1059,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, ref OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags)
+    internal static ImmutableArray<ElementMember>? SharedGetParametersToInclude(MemberMap? map, ref OperationFlags flags, string? sql, Action<Diagnostic>? reportDiagnostic, out SqlParseOutputFlags parseFlags, bool includeLiteralTokens = false)
     {
         SortedDictionary<string, ElementMember>? byDbName = null;
         var filter = ImmutableHashSet<string>.Empty;
@@ -999,7 +1067,10 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (flags.HasAny(OperationFlags.StoredProcedure | OperationFlags.TableDirect))
         {
             parseFlags = flags.HasAny(OperationFlags.StoredProcedure) ? SqlParseOutputFlags.MaybeQuery : SqlParseOutputFlags.Query;
-            mode = ParameterMode.All;
+            // a DynamicParameters-style bag supplies its own parameters at execution: defer,
+            // exactly as for command-text (otherwise the map ends up empty and the call-site
+            // gets the parameterless fallback factory)
+            mode = IsDynamicParameters(map?.DeclaredType, out _) ? ParameterMode.Defer : ParameterMode.All;
         }
         else
         {
@@ -1015,7 +1086,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             else
             {
                 mode = ParameterMode.Filter;
-                filter = SqlTools.GetUniqueParameters(sql);
+                filter = SqlTools.GetUniqueParameters(sql, includeLiteralTokens);
             }
         }
         if (!flags.HasAny(OperationFlags.HasParameters))
@@ -1115,7 +1186,8 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         if (byDbName is null)
         {
             // nothing found
-            if (flags.HasAll(OperationFlags.HasParameters | OperationFlags.Text))
+            if (flags.HasAll(OperationFlags.HasParameters | OperationFlags.Text)
+                && SuppliesSqlParameters(map))
             {
                 // has args, and is command-text
                 reportDiagnostic?.Invoke(Diagnostic.Create(Diagnostics.SqlParametersNotDetected, map?.Location));
@@ -1148,4 +1220,13 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         return builder.ToImmutable();
 
     }
+
+    // members such as cancellation tokens and row-counts are consumed by Dapper itself and are
+    // never sent as SQL parameters; only report "no parameters detected" when the args include
+    // at least one member that would actually bind (unknown/dynamic bags: assume they would)
+    static bool SuppliesSqlParameters(MemberMap? map)
+        => map is null
+        || map.IsUnknownParameters
+        || map.Members.IsDefaultOrEmpty
+        || map.Members.Any(static member => member.Kind == ElementMemberKind.None);
 }

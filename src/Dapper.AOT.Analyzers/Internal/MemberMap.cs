@@ -1,4 +1,5 @@
-﻿using Dapper.CodeAnalysis;
+﻿using Dapper.CodeAnalysis.Model;
+using Dapper.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Immutable;
@@ -85,7 +86,7 @@ internal sealed class MemberMap
         Members = GetMembers(forParameters, ElementType, Constructor, FactoryMethod);
     }
 
-    public ImmutableArray<ElementMember> MapQueryColumns(ImmutableArray<string> queryColumns)
+    public ImmutableArray<ElementMember> MapQueryColumns(in EquatableArray<string> queryColumns)
     {
         if (queryColumns.IsDefault) return Members; // not bound
 

@@ -19,7 +19,7 @@ public class DAP035 : Verifier<DapperAnalyzer>
             {
                 _ = conn.Query<NoConstructors>("storedproc");
                 _ = conn.Query<SingleExplicit>("storedproc");
-                _ = conn.Query<MultipleExplicit>("storedproc");
+                _ = conn.{|#1:Query<MultipleExplicit>|}("storedproc");
             }
         }
         class NoConstructors { public int Id {get;set;} }
@@ -40,6 +40,7 @@ public class DAP035 : Verifier<DapperAnalyzer>
         }
         """, DefaultConfig, [
             Diagnostic(Diagnostics.ConstructorMultipleExplicit).WithLocation(0).WithArguments("MultipleExplicit"),
+            Diagnostic(Diagnostics.UnconstructableResultType).WithLocation(1).WithArguments("MultipleExplicit"),
     ]);
 
 }

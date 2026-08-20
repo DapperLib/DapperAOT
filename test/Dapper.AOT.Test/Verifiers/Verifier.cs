@@ -1,4 +1,4 @@
-using Dapper.CodeAnalysis;
+﻿using Dapper.CodeAnalysis;
 using Dapper.SqlAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.VisualBasic;
 using Microsoft.CodeAnalysis.VisualBasic.Testing;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -33,11 +34,11 @@ public abstract class Verifier(ITestOutputHelper? log)
     internal Task CSVerifyAsync<TAnalyzer>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         DiagnosticResult[] expected, SqlSyntax sqlSyntax, SqlParseInputFlags sqlParseInputFlags = SqlParseInputFlags.None, bool refDapperAot = true,
-        string[]? additionalSources = null)
+        string? pinDapperPackageVersion = null, string[]? additionalSources = null)
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
         var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>();
-        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot, additionalSources);
+        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot, pinDapperPackageVersion, additionalSources);
     }
     internal Task CSVerifyAsync<TAnalyzer, TCodeFix>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
@@ -70,7 +71,7 @@ public abstract class Verifier(ITestOutputHelper? log)
     internal Task ExecuteAsync(AnalyzerTest<DefaultVerifier> test, string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         DiagnosticResult[] expected, SqlSyntax sqlSyntax, SqlParseInputFlags sqlParseInputFlags, bool refDapperAot,
-        string[]? additionalSources = null)
+        string? pinDapperPackageVersion = null, string[]? additionalSources = null)
     {
         test.TestCode = source;
         if (additionalSources is not null)
@@ -104,7 +105,18 @@ public abstract class Verifier(ITestOutputHelper? log)
         {
             test.TestState.AnalyzerConfigFiles.Add(("/.globalconfig", CreateEditorConfig(sqlSyntax, sqlParseInputFlags)));
         }
-        test.TestState.AdditionalReferences.Add(typeof(SqlMapper).Assembly);
+        if (pinDapperPackageVersion is null)
+        {
+            test.TestState.AdditionalReferences.Add(typeof(SqlMapper).Assembly);
+        }
+        else
+        {
+            // reference a specific shipped Dapper *package* instead of the live assembly;
+            // this is how feature-detection (DAP052) stays testable after the project-wide
+            // Dapper reference gains the API being probed for
+            test.ReferenceAssemblies = test.ReferenceAssemblies.AddPackages(
+                [new PackageIdentity("Dapper", pinDapperPackageVersion)]);
+        }
         if (refDapperAot)
         {
             test.TestState.AdditionalReferences.Add(typeof(DapperAotAttribute).Assembly);
@@ -209,8 +221,8 @@ public class Verifier<TAnalyzer>(ITestOutputHelper? log = null) : Verifier(log) 
     internal Task CSVerifyAsync(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
         DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer, SqlParseInputFlags sqlParseInputFlags = SqlParseInputFlags.None, bool refDapperAot = true,
-        string[]? additionalSources = null)
-        => base.CSVerifyAsync<TAnalyzer>(source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot, additionalSources);
+        string? pinDapperPackageVersion = null, string[]? additionalSources = null)
+        => base.CSVerifyAsync<TAnalyzer>(source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot, pinDapperPackageVersion, additionalSources);
 
     new internal Task CSVerifyAsync<TCodeFix>(string source,
         Func<Solution, ProjectId, Solution>[] transforms,
