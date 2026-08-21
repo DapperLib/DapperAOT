@@ -284,6 +284,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             hasVanillaTypeHandlers: compilation.GetTypeByMetadataName("Dapper.SqlMapper") is { } sqlMapper
                 && !sqlMapper.GetMembers("HasTypeHandler").IsEmpty
                 && !sqlMapper.GetMembers("LookupDbType").IsEmpty,
+            hasPreferTypeHandlersForEnums: compilation.GetTypeByMetadataName("Dapper.SqlMapper+Settings") is { } settings
+                && !settings.GetMembers("PreferTypeHandlersForEnums").IsEmpty,
             needsCommandPrep: needsCommandPrep,
             baseCommandFactoryName: baseFactory,
             baseFactoryCanConstruct: canConstruct,
@@ -1363,7 +1365,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                           .Append("#pragma warning restore CS0618").NewLine();
                         break;
                     }
-                    if (!member.HasDbType && !member.IsDbString && member.TypeOfName != "object" && member.TypeOfName != "char")
+                    if (!member.HasDbType && !member.IsDbString && member.TypeOfName != "object" && member.TypeOfName != "char"
+                        && (!member.IsEnum || ctx.Environment.HasPreferTypeHandlersForEnums))
                     {
                         // an unrecognized member type: defer to vanilla's own decision procedure at
                         // execution time - runtime type-handlers (SqlMapper.AddTypeHandler), the
@@ -1373,11 +1376,27 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         // (DateOnly, until Dapper ships the re-enable) - revisit for message parity
                         flags &= ~WriteArgsFlags.CanPrepare;
                         var suffix = member.CodeName;
-                        sb.Append("#pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage").NewLine()
-                          .Append("var dbType").Append(suffix).Append(" = global::Dapper.SqlMapper.LookupDbType(typeof(")
-                          .Append(member.TypeOfName).Append("), ").AppendVerbatimLiteral(member.DbName)
-                          .Append(", false, out var typeHandler").Append(suffix).Append(");").NewLine()
-                          .Append("#pragma warning restore CS0618").NewLine();
+                        if (member.IsEnum)
+                        {
+                            // enum handlers only apply under Settings.PreferTypeHandlersForEnums
+                            // (vanilla checks the same); gating on the static bool means enum
+                            // parameters pay no lookup unless the feature is actually in use
+                            sb.Append("global::Dapper.SqlMapper.ITypeHandler? typeHandler").Append(suffix).Append(" = null;").NewLine()
+                              .Append("if (global::Dapper.SqlMapper.Settings.PreferTypeHandlersForEnums)").Indent().NewLine()
+                              .Append("#pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage").NewLine()
+                              .Append("_ = global::Dapper.SqlMapper.LookupDbType(typeof(")
+                              .Append(member.TypeOfName).Append("), ").AppendVerbatimLiteral(member.DbName)
+                              .Append(", false, out typeHandler").Append(suffix).Append(");").NewLine()
+                              .Append("#pragma warning restore CS0618").Outdent().NewLine();
+                        }
+                        else
+                        {
+                            sb.Append("#pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage").NewLine()
+                              .Append("var dbType").Append(suffix).Append(" = global::Dapper.SqlMapper.LookupDbType(typeof(")
+                              .Append(member.TypeOfName).Append("), ").AppendVerbatimLiteral(member.DbName)
+                              .Append(", false, out var typeHandler").Append(suffix).Append(");").NewLine()
+                              .Append("#pragma warning restore CS0618").NewLine();
+                        }
                         sb.Append("p = cmd.CreateParameter();").NewLine();
                         sb.Append("p.ParameterName = ").AppendVerbatimLiteral(member.DbName).Append(";").NewLine();
                         AppendDbParameterSetting(sb, "Size", member.EffectiveSize);
@@ -1394,8 +1413,11 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         sb.Append("if (typeHandler").Append(suffix).Append(" is not null)").Indent().NewLine()
                           .Append("typeHandler").Append(suffix).Append(".SetValue(p, (object?)")
                           .Append(source).Append(".").Append(member.CodeName).Append(" ?? global::System.DBNull.Value);").Outdent().NewLine()
-                          .Append("else").Indent().NewLine()
-                          .Append("if (dbType").Append(suffix).Append(" is not null) p.DbType = dbType").Append(suffix).Append(".GetValueOrDefault();").NewLine();
+                          .Append("else").Indent().NewLine();
+                        if (!member.IsEnum)
+                        {
+                            sb.Append("if (dbType").Append(suffix).Append(" is not null) p.DbType = dbType").Append(suffix).Append(".GetValueOrDefault();").NewLine();
+                        }
                         switch (direction)
                         {
                             case ParameterDirection.Input:
@@ -1503,16 +1525,30 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         break;
                     }
 
-                    if (!member.HasDbType && !member.IsDbString && member.TypeOfName != "object" && member.TypeOfName != "char")
+                    if (!member.HasDbType && !member.IsDbString && member.TypeOfName != "object" && member.TypeOfName != "char"
+                        && (!member.IsEnum || ctx.Environment.HasPreferTypeHandlersForEnums))
                     {
                         // mirror the Add-mode runtime dispatch; the parameter shape is stable
                         // (always exactly one), so command reuse stays legal
-                        sb.Append("#pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage").NewLine()
-                          .Append("_ = global::Dapper.SqlMapper.LookupDbType(typeof(").Append(member.TypeOfName)
-                          .Append("), ").AppendVerbatimLiteral(member.DbName)
-                          .Append(", false, out var typeHandler").Append(member.CodeName).Append(");").NewLine()
-                          .Append("#pragma warning restore CS0618").NewLine()
-                          .Append("if (typeHandler").Append(member.CodeName).Append(" is not null)").Indent().NewLine()
+                        if (member.IsEnum)
+                        {
+                            sb.Append("global::Dapper.SqlMapper.ITypeHandler? typeHandler").Append(member.CodeName).Append(" = null;").NewLine()
+                              .Append("if (global::Dapper.SqlMapper.Settings.PreferTypeHandlersForEnums)").Indent().NewLine()
+                              .Append("#pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage").NewLine()
+                              .Append("_ = global::Dapper.SqlMapper.LookupDbType(typeof(").Append(member.TypeOfName)
+                              .Append("), ").AppendVerbatimLiteral(member.DbName)
+                              .Append(", false, out typeHandler").Append(member.CodeName).Append(");").NewLine()
+                              .Append("#pragma warning restore CS0618").Outdent().NewLine();
+                        }
+                        else
+                        {
+                            sb.Append("#pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage").NewLine()
+                              .Append("_ = global::Dapper.SqlMapper.LookupDbType(typeof(").Append(member.TypeOfName)
+                              .Append("), ").AppendVerbatimLiteral(member.DbName)
+                              .Append(", false, out var typeHandler").Append(member.CodeName).Append(");").NewLine()
+                              .Append("#pragma warning restore CS0618").NewLine();
+                        }
+                        sb.Append("if (typeHandler").Append(member.CodeName).Append(" is not null)").Indent().NewLine()
                           .Append("typeHandler").Append(member.CodeName).Append(".SetValue(ps[");
                         if ((flags & WriteArgsFlags.NeedsTest) != 0) sb.AppendVerbatimLiteral(member.DbName);
                         else sb.Append(parameterIndex);

@@ -96,3 +96,34 @@ and works with every shipped Dapper.
   harness build had silently failed (generated `typeof` on an annotated reference type is
   CS8639, on `dynamic` CS1962 - hence `ParamMember.TypeOfName`, mirroring `RowMember`'s)
   and `--no-build` ran stale binaries. Check the exit code, not the presence of output.
+
+## Direction (agreed 2026-08-21): declarative config attributes as the primary spelling
+
+A static `Dapper.SomeConfigCall(...)` becomes `[module: SomeDapperConfig(...)]` - and that
+is *better scoped*, not merely equivalent: per-assembly instead of process-global mutable
+state, deterministic (no startup-ordering races), reviewable in the diff, and
+compile-time-visible so the generator bakes it at zero runtime cost. The protobuf-net
+precedent carries over whole, including the cross-assembly hand-off: the generator gathers
+assembly-level declarations from *references*, so a package can ship handlers for the
+types it owns (the [ProtoSurrogate] pattern, probed and shipped there).
+
+The config-call surface mapped onto attributes:
+
+| runtime call | declarative spelling |
+| --- | --- |
+| `SqlMapper.AddTypeHandler(typeof(T), h)` | `[module: TypeHandler<T, THandler>]` - already ships (dormant); generator wires it, announced handlers *elide* the runtime dispatch for that type |
+| `SqlMapper.AddTypeMap(type, dbType)` | `[module: TypeMap(typeof(string), DbType.AnsiString)]` (new) - also answers the deferred AnsiString pair with zero per-parameter cost |
+| `Settings.*` globals (CommandTimeout, list-expansion knobs...) | `[module: DapperSettings(...)]`-style (new); several parity rows already wanted "a compile-time global" |
+| `DefaultTypeMap.MatchNamesWithUnderscores` | same treatment (parity row already asks for it) |
+| `SetTypeMap` / `CustomPropertyTypeMap` | stays 🚫; `[Column]` + `[UseColumnAttribute]` is the spelling |
+
+Layering (unchanged from the PR, sharpened by the discussion):
+
+1. tier 1 (PR #206) stays: runtime registrations keep working, and after the enum gate the
+   cost is confined to the people using the feature;
+2. tier 2 attributes become the *recommended* spelling, statically dispatched; the
+   migration story is tooling, not docs alone - an analyzer that spots
+   `SqlMapper.AddTypeHandler(...)` in a [DapperAot] compilation and offers the attribute
+   as a code fix (the AotMigrationAnalyzer pattern from protobuf-net);
+3. a strict switch turns the runtime bridge off entirely (closed world, trimmable) for
+   consumers who want the full protobuf-net posture.
