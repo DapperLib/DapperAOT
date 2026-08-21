@@ -199,6 +199,30 @@ list expansion, TVPs, custom params), TypeHandlerTests ×16 (type-handler story)
 ×16 (coercions + tokens), Async/Literal (literals), plus the First-pipeline drain pair and
 the small tail. Nothing unexplained.
 
+## Round 12: checkpoint - everything landed, clean-main baseline 677/793
+
+All of rounds 7-11 is merged (#195-#201, #203, plus externals #178 and #191), and the
+Dapper side too (#2225 DynamicParameters overload with interface dispatch; #2228
+re-enabling DateOnly/TimeOnly with the #2072-family root causes fixed). This baseline is
+measured from *unmodified main* on both repos - no stacked measurement branch - which is
+the first time that has been true since the phase-3 work began.
+
+**677 passed / 92 failed, suite ~18s.** Remaining failure classes, which are the feature
+backlog in priority order by weight: TypeHandler x16/provider (external PRs #162 and #117
+exist as prior art; also owns the bare-DataTable pair in ParameterTests), Misc x10
+(privates/fields - the parked UnsafeAccessor investigation - inheritance, Int16/Int32
+coercions, nullable char in/out, unexpected-data message parity, multi-exec object[]),
+Literal x5 + async x3 (the #191 analyzer half is merged; the *generator* literal support
+is what remains), ParameterTests x5 (DataTable pair -> type-handler story, SqlDecimal
+read-side, legacy `?` token, ISupportInitialize), Constructor x2, singles (Xml,
+Transaction, enum-handler-preference, Decimal, DataReader).
+
+Parked items unchanged: modern interceptor syntax (soft-target rule), announced types
+(DAP015 x30 object-typed), multi-map / GridReader / ExecuteReader API gaps, the "has no
+meaning" APIs warning. When a Dapper release ships #2225/#2228: bump both Dapper and
+Dapper.StrongName, add the DAP052 positive twin and defer-emit golden (the down-level
+verifier is already pinned to 2.1.72 and survives the bump).
+
 ## Round 11: dynamic-record fidelity (PR #200) - 672/793
 
 `DynamicRecord` diverged from vanilla's `DapperRow` three ways, all caught by the suite
@@ -297,7 +321,7 @@ confirmed bugs and a 10x.
 
 | leg | possible (honest) | handled | compiles | tests green | AOT publish |
 | --- | --- | --- | --- | --- | --- |
-| net10.0 | 725 honest | 533 (73.5%) | ✅ | 672/793 (92 fail; suite runs in ~18s) | — |
+| net10.0 | 725 honest | 533 (73.5%) | ✅ | 677/793 (92 fail; suite ~18s; clean main) | — |
 | net8.0 | > 387 | 387 claimed | ✅ | — | — |
 | net481 | > 405 | 405 claimed | ✅ (needs PR #184) | — | — |
 
