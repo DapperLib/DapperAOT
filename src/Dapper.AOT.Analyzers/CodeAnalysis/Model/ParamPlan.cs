@@ -163,11 +163,13 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
     public byte? Scale { get; }
     public string TypeName { get; } // emitted (Append) form, for Parse<T> in post-process
     public string TypeOfName { get; } // for typeof(...): dynamic becomes object, annotations stripped
+    public bool IsEnum { get; } // including Nullable<TEnum>
 
     private ParamMember(bool isMapped, bool isCancellation, bool isRowCount, string codeName, string dbName,
         ParameterDirection direction, bool isDbString, bool isExpandable, bool isCustom, bool isValueType,
         bool hasDbType, string? dbTypeName, int? effectiveSize,
-        bool useSetValueWithDefaultSize, byte? precision, byte? scale, string typeName, string typeOfName)
+        bool useSetValueWithDefaultSize, byte? precision, byte? scale, string typeName, string typeOfName,
+        bool isEnum)
     {
         IsMapped = isMapped;
         IsCancellation = isCancellation;
@@ -187,13 +189,14 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
         Scale = scale;
         TypeName = typeName;
         TypeOfName = typeOfName;
+        IsEnum = isEnum;
     }
 
     public static ParamMember Create(in ElementMember member)
     {
         if (!member.IsMapped)
         {
-            return new(false, false, false, "", "", default, false, false, false, false, false, null, null, false, null, null, "", "");
+            return new(false, false, false, "", "", default, false, false, false, false, false, null, null, false, null, null, "", "", false);
         }
         var dbType = member.GetDbType(out _);
         var size = member.TryGetValue<int>("Size");
@@ -223,7 +226,8 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
             member.TryGetValue<byte>("Precision"), member.TryGetValue<byte>("Scale"),
             CodeWriter.GetAppendTypeName(member.CodeType!),
             member.CodeType!.TypeKind == TypeKind.Dynamic ? "object"
-                : CodeWriter.GetAppendTypeName(MakeNonNullable(member.CodeType!)));
+                : CodeWriter.GetAppendTypeName(MakeNonNullable(member.CodeType!)),
+            MakeNonNullable(member.CodeType!).TypeKind == TypeKind.Enum);
     }
 
     public bool Equals(ParamMember other) => IsMapped == other.IsMapped
@@ -243,7 +247,8 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
         && Precision == other.Precision
         && Scale == other.Scale
         && string.Equals(TypeName, other.TypeName, StringComparison.Ordinal)
-        && string.Equals(TypeOfName, other.TypeOfName, StringComparison.Ordinal);
+        && string.Equals(TypeOfName, other.TypeOfName, StringComparison.Ordinal)
+        && IsEnum == other.IsEnum;
 
     public override bool Equals(object? obj) => obj is ParamMember other && Equals(other);
     public override int GetHashCode() => IsMapped ? StringComparer.Ordinal.GetHashCode(CodeName) : 0;
