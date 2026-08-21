@@ -199,6 +199,22 @@ list expansion, TVPs, custom params), TypeHandlerTests ×16 (type-handler story)
 ×16 (coercions + tokens), Async/Literal (literals), plus the First-pipeline drain pair and
 the small tail. Nothing unexplained.
 
+## Round 13: type handlers (PR #206) - 705/793
+
+Runtime `SqlMapper.AddTypeHandler` registrations honored end-to-end by deferring to
+vanilla's `LookupDbType` at execution time (writes) and a generated-code bridge into the
+AOT readers (reads - the lib cannot reference Dapper without splitting the registry
+against StrongName consumers). The whole runtime-handler family cleared, plus the
+bare-DataTable TVP pair and Xml types for free (vanilla registers those handlers by
+default). Full account: [typehandlers-design.md](typehandlers-design.md), including the
+three probed contracts (DBNull-not-null to handlers; char excluded - StringFixedLength
+pads; typeof needs TypeOfName) and the silent-harness-build-failure lesson.
+
+**705 passed / 88 failed.** Remaining: Misc x11 (privates/fields, inheritance,
+Int16/Int32 + nullable-char coercions, message parity, multi-exec object[]), Literal x5 +
+async x3, deferred-by-decision (AnsiString pair, SetTypeMap pair - see PR #206), BigInt
+coercion, Constructor x2, singles.
+
 ## Round 11: dynamic-record fidelity (PR #200) - 672/793
 
 `DynamicRecord` diverged from vanilla's `DapperRow` three ways, all caught by the suite

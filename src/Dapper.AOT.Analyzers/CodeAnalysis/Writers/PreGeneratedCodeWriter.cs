@@ -60,6 +60,16 @@ namespace Dapper.CodeAnalysis.Writers
             {
                 _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InGeneration.DapperHelpers.cs"));
             }
+
+            if (includedGenerations.HasAny(IncludedGeneration.ModuleInitializerAttribute))
+            {
+                _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InGeneration.ModuleInitializerAttribute.cs"));
+            }
+
+            if (includedGenerations.HasAny(IncludedGeneration.TypeHandlerBridge))
+            {
+                _codeWriter.NewLine().Append(Resources.ReadString("Dapper.InGeneration.TypeHandlerBridge.cs"));
+            }
         }
 
         void WriteInterceptsLocationAttribute()
