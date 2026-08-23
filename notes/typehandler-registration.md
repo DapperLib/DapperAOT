@@ -56,3 +56,10 @@ would be rewritten; the *library* half is the asset to harvest.
    present in the compilation, so it is a helper, not a guarantee - which is the argument for
    keeping #206's runtime bridge available as the safety net, behind a switch that can close the
    world.
+
+## Status
+
+All three steps are implemented and in draft PRs; see [state-of-play.md](state-of-play.md) for
+the landing order and the remaining gaps. Step 3's diagnostic is DAP053 in the draft and
+renumbers to DAP054, because #206 takes DAP053 for the `[UseRuntimeTypeHandlers]` +
+`PublishAot` warning.

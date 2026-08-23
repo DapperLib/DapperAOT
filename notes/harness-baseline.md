@@ -2,11 +2,43 @@
 
 First real numbers, 2026-08-18. Setup lives on the `aot-harness` branch of the **Dapper**
 repo (sibling checkout; deliberately **local-only, not pushed** — it is a measurement rig,
-not work-in-progress on the public repo): local package feed at `../DapperAOT/artifacts` (pack with
-`NBGV_GitEngine=Disabled dotnet pack src/Dapper.AOT/Dapper.AOT.csproj -c Release -o artifacts`,
-giving the stable harness version `1.0.0-g`; purge `~/.nuget/packages/dapper.aot/1.0.0-g`
-between repacks), `[module: DapperAot]` in `DapperAotEnable.cs`, interceptors enabled, and a
-`.globalconfig` raising DAP000 (Hidden by default) to warning.
+not work-in-progress on the public repo): local package feed at `../DapperAOT/artifacts`,
+`[module: DapperAot]` in `DapperAotEnable.cs` (plus `[module: UseRuntimeTypeHandlers]`, see
+round 14), interceptors enabled, and a `.globalconfig` raising DAP000 (Hidden by default) to
+warning.
+
+**The repack recipe, with the three things that silently produce a stale measurement:**
+
+```
+dotnet build src/Dapper.AOT/Dapper.AOT.csproj -c Release   # 1. pack does NOT build
+rm -f artifacts/Dapper.AOT.1.0.0-g.nupkg                   # 2. pack skips if the nupkg exists
+NBGV_GitEngine=Disabled dotnet pack src/Dapper.AOT/Dapper.AOT.csproj -c Release -o artifacts
+rm -rf C:/Code/NugetPackageCache/dapper.aot/1.0.0-g        # 3. NOT ~/.nuget/packages
+```
+
+1. `dotnet pack` reuses whatever is in `bin/Release`, so packing after only a Debug build ships
+   yesterday's DLLs — the symptom is the consumer failing to find a type you just added;
+2. `GenerateNuspec` is skipped when the output looks up to date, so the `.nupkg` timestamp moves
+   while its contents do not. Delete it first;
+3. this machine redirects the global packages folder to `C:\Code\NugetPackageCache`; purging
+   `~/.nuget/packages` does nothing.
+
+Cheap assertion that the loop is honest, before trusting any number:
+
+```
+python -c "import zipfile;z=zipfile.ZipFile('artifacts/Dapper.AOT.1.0.0-g.nupkg');print(any(b'YourNewType' in z.read(n) for n in z.namelist() if n.endswith('.dll')))"
+```
+
+And the lesson from round 13, which cost a whole measurement: **check the build exit code, not
+the presence of output** — `--no-build` over a failed build happily runs stale binaries.
+
+**Regenerating interceptor goldens.** `InterceptorTests` writes `.output.cs` back to source
+automatically via `[CallerFilePath]` — which does not work here, because the build is
+deterministic and that path is `C:\_\test\...`. The test then reports "Could not find a part of
+the path" and the golden is never written. Turning off `DeterministicSourcePaths` breaks the
+checked-in `SqliteUsage.snapshot.cs` instead. What works: a throwaway test class in the test
+project that calls `Execute<DapperInterceptorGenerator>` and writes the result to an absolute
+path, run once per TFM (`-f net8.0`, `-f net48`) and then deleted.
 
 Build: `dotnet build tests/Dapper.Tests/Dapper.Tests.csproj -f net10.0` (net481 and net8.0
 legs not yet measured).
