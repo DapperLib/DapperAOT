@@ -284,6 +284,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             hasVanillaTypeHandlers: compilation.GetTypeByMetadataName("Dapper.SqlMapper") is { } sqlMapper
                 && !sqlMapper.GetMembers("HasTypeHandler").IsEmpty
                 && !sqlMapper.GetMembers("LookupDbType").IsEmpty,
+            useRuntimeTypeHandlers: UseRuntimeTypeHandlers(compilation),
             hasPreferTypeHandlersForEnums: compilation.GetTypeByMetadataName("Dapper.SqlMapper+Settings") is { } settings
                 && !settings.GetMembers("PreferTypeHandlersForEnums").IsEmpty,
             needsCommandPrep: needsCommandPrep,
@@ -291,6 +292,29 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             baseFactoryCanConstruct: canConstruct,
             specialCommandTypes: special,
             systemObjectPlan: ParamPlan.Create(compilation.GetSpecialType(SpecialType.System_Object))!);
+    }
+
+    /// <summary>
+    /// Is <c>[UseRuntimeTypeHandlers]</c> declared (and not disabled) at module or assembly
+    /// scope? Off by default: runtime registrations are invisible to the generator, unverifiable
+    /// at build, and reach machinery native AOT cannot resolve.
+    /// </summary>
+    internal static bool UseRuntimeTypeHandlers(Compilation compilation)
+        => IsDeclared(compilation.SourceModule.GetAttributes()) || IsDeclared(compilation.Assembly.GetAttributes());
+
+    private static bool IsDeclared(ImmutableArray<AttributeData> attributes)
+    {
+        foreach (var attribute in attributes)
+        {
+            if (attribute.AttributeClass is { Name: Types.UseRuntimeTypeHandlersAttribute, Arity: 0 }
+                && Inspection.IsDapperAttribute(attribute))
+            {
+                // [UseRuntimeTypeHandlers(false)] is the explicit opt-out spelling
+                return attribute.ConstructorArguments.Length == 0
+                    || attribute.ConstructorArguments[0].Value is not bool enabled || enabled;
+            }
+        }
+        return false;
     }
 
     private static string? GetCommandFactory(Compilation compilation, out bool canConstruct)
@@ -595,7 +619,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         sb.Outdent().Outdent(); // ends our generated file-scoped class and the namespace
         
-        if (env.HasVanillaTypeHandlers)
+        if (env.HasVanillaTypeHandlers && env.UseRuntimeTypeHandlers)
         {
             // runtime SqlMapper.AddTypeHandler registrations reach the AOT readers through a
             // bridge installed from generated code, which compiles against the consumer's own
@@ -1346,6 +1370,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         // optimize-hint forms), per-item parameters, DbString items, padding and
                         // string_split settings, and provider array support
                         flags &= ~WriteArgsFlags.CanPrepare; // parameter shape varies by list size
+                        if (!ctx.Environment.UseRuntimeTypeHandlers)
+                        {
+                            sb.Append("#pragma warning disable CS0618 // list-expansion: this *is* the library usage").NewLine()
+                              .Append("global::Dapper.SqlMapper.PackListParameters(cmd.Command!, ").AppendVerbatimLiteral(member.DbName)
+                              .Append(", ").Append(source).Append(".").Append(member.CodeName).Append(");").NewLine()
+                              .Append("#pragma warning restore CS0618").NewLine();
+                            break;
+                        }
                         sb.Append("#pragma warning disable CS0618 // list-expansion: this *is* the library usage").NewLine()
                           .Append("_ = global::Dapper.SqlMapper.LookupDbType(typeof(").Append(member.TypeOfName)
                           .Append("), ").AppendVerbatimLiteral(member.DbName)
@@ -1365,7 +1397,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                           .Append("#pragma warning restore CS0618").NewLine();
                         break;
                     }
-                    if (!member.HasDbType && !member.IsDbString && member.TypeOfName != "object" && member.TypeOfName != "char"
+                    if (ctx.Environment.UseRuntimeTypeHandlers
+                        && !member.HasDbType && !member.IsDbString && member.TypeOfName != "object" && member.TypeOfName != "char"
                         && (!member.IsEnum || ctx.Environment.HasPreferTypeHandlersForEnums))
                     {
                         // an unrecognized member type: defer to vanilla's own decision procedure at
@@ -1525,7 +1558,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                         break;
                     }
 
-                    if (!member.HasDbType && !member.IsDbString && member.TypeOfName != "object" && member.TypeOfName != "char"
+                    if (ctx.Environment.UseRuntimeTypeHandlers
+                        && !member.HasDbType && !member.IsDbString && member.TypeOfName != "object" && member.TypeOfName != "char"
                         && (!member.IsEnum || ctx.Environment.HasPreferTypeHandlersForEnums))
                     {
                         // mirror the Add-mode runtime dispatch; the parameter shape is stable

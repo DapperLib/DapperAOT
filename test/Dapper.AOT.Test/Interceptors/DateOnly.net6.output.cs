@@ -130,22 +130,10 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 var typed = Cast(args, static () => new { BirthDate = default(global::System.DateOnly) }); // expected shape
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
-                #pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage
-                var dbTypeBirthDate = global::Dapper.SqlMapper.LookupDbType(typeof(global::System.DateOnly), "BirthDate", false, out var typeHandlerBirthDate);
-                #pragma warning restore CS0618
                 p = cmd.CreateParameter();
                 p.ParameterName = "BirthDate";
                 p.Direction = global::System.Data.ParameterDirection.Input;
-                if (typeHandlerBirthDate is not null)
-                {
-                    typeHandlerBirthDate.SetValue(p, (object?)typed.BirthDate ?? global::System.DBNull.Value);
-                }
-                else
-                {
-                    if (dbTypeBirthDate is not null) p.DbType = dbTypeBirthDate.GetValueOrDefault();
-                    p.Value = AsValue(typed.BirthDate);
-
-                }
+                p.Value = AsValue(typed.BirthDate);
                 ps.Add(p);
 
             }
@@ -153,17 +141,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             {
                 var typed = Cast(args, static () => new { BirthDate = default(global::System.DateOnly) }); // expected shape
                 var ps = cmd.Parameters;
-                #pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage
-                _ = global::Dapper.SqlMapper.LookupDbType(typeof(global::System.DateOnly), "BirthDate", false, out var typeHandlerBirthDate);
-                #pragma warning restore CS0618
-                if (typeHandlerBirthDate is not null)
-                {
-                    typeHandlerBirthDate.SetValue(ps[0], (object?)typed.BirthDate ?? global::System.DBNull.Value);
-                }
-                else
-                {
-                    ps[0].Value = AsValue(typed.BirthDate);
-                }
+                ps[0].Value = AsValue(typed.BirthDate);
 
             }
 
@@ -176,39 +154,17 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             {
                 var ps = cmd.Parameters;
                 global::System.Data.Common.DbParameter p;
-                #pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage
-                var dbTypeBirthDate = global::Dapper.SqlMapper.LookupDbType(typeof(global::System.DateOnly), "BirthDate", false, out var typeHandlerBirthDate);
-                #pragma warning restore CS0618
                 p = cmd.CreateParameter();
                 p.ParameterName = "BirthDate";
                 p.Direction = global::System.Data.ParameterDirection.Input;
-                if (typeHandlerBirthDate is not null)
-                {
-                    typeHandlerBirthDate.SetValue(p, (object?)args.BirthDate ?? global::System.DBNull.Value);
-                }
-                else
-                {
-                    if (dbTypeBirthDate is not null) p.DbType = dbTypeBirthDate.GetValueOrDefault();
-                    p.Value = AsValue(args.BirthDate);
-
-                }
+                p.Value = AsValue(args.BirthDate);
                 ps.Add(p);
 
             }
             public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.QueryModel args)
             {
                 var ps = cmd.Parameters;
-                #pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage
-                _ = global::Dapper.SqlMapper.LookupDbType(typeof(global::System.DateOnly), "BirthDate", false, out var typeHandlerBirthDate);
-                #pragma warning restore CS0618
-                if (typeHandlerBirthDate is not null)
-                {
-                    typeHandlerBirthDate.SetValue(ps[0], (object?)args.BirthDate ?? global::System.DBNull.Value);
-                }
-                else
-                {
-                    ps[0].Value = AsValue(args.BirthDate);
-                }
+                ps[0].Value = AsValue(args.BirthDate);
 
             }
 
@@ -232,24 +188,5 @@ namespace System.Runtime.CompilerServices
             _ = lineNumber;
             _ = columnNumber;
         }
-    }
-}
-namespace Dapper.Aot.Generated
-{
-    // installs the runtime type-handler bridge: SqlMapper.AddTypeHandler registrations reach
-    // Dapper.AOT's readers through these callbacks, compiled against *this* project's Dapper
-    // (which may be Dapper or Dapper.StrongName - the library cannot reference either)
-    file static class TypeHandlerBridgeInitializer
-    {
-        [global::System.Runtime.CompilerServices.ModuleInitializer]
-        internal static void Initialize() => global::Dapper.TypeHandlerBridge.Configure(
-            static type => global::Dapper.SqlMapper.HasTypeHandler(type),
-            static (type, value) =>
-            {
-#pragma warning disable CS0618 // vanilla's decision procedure: this *is* the library usage
-                _ = global::Dapper.SqlMapper.LookupDbType(type, "", false, out var handler);
-#pragma warning restore CS0618
-                return handler is null ? value : handler.Parse(type, value);
-            });
     }
 }

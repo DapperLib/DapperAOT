@@ -3,6 +3,10 @@ using System.Data.Common;
 
 [module: DapperAot]
 
+// opt in to runtime SqlMapper.AddTypeHandler registrations: off by default, because the
+// generator cannot see them, cannot check them, and native AOT cannot resolve what they reach
+[module: UseRuntimeTypeHandlers]
+
 public static class Foo
 {
     static void SomeCode(DbConnection connection)

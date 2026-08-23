@@ -73,7 +73,9 @@ Roslyn-objects-in-cached-state trap the plain-data model exists to prevent (Mode
 enforces it). Tier 2 = their design, re-done as plain-data plans, with credit.
 
 Tier 1 first: it is what the test suite actually measures, needs no consumer changes,
-and works with every shipped Dapper.
+and works with every shipped Dapper. (Superseded in part by the amendment at the end: tier 1
+still lands first, but behind an opt-in, so "needs no consumer changes" now means "needs one
+module-level attribute".)
 
 ## Outcomes (recorded after implementation)
 
@@ -119,11 +121,44 @@ The config-call surface mapped onto attributes:
 
 Layering (unchanged from the PR, sharpened by the discussion):
 
-1. tier 1 (PR #206) stays: runtime registrations keep working, and after the enum gate the
-   cost is confined to the people using the feature;
+1. tier 1 (PR #206) stays, but **off by default** - see the amendment below;
 2. tier 2 attributes become the *recommended* spelling, statically dispatched; the
    migration story is tooling, not docs alone - an analyzer that spots
    `SqlMapper.AddTypeHandler(...)` in a [DapperAot] compilation and offers the attribute
    as a code fix (the AotMigrationAnalyzer pattern from protobuf-net);
 3. a strict switch turns the runtime bridge off entirely (closed world, trimmable) for
    consumers who want the full protobuf-net posture.
+
+## Amendment (2026-08-23): the default is closed, and the switch loosens it
+
+Item 3 above had it backwards: making strictness opt-in leaves every consumer in the open-world
+posture by default, which is the one AOT cannot support. The switch is now
+`[module: UseRuntimeTypeHandlers]`, **default off**, and it *loosens* rather than tightens.
+
+Why the runtime path cannot be the default, beyond the per-operation lookup:
+
+- **It is not AOT-safe.** What it defers to reaches `SqlMapper.TypeHandlerCache<T>` - a generic
+  instantiated over a runtime-chosen type. ILC cannot know which instantiations to keep and
+  nothing warns at publish; issue #165 is that crash on a deployed app. DAP053 now reports the
+  `[UseRuntimeTypeHandlers]` + `PublishAot` combination at build.
+- **It keeps the world open**, so nothing reachable from the registry can be trimmed.
+- **It is unverifiable at build**, where a declared handler can be checked (unusable handler,
+  duplicate registration, unregistered type).
+- **Ordering.** Generated code baked its decision at compile time; a registration arriving later
+  is either ignored or forces a per-operation check to catch it. There is no third option.
+
+Scope: assembly/module only. A handler registration is a property of a *type*, so it cuts across
+every call-site touching that type; per-method scope would let one type bind two ways in one
+process. `AttributeUsage` enforces this, so a misplaced application is a compiler error rather
+than a diagnostic we have to invent.
+
+Cost of the gate when off: the emitted dispatch disappears from every call-site (which is why
+the ~100 golden files this PR used to touch are untouched again), and the module initializer that
+installs the read bridge is not emitted, so `TypeHandlerBridge.Has`/`TryParse` short-circuit on a
+null delegate. The residue is one null check on the flexible read path and one `Resolve` call per
+query.
+
+What this buys the corpus: the Dapper test suite keeps its runtime registrations and stays at
+705/793 with a single `[module: UseRuntimeTypeHandlers]` in the harness - no test edits - while
+everyone else gets the closed-world default. That retires the earlier
+"restructure the suite vs. bridge-on-by-default" choice entirely.

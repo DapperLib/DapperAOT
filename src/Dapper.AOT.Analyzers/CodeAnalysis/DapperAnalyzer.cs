@@ -68,6 +68,33 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 }
             }
         }
+        /// <summary>
+        /// Opting in to runtime registrations is a JIT-hosted migration mode: what it defers to
+        /// is exactly the machinery native AOT cannot resolve, and it fails at run time on the
+        /// published app rather than at publish, so say so at build.
+        /// </summary>
+        private static void ReportRuntimeTypeHandlersUnderAot(CompilationAnalysisContext ctx)
+        {
+            if (!ctx.Options.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue("build_property.PublishAot", out var publishAot)
+                || !string.Equals(publishAot, "true", StringComparison.OrdinalIgnoreCase)) return;
+
+            foreach (var attributes in new[] { ctx.Compilation.SourceModule.GetAttributes(), ctx.Compilation.Assembly.GetAttributes() })
+            {
+                foreach (var attribute in attributes)
+                {
+                    if (attribute.AttributeClass is not { Name: Types.UseRuntimeTypeHandlersAttribute, Arity: 0 }
+                        || !Inspection.IsDapperAttribute(attribute)) continue;
+                    if (attribute.ConstructorArguments.Length == 1
+                        && attribute.ConstructorArguments[0].Value is bool enabled && !enabled) continue; // opted out
+
+                    var location = attribute.ApplicationSyntaxReference is { } syntax
+                        ? Location.Create(syntax.SyntaxTree, syntax.Span) : Location.None;
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.RuntimeTypeHandlersUnderAot, location));
+                    return; // once is enough
+                }
+            }
+        }
+
         private void OnDapperAotMiss(Location location)
         {
             if (Thread.VolatileRead(ref _dapperHits) == 0 // fast short-circuit if we know we're all good
@@ -88,6 +115,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         {
             try
             {
+                ReportRuntimeTypeHandlersUnderAot(ctx);
                 lock (_missedOpportunities)
                 {
                     var count = _missedOpportunities.Count;
