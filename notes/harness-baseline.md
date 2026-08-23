@@ -199,6 +199,32 @@ list expansion, TVPs, custom params), TypeHandlerTests ×16 (type-handler story)
 ×16 (coercions + tokens), Async/Literal (literals), plus the First-pipeline drain pair and
 the small tail. Nothing unexplained.
 
+## Round 14: the runtime bridge becomes opt-in - and the A/B proves it
+
+Round 13's dispatch is now behind `[module: UseRuntimeTypeHandlers]`, default off, because
+honoring registrations made at run time is exactly what native AOT cannot resolve: what it
+defers to reaches `SqlMapper.TypeHandlerCache<T>`, a generic instantiated over a runtime-chosen
+type - issue #165 is that crash on a published app, with nothing said at publish time. DAP053
+now reports the attribute + `PublishAot=true` combination at build. Scope is assembly/module
+only (enforced by `AttributeUsage`): a handler registration is a property of a *type*, so
+per-method scope would let one type bind two ways in one process.
+
+Measured both ways on the same build, net10.0, local SQL Server:
+
+| harness | passed | failed | skipped | interception |
+| --- | --- | --- | --- | --- |
+| `[module: UseRuntimeTypeHandlers]` | **705** | 64 | 24 | 533 / 725 |
+| default (no attribute) | **677** | 92 | 24 | 533 / 725 |
+
+The default line is the clean-main baseline exactly, which is the point: nothing changes for
+anyone who does not ask, the corpus keeps its 705 for one line in `DapperAotEnable.cs`, and no
+test in the suite needs editing. Interception is identical either way - the gate changes how
+unrecognized member types *bind*, not which call-sites are handled.
+
+Side effect worth recording: gating the emission also removed the ~100 golden files PR #206 used
+to touch (the bridge's module initializer was being emitted into every generated file), so the
+PR is now 24 files instead of 107.
+
 ## Round 13: type handlers (PR #206) - 705/793
 
 Runtime `SqlMapper.AddTypeHandler` registrations honored end-to-end by deferring to
