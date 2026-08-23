@@ -25,6 +25,8 @@ partial class DapperAnalyzer
         DapperAotTupleParameter = LibraryInfo("DAP014", "Tuple-type parameter", "Tuple-type parameters are not currently supported"),
         UntypedParameter = LibraryInfo("DAP015", "Untyped parameter", "The parameter type could not be resolved"),
         GenericTypeParameter = LibraryInfo("DAP016", "Generic type parameter", "Generic type parameters ({0}) are not currently supported"),
+        RuntimeTypeHandlerRegistration = LibraryWarning("DAP053", "Type-handler registered at runtime",
+            "SqlMapper.AddTypeHandler for '{0}' is invisible to Dapper.AOT: generated code binds the value without it. Declare it instead with [module: TypeHandler(typeof({0}), typeof({1}))]"),
         FeatureNeedsNewerDapper = LibraryInfo("DAP052", "Feature requires a newer Dapper", "Dapper.AOT support for {0} needs '{1}', which the referenced Dapper version does not expose; the call-site is left on vanilla Dapper (which will not work under native AOT) - update the Dapper package to enable this"),
         NestedInGenericType = LibraryWarning("DAP051", "Type is only generic by containment", "Type '{0}' is generic only because it is declared inside generic type '{1}'; if it does not need the enclosing type parameters, move it to non-generic scope"),
         NonPublicType = LibraryInfo("DAP017", "Non-accessible type", "Type '{0}' is not accessible; {1} types are not currently supported"),

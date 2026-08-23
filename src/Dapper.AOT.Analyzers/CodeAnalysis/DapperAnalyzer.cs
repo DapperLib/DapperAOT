@@ -121,6 +121,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 switch (ctx.Operation.Kind)
                 {
                     case OperationKind.Invocation when ctx.Operation is IInvocationOperation invoke:
+                        DetectRuntimeTypeHandlerRegistration(ctx, invoke);
                         int index = 0;
                         foreach (var p in invoke.TargetMethod.Parameters)
                         {
@@ -182,6 +183,59 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             {
                 ctx.ReportDiagnostic(Diagnostic.Create(DiagnosticsBase.UnknownError, null, ex.Message, ex.StackTrace));
             }
+        }
+
+        /// <summary>
+        /// A runtime <c>SqlMapper.AddTypeHandler</c> registration cannot be seen by the generator,
+        /// so generated code silently ignores it; point at the declarative form instead. Only what
+        /// is registered in *this* compilation is visible here - a registration made by a
+        /// referenced library is not - so this reduces the silent-wrongness surface, it does not
+        /// close it.
+        /// </summary>
+        private static void DetectRuntimeTypeHandlerRegistration(in OperationAnalysisContext ctx, IInvocationOperation invoke)
+        {
+            var method = invoke.TargetMethod;
+            if (method is not { Name: "AddTypeHandler", IsStatic: true, ContainingType: { Name: "SqlMapper", ContainingNamespace: { Name: "Dapper", ContainingNamespace.IsGlobalNamespace: true } } }) return;
+
+            var parseState = new ParseState(ctx);
+            if (!IsEnabled(in parseState, invoke, Types.DapperAotAttribute, out _)) return; // vanilla-only code is fine as-is
+
+            // AddTypeHandler<T>(TypeHandler<T>) or AddTypeHandler(Type, ITypeHandler)
+            ITypeSymbol? valueType = method.TypeArguments.Length == 1 ? method.TypeArguments[0] : null;
+            if (valueType is null)
+            {
+                foreach (var arg in invoke.Arguments)
+                {
+                    if (arg.Value is ITypeOfOperation typeOf) { valueType = typeOf.TypeOperand; break; }
+                }
+            }
+            if (valueType is null) return; // cannot name it; saying nothing beats guessing
+
+            foreach (var handler in DapperInterceptorGenerator.GetTypeHandlers(ctx.Compilation))
+            {
+                if (string.Equals(handler.ValueTypeName, CodeWriter.GetAppendTypeName(valueType), StringComparison.Ordinal))
+                {
+                    return; // already declared; the runtime call is redundant but harmless
+                }
+            }
+
+            // name the *concrete* handler being registered, not the parameter's declared type,
+            // so the suggested attribute can be pasted as-is
+            var handlerType = "TheHandler";
+            foreach (var arg in invoke.Arguments)
+            {
+                var value = arg.Value;
+                while (value is IConversionOperation conversion) value = conversion.Operand;
+                if (value is not ITypeOfOperation && value.Type is INamedTypeSymbol named)
+                {
+                    handlerType = Display(named);
+                    break;
+                }
+            }
+            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.RuntimeTypeHandlerRegistration,
+                invoke.Syntax.GetLocation(), Display(valueType), handlerType));
+
+            static string Display(ITypeSymbol type) => type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
         }
 
         private void ValidateDapperMethod(in OperationAnalysisContext ctx, IOperation sqlSource, OperationFlags flags)

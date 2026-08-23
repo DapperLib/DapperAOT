@@ -162,11 +162,14 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
     public byte? Precision { get; }
     public byte? Scale { get; }
     public string TypeName { get; } // emitted (Append) form, for Parse<T> in post-process
+    public string NonNullTypeName { get; } // MakeNonNullable form: the type-handler match key
+    public bool IsNullableValueType { get; } // Nullable<T>: the handler takes the T
 
     private ParamMember(bool isMapped, bool isCancellation, bool isRowCount, string codeName, string dbName,
         ParameterDirection direction, bool isDbString, bool isExpandable, bool isCustom, bool isValueType,
         bool hasDbType, string? dbTypeName, int? effectiveSize,
-        bool useSetValueWithDefaultSize, byte? precision, byte? scale, string typeName)
+        bool useSetValueWithDefaultSize, byte? precision, byte? scale, string typeName,
+        string nonNullTypeName, bool isNullableValueType)
     {
         IsMapped = isMapped;
         IsCancellation = isCancellation;
@@ -185,13 +188,15 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
         Precision = precision;
         Scale = scale;
         TypeName = typeName;
+        NonNullTypeName = nonNullTypeName;
+        IsNullableValueType = isNullableValueType;
     }
 
     public static ParamMember Create(in ElementMember member)
     {
         if (!member.IsMapped)
         {
-            return new(false, false, false, "", "", default, false, false, false, false, false, null, null, false, null, null, "");
+            return new(false, false, false, "", "", default, false, false, false, false, false, null, null, false, null, null, "", "", false);
         }
         var dbType = member.GetDbType(out _);
         var size = member.TryGetValue<int>("Size");
@@ -219,7 +224,9 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
             member.DapperSpecialType is DapperSpecialType.CustomQueryParameter, member.CodeType!.IsValueType,
             dbType is not null, dbType?.ToString(), size, useSetValueWithDefaultSize,
             member.TryGetValue<byte>("Precision"), member.TryGetValue<byte>("Scale"),
-            CodeWriter.GetAppendTypeName(member.CodeType!));
+            CodeWriter.GetAppendTypeName(member.CodeType!),
+            CodeWriter.GetAppendTypeName(Inspection.MakeNonNullable(member.CodeType!)),
+            member.CodeType!.IsValueType && member.CodeType is INamedTypeSymbol { IsGenericType: true, ConstructedFrom.SpecialType: SpecialType.System_Nullable_T });
     }
 
     public bool Equals(ParamMember other) => IsMapped == other.IsMapped
@@ -238,7 +245,9 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
         && UseSetValueWithDefaultSize == other.UseSetValueWithDefaultSize
         && Precision == other.Precision
         && Scale == other.Scale
-        && string.Equals(TypeName, other.TypeName, StringComparison.Ordinal);
+        && string.Equals(TypeName, other.TypeName, StringComparison.Ordinal)
+        && string.Equals(NonNullTypeName, other.NonNullTypeName, StringComparison.Ordinal)
+        && IsNullableValueType == other.IsNullableValueType;
 
     public override bool Equals(object? obj) => obj is ParamMember other && Equals(other);
     public override int GetHashCode() => IsMapped ? StringComparer.Ordinal.GetHashCode(CodeName) : 0;
