@@ -73,8 +73,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         /// silently skipped - which is the exact failure mode the declarative form exists to
         /// remove, so it has to be said out loud.
         /// </summary>
-        private static void ReportUnusableTypeHandlers(CompilationAnalysisContext ctx)
+        private static void ReportTypeHandlerProblems(CompilationAnalysisContext ctx)
         {
+            // module then assembly, in that order, so "the first one wins" means the same thing
+            // here as it does in the generator
+            var claimed = new Dictionary<string, INamedTypeSymbol>(StringComparer.Ordinal);
             Report(ctx.Compilation.SourceModule.GetAttributes());
             Report(ctx.Compilation.Assembly.GetAttributes());
 
@@ -89,17 +92,33 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                     if (attribute.ConstructorArguments[0].Value is not ITypeSymbol valueType
                         || attribute.ConstructorArguments[1].Value is not INamedTypeSymbol handlerType) continue;
 
+                    var location = attribute.ApplicationSyntaxReference is { } syntax
+                        ? Location.Create(syntax.SyntaxTree, syntax.Span) : Location.None;
+
+                    var key = valueType.ToDisplayString();
+                    if (claimed.TryGetValue(key, out var incumbent))
+                    {
+                        // an exact repeat is harmless - same handler, same outcome - but two
+                        // *different* handlers for one type has no correct resolution, so say
+                        // which one is being dropped
+                        if (!SymbolEqualityComparer.Default.Equals(incumbent, handlerType))
+                        {
+                            ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.DuplicateTypeHandler, location,
+                                Display(valueType), Display(incumbent), Display(handlerType)));
+                        }
+                        continue; // it is ignored either way; do not also grade it
+                    }
+                    claimed.Add(key, handlerType);
+
                     if (DapperInterceptorGenerator.ClassifyTypeHandler(handlerType, valueType, ctx.Compilation.Assembly, out var problem) is not null
                         || problem is null) continue;
 
-                    var location = attribute.ApplicationSyntaxReference is { } syntax
-                        ? Location.Create(syntax.SyntaxTree, syntax.Span) : Location.None;
                     ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnusableTypeHandler, location,
-                        handlerType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
-                        valueType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
-                        problem));
+                        Display(handlerType), Display(valueType), problem));
                 }
             }
+
+            static string Display(ITypeSymbol type) => type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
         }
 
         private void OnDapperAotMiss(Location location)
@@ -122,7 +141,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         {
             try
             {
-                ReportUnusableTypeHandlers(ctx);
+                ReportTypeHandlerProblems(ctx);
                 lock (_missedOpportunities)
                 {
                     var count = _missedOpportunities.Count;

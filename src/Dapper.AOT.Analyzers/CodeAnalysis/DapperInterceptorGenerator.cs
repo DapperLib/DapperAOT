@@ -314,9 +314,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 var kind = ClassifyTypeHandler(handlerType, valueType, compilation.Assembly, out _);
                 if (kind is null) continue; // not a shape generated code can use; DAP054 says why
 
+                var valueTypeName = CodeWriter.GetAppendTypeName(valueType);
                 found ??= new();
+                // first registration wins, deterministically; DAP055 reports the ones dropped
+                if (TypeHandlerRegistration.TryFind(new(found.ToArray()), valueTypeName, out _)) continue;
                 found.Add(new TypeHandlerRegistration(
-                    CodeWriter.GetAppendTypeName(valueType),
+                    valueTypeName,
                     CodeWriter.GetAppendTypeName(handlerType),
                     kind.GetValueOrDefault()));
             }
