@@ -312,7 +312,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                     || attribute.ConstructorArguments[1].Value is not INamedTypeSymbol handlerType) continue;
 
                 var kind = ClassifyTypeHandler(handlerType, valueType, compilation.Assembly, out _);
-                if (kind is null) continue; // not a shape generated code can use; DAP055 says why
+                if (kind is null) continue; // not a shape generated code can use; DAP054 says why
 
                 found ??= new();
                 found.Add(new TypeHandlerRegistration(
