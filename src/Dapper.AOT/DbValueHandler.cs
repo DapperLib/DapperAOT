@@ -21,9 +21,14 @@ namespace Dapper;
 /// build for a package to declare handlers for the types it owns.
 /// </para>
 /// </remarks>
+/// <remarks>
+/// Assembly and module scope only, for now. Narrower scopes (a handler for one member or one
+/// parameter) are a plausible future addition - widening the targets and adding a constructor
+/// would both be non-breaking - but an attribute that compiles and does nothing is the exact
+/// problem this replacement exists to remove, so the form does not ship before it is read.
+/// </remarks>
 [ImmutableObject(true)]
-[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Module | AttributeTargets.Class | AttributeTargets.Struct
-    | AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = true)]
+[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Module, AllowMultiple = true)]
 public sealed class TypeHandlerAttribute : Attribute
 {
     /// <summary>
@@ -36,15 +41,9 @@ public sealed class TypeHandlerAttribute : Attribute
     }
 
     /// <summary>
-    /// Register <paramref name="handlerType"/> for the annotated member or parameter, inferring
-    /// the value type from it.
+    /// The type of value handled.
     /// </summary>
-    public TypeHandlerAttribute(Type handlerType) => HandlerType = handlerType;
-
-    /// <summary>
-    /// The type of value handled; <c>null</c> when inferred from the annotated member.
-    /// </summary>
-    public Type? ValueType { get; }
+    public Type ValueType { get; }
 
     /// <summary>
     /// The handler type; it must have a public parameterless constructor.
