@@ -4,7 +4,7 @@
 *where the work currently is* - which branch, which PR, what lands next, and in what order.
 Keep it current: it is the cheapest thing to update and the most expensive thing to lose.
 
-Last updated 2026-08-23.
+Last updated 2026-08-25.
 
 ## Where things stand
 
@@ -21,18 +21,30 @@ intercepted.
 | --- | --- | --- | --- |
 | #206 | `typehandlers` | runtime `AddTypeHandler` registrations honored, behind `[module: UseRuntimeTypeHandlers]` (default off) | draft, rebased on main, tests green |
 | #207 | `typehandler-registration-note` | the note explaining why the shipped `[TypeHandler<,>]` never worked, and the agreed route | draft/open, notes only |
-| #208 | `typehandler-attributes` | the declarative replacement: `[TypeHandler(typeof(V), typeof(H))]`, `IDbValueHandler<T>`, the vanilla-handler shim, obsoletes | draft, incomplete - gaps listed below |
+| #208 | `typehandler-attributes` | the declarative replacement: `[TypeHandler(typeof(V), typeof(H))]`, `IDbValueHandler<T>`, the vanilla-handler shim, obsoletes | **ready for review**, complete |
 
-**Agreed landing order: #206, then #207, then #208 rebases on top.** The rule that produced it:
-*an attribute lands with the behavior it gates*. `[UseRuntimeTypeHandlers]` gates the bridge, so
-it belongs to #206; shipping it in #208, where it would do nothing, is the exact sin these PRs
-exist to fix. #206 also commits to almost no public API and restores the corpus number, so it
-should not wait behind the API-shaped PR.
+**Landing order (revised 2026-08-25): #207 whenever, then #208, then #206.**
 
-**Diagnostic ids**: #206 takes **DAP053** (`[UseRuntimeTypeHandlers]` + `PublishAot`). #208
-currently also uses DAP053 for "runtime registration with no declarative counterpart" and
-**must renumber to DAP054** when it rebases, moving `docs/rules/DAP053.md` with it. Next free
-after that: DAP055.
+The original plan was "#206 first", on the grounds that it was finished and restores the corpus
+number. That was wrong for a concrete reason: **#206's `docs/rules/DAP053.md` prescribes
+`[module: TypeHandler(typeof(V), typeof(H))]`**, which only exists in #208. Merging #206 alone
+ships a diagnostic whose documented fix does not compile. So either #208 goes first, or #206's
+rule doc is softened to stop naming an API that is not there yet.
+
+The rule still worth keeping from the original reasoning: *an attribute lands with the behavior
+it gates* - `[UseRuntimeTypeHandlers]` belongs to #206, not #208, because shipping it where it
+would do nothing is the exact sin these PRs exist to fix.
+
+**#206 is also discardable**, and that is a live option rather than a formality. Given the
+position that runtime config need not be mirrored, the only things it buys are a migration path
+for existing JIT users and the corpus 705-vs-677. Closing it and declaring handlers in the Dapper
+suite instead is coherent: it costs a suite edit and removes a whole opt-in surface from the
+public API. #208 alone is a complete story; #206 alone is not.
+
+**Diagnostic ids**, allocated so the two can land in either order: **DAP053** = #206
+(`[UseRuntimeTypeHandlers]` + `PublishAot`); **DAP054** = #208 (runtime registration with no
+declarative counterpart); **DAP055** = #208 (registration naming an unusable handler). Next
+free: DAP056.
 
 ## The position these PRs encode
 
@@ -59,15 +71,20 @@ directly; do not re-open this.
 
 ## What #208 still needs
 
-- **DAP054** (after renumber) for a registration that names something unusable - abstract
-  handler, no public parameterless constructor, implements neither contract. It is silently
-  skipped today, which is the failure mode the whole PR exists to kill;
-- **`Tokenize` wiring**: generated code always passes token `0`. The interface has the right
-  shape, but the handler's token has nowhere to live in the row factory's two-tokens-per-member
-  space; needs the `object? state` channel or a widened encoding;
-- member/parameter-scoped `[TypeHandler(typeof(H))]` - accepted by the attribute, not yet read;
-- enum auto-handlers and `[TypeMap]`/settings equivalents, per the declarative-config direction
-  in [typehandlers-design.md](typehandlers-design.md).
+Nothing blocking - it is ready for review. Closed since the first draft:
+
+- DAP055 now reports a registration naming something generated code cannot use (was a silent
+  skip, which was the failure mode the PR exists to kill);
+- `Tokenize` is wired: the handler's per-column token travels in the row factory's `state`
+  channel - one int array per query, filled by a second pass over the token span, indexed
+  positionally in `Read`. `TypeHandlerProtocolTests` pins the contract from outside the
+  generator;
+- member-scoped `[TypeHandler(typeof(H))]` was **removed** rather than implemented: the
+  attribute was advertising a form nothing reads, which is the same no-op sin. Widening
+  `AttributeUsage` and adding a constructor are both non-breaking, so it stays a future option.
+
+Still future work, not gaps in this PR: enum auto-handlers and `[TypeMap]`/settings equivalents,
+per the declarative-config direction in [typehandlers-design.md](typehandlers-design.md).
 
 ## Adjacent things not to lose
 
