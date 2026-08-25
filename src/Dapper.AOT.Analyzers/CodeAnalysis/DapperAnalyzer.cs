@@ -68,6 +68,40 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 }
             }
         }
+        /// <summary>
+        /// A <c>[TypeHandler(...)]</c> naming something generated code cannot use is otherwise
+        /// silently skipped - which is the exact failure mode the declarative form exists to
+        /// remove, so it has to be said out loud.
+        /// </summary>
+        private static void ReportUnusableTypeHandlers(CompilationAnalysisContext ctx)
+        {
+            Report(ctx.Compilation.SourceModule.GetAttributes());
+            Report(ctx.Compilation.Assembly.GetAttributes());
+
+            void Report(ImmutableArray<AttributeData> attributes)
+            {
+                foreach (var attribute in attributes)
+                {
+                    if (attribute.AttributeClass is not { Name: Types.TypeHandlerAttribute, Arity: 0 }
+                        || !Inspection.IsDapperAttribute(attribute)
+                        || attribute.ConstructorArguments.Length != 2) continue;
+
+                    if (attribute.ConstructorArguments[0].Value is not ITypeSymbol valueType
+                        || attribute.ConstructorArguments[1].Value is not INamedTypeSymbol handlerType) continue;
+
+                    if (DapperInterceptorGenerator.ClassifyTypeHandler(handlerType, valueType, ctx.Compilation.Assembly, out var problem) is not null
+                        || problem is null) continue;
+
+                    var location = attribute.ApplicationSyntaxReference is { } syntax
+                        ? Location.Create(syntax.SyntaxTree, syntax.Span) : Location.None;
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnusableTypeHandler, location,
+                        handlerType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                        valueType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                        problem));
+                }
+            }
+        }
+
         private void OnDapperAotMiss(Location location)
         {
             if (Thread.VolatileRead(ref _dapperHits) == 0 // fast short-circuit if we know we're all good
@@ -88,6 +122,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
         {
             try
             {
+                ReportUnusableTypeHandlers(ctx);
                 lock (_missedOpportunities)
                 {
                     var count = _missedOpportunities.Count;

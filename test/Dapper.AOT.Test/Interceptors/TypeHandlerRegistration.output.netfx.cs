@@ -90,6 +90,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             private RowFactory0() {}
             public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
             {
+                var handlerTokens = new int[tokens.Length];
+                var handlerOffset = columnOffset; // the loop below advances columnOffset
                 for (int i = 0; i < tokens.Length; i++)
                 {
                     int token = -1;
@@ -109,26 +111,38 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                     columnOffset++;
 
                 }
-                return null;
+                for (int i = 0; i < tokens.Length; i++)
+                {
+                    switch (tokens[i])
+                    {
+                        case 0: case 2: case 1: case 3:
+                            handlerTokens[i] = TypeHandler0.Tokenize(reader, handlerOffset + i);
+                            break;
+
+                    }
+
+                }
+                return handlerTokens;
             }
             public override global::Appointment Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
             {
                 global::Appointment result = new();
-                foreach (var token in tokens)
+                var handlerTokens = (int[])state!;
+                for (int i = 0; i < tokens.Length; i++)
                 {
-                    switch (token)
+                    switch (tokens[i])
                     {
                         case 0:
-                            result.Day = TypeHandler0.Parse(reader, columnOffset, 0);
+                            result.Day = TypeHandler0.Parse(reader, columnOffset, handlerTokens[i]);
                             break;
                         case 2:
-                            result.Day = TypeHandler0.Parse(reader, columnOffset, 0);
+                            result.Day = TypeHandler0.Parse(reader, columnOffset, handlerTokens[i]);
                             break;
                         case 1:
-                            result.MovedTo = reader.IsDBNull(columnOffset) ? (global::LocalDate?)null : TypeHandler0.Parse(reader, columnOffset, 0);
+                            result.MovedTo = reader.IsDBNull(columnOffset) ? (global::LocalDate?)null : TypeHandler0.Parse(reader, columnOffset, handlerTokens[i]);
                             break;
                         case 3:
-                            result.MovedTo = reader.IsDBNull(columnOffset) ? (global::LocalDate?)null : TypeHandler0.Parse(reader, columnOffset, 0);
+                            result.MovedTo = reader.IsDBNull(columnOffset) ? (global::LocalDate?)null : TypeHandler0.Parse(reader, columnOffset, handlerTokens[i]);
                             break;
 
                     }
@@ -147,6 +161,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             private RowFactory1() {}
             public override object? Tokenize(global::System.Data.Common.DbDataReader reader, global::System.Span<int> tokens, int columnOffset)
             {
+                var handlerTokens = new int[tokens.Length];
+                var handlerOffset = columnOffset; // the loop below advances columnOffset
                 for (int i = 0; i < tokens.Length; i++)
                 {
                     int token = -1;
@@ -163,20 +179,32 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                     columnOffset++;
 
                 }
-                return null;
+                for (int i = 0; i < tokens.Length; i++)
+                {
+                    switch (tokens[i])
+                    {
+                        case 0: case 1:
+                            handlerTokens[i] = TypeHandler1.Tokenize(reader, handlerOffset + i);
+                            break;
+
+                    }
+
+                }
+                return handlerTokens;
             }
             public override global::Invoice Read(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> tokens, int columnOffset, object? state)
             {
                 global::Invoice result = new();
-                foreach (var token in tokens)
+                var handlerTokens = (int[])state!;
+                for (int i = 0; i < tokens.Length; i++)
                 {
-                    switch (token)
+                    switch (tokens[i])
                     {
                         case 0:
-                            result.Total = TypeHandler1.Parse(reader, columnOffset, 0);
+                            result.Total = TypeHandler1.Parse(reader, columnOffset, handlerTokens[i]);
                             break;
                         case 1:
-                            result.Total = TypeHandler1.Parse(reader, columnOffset, 0);
+                            result.Total = TypeHandler1.Parse(reader, columnOffset, handlerTokens[i]);
                             break;
 
                     }

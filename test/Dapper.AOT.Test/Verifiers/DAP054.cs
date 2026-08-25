@@ -5,7 +5,7 @@ using static Dapper.CodeAnalysis.DapperAnalyzer;
 
 namespace Dapper.AOT.Test.Verifiers;
 
-public class DAP053 : Verifier<DapperAnalyzer>
+public class DAP054 : Verifier<DapperAnalyzer>
 {
     [Fact] // a runtime registration the generator cannot see, in both spellings
     public Task RuntimeRegistrationIsInvisible() => CSVerifyAsync("""

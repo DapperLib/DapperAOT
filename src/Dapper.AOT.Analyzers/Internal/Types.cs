@@ -9,6 +9,7 @@ internal static class Types
         ColumnAttribute = nameof(ColumnAttribute),
         CommandPropertyAttribute = nameof(CommandPropertyAttribute),
         DapperAotAttribute = nameof(DapperAotAttribute),
+        TypeHandlerAttribute = nameof(TypeHandlerAttribute),
         DbValueAttribute = nameof(DbValueAttribute),
         DynamicParameters = nameof(DynamicParameters),
         ExplicitConstructorAttribute = nameof(ExplicitConstructorAttribute),

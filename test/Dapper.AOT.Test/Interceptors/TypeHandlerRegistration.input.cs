@@ -54,12 +54,21 @@ public class Invoice
     public Money Total { get; set; }
 }
 
-// the new shape: the generator emits a single static and calls it directly
+// the new shape: the generator emits a single static and calls it directly.
+// Tokenize runs once per column per query and its result is handed back to Parse for every
+// row, so a per-column decision (here: which shape the provider gave us) is paid once
 public sealed class LocalDateHandler : DbValueHandler<LocalDate>
 {
     protected override void Configure(DbParameter parameter) => parameter.DbType = DbType.Date;
     protected override void SetValueCore(DbParameter parameter, LocalDate value)
         => parameter.Value = new DateTime(value.Year, value.Month, value.Day);
+
+    public override int Tokenize(DbDataReader reader, int columnOffset)
+        => reader.GetFieldType(columnOffset) == typeof(string) ? 1 : 0;
+
+    public override LocalDate Parse(DbDataReader reader, int ordinal, int token)
+        => Parse(token == 1 ? DateTime.Parse(reader.GetString(ordinal)) : reader.GetValue(ordinal));
+
     protected override LocalDate Parse(object? value)
     {
         var when = (DateTime)value!;
