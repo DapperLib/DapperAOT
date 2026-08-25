@@ -23,12 +23,15 @@ build time. See [type-vs-generic.md](type-vs-generic.md).
 
 | doc | contents |
 | --- | --- |
+| [state-of-play.md](state-of-play.md) | **read first after a break**: which branch, which PR, what lands next and in what order |
 | [plan.md](plan.md) | **the agreed plan**: complete the gap table → fix the generator → close the gaps |
 | [parity.md](parity.md) | the feature parity table: Dapper's surface vs Dapper.AOT today |
 | [tokens.md](tokens.md) | special string-token handling: `@ids` expansion, `{=literal}`, `?foo?`, etc |
 | [type-vs-generic.md](type-vs-generic.md) | `Type`-based vs `<T>` APIs, and the "announce your types" design space |
 | [test-suite-audit.md](test-suite-audit.md) | the Dapper test files as acceptance corpus, and what blocks each |
 | [harness-baseline.md](harness-baseline.md) | real numbers from the suite with AOT enabled (Dapper repo, `aot-harness` branch) |
+| [typehandler-registration.md](typehandler-registration.md) | type handlers: why the shipped attribute never worked, and the agreed replacement |
+| [typehandlers-design.md](typehandlers-design.md) | type handlers: runtime dispatch (opt-in) and the declarative config direction |
 | [dynamicparameters-design.md](dynamicparameters-design.md) | phase 3 item 1: delegate to the bag's own vanilla protocol; needs a small Dapper-side API |
 | [provider-specialization.md](provider-specialization.md) | a performance direction: emit against the concrete provider the consumer already references, rather than the agnostic ADO.NET surface |
 | [generator-audit.md](generator-audit.md) | **fix-first gate**: the capture model snapshots Roslyn symbols/nodes — retention + cache defeat |
