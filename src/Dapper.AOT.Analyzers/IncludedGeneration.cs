@@ -8,5 +8,6 @@ namespace Dapper
         None                                 = 0,
         InterceptsLocationAttribute          = 1 << 0,
         DbStringHelpers                      = 1 << 1,
+        VanillaTypeHandlerAdapter            = 1 << 2,
     }
 }

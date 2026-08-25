@@ -1,4 +1,6 @@
-﻿namespace Dapper.CodeAnalysis
+﻿using System.Collections.Generic;
+
+namespace Dapper.CodeAnalysis
 {
     /// <summary>
     /// Contains data about current generation run.
@@ -14,6 +16,21 @@
         {
             // set default included generation types here
             IncludedGenerationTypes = IncludedGeneration.InterceptsLocationAttribute;
+        }
+
+        /// <summary>
+        /// The type-handler registrations actually reached by emitted code; only these get a
+        /// static, so unused registrations cost nothing (and raise no unused-field warning).
+        /// </summary>
+        public SortedSet<int> UsedTypeHandlers { get; } = new();
+
+        /// <summary>
+        /// Note that a registration is in use, and yield the name of its static.
+        /// </summary>
+        public string UseTypeHandler(int index)
+        {
+            UsedTypeHandlers.Add(index);
+            return "TypeHandler" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
         /// <summary>

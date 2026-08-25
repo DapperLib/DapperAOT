@@ -16,10 +16,12 @@ internal sealed class InterceptorEnvironment : IEquatable<InterceptorEnvironment
     public bool BaseFactoryCanConstruct { get; }
     public EquatableArray<SpecialDbCommandType> SpecialCommandTypes { get; } // providers needing per-command setup
     public ParamPlan SystemObjectPlan { get; } // the parameterless command-factory fallback
+    public EquatableArray<TypeHandlerRegistration> TypeHandlers { get; } // [TypeHandler(...)] at module/assembly level
 
     public InterceptorEnvironment(bool allowUnsafe, string? assemblyName, bool hasInterceptsLocationAttribute,
         bool needsCommandPrep, string? baseCommandFactoryName, bool baseFactoryCanConstruct,
-        in EquatableArray<SpecialDbCommandType> specialCommandTypes, ParamPlan systemObjectPlan)
+        in EquatableArray<SpecialDbCommandType> specialCommandTypes, ParamPlan systemObjectPlan,
+        in EquatableArray<TypeHandlerRegistration> typeHandlers)
     {
         AllowUnsafe = allowUnsafe;
         AssemblyName = assemblyName;
@@ -29,6 +31,7 @@ internal sealed class InterceptorEnvironment : IEquatable<InterceptorEnvironment
         BaseFactoryCanConstruct = baseFactoryCanConstruct;
         SpecialCommandTypes = specialCommandTypes;
         SystemObjectPlan = systemObjectPlan;
+        TypeHandlers = typeHandlers;
     }
 
     public bool Equals(InterceptorEnvironment? other) => other is not null
@@ -39,7 +42,8 @@ internal sealed class InterceptorEnvironment : IEquatable<InterceptorEnvironment
         && string.Equals(BaseCommandFactoryName, other.BaseCommandFactoryName, StringComparison.Ordinal)
         && BaseFactoryCanConstruct == other.BaseFactoryCanConstruct
         && SpecialCommandTypes.Equals(other.SpecialCommandTypes)
-        && SystemObjectPlan.Equals(other.SystemObjectPlan);
+        && SystemObjectPlan.Equals(other.SystemObjectPlan)
+        && TypeHandlers.Equals(other.TypeHandlers);
 
     public override bool Equals(object? obj) => Equals(obj as InterceptorEnvironment);
     public override int GetHashCode()
