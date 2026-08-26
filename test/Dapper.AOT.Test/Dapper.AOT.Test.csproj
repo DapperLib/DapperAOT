@@ -14,6 +14,9 @@
         <None Include="Accessors/Data/**/*.*" />
         <None Update="Accessors/Data/**/*.*" CopyToOutputDirectory="PreserveNewest" />
         <Compile Remove="Interceptors/**/*.*.cs" />
+        <None Include="ApiSurface.expected.txt" />
+        <None Update="ApiSurface.expected.txt" CopyToOutputDirectory="PreserveNewest" />
+
         <None Include="Interceptors/**/*.*" />
         <None Update="Interceptors/**/*.*" CopyToOutputDirectory="PreserveNewest" />
 
