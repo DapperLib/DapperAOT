@@ -21,7 +21,8 @@ public class DAP004 : Verifier<WrappedDapperInterceptorAnalyzer>
         """,
         [InterceptorsEnabled, WithCSharpLanguageVersion(LanguageVersion.CSharp10)],
         [Diagnostic(DapperInterceptorGenerator.Diagnostics.LanguageVersionTooLow),
-         Diagnostic(DapperInterceptorGenerator.Diagnostics.InterceptorsGenerated).WithArguments(0, 1, 0, 0, 0, 0, 0)]);
+         // handled, total, unsupported, refused-with-diagnostics, skipped-silently, interceptors, commands, readers
+         Diagnostic(DapperInterceptorGenerator.Diagnostics.InterceptorsGenerated).WithArguments(0, 1, 0, 0, 0, 0, 0, 0)]);
 
     [Fact]
     public Task CSFineIfInactive() => CSVerifyAsync("""

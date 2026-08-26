@@ -1393,9 +1393,16 @@ internal static class Inspection
     }
 
     public static bool IsDapperMethod(this IInvocationOperation operation, out OperationFlags flags)
+        => IsDapperMethod(operation?.TargetMethod, out flags);
+
+    /// <summary>
+    /// The dispatch decision depends only on the method symbol - never on the call-site - which
+    /// is what lets the API-coverage test classify Dapper's whole public surface without
+    /// synthesising a call for each overload.
+    /// </summary>
+    public static bool IsDapperMethod(IMethodSymbol? method, out OperationFlags flags)
     {
         flags = OperationFlags.None;
-        var method = operation?.TargetMethod;
         if (method is null || !method.IsExtensionMethod)
         {
             return false;

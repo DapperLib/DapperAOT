@@ -160,15 +160,19 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             if (flags.HasAny(OperationFlags.NotAotSupported))
             {
-                // not our API (yet); count it, so the scorecard stays honest
-                return new SkippedSourceState(new LocationSnapshot(ie.GetLocation()), flags);
+                // not our API (yet); count it, so the scorecard stays honest. DAP001 comes
+                // from the analyzer - but only where the analyzer can see the call at all
+                return new SkippedSourceState(new LocationSnapshot(ie.GetLocation()), flags,
+                    diagnosed: IsVisibleToAnalyzer(op.TargetMethod));
             }
 
             var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var argExpression, reportDiagnostic: null, out var resultType, exitFirstFailure: true);
             if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
-                // diagnostics (from the analyzer's identical pass) told us to leave it alone
-                return new SkippedSourceState(new LocationSnapshot(location), flags);
+                // the analyzer's identical pass told us to leave it alone - and will have said
+                // why, *if* the shape of this overload is one the analyzer inspects at all
+                return new SkippedSourceState(new LocationSnapshot(location), flags,
+                    diagnosed: IsVisibleToAnalyzer(op.TargetMethod));
             }
 
 
@@ -183,15 +187,17 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             if (parameterPlan is { IsCollection: true, Element: { } element } && HasSelfBindingMember(element))
             {
                 // multi-exec batch reuse updates parameters in-place, which cannot re-bind a
-                // self-binding member; leave such call-sites on vanilla Dapper
-                return new SkippedSourceState(new LocationSnapshot(location), flags);
+                // self-binding member; leave such call-sites on vanilla Dapper. Nothing reports
+                // this today, which is why the scorecard counts it as a silent skip
+                return new SkippedSourceState(new LocationSnapshot(location), flags, diagnosed: false);
             }
             if (HasSelfBindingMember(parameterPlan) && HasNonInputMember(parameterPlan))
             {
                 // PostProcess addresses output/return parameters by *index*, and an expanded
                 // list contributes a runtime-variable number of parameters before them; leave
-                // such call-sites on vanilla Dapper rather than read back the wrong slot
-                return new SkippedSourceState(new LocationSnapshot(location), flags);
+                // such call-sites on vanilla Dapper rather than read back the wrong slot. Also
+                // unreported today - see the silent-skip count
+                return new SkippedSourceState(new LocationSnapshot(location), flags, diagnosed: false);
             }
             if (flags.HasAny(OperationFlags.CacheCommand))
             {
@@ -489,11 +495,12 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnknownError, fault.Location.AsLocation(), ex.Message, ex.StackTrace));
         }
 
-        int unsupported = 0, skippedViaDiagnostics = 0;
+        int unsupported = 0, refusedWithDiagnostics = 0, skippedSilently = 0;
         foreach (var skip in ctx.Nodes.OfType<SkippedSourceState>())
         {
             if (skip.Flags.HasAny(OperationFlags.NotAotSupported)) unsupported++;
-            else skippedViaDiagnostics++;
+            else if (skip.Diagnosed) refusedWithDiagnostics++;
+            else skippedSilently++; // nothing told the consumer; each one of these is a bug of ours
         }
 
         if (!CheckPrerequisites(ctx)) // also reports per-item diagnostics
@@ -502,8 +509,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             // enabled call-site (including ones we *could* have handled) goes unhandled
             if (!ctx.Nodes.IsDefaultOrEmpty)
             {
-                int total = unsupported + skippedViaDiagnostics + ctx.Nodes.OfType<SuccessSourceState>().Count();
-                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, 0, total, unsupported, skippedViaDiagnostics, 0, 0, 0));
+                int total = unsupported + refusedWithDiagnostics + skippedSilently + ctx.Nodes.OfType<SuccessSourceState>().Count();
+                ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null, 0, total, unsupported, refusedWithDiagnostics, skippedSilently, 0, 0, 0));
             }
             return;
         }
@@ -708,7 +715,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
 
         ctx.AddSource((env.AssemblyName ?? "package") + ".generated.cs", sb.ToString());
         ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.InterceptorsGenerated, null,
-            callSiteCount, callSiteCount + unsupported + skippedViaDiagnostics, unsupported, skippedViaDiagnostics,
+            callSiteCount, callSiteCount + unsupported + refusedWithDiagnostics + skippedSilently,
+            unsupported, refusedWithDiagnostics, skippedSilently,
             methodIndex, factories.Count(), readers.Count()));
     }
 
@@ -1871,16 +1879,41 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         protected SourceState(in LocationSnapshot location) => Location = location;
     }
 
+    /// <summary>
+    /// Mirrors the analyzer's entry condition: it only validates (and therefore only reports
+    /// diagnostics for) call-sites with a string parameter named <c>sql</c>, or marked
+    /// <c>[Sql]</c>. An overload that carries its SQL some other way - a
+    /// <c>CommandDefinition</c> - is invisible to it, so a skip there is silent.
+    /// </summary>
+    internal static bool IsVisibleToAnalyzer(IMethodSymbol method)
+    {
+        foreach (var p in method.Parameters)
+        {
+            if (p.Type.SpecialType == SpecialType.System_String
+                && (p.Name == "sql" || Inspection.GetDapperAttribute(p, Types.SqlAttribute) is not null))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     internal sealed class SkippedSourceState : SourceState
     {
         // a call-site that Dapper.AOT is *not* handling - either the API is not supported at
         // all, or diagnostics made us leave it alone; retained so the DAP000 scorecard can
         // count honestly rather than quietly shrinking the denominator
         public OperationFlags Flags { get; }
-        public SkippedSourceState(in LocationSnapshot location, OperationFlags flags) : base(location)
-            => Flags = flags;
+        public bool Diagnosed { get; }
+
+        public SkippedSourceState(in LocationSnapshot location, OperationFlags flags, bool diagnosed) : base(location)
+        {
+            Flags = flags;
+            Diagnosed = diagnosed;
+        }
 
         public bool Equals(SkippedSourceState? other) => other is not null
+            && Diagnosed == other.Diagnosed
             && Location.Equals(other.Location) && Flags == other.Flags;
         public override bool Equals(object? obj) => Equals(obj as SkippedSourceState);
         public override int GetHashCode() => Location.GetHashCode() ^ (int)Flags;
