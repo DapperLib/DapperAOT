@@ -24,6 +24,31 @@ Two levers change several complexity scores and are worth naming up front:
   reflection, exactly as the protobuf-net AOT generator does. Several "generated C# cannot do
   what ref-emit did" limits (DAP017-adjacent) soften to "net8+ can, down-level cannot".
 
+## The delta, in one place (2026-08-26)
+
+Measured against the acceptance corpus: **677 of 793** Dapper tests pass through generated code,
+with **533 of 725** call-sites intercepted (73.5%). What stands between that and "all green",
+largest first:
+
+| # | what | where it shows up | size |
+| --- | --- | --- | --- |
+| 1 | **multi-map** (`Query<T1..T7,TReturn>` + `splitOn`) | unsupported API - outside the 725 | large |
+| 2 | **`QueryMultiple` / `GridReader`** | unsupported API | large; needs a Dapper-side extension point first |
+| 3 | **corpus adoption of `[TypeHandler]`** | TypeHandlerTests x16/provider | a harness edit, not product work - but not all of it converts, see below |
+| 4 | **literal injection `{=name}`** (generator half; the analyzer half shipped as #191) | Literal x5 + Async x3 per provider | medium |
+| 5 | **the coercion tail** | MiscTests x10/provider | medium, and the highest silent-wrongness risk |
+| 6 | **`ExecuteReader`** | unsupported API | small-medium |
+| 7 | **announced types** (`Query(Type, ...)`, `GetRowParser(Type)`, `Parse(Type)`) | DAP015 x30 | medium; one design unlocks several rows |
+| 8 | tuples, `ISupportInitialize`, SqlDecimal read-side, legacy `?` token, constructors | scattered singles | small each |
+
+Two known ceilings rather than gaps: tests that register a *specific handler instance* and then
+assert on it (`Test_RemoveTypeMap`) cannot be expressed declaratively, because generated code
+constructs its own instance; and `ResetTypeHandlers` / `RemoveTypeMap` are runtime map mutation,
+which is a declared non-goal.
+
+Still parked by decision: modern interceptor syntax (soft-target rule), `[UnsafeAccessor]` for
+non-public members, and the "has no meaning" APIs warning - all in §7.
+
 ## 1. Core API surface (`SqlMapper` extension methods)
 
 | Dapper API | AOT status | impact | complexity | notes |
@@ -44,7 +69,7 @@ Two levers change several complexity scores and are worth naming up front:
 | `GetRowParser<T>(reader)` | ✅ | — | — | |
 | `GetRowParser(reader, Type concreteType, ...)` | ❌ | med | low* | discriminator/polymorphism pattern; dictionary lookup once types are announced |
 | `Parse<T>` / `Parse(Type)` / `Parse` (dynamic) | ❌ ❓ | low | low | same reader machinery, different entry point |
-| `AsTableValuedParameter` (`DataTable` / `SqlDataRecord`) | ⚠️ | low | — | the result *is* an `ICustomQueryParameter`, so covered above; a bare `DataTable` member rides the type-handler story instead (vanilla registers `DataTableHandler` by default) |
+| `AsTableValuedParameter` (`DataTable` / `SqlDataRecord`) | ⚠️ | low | low | the result *is* an `ICustomQueryParameter`, so covered above. A **bare** `DataTable` member needs a handler declared for `DataTable`; vanilla registers one by default, so this is the same "do we ship built-in declarations" question as the XML row |
 | `AsList<T>` | n/a | — | — | trivial helper; confirm it doesn't count as a candidate site |
 | `GetTypeDeserializer(Type, reader, startBound, length, ...)` | ❌ | low-med | low* | a valid raw-materializer API, not mere plumbing: with announced types it's the same dispatch map, returning a boxed `Func<DbDataReader, object>`. Its generic strengthening **already exists**: `GetRowParser<T>` (same slicing knobs), which AOT supports |
 | `CreateParamInfoGenerator(Identity, ...)` | ❌ | low | med | the raw parameter-binder factory; **no generic counterpart exists in Dapper** — see "Strengthened APIs" in [type-vs-generic.md](type-vs-generic.md) for the proposed `<T>` form |
@@ -70,8 +95,8 @@ Two levers change several complexity scores and are worth naming up front:
 | pseudo-positional (`?foo?`) | ❌ ❓ | low | med | OleDb/Access corner. [tokens.md](tokens.md) §4 |
 | enum / nullable / `char` / `Guid` params | ⚠️❓ | med | low | verify edge conversions vs Dapper |
 | param filtering (only bind members named in SQL) + `SupportLegacyParameterTokens` | ❓ | med | low | AOT currently *includes* + warns (DAP236); on strict providers that's an error, so may need parity not preference |
-| UDTs (`UdtTypeHandler`, geo types) | ❌ ❓ | low | med | provider-specific |
-| XML types (`XmlDocument`/`XDocument`/`XElement`) | ❌ ❓ | low-med | low | treat as known types with fixed handlers |
+| UDTs (`UdtTypeHandler`, geo types) | ⚠️ | low | low | provider-specific, and now expressible: declare a handler for the type. No built-in, so a consumer supplies it |
+| XML types (`XmlDocument`/`XDocument`/`XElement`) | ⚠️ | low-med | low | expressible today by declaring a handler; vanilla registers these by default, so the open question is whether we ship built-in declarations rather than whether it *can* work |
 | `CommandDefinition` incl. `CommandFlags.Pipelined` | ❓ | med | low-med | `NoCache` is **zero** (no cache to bypass); `Buffered` covered; `Pipelined` is a perf feature to verify |
 | `commandTimeout` / `transaction` / `commandType` args | ✅ ❓ | — | — | verify `TableDirect` |
 | `CancellationToken` | ✅ | — | — | AOT extends Dapper here (DAP044/045) |
@@ -90,8 +115,9 @@ Two levers change several complexity scores and are worth naming up front:
 | enum results (string→enum case-insens., widening, `ShortEnum`) | ⚠️❓ | high | low-med | Dapper recently changed precedence (prefer type handlers, #2200) — match the *new* behavior |
 | `MatchNamesWithUnderscores` | ❓ | med-high | low | snake_case databases; needs a compile-time equivalent (global option/attr) |
 | `SetTypeMap` / `CustomPropertyTypeMap` / `ITypeMap` / `TypeMapProvider` | ❌ 🚫? | med | med | runtime config by definition; AOT spelling is `[Column]`+`[UseColumnAttribute]`. Proposal: declare 🚫 for the runtime API, ship attribute equivalents + migration guidance |
-| `AddTypeHandler` / `TypeHandler<T>` / `StringTypeHandler` | ❌→⚠️ | **high** | med-high | AOT has its own `TypeHandler<T>`; needs the unification story (how does a *Dapper* handler registration become an AOT one?) |
-| `AddTypeMap` / `RemoveTypeMap` (scalar DbType map) | ❌ ❓ | low-med | low | e.g. `DateTime`→`DateTime2`; global compile-time option |
+| type handlers, *declared*: `[TypeHandler(typeof(V), typeof(H))]` | ✅ | — | — | `IDbValueHandler<T>` (or the `DbValueHandler<T>` base); a **vanilla** `SqlMapper.ITypeHandler` can be named as-is and generated code adapts it through a shim, so existing handlers move by changing where they are registered, not how they are written. Handlers must be stateless: generated code constructs the instance |
+| `SqlMapper.AddTypeHandler` (registration *at runtime*) | 🚫 | — | — | decided 2026-08-25: not mirrored. A registry that anything may write to at any time forces a lookup into the hot path for everyone, cannot be verified at build, and reaches `TypeHandlerCache<T>`, which ILC cannot resolve (issue #165). DAP053 reports a runtime registration and names the attribute to use instead. See [typehandlers-design.md](typehandlers-design.md) |
+| `AddTypeMap` / `RemoveTypeMap` (scalar DbType map) | ❌ | low-med | low | e.g. `DateTime`→`DateTime2`. The declarative spelling now has a precedent to copy: a `[module: TypeMap(typeof(string), DbType.AnsiString)]` alongside `[TypeHandler]`. Runtime registration is 🚫 for the same reasons |
 | `Settings.ApplyNullValues` | ❓ | low | low | |
 | coercion matrix (`char`, `Nullable<T>`, `Convert.ChangeType` fidelity) | ❓ | high | med | silent-wrongness risk; test-driven, differential against Dapper |
 | column-level error reporting (`ThrowDataException` names column+value) | ❓ | med | low | DX parity worth keeping |
@@ -128,7 +154,9 @@ Recorded so the unified story stays a superset, not a port: batch execution (`Db
 (`[BindTupleByName]`), factory-method construction, `[StrictTypes]`, `[QueryColumns]`,
 `[CacheCommand]`, `[CommandProperty]` (provider-specific command props), `[RowCount]` /
 `[RowCountHint]`, `TypeAccessor` + `SqlBulkCopy` bridge, `[IncludeLocation]`, deep TSQL
-analysis (DAP2xx), `[SqlSyntax]`.
+analysis (DAP2xx), `[SqlSyntax]`, and declarative type-handler registration
+(`[TypeHandler]` + `IDbValueHandler<T>`) — which is a *replacement* for a vanilla runtime API
+rather than an addition, and the template for the config-attribute direction generally.
 
 ## 7. Work items arising
 
@@ -170,6 +198,7 @@ analysis (DAP2xx), `[SqlSyntax]`.
   `QueryCachePurged`), `CommandFlags.NoCache`, and (if confirmed zero)
   `SqlMapper.ConnectionStringComparer` — and emit a **warning**: the call is harmless but
   inert, and its presence usually signals code written to manage a runtime that is no longer
-  there. Not an error: the code still runs. Next free id in the library block is DAP050
-  (DAP049 is the highest taken). Distinct from DAP001 (unsupported-but-meaningful): this is
-  *supported-and-meaningless*.
+  there. Not an error: the code still runs. Distinct from DAP001 (unsupported-but-meaningful):
+  this is *supported-and-meaningless*. **Next free library id: DAP056** (DAP050-055 are taken:
+  unconstructable result, generic-by-containment, needs-newer-Dapper, runtime handler
+  registration, unusable handler, duplicate handler).
