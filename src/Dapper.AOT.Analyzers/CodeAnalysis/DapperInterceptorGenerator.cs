@@ -158,6 +158,15 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             {
                 return null;
             }
+            if (PassesRuntimeType(op))
+            {
+                // a Type argument means the row type is chosen at execution time; declared a
+                // non-goal rather than reintroducing a Type-keyed registry (see parity.md §1).
+                // Reported from here because most of these overloads are invisible to the
+                // analyzer - they carry no `sql` string, or none at all
+                return new SkippedSourceState(new LocationSnapshot(ie.GetLocation()), flags,
+                    diagnosed: true, SkipReason.TypeBasedApi, op.TargetMethod.Name);
+            }
             if (flags.HasAny(OperationFlags.NotAotSupported))
             {
                 // not our API (yet); count it, so the scorecard stays honest. DAP001 comes
@@ -498,6 +507,14 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         int unsupported = 0, refusedWithDiagnostics = 0, skippedSilently = 0;
         foreach (var skip in ctx.Nodes.OfType<SkippedSourceState>())
         {
+            if (skip.Reason == SkipReason.TypeBasedApi)
+            {
+                // the analyzer cannot see most of these, so the generator is what speaks
+                ctx.ReportDiagnostic(Diagnostic.Create(DapperAnalyzer.Diagnostics.TypeBasedApiNotSupported,
+                    skip.Location.AsLocation(), skip.MethodName));
+                refusedWithDiagnostics++;
+                continue;
+            }
             if (skip.Flags.HasAny(OperationFlags.NotAotSupported)) unsupported++;
             else if (skip.Diagnosed) refusedWithDiagnostics++;
             else skippedSilently++; // nothing told the consumer; each one of these is a bug of ours
@@ -1898,6 +1915,39 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         return false;
     }
 
+    /// <summary>
+    /// Does this call actually supply a runtime <see cref="Type"/> for the row shape? Judged at
+    /// the call-site, not the symbol, because <c>GetRowParser&lt;T&gt;(concreteType: null)</c> -
+    /// the default, and the common case - is perfectly supportable; only a call that passes one
+    /// defers the type to execution time.
+    /// </summary>
+    internal static bool PassesRuntimeType(IInvocationOperation op)
+    {
+        foreach (var arg in op.Arguments)
+        {
+            var type = arg.Parameter?.Type;
+            if (type is null) continue;
+            if (type is IArrayTypeSymbol array) type = array.ElementType;
+            if (type is not { Name: "Type", ContainingNamespace: { Name: "System", ContainingNamespace.IsGlobalNamespace: true } }) continue;
+
+            // an omitted or explicitly-null optional Type (concreteType) changes nothing
+            if (arg.Value is IDefaultValueOperation) continue;
+            if (arg.ConstantValue is { HasValue: true, Value: null }) continue;
+            return true;
+        }
+        return false;
+    }
+
+    internal enum SkipReason
+    {
+        None = 0,
+        /// <summary>
+        /// A <c>Type</c>-argument overload: the row type is chosen at execution time, which is
+        /// the one thing compile-time generation cannot follow. Declared non-goal, 2026-08-26.
+        /// </summary>
+        TypeBasedApi = 1,
+    }
+
     internal sealed class SkippedSourceState : SourceState
     {
         // a call-site that Dapper.AOT is *not* handling - either the API is not supported at
@@ -1906,14 +1956,28 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         public OperationFlags Flags { get; }
         public bool Diagnosed { get; }
 
-        public SkippedSourceState(in LocationSnapshot location, OperationFlags flags, bool diagnosed) : base(location)
+        /// <summary>
+        /// Why we skipped, where the generator is the only thing positioned to say so. Kept as a
+        /// plain enum rather than a <c>Diagnostic</c> so the cached model stays equatable data.
+        /// </summary>
+        public SkipReason Reason { get; }
+
+        /// <summary>The Dapper method name, for a diagnostic message; empty when unused.</summary>
+        public string MethodName { get; }
+
+        public SkippedSourceState(in LocationSnapshot location, OperationFlags flags, bool diagnosed,
+            SkipReason reason = SkipReason.None, string methodName = "") : base(location)
         {
             Flags = flags;
             Diagnosed = diagnosed;
+            Reason = reason;
+            MethodName = methodName;
         }
 
         public bool Equals(SkippedSourceState? other) => other is not null
             && Diagnosed == other.Diagnosed
+            && Reason == other.Reason
+            && string.Equals(MethodName, other.MethodName, StringComparison.Ordinal)
             && Location.Equals(other.Location) && Flags == other.Flags;
         public override bool Equals(object? obj) => Equals(obj as SkippedSourceState);
         public override int GetHashCode() => Location.GetHashCode() ^ (int)Flags;

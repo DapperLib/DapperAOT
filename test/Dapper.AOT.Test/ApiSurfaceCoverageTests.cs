@@ -93,6 +93,9 @@ public class ApiSurfaceCoverageTests : GeneratorTestBase
                                             vanilla Dapper under JIT and a runtime failure under
                                             native AOT, with no build-time signal. Every row here
                                             is a defect
+              non-goal: Type-based          refused on purpose, with DAP056: the row type comes
+                                            from a Type at execution time, which generation
+                                            cannot follow. Use the generic overload
 
             """.Replace("\r\n", "\n"));
 
@@ -118,6 +121,20 @@ public class ApiSurfaceCoverageTests : GeneratorTestBase
         // the generator's syntax pre-filter is by method name, so anything outside it is never
         // examined at all - which is right for the helpers that need no interception
         if (!DapperInterceptorGenerator.IsCandidate(method.Name)) return "not inspected";
+
+        // a *required* Type parameter means every call defers the row type to execution time,
+        // which is a declared non-goal (DAP056). An optional one - GetRowParser<T>'s
+        // concreteType - cannot be judged from the symbol: it depends on whether the call
+        // passes it, so those stay in whichever bucket they would otherwise fall into
+        foreach (var p in method.Parameters.Skip(1))
+        {
+            var pt = p.Type is IArrayTypeSymbol array ? array.ElementType : p.Type;
+            if (!p.IsOptional
+                && pt is { Name: "Type", ContainingNamespace: { Name: "System", ContainingNamespace.IsGlobalNamespace: true } })
+            {
+                return "non-goal: Type-based";
+            }
+        }
 
         // the analyzer only inspects (and so only reports on) call-sites carrying SQL as a
         // string argument; an overload that hides it inside CommandDefinition is dropped mute
