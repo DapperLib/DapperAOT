@@ -76,18 +76,21 @@ jobs:
       - name: Build
         run: dotnet build Build.csproj --no-restore -c Release
 
+      # note: NOT ".nupkgs" - actions/upload-artifact excludes hidden files by default, so a
+      # dot-directory uploads as an empty artifact (with only a warning). Caught by the first
+      # dry run of this workflow
       - name: Collect packages
         run: |
-          New-Item -ItemType Directory -Force -Path .nupkgs | Out-Null
-          Copy-Item src/Dapper.*/bin/Release/Dapper.*.nupkg .nupkgs/
-          Get-ChildItem .nupkgs/*.nupkg | ForEach-Object { Write-Output $_.Name }
+          New-Item -ItemType Directory -Force -Path nupkgs | Out-Null
+          Copy-Item src/Dapper.*/bin/Release/Dapper.*.nupkg nupkgs/
+          Get-ChildItem nupkgs/*.nupkg | ForEach-Object { Write-Output $_.Name }
 
       # the packages survive as a run artifact even if the push fails
       - name: Upload packages
         uses: actions/upload-artifact@v4
         with:
           name: packages
-          path: .nupkgs/*.nupkg
+          path: nupkgs/*.nupkg
 
       - name: NuGet login (OIDC to temp API key)
         if: github.event_name == 'release'
@@ -98,4 +101,4 @@ jobs:
 
       - name: Push to nuget.org
         if: github.event_name == 'release'
-        run: dotnet nuget push .nupkgs/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push nupkgs/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
