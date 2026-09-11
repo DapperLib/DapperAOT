@@ -20,6 +20,10 @@ internal static class GlobalOptions
         public const string ProjectProperties_EnableAotAnalyzer = "build_property.EnableAotAnalyzer";
     }
 
+    /// <inheritdoc cref="TargetsNativeAot(AnalyzerConfigOptionsProvider?)"/>
+    public static bool TargetsNativeAot(this AnalyzerOptions? options)
+        => options?.AnalyzerConfigOptionsProvider.TargetsNativeAot() ?? false;
+
     /// <summary>
     /// Is the consuming project headed for native AOT? Decides whether a call-site we leave on
     /// vanilla Dapper is a missed optimization or a latent publish-time crash.

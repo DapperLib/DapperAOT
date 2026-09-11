@@ -544,7 +544,9 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 // DAP001, from here rather than the analyzer, which cannot see this overload -
                 // so both spellings of an unsupported API report the same thing
                 ctx.ReportDiagnostic(Diagnostic.Create(DapperAnalyzer.Diagnostics.UnsupportedMethod,
-                    skip.Location.AsLocation(), skip.MethodName));
+                    skip.Location.AsLocation(),
+                    ctx.TargetsNativeAot ? DiagnosticSeverity.Warning : DiagnosticSeverity.Info,
+                    additionalLocations: null, properties: null, skip.MethodName));
                 unsupported++;
                 continue;
             }
