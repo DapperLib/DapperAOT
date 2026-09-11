@@ -12,10 +12,13 @@ Phases 1 and 2 of [plan.md](plan.md) are done and merged. Phase 3 (close the gap
 per round, each verified by a DB-backed run) is in progress; see
 [harness-baseline.md](harness-baseline.md) for the round log and the current numbers.
 
-Last measured baseline: **677 passed / 793** on the Dapper suite, **533 of 725** call-sites
-intercepted. **That number is from 2026-08-21 and has not been re-taken since** - see
-"The harness does not exist on this machine" below, which is currently the gate on everything
-in phase 3.
+Last measured baseline (**round 15, 2026-09-11**, Linux rig): **729 passed / 800** on the Dapper
+suite with **432 of 736** call-sites handled; the vanilla control on the same box is 770/800.
+All 41 divergences are known gaps, ×2 providers - no new failure class.
+
+Note the call-site count is **not** comparable with the 533/725 recorded at round 12: that rig
+was Windows-only and is gone, and the round-12 generator reads 432 here too. Compare within a
+rig, never across. See [harness-baseline.md](harness-baseline.md) round 15.
 
 ## In flight
 
@@ -88,18 +91,23 @@ than half-implemented; widening `AttributeUsage` and adding a constructor are bo
 so it stays a future option), enum auto-handlers, and `[TypeMap]`/settings equivalents - per the
 declarative-config direction in [typehandler-registration.md](typehandler-registration.md).
 
-## The harness does not exist on this machine
+## The harness, rebuilt (2026-09-11)
 
-Phase 3's definition of done is *DB-backed tests green*, and the instrument for that is the
-`aot-harness` branch of the sibling **Dapper** checkout - deliberately local-only, never pushed.
-It lived on the Windows box. On this machine there is **no such branch** (`../Dapper` is clean
-`main`), **no `DapperAotEnable.cs`**, and **no SQL Server running**. The repack recipe in
-[harness-baseline.md](harness-baseline.md) is also Windows-shaped (it names
-`C:\Code\NugetPackageCache`) and needs Linux equivalents.
+The rig was local-only on the Windows box and did not survive the move; it has been **rebuilt on
+this machine** and the step-by-step is now at the top of
+[harness-baseline.md](harness-baseline.md) - databases via the Dapper suite's own
+`docker compose`, the `SqlServerConnectionString` env var, the local feed, and the
+`.globalconfig` severity downgrades that let the build complete.
 
-So: **no phase-3 round can be closed, and the 677/793 cannot even be re-measured, until this is
-rebuilt.** It is the first thing to do if the next session is a feature session rather than a
-tidying one.
+It is still the `aot-harness` branch of the sibling Dapper checkout and still **local-only, not
+pushed**. Two things to know before trusting a number from it:
+
+- `-p:NoWarn=NU1902` is needed on every build: the Dapper repo runs warnings-as-errors and a
+  published advisory against a SourceLink dependency otherwise fails the restore. Nothing to do
+  with us, and not worth "fixing" in that repo;
+- **absolute call-site counts are rig-specific.** The old rig's 533/725 cannot be reproduced here
+  and the round-12 generator does not reproduce it either, so the difference is configuration
+  that no longer exists. Compare within a rig.
 
 ## What is next, in the order parity.md argues for
 
