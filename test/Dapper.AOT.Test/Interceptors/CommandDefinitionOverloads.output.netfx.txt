@@ -1,4 +1,10 @@
-Generator produced 1 diagnostics:
+Generator produced 3 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 1 of 3 enabled call-sites (0 unsupported API, 0 refused with diagnostics, 2 skipped silently) using 1 interceptors, 1 commands and 0 readers
+Dapper.AOT handled 1 of 3 enabled call-sites (0 unsupported API, 2 refused with diagnostics, 0 skipped silently) using 1 interceptors, 1 commands and 0 readers
+
+Info DAP057 Interceptors/CommandDefinitionOverloads.input.cs L18 C24
+'Query' passes its SQL inside a CommandDefinition, which Dapper.AOT cannot read at build time; use the overload that takes the SQL directly. This call-site is left on vanilla Dapper, which will not work under native AOT
+
+Info DAP057 Interceptors/CommandDefinitionOverloads.input.cs L19 C24
+'Execute' passes its SQL inside a CommandDefinition, which Dapper.AOT cannot read at build time; use the overload that takes the SQL directly. This call-site is left on vanilla Dapper, which will not work under native AOT
