@@ -1,0 +1,19 @@
+Generator produced 6 diagnostics:
+
+Hidden DAP000  L1 C1
+Dapper.AOT handled 2 of 7 enabled call-sites (0 unsupported API, 5 refused with diagnostics, 0 skipped silently) using 2 interceptors, 0 commands and 1 readers
+
+Warning DAP056 Interceptors/TypeBasedApis.input.cs L18 C13
+'Query' chooses the row type from a Type at execution time, which Dapper.AOT cannot generate for; use the generic overload so the type is known at build time, and the call-site is left on vanilla Dapper (which will not work under native AOT)
+
+Warning DAP056 Interceptors/TypeBasedApis.input.cs L19 C13
+'QueryFirst' chooses the row type from a Type at execution time, which Dapper.AOT cannot generate for; use the generic overload so the type is known at build time, and the call-site is left on vanilla Dapper (which will not work under native AOT)
+
+Warning DAP056 Interceptors/TypeBasedApis.input.cs L20 C13
+'QuerySingleOrDefault' chooses the row type from a Type at execution time, which Dapper.AOT cannot generate for; use the generic overload so the type is known at build time, and the call-site is left on vanilla Dapper (which will not work under native AOT)
+
+Warning DAP056 Interceptors/TypeBasedApis.input.cs L21 C13
+'GetRowParser' chooses the row type from a Type at execution time, which Dapper.AOT cannot generate for; use the generic overload so the type is known at build time, and the call-site is left on vanilla Dapper (which will not work under native AOT)
+
+Warning DAP056 Interceptors/TypeBasedApis.input.cs L24 C13
+'GetRowParser' chooses the row type from a Type at execution time, which Dapper.AOT cannot generate for; use the generic overload so the type is known at build time, and the call-site is left on vanilla Dapper (which will not work under native AOT)

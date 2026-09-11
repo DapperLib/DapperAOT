@@ -1,4 +1,10 @@
-Generator produced 1 diagnostics:
+Generator produced 3 diagnostics:
 
 Hidden DAP000  L1 C1
-Dapper.AOT handled 2 of 4 enabled call-sites (1 unsupported API, 0 refused with diagnostics, 1 skipped silently) using 2 interceptors, 0 commands and 1 readers
+Dapper.AOT handled 2 of 4 enabled call-sites (0 unsupported API, 2 refused with diagnostics, 0 skipped silently) using 2 interceptors, 0 commands and 1 readers
+
+Warning DAP056 Interceptors/GetRowParser.input.cs L22 C22
+'GetRowParser' chooses the row type from a Type at execution time, which Dapper.AOT cannot generate for; use the generic overload so the type is known at build time, and the call-site is left on vanilla Dapper (which will not work under native AOT)
+
+Warning DAP056 Interceptors/GetRowParser.input.cs L42 C22
+'GetRowParser' chooses the row type from a Type at execution time, which Dapper.AOT cannot generate for; use the generic overload so the type is known at build time, and the call-site is left on vanilla Dapper (which will not work under native AOT)

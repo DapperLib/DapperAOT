@@ -53,11 +53,12 @@ Two levers change several complexity scores and are worth naming up front:
 
 Two independent measurements, because they answer different questions.
 
-**API surface** (`ApiSurface.expected.txt`, generated): of Dapper's 110 public extension
-overloads — 40 candidates, 16 unsupported-and-diagnosed, 13 unsupported-and-undiagnosed, 27
-skipped silently, 9 never inspected (helpers, correctly). So **40 of 110 tell the consumer
-nothing**, almost all `CommandDefinition`-shaped. That is a defect class of its own, separate
-from any missing feature: it is not that these fail, it is that they fail *quietly*.
+**API surface** (`ApiSurface.expected.txt`, generated): of Dapper's public extension overloads
+— 28 candidates, 18 `Type`-based non-goals (refused on purpose, with DAP056), 16
+unsupported-and-diagnosed, 12 unsupported-and-undiagnosed, 22 skipped silently, 9 never inspected
+(helpers, correctly). So **34 still tell the consumer nothing**, almost all
+`CommandDefinition`-shaped. That is a defect class of its own, separate from any missing feature:
+it is not that these fail, it is that they fail *quietly*.
 
 **Behaviour** (Dapper suite, local SQL Server): **677 of 793** pass through generated code, with
 **533 of 725** call-sites intercepted (73.5%). Note the denominator counts what the generator
@@ -67,14 +68,14 @@ What stands between that and "all green", largest first:
 
 | # | what | where it shows up | size |
 | --- | --- | --- | --- |
-| 0 | **say something at the 40 mute overloads** | 27 skipped silently + 13 unsupported-undiagnosed | small, and it is the cheapest safety win on the list: it turns a runtime AOT failure into a build warning without supporting anything new |
+| 0 | **say something at the 34 mute overloads** | 22 skipped silently + 12 unsupported-undiagnosed | small, and it is the cheapest safety win on the list: it turns a runtime AOT failure into a build warning without supporting anything new |
 | 1 | **multi-map** (`Query<T1..T7,TReturn>` + `splitOn`) | unsupported API - outside the 725 | large |
 | 2 | **`QueryMultiple` / `GridReader`** | unsupported API | large; needs a Dapper-side extension point first |
 | 3 | **corpus adoption of `[TypeHandler]`** | TypeHandlerTests x16/provider | a harness edit, not product work - but not all of it converts, see below |
 | 4 | **literal injection `{=name}`** (generator half; the analyzer half shipped as #191) | Literal x5 + Async x3 per provider | medium |
 | 5 | **the coercion tail** | MiscTests x10/provider | medium, and the highest silent-wrongness risk |
 | 6 | **`ExecuteReader`** | unsupported API | small-medium |
-| 7 | **announced types** (`Query(Type, ...)`, `GetRowParser(Type)`, `Parse(Type)`) | DAP015 x30 | medium; one design unlocks several rows |
+| 7 | **announced types**, for *untyped parameters* only (`object`-typed args) | DAP015 x30 | medium. Note this shrank on 2026-08-26: the `Type`-based **result** APIs it used to also cover are now a non-goal, so this is no longer a design that unlocks several rows |
 | 8 | tuples, `ISupportInitialize`, SqlDecimal read-side, legacy `?` token, constructors | scattered singles | small each |
 
 Two known ceilings rather than gaps: tests that register a *specific handler instance* and then
@@ -94,20 +95,21 @@ non-public members, and the "has no meaning" APIs warning - all in §7.
 | `QueryFirst/Single[OrDefault]<T>` + async | ✅ | — | — | row-count guidance via DAP229/230 |
 | `Query` (non-generic → `dynamic` rows) | ✅ | — | — | see §3 dynamic-row fidelity |
 | `Query<object>` / untyped | ✅ | — | — | `QueryUntyped` fixture |
-| `Query(Type, sql, ...)` + `First/Single[OrDefault]` + async | ❌ | med | med | needs announced types; see [type-vs-generic.md](type-vs-generic.md) |
+| `Query(Type, sql, ...)` + `First/Single[OrDefault]` + async | 🚫 | — | — | **decided 2026-08-26**: the row type is chosen at execution time, which compile-time generation cannot follow. Supporting it needs a `Type`-keyed registry plus runtime dispatch — the shape #206 was closed over. The generic overload is the answer and DAP056 names it. 12 overloads, plus 6 more in the `Type`+`CommandDefinition` combinations |
 | `Query<TFirst,...,TReturn>` multi-map (2–7 + splitOn) | ❌ | **high** | med-high | `Arity > 1` → `NotAotSupported`. New read shape (splitOn slicing, per-type readers, user delegate), all sync/async/buffered variants |
-| `Query(sql, Type[] types, Func<object[],TReturn> map, ...)` | ❌ | low-med | low* | *after* multi-map + announced types land; incremental on both |
+| `Query(sql, Type[] types, Func<object[],TReturn> map, ...)` | 🚫 | — | — | doubly out: `Type`-based *and* multi-map. Covered by the same decision and the same DAP056 |
 | `QueryMultiple` / `QueryMultipleAsync` (`GridReader`) | ❌ | **high** | high | interceptor must return Dapper's `GridReader` → needs a Dapper-side extension point (subclassable GridReader) or an AOT-owned grid API; then per-`Read<T>` typing is a second problem (instance calls, not interceptable — likely: announced types + runtime dispatch) |
 | `Execute` / `ExecuteAsync` | ✅ | — | — | |
 | `Execute` with `IEnumerable<T>` (multi-exec) | ✅ | — | low (verify) | AOT batches (`DbBatch`, `[BatchSize]`) — *better*; verify semantics match Dapper (order, transaction, partial failure, total rowcount) |
 | `ExecuteScalar` / `ExecuteScalar<T>` + async | ✅ | — | — | conversion fidelity in §3 |
 | `ExecuteReader` / `ExecuteReaderAsync` | ❌ | med | low-med | command setup already generated; return the (wrapped) reader; `WrappedReader`/`IWrappedDataReader` disposal semantics |
 | `GetRowParser<T>(reader)` | ✅ | — | — | |
-| `GetRowParser(reader, Type concreteType, ...)` | ❌ | med | low* | discriminator/polymorphism pattern; dictionary lookup once types are announced |
-| `Parse<T>` / `Parse(Type)` / `Parse` (dynamic) | ❌ | low | low | same reader machinery, different entry point. Report: *not inspected* — all three sit outside the generator's name filter, so nothing is emitted and nothing is said |
+| `GetRowParser(reader, Type concreteType, ...)` | 🚫 | — | — | the discriminator/polymorphism pattern, and the one row where "use the generic form" is not available advice — the choice is data-dependent. Decided out anyway: the AOT-correct spelling is an explicit `switch` over `GetRowParser<T>()` per candidate, which roots exactly the types used rather than everything registered. DAP056 says so; [DAP056.md](../docs/rules/DAP056.md) shows the pattern. **`GetRowParser<T>()` itself stays ✅** — only *passing* a `concreteType` defers the decision |
+| `Parse(Type)` | 🚫 | — | — | same decision as the rows above |
+| `Parse<T>` / `Parse` (dynamic) | ❌ | low | low | same reader machinery, different entry point. Report: *not inspected* — these sit outside the generator's name filter, so nothing is emitted and nothing is said. Note the filter cannot simply be widened: `Parse` is far too common a method name to make every `.Parse(` call-site a generator candidate |
 | `AsTableValuedParameter` (`DataTable` / `SqlDataRecord`) | ⚠️ | low | low | the result *is* an `ICustomQueryParameter`, so covered above. A **bare** `DataTable` member needs a handler declared for `DataTable`; vanilla registers one by default, so this is the same "do we ship built-in declarations" question as the XML row |
 | `AsList<T>` | n/a | — | — | trivial helper; confirm it doesn't count as a candidate site |
-| `GetTypeDeserializer(Type, reader, startBound, length, ...)` | ❌ | low-med | low* | a valid raw-materializer API, not mere plumbing: with announced types it's the same dispatch map, returning a boxed `Func<DbDataReader, object>`. Its generic strengthening **already exists**: `GetRowParser<T>` (same slicing knobs), which AOT supports |
+| `GetTypeDeserializer(Type, reader, startBound, length, ...)` | 🚫 | — | — | `Type`-based, so it goes with the rows above. Its generic strengthening **already exists** — `GetRowParser<T>`, same slicing knobs — which is exactly why the decision is cheap here. Not an extension method, so no DAP056: it is called directly and the generator never sees it |
 | `CreateParamInfoGenerator(Identity, ...)` | ❌ | low | med | the raw parameter-binder factory; **no generic counterpart exists in Dapper** — see "Strengthened APIs" in [type-vs-generic.md](type-vs-generic.md) for the proposed `<T>` form |
 | `ReadChar` / `ReadNullableChar` / `SanitizeParameterValue` | ✅ | — | — | plain static helpers, AOT-safe as-is; nothing to intercept |
 | `PurgeQueryCache` / `GetCachedSQL*` / `GetHashCollissions` / `QueryCachePurged` | 🚫 | **zero** | — | there is no ref-emit plan cache in AOT — but usage should *warn*, see §7 |
