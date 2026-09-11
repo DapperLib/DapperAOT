@@ -69,8 +69,7 @@ public class Entity1 : EntityBase { public string Name { get; set; } }
         var buildOutput = sb.ToString();
         try // automatically overwrite test output, for git tracking
         {
-            if (GetOriginCodeLocation() is string originFile
-                && Path.GetDirectoryName(originFile) is string originFolder)
+            if (ProjectFolder is string originFolder)
             {
                 var outputFirstDir = outputCodePath.Split(Path.DirectorySeparatorChar).First();
                 if (originFolder.Split(Path.DirectorySeparatorChar).Last() == outputFirstDir)

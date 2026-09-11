@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -24,7 +25,30 @@ namespace Dapper.AOT.Test
             return message;
         }
 
-        protected static string? GetOriginCodeLocation([CallerFilePath] string? path = null) => path;
+        private static readonly Lazy<string?> s_ProjectFolder = new(FindProjectFolder);
+
+        /// <summary>
+        /// The test project's folder in the working tree, or <c>null</c> if it cannot be found.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="CallerFilePathAttribute"/> cannot answer this: the project builds with
+        /// <c>DeterministicSourcePaths</c>, so the caller path is the mapped <c>/_/test/...</c>
+        /// rather than anything that exists on disk. Walking up from the binaries finds the real
+        /// folder without giving up determinism.
+        /// </remarks>
+        protected static string? ProjectFolder => s_ProjectFolder.Value;
+
+        private static string? FindProjectFolder()
+        {
+            const string ProjectFile = "Dapper.AOT.Test.csproj";
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir is not null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, ProjectFile))) return dir.FullName;
+                dir = dir.Parent;
+            }
+            return null; // not running from a working tree; goldens simply aren't written back
+        }
 
         // input from https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#unit-testing-of-generators
 
