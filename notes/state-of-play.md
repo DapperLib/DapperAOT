@@ -130,7 +130,10 @@ tidying one.
 - **External PRs #117 and #162** were the prior art for the static tier; **both are now closed**,
   superseded by #208. Their instance registry and interceptor goldens were the parts worth
   keeping - triage write-ups exist outside this repo.
-- **Dapper #2225 and #2228 are merged but unreleased** (latest release is still 2.1.79, from
-  May). DapperAOT pins 2.1.72. When a release ships: bump Dapper and Dapper.StrongName, add the
-  DAP052 positive twin and the defer-emit golden, and take the `TestUnexpectedDataMessage`
-  parity that was deferred to that bump.
+- **Dapper #2225 and #2228 are merged but unreleased.** Both landed 2026-08-20; the latest
+  release is still 2.1.79, from May, so no tag contains them. DapperAOT now pins **2.1.79**
+  (bumped 2026-09-11, hygiene only - it changed nothing and unlocks nothing). When a release
+  ships *with those two*: bump again, add the DAP052 positive twin and the defer-emit golden,
+  and take the `TestUnexpectedDataMessage` parity that was deferred to that bump. The DAP052
+  verifier pins 2.1.72 itself (`DAP052.DapperWithoutTheApi`) and is unaffected by either bump -
+  that is deliberate, so it keeps guarding the probe-and-refuse path.
