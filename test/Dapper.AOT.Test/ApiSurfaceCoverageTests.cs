@@ -89,6 +89,12 @@ public class ApiSurfaceCoverageTests : GeneratorTestBase
               not inspected                 outside the generator's name filter, so never
                                             examined - correct for helpers that need no
                                             interception, and worth checking nothing real is here
+              unsupported: CommandDefinition
+                                            the operation is supported, but not in this
+                                            spelling: the SQL lives inside the struct, where
+                                            build-time inspection cannot reach it. Reported by
+                                            the generator as DAP057 (a warning when the project
+                                            publishes native AOT, info otherwise)
               skipped silently              dropped with nothing reported - the consumer gets
                                             vanilla Dapper under JIT and a runtime failure under
                                             native AOT, with no build-time signal. Every row here
@@ -137,13 +143,31 @@ public class ApiSurfaceCoverageTests : GeneratorTestBase
         }
 
         // the analyzer only inspects (and so only reports on) call-sites carrying SQL as a
-        // string argument; an overload that hides it inside CommandDefinition is dropped mute
-        var diagnosed = DapperInterceptorGenerator.IsVisibleToAnalyzer(method);
+        // string argument. An overload that hides it inside CommandDefinition is invisible to
+        // it - so the *generator* reports those instead, and neither is mute any more
+        var visible = DapperInterceptorGenerator.IsVisibleToAnalyzer(method);
         if (flags.HasAny(OperationFlags.NotAotSupported))
         {
-            return diagnosed ? "unsupported API (diagnosed)" : "unsupported API (undiagnosed)";
+            // DAP001 either way: from the analyzer when it can see the call, from the generator
+            // when it cannot
+            return "unsupported API (diagnosed)";
         }
-        return diagnosed ? "candidate" : "skipped silently";
+        if (visible) return "candidate";
+        if (TakesCommandDefinition(method)) return "unsupported: CommandDefinition";
+
+        // invisible to the analyzer, not CommandDefinition-shaped, and supportable at some
+        // call-sites but not others - only GetRowParser<T>(concreteType) reaches here, and what
+        // it does depends on whether a given call passes the Type. A symbol cannot say
+        return "skipped silently";
+    }
+
+    private static bool TakesCommandDefinition(IMethodSymbol method)
+    {
+        foreach (var p in method.Parameters)
+        {
+            if (p.Type is { Name: "CommandDefinition", ContainingNamespace.Name: "Dapper" }) return true;
+        }
+        return false;
     }
 
     private static string Describe(IMethodSymbol method)

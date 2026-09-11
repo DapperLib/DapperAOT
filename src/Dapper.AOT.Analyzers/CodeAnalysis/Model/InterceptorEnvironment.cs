@@ -18,11 +18,18 @@ internal sealed class InterceptorEnvironment : IEquatable<InterceptorEnvironment
     public ParamPlan SystemObjectPlan { get; } // the parameterless command-factory fallback
     public EquatableArray<TypeHandlerRegistration> TypeHandlers { get; } // [TypeHandler(...)] at module/assembly level
 
+    /// <summary>
+    /// Is this project headed for native AOT? Decides whether leaving a call-site on vanilla
+    /// Dapper is merely a missed optimization (info) or a latent publish-time crash (warning).
+    /// </summary>
+    public bool TargetsNativeAot { get; }
+
     public InterceptorEnvironment(bool allowUnsafe, string? assemblyName, bool hasInterceptsLocationAttribute,
         bool needsCommandPrep, string? baseCommandFactoryName, bool baseFactoryCanConstruct,
         in EquatableArray<SpecialDbCommandType> specialCommandTypes, ParamPlan systemObjectPlan,
-        in EquatableArray<TypeHandlerRegistration> typeHandlers)
+        in EquatableArray<TypeHandlerRegistration> typeHandlers, bool targetsNativeAot = false)
     {
+        TargetsNativeAot = targetsNativeAot;
         AllowUnsafe = allowUnsafe;
         AssemblyName = assemblyName;
         HasInterceptsLocationAttribute = hasInterceptsLocationAttribute;
@@ -43,7 +50,8 @@ internal sealed class InterceptorEnvironment : IEquatable<InterceptorEnvironment
         && BaseFactoryCanConstruct == other.BaseFactoryCanConstruct
         && SpecialCommandTypes.Equals(other.SpecialCommandTypes)
         && SystemObjectPlan.Equals(other.SystemObjectPlan)
-        && TypeHandlers.Equals(other.TypeHandlers);
+        && TypeHandlers.Equals(other.TypeHandlers)
+        && TargetsNativeAot == other.TargetsNativeAot;
 
     public override bool Equals(object? obj) => Equals(obj as InterceptorEnvironment);
     public override int GetHashCode()

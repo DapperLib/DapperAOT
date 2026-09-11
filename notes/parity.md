@@ -54,21 +54,26 @@ Two levers change several complexity scores and are worth naming up front:
 Two independent measurements, because they answer different questions.
 
 **API surface** (`ApiSurface.expected.txt`, generated): of Dapper's public extension overloads
-— 28 candidates, 18 `Type`-based non-goals (refused on purpose, with DAP056), 16
-unsupported-and-diagnosed, 12 unsupported-and-undiagnosed, 22 skipped silently, 9 never inspected
-(helpers, correctly). So **34 still tell the consumer nothing**, almost all
-`CommandDefinition`-shaped. That is a defect class of its own, separate from any missing feature:
-it is not that these fail, it is that they fail *quietly*.
+— 28 candidates, 18 `Type`-based non-goals (refused on purpose, with DAP056), 28
+unsupported-and-diagnosed, 21 `CommandDefinition`-shaped (refused, with DAP057), 9 never
+inspected (helpers, correctly), and **1 still silent**.
 
-**Behaviour** (Dapper suite, local SQL Server): **677 of 793** pass through generated code, with
-**533 of 725** call-sites intercepted (73.5%). Note the denominator counts what the generator
-examines, so the silently-skipped overloads above are inside it and the diagnosed ones are too.
+That one is `GetRowParser<T>(concreteType)`, and it is a reporting artifact rather than a gap:
+the report classifies *symbols*, and what this overload does depends on whether a given call
+actually passes the `Type` — which a symbol cannot say. Call-sites get DAP056 or are handled, as
+appropriate. **The mute class is closed** (2026-09-11, was 40 at the start of the round).
+
+**Behaviour** (Dapper suite, local SQL Server): **729 of 800** pass through generated code, with
+**432 of 736** call-sites handled (round 15, 2026-09-11; vanilla control 770/800). Note the
+denominator counts what the generator examines, so the refused overloads above are inside it.
+Call-site counts are rig-specific — see harness-baseline.md round 15 before comparing with any
+earlier round.
 
 What stands between that and "all green", largest first:
 
 | # | what | where it shows up | size |
 | --- | --- | --- | --- |
-| 0 | **say something at the 34 mute overloads** | 22 skipped silently + 12 unsupported-undiagnosed | small, and it is the cheapest safety win on the list: it turns a runtime AOT failure into a build warning without supporting anything new |
+| ~~0~~ | ~~**say something at the mute overloads**~~ | **done 2026-09-11**: DAP057 for the 21 `CommandDefinition` spellings, DAP001 from the generator for the 12 it could not see. Severity follows `PublishAot` — info when a fallback to vanilla Dapper is a missed optimization, warning when it is a latent publish-time crash | — |
 | 1 | **multi-map** (`Query<T1..T7,TReturn>` + `splitOn`) | unsupported API - outside the 725 | large |
 | 2 | **`QueryMultiple` / `GridReader`** | unsupported API | large; needs a Dapper-side extension point first |
 | 3 | **corpus adoption of `[TypeHandler]`** | TypeHandlerTests x16/provider | a harness edit, not product work - but not all of it converts, see below |
@@ -135,7 +140,7 @@ non-public members, and the "has no meaning" APIs warning - all in §7.
 | param filtering (only bind members named in SQL) + `SupportLegacyParameterTokens` | ❓ | med | low | AOT currently *includes* + warns (DAP236); on strict providers that's an error, so may need parity not preference |
 | UDTs (`UdtTypeHandler`, geo types) | ⚠️ | low | low | provider-specific, and now expressible: declare a handler for the type. No built-in, so a consumer supplies it |
 | XML types (`XmlDocument`/`XDocument`/`XElement`) | ⚠️ | low-med | low | expressible today by declaring a handler; vanilla registers these by default, so the open question is whether we ship built-in declarations rather than whether it *can* work |
-| `CommandDefinition` overloads | ❌ | **high** | med | **21 of the 22 silently-skipped rows in the surface report are these** — the analyzer only inspects call-sites carrying SQL as a string argument, and these hide it inside the struct, so nothing is emitted *and nothing is reported*. (It was 27 before #214 moved the `Type`+`CommandDefinition` combinations into the non-goal bucket; the report is the count that matters, not this sentence.) Consumers get vanilla Dapper under JIT and a runtime failure under native AOT with no build-time signal (issues #112, #158, #165). External PR #153 proposes support; a diagnostic is worth having either way, and is cheaper |
+| `CommandDefinition` overloads | ❌ | **high** | med | Still not generated — the analyzer only inspects call-sites carrying SQL as a string argument, and these hide it inside the struct. But **no longer silent**: DAP057 names each one (2026-09-11), at a severity that follows `PublishAot`. That closes the *safety* half of issues #112/#158/#165 — a consumer heading for native AOT is now told at build time instead of at publish. The *support* half is still open; external PR #153 proposes it. See the surface report for the current count |
 | `CommandFlags` (`Buffered`, `Pipelined`, `NoCache`) | ❓ (behaviour) | med | low-med | `NoCache` is **zero** (no cache to bypass); `Buffered` covered; `Pipelined` is a perf feature to verify — and all of it is moot at a call-site until the row above is fixed |
 | `commandTimeout` / `transaction` / `commandType` args | ✅ ❓ | — | — | verify `TableDirect` |
 | `CancellationToken` | ✅ | — | — | AOT extends Dapper here (DAP044/045) |
