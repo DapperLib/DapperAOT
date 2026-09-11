@@ -30,12 +30,20 @@ jobs:
           setAllVars: true
 
       # deliberately before restore/build, so the version is legible even when a later step
-      # fails. Cutting a release means tagging with exactly what this prints
+      # fails. Cutting a release means tagging with exactly what a *main* run prints - a PR
+      # run builds refs/pull/N/merge, whose height includes the branch commits and the merge,
+      # so its number is not the one that will ship
       - name: Report computed version
         run: |
           $version = nbgv get-version --variable NuGetPackageVersion
-          "### Computed package version: ``$version``" >> $env:GITHUB_STEP_SUMMARY
-          Write-Output "Computed package version: $version"
+          if ($env:GITHUB_REF -eq 'refs/heads/main') {
+            "### Computed package version: ``$version``" >> $env:GITHUB_STEP_SUMMARY
+            "Tag the release with exactly this." >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            "### Computed package version: ``$version``" >> $env:GITHUB_STEP_SUMMARY
+            "_This is a ``$env:GITHUB_REF`` build - **not** the version that would ship. Read the release version off a main run._" >> $env:GITHUB_STEP_SUMMARY
+          }
+          Write-Output "Computed package version: $version (ref: $env:GITHUB_REF)"
 
       - name: Restore dependencies
         run: dotnet restore Build.csproj
