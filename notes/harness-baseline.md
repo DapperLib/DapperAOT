@@ -1,11 +1,37 @@
 # Harness baseline: Dapper.AOT enabled in the Dapper test suite
 
-First real numbers, 2026-08-18. Setup lives on the `aot-harness` branch of the **Dapper**
-repo (sibling checkout; deliberately **local-only, not pushed** — it is a measurement rig,
-not work-in-progress on the public repo): local package feed at `../DapperAOT/artifacts`,
-`[module: DapperAot]` in `DapperAotEnable.cs` (plus `[module: UseRuntimeTypeHandlers]`, see
-round 14), interceptors enabled, and a `.globalconfig` raising DAP000 (Hidden by default) to
-warning.
+First real numbers, 2026-08-18; latest run **round 15**, 2026-09-11. Setup lives on the
+`aot-harness` branch of the **Dapper** repo (sibling checkout; deliberately **local-only, not
+pushed** — it is a measurement rig, not work-in-progress on the public repo): local package feed
+at `../DapperAOT/artifacts`, `[module: DapperAot]` in `DapperAotEnable.cs`, interceptors enabled,
+and a `.globalconfig` raising DAP000 (Hidden by default) to warning.
+
+(Round 14's `[module: UseRuntimeTypeHandlers]` is **gone**: #206 was closed, so the attribute
+does not exist. If you are reading an older round below, that is why its numbers assume a
+bridge that no longer ships.)
+
+**Standing the rig up from nothing** (done 2026-09-11 on Linux; the original was Windows-only
+and did not survive the move). On the `aot-harness` branch of the sibling Dapper checkout:
+
+1. **databases** - the suite's own compose file already has all three:
+   `docker compose -f tests/docker-compose.yml up -d` (SQL Server 2019, Postgres, MySQL), then
+   `export SqlServerConnectionString="Server=localhost,1433;Database=tempdb;User ID=sa;Password=Password.;TrustServerCertificate=True"`
+   — the suite reads that env var and otherwise defaults to a Windows-shaped
+   `Data Source=.;Integrated Security=True`;
+2. **local feed** - add `<add key="local-dapper-aot" value="../DapperAOT/artifacts" />` to
+   `nuget.config`, and a `PackageVersion` for `Dapper.AOT` at `1.0.0-g` (central package
+   management is on);
+3. **wire the test project** - `PackageReference Include="Dapper.AOT"` (skip it on net481, which
+   has no interceptors), plus **both** interceptor property spellings;
+4. **enable it** - `DapperAotEnable.cs` carrying `[module: DapperAot]`;
+5. **make the scorecard visible** - a `.globalconfig` in the test project raising DAP000 (Hidden
+   by default) to `warning`, and downgrading **DAP036/DAP037 to warning**: those fire as *errors*
+   on the scalar-result gaps (enum, char, TimeSpan, DateOnly, TimeOnly, dynamic), which stops the
+   build outright. For measurement they are gap markers. That they are errors at all, on shapes
+   vanilla handles, remains a live severity question;
+6. **`-p:NoWarn=NU1902`** on every build - the Dapper repo runs warnings-as-errors and a
+   published advisory against a SourceLink dependency otherwise fails the restore. Nothing to do
+   with us.
 
 **The repack recipe, with the three things that silently produce a stale measurement:**
 
@@ -13,20 +39,21 @@ warning.
 dotnet build src/Dapper.AOT/Dapper.AOT.csproj -c Release   # 1. pack does NOT build
 rm -f artifacts/Dapper.AOT.1.0.0-g.nupkg                   # 2. pack skips if the nupkg exists
 NBGV_GitEngine=Disabled dotnet pack src/Dapper.AOT/Dapper.AOT.csproj -c Release -o artifacts
-rm -rf C:/Code/NugetPackageCache/dapper.aot/1.0.0-g        # 3. NOT ~/.nuget/packages
+rm -rf ~/.nuget/packages/dapper.aot/1.0.0-g                # 3. or the consumer reuses the old one
 ```
 
 1. `dotnet pack` reuses whatever is in `bin/Release`, so packing after only a Debug build ships
    yesterday's DLLs — the symptom is the consumer failing to find a type you just added;
 2. `GenerateNuspec` is skipped when the output looks up to date, so the `.nupkg` timestamp moves
    while its contents do not. Delete it first;
-3. this machine redirects the global packages folder to `C:\Code\NugetPackageCache`; purging
-   `~/.nuget/packages` does nothing.
+3. the version never changes (`1.0.0-g`), so a cached extract wins over your new package every
+   time. On the old Windows box this was `C:\Code\NugetPackageCache`, not `~/.nuget/packages`;
+   check where the global packages folder actually points before trusting a purge.
 
 Cheap assertion that the loop is honest, before trusting any number:
 
 ```
-python -c "import zipfile;z=zipfile.ZipFile('artifacts/Dapper.AOT.1.0.0-g.nupkg');print(any(b'YourNewType' in z.read(n) for n in z.namelist() if n.endswith('.dll')))"
+python3 -c "import zipfile;z=zipfile.ZipFile('artifacts/Dapper.AOT.1.0.0-g.nupkg');print(any(b'YourNewType' in z.read(n) for n in z.namelist() if n.endswith('.dll')))"
 ```
 
 And the lesson from round 13, which cost a whole measurement: **check the build exit code, not
@@ -52,8 +79,8 @@ whatever separator the machine that wrote them used — every interceptor golden
 compilation, which matches what `GeneratorTestBase` was already doing for the `.output.txt`
 diagnostics side.
 
-Build: `dotnet build tests/Dapper.Tests/Dapper.Tests.csproj -f net10.0` (net481 and net8.0
-legs not yet measured).
+Build: `dotnet build tests/Dapper.Tests/Dapper.Tests.csproj -f net10.0 -p:NoWarn=NU1902`
+(net481 and net8.0 legs not yet measured).
 
 ## The headline, and why it is wrong
 
@@ -242,6 +269,58 @@ failure class maps onto a planned phase-3 feature: ParameterTests ×23/provider 
 list expansion, TVPs, custom params), TypeHandlerTests ×16 (type-handler story), MiscTests
 ×16 (coercions + tokens), Async/Literal (literals), plus the First-pipeline drain pair and
 the small tail. Nothing unexplained.
+
+## Round 15: harness rebuilt on Linux, pre-release verification - 729/800
+
+Taken 2026-09-11 to answer one question before a public release: **did anything between
+round 12 and now regress the generator?** It did not - see the A/B below.
+
+The rig had to be rebuilt from scratch: the old one was local-only on the Windows box and
+did not survive the move (see the recipe section at the top of this file, now Linux-shaped).
+
+| run | passed | failed | skipped | total |
+| --- | --- | --- | --- | --- |
+| **vanilla control** (no Dapper.AOT) | 770 | 0 | 30 | 800 |
+| **Dapper.AOT enabled**, net10.0 | **729** | 41 | 30 | 800 |
+
+Scorecard: `handled 432 of 736 enabled call-sites (76 unsupported API, 203 refused with
+diagnostics, 25 skipped silently) using 161 interceptors, 56 commands and 18 readers`.
+
+**The 41 divergences are all known gaps, ×2 providers - no new failure class:**
+
+| class | per provider | gap |
+| --- | --- | --- |
+| `TypeHandlerTests` | 4 | #3 - the suite registers handlers at *runtime*, which is no longer honored |
+| `LiteralTests` | 4 | #4 - literal injection `{=name}`, generator half |
+| `MiscTests` | 4 | #5 - the coercion tail |
+| `ParameterTests` | 3 | tokens / the scattered tail |
+| `AsyncTests` | 3 | same families, async side |
+| `Transaction`, `DataReader` | 1 each | scattered singles |
+| `DateTimeOnlyTests` | 1 (MS only) | new since Dapper #2228 re-enabled DateOnly/TimeOnly |
+
+### The A/B that answers the release question
+
+The round-12 generator (`b411eb4`) was packed and run against **this same rig**:
+
+> `handled 432 of 736 enabled call-sites` - byte-identical to current main.
+
+So **#208-#217 changed interception not at all**, and the pass count moved *up* (677 → 729)
+rather than down. That is the thing worth knowing before shipping: the type-handler work,
+the DAP056 non-goal and the scorecard split cost no coverage.
+
+### Why 432/736 and not the recorded 533/725
+
+**The round-12 number in this file is not reproducible on this rig, and the round-12
+generator is not why** - it reads 432 here too. Since both repos are at the same commits
+they were at for round 12 (`../Dapper` main has not moved since 2026-08-20), the difference
+has to be *rig configuration* that did not survive the move: the old Windows rig is gone, so
+what exactly differed cannot now be recovered. DAP051 (generic-by-containment) fires 244
+times here and is the most likely candidate, but that is a hypothesis, not a finding.
+
+Practical consequence, and the reason this is written down rather than quietly fixed:
+**absolute call-site counts are not comparable across rigs.** Compare within a rig - which
+is what the A/B above does, and why it is trustworthy. Treat 533/725 as a historical
+artifact of a machine that no longer exists.
 
 ## Round 12: checkpoint - everything landed, clean-main baseline 677/793
 
