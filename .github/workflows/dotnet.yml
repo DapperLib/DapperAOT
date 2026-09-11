@@ -29,11 +29,24 @@ jobs:
         with:
           setAllVars: true
 
+      # deliberately before restore/build, so the version is legible even when a later step
+      # fails. Cutting a release means tagging with exactly what a *main* run prints - a PR
+      # run builds refs/pull/N/merge, whose height includes the branch commits and the merge,
+      # so its number is not the one that will ship
+      - name: Report computed version
+        run: |
+          $version = nbgv get-version --variable NuGetPackageVersion
+          if ($env:GITHUB_REF -eq 'refs/heads/main') {
+            "### Computed package version: ``$version``" >> $env:GITHUB_STEP_SUMMARY
+            "Tag the release with exactly this." >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            "### Computed package version: ``$version``" >> $env:GITHUB_STEP_SUMMARY
+            "_This is a ``$env:GITHUB_REF`` build - **not** the version that would ship. Read the release version off a main run._" >> $env:GITHUB_STEP_SUMMARY
+          }
+          Write-Output "Computed package version: $version (ref: $env:GITHUB_REF)"
+
       - name: Restore dependencies
         run: dotnet restore Build.csproj
-
-      - name: Purge
-        run: del src/Dapper.*/bin/Release/Dapper.*.nupkg
 
       - name: Build
         run: dotnet build Build.csproj --no-restore -c Release
@@ -48,13 +61,3 @@ jobs:
       # compared at test time - so without this, a netfx golden can be wrong and CI stays green
       - name: Test .NET Framework 4.8
         run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net48 --filter FullyQualifiedName!~Integration
-
-      - name: Pack
-        if: ${{ success() && !github.base_ref }}
-        run: dotnet pack src/Dapper.AOT/Dapper.AOT.csproj --no-build --verbosity normal -c Release
-
-      - name: Push to MyGet
-        if: ${{ success() && !github.base_ref }}
-        run: dotnet nuget push src/Dapper.*/bin/Release/Dapper.*.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key "$env:MYGETAPIKEY"
-        env:
-          MYGETAPIKEY: ${{ secrets.MYGETAPIKEY }}

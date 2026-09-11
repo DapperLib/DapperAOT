@@ -1,0 +1,101 @@
+# Publishes Dapper.AOT and Dapper.Advisor to nuget.org when a GitHub Release is published.
+#
+# Auth is NuGet Trusted Publishing (OIDC): no long-lived API key is stored anywhere.
+# One-time setup on nuget.org, for *each* package: username menu -> Trusted Publishing ->
+# add a policy with
+#   Repository Owner: DapperLib / Repository: DapperAOT / Workflow File: release.yml
+#   Environment: release
+# plus a NUGET_USER repository secret holding the nuget.org profile name to publish as,
+# and a GitHub environment named "release".
+#
+# Versioning note: Nerdbank.GitVersioning computes the version from version.json plus commit
+# height - the tag name does not set it. Read the version to tag off a green main run's step
+# summary ("Report computed version" in dotnet.yml) and create the release with exactly that
+# tag; the guard step below fails the run on any mismatch rather than publishing a package
+# that disagrees with its release. A leading "v" is accepted and stripped, matching
+# publicReleaseRefSpec in version.json.
+#
+# Deliberately does not run tests: the commit being released already passed CI, and this job's
+# only job is to reproduce that build and push it. Runs on Windows to match dotnet.yml, since
+# the solution includes a net48 leg and that is the configuration CI already proves.
+
+name: Release
+
+on:
+  release:
+    types: [published]
+  # dry run: everything except the tag check and the push, so the pipeline can be proven
+  # (and the packages inspected, via the run artifact) without cutting a release
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    environment: release
+    permissions:
+      id-token: write # for the OIDC exchange with nuget.org
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # depth is needed for nbgv
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+            10.0.x
+
+      - uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+
+      - name: Verify tag matches computed version
+        if: github.event_name == 'release'
+        run: |
+          $computed = nbgv get-version --variable NuGetPackageVersion
+          $tag = "${{ github.event.release.tag_name }}" -replace '^v', ''
+          if ($computed -ne $tag) {
+            Write-Output "::error::Tag '$tag' does not match the computed version '$computed'; retag the release commit so the two agree."
+            exit 1
+          }
+          "### Publishing: ``$computed``" >> $env:GITHUB_STEP_SUMMARY
+          Write-Output "Publishing $computed"
+
+      - name: Restore dependencies
+        run: dotnet restore Build.csproj
+
+      - name: Purge
+        run: del src/Dapper.*/bin/Release/Dapper.*.nupkg
+
+      # both src projects set GeneratePackageOnBuild for Release, so this produces
+      # Dapper.AOT and Dapper.Advisor without a separate pack step
+      - name: Build
+        run: dotnet build Build.csproj --no-restore -c Release
+
+      - name: Collect packages
+        run: |
+          New-Item -ItemType Directory -Force -Path .nupkgs | Out-Null
+          Copy-Item src/Dapper.*/bin/Release/Dapper.*.nupkg .nupkgs/
+          Get-ChildItem .nupkgs/*.nupkg | ForEach-Object { Write-Output $_.Name }
+
+      # the packages survive as a run artifact even if the push fails
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: .nupkgs/*.nupkg
+
+      - name: NuGet login (OIDC to temp API key)
+        if: github.event_name == 'release'
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to nuget.org
+        if: github.event_name == 'release'
+        run: dotnet nuget push .nupkgs/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
