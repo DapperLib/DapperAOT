@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 14, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/MappedSqlDetection.input.cs", 14, 20)]
         internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters
@@ -19,10 +19,10 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 17, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 23, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 26, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 29, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/MappedSqlDetection.input.cs", 17, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/MappedSqlDetection.input.cs", 23, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/MappedSqlDetection.input.cs", 26, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/MappedSqlDetection.input.cs", 29, 20)]
         internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters
@@ -35,7 +35,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 20, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/MappedSqlDetection.input.cs", 20, 20)]
         internal static int Execute2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters
@@ -49,7 +49,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\MappedSqlDetection.input.cs", 32, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/MappedSqlDetection.input.cs", 32, 20)]
         internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters

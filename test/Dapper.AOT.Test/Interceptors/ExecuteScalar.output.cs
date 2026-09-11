@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 13, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 13, 24)]
         internal static object? ExecuteScalar0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, StoredProcedure, Scalar, KnownParameters
@@ -19,7 +19,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 14, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 14, 24)]
         internal static object? ExecuteScalar1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, StoredProcedure, Scalar
@@ -31,7 +31,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 15, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 15, 24)]
         internal static object? ExecuteScalar2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Text, Scalar
@@ -43,7 +43,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 17, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 17, 24)]
         internal static float ExecuteScalar3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, TypedResult, HasParameters, StoredProcedure, Scalar, KnownParameters
@@ -58,7 +58,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 18, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 18, 24)]
         internal static float ExecuteScalar4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, TypedResult, StoredProcedure, Scalar
@@ -71,7 +71,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 19, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 19, 24)]
         internal static float ExecuteScalar5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, TypedResult, Text, Scalar
@@ -84,7 +84,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 21, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 21, 30)]
         internal static global::System.Threading.Tasks.Task<object?> ExecuteScalarAsync6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, HasParameters, StoredProcedure, Scalar, KnownParameters
@@ -98,7 +98,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 22, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 22, 30)]
         internal static global::System.Threading.Tasks.Task<object?> ExecuteScalarAsync7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, StoredProcedure, Scalar
@@ -110,7 +110,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 23, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 23, 30)]
         internal static global::System.Threading.Tasks.Task<object?> ExecuteScalarAsync8(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, Text, Scalar
@@ -122,7 +122,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 25, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 25, 30)]
         internal static global::System.Threading.Tasks.Task<float> ExecuteScalarAsync9(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, TypedResult, HasParameters, StoredProcedure, Scalar, KnownParameters
@@ -137,7 +137,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 26, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 26, 30)]
         internal static global::System.Threading.Tasks.Task<float> ExecuteScalarAsync10(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, TypedResult, StoredProcedure, Scalar
@@ -150,7 +150,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\ExecuteScalar.input.cs", 27, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ExecuteScalar.input.cs", 27, 30)]
         internal static global::System.Threading.Tasks.Task<float> ExecuteScalarAsync11(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, TypedResult, Text, Scalar

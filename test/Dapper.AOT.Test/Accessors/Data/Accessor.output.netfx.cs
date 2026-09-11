@@ -5,11 +5,11 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperTypeAccessorGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Accessors\\Data\\Accessor.input.cs", 11, 26)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Accessors/Data/Accessor.input.cs", 11, 26)]
         internal static global::Dapper.ObjectAccessor<global::Foo.Customer> Forwarded0(global::Foo.Customer obj, global::Dapper.TypeAccessor<global::Foo.Customer>? accessor)
             => global::Dapper.TypeAccessor.CreateAccessor(obj, accessor ?? DapperCustomTypeAccessor0.Instance);
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Accessors\\Data\\Accessor.input.cs", 14, 26)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Accessors/Data/Accessor.input.cs", 14, 26)]
         internal static global::System.Data.Common.DbDataReader Forwarded1(global::System.Collections.Generic.IEnumerable<global::Foo.Customer> source, string[]? members, bool exact, global::Dapper.TypeAccessor<global::Foo.Customer>? accessor)
             => global::Dapper.TypeAccessor.CreateDataReader(source, members, exact, accessor ?? DapperCustomTypeAccessor0.Instance);
 

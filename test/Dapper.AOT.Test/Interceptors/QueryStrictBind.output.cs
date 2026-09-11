@@ -5,8 +5,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryStrictBind.input.cs", 10, 23)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryStrictBind.input.cs", 14, 23)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryStrictBind.input.cs", 10, 23)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryStrictBind.input.cs", 14, 23)]
         internal static global::System.Threading.Tasks.Task<global::Foo.Customer> QuerySingleAsync0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName
@@ -19,8 +19,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryStrictBind.input.cs", 18, 23)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryStrictBind.input.cs", 22, 23)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryStrictBind.input.cs", 18, 23)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryStrictBind.input.cs", 22, 23)]
         internal static global::System.Threading.Tasks.Task<global::Foo.Customer> QuerySingleAsync1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName, StrictTypes
@@ -33,8 +33,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryStrictBind.input.cs", 26, 23)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryStrictBind.input.cs", 30, 23)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryStrictBind.input.cs", 26, 23)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryStrictBind.input.cs", 30, 23)]
         internal static global::System.Threading.Tasks.Task<global::Foo.Customer> QuerySingleAsync2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName, StrictTypes
@@ -47,8 +47,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryStrictBind.input.cs", 33, 23)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryStrictBind.input.cs", 37, 23)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryStrictBind.input.cs", 33, 23)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryStrictBind.input.cs", 37, 23)]
         internal static global::System.Threading.Tasks.Task<global::Foo.Customer> QuerySingleAsync3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName

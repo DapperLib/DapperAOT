@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 13, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 13, 24)]
         internal static global::System.Collections.Generic.IEnumerable<dynamic> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Buffered, StoredProcedure, BindResultsByName
@@ -18,7 +18,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 14, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 14, 24)]
         internal static global::System.Collections.Generic.IEnumerable<dynamic> Query1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, HasParameters, Buffered, StoredProcedure, BindResultsByName, KnownParameters
@@ -33,7 +33,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 15, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 15, 24)]
         internal static global::System.Collections.Generic.IEnumerable<dynamic> Query2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, HasParameters, StoredProcedure, BindResultsByName, KnownParameters
@@ -47,7 +47,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 16, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 16, 24)]
         internal static global::System.Collections.Generic.IEnumerable<dynamic> Query3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Unbuffered, StoredProcedure, BindResultsByName
@@ -60,7 +60,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 17, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 17, 24)]
         internal static global::System.Collections.Generic.IEnumerable<dynamic> Query4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
@@ -75,7 +75,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 19, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 19, 30)]
         internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<dynamic>> QueryAsync5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, Buffered, StoredProcedure, BindResultsByName
@@ -88,7 +88,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 20, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 20, 30)]
         internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<dynamic>> QueryAsync6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, HasParameters, Buffered, StoredProcedure, BindResultsByName, KnownParameters
@@ -103,7 +103,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 26, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 26, 24)]
         internal static dynamic QueryFirst7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, HasParameters, SingleRow, StoredProcedure, AtLeastOne, BindResultsByName, KnownParameters
@@ -117,7 +117,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 27, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 27, 24)]
         internal static dynamic? QueryFirstOrDefault8(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, HasParameters, SingleRow, StoredProcedure, BindResultsByName, KnownParameters
@@ -131,7 +131,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 28, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 28, 24)]
         internal static dynamic QuerySingle9(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName, KnownParameters
@@ -145,7 +145,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 29, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 29, 24)]
         internal static dynamic? QuerySingleOrDefault10(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, SingleRow, StoredProcedure, AtMostOne, BindResultsByName
@@ -157,7 +157,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 31, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 31, 30)]
         internal static global::System.Threading.Tasks.Task<dynamic> QueryFirstAsync11(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, HasParameters, SingleRow, StoredProcedure, AtLeastOne, BindResultsByName, KnownParameters
@@ -171,7 +171,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 32, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 32, 30)]
         internal static global::System.Threading.Tasks.Task<dynamic?> QueryFirstOrDefaultAsync12(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, HasParameters, SingleRow, StoredProcedure, BindResultsByName, KnownParameters
@@ -185,7 +185,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 33, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 33, 30)]
         internal static global::System.Threading.Tasks.Task<dynamic> QuerySingleAsync13(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName, KnownParameters
@@ -199,7 +199,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryNonGeneric.input.cs", 34, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryNonGeneric.input.cs", 34, 30)]
         internal static global::System.Threading.Tasks.Task<dynamic?> QuerySingleOrDefaultAsync14(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, SingleRow, StoredProcedure, AtMostOne, BindResultsByName

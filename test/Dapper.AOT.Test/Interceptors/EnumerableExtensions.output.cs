@@ -5,12 +5,12 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\EnumerableExtensions.input.cs", 10, 16)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\EnumerableExtensions.input.cs", 11, 16)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\EnumerableExtensions.input.cs", 13, 16)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\EnumerableExtensions.input.cs", 14, 16)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\EnumerableExtensions.input.cs", 15, 16)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\EnumerableExtensions.input.cs", 16, 16)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/EnumerableExtensions.input.cs", 10, 16)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/EnumerableExtensions.input.cs", 11, 16)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/EnumerableExtensions.input.cs", 13, 16)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/EnumerableExtensions.input.cs", 14, 16)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/EnumerableExtensions.input.cs", 15, 16)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/EnumerableExtensions.input.cs", 16, 16)]
         internal static global::System.Collections.Generic.IEnumerable<int> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, Buffered, StoredProcedure

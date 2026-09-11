@@ -47,9 +47,14 @@ internal static class RoslynTestHelpers
         DapperInterceptorGenerator.FeatureKeys.InterceptorsPreviewNamespacePair,
         DapperInterceptorGenerator.FeatureKeys.InterceptorsNamespacePair]);
 
+    // the file path ends up baked into [InterceptsLocation(...)] in the generated output, which we
+    // compare against checked-in goldens; tests discover their inputs via Directory.GetFiles, so
+    // without this the separator - and thus every golden - would be OS-specific
+    internal static string NormalizeFilePath(string fileName) => fileName.Replace('\\', '/');
+
     public static Compilation CreateCompilation(string source, string name, string fileName)
        => CSharpCompilation.Create(name,
-           syntaxTrees: [CSharpSyntaxTree.ParseText(source, ParseOptionsLatestLangVer).WithFilePath(fileName)],
+           syntaxTrees: [CSharpSyntaxTree.ParseText(source, ParseOptionsLatestLangVer).WithFilePath(NormalizeFilePath(fileName))],
            references: [
                    MetadataReference.CreateFromFile(typeof(Binder).Assembly.Location),
 #if !NET48

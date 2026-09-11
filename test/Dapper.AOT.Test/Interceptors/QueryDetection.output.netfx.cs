@@ -5,8 +5,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 10, 12)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 12, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 10, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 12, 12)]
         internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters
@@ -20,8 +20,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 15, 12)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 21, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 15, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 21, 12)]
         internal static int QuerySingle1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, KnownParameters
@@ -36,8 +36,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 16, 12)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 22, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 16, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 22, 12)]
         internal static int ExecuteScalar2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, TypedResult, HasParameters, Text, Scalar, KnownParameters
@@ -52,7 +52,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 17, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 17, 12)]
         internal static global::Foo.Customer QuerySingle3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName
@@ -65,8 +65,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 18, 12)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 27, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 18, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 27, 12)]
         internal static int ExecuteScalar4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, TypedResult, Text, Scalar
@@ -79,7 +79,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 25, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 25, 12)]
         internal static int Execute5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Text
@@ -91,7 +91,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryDetection.input.cs", 26, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryDetection.input.cs", 26, 12)]
         internal static int QuerySingle6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, Text, AtLeastOne, AtMostOne

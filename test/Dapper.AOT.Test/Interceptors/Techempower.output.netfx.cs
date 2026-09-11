@@ -5,9 +5,9 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Techempower.input.cs", 40, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Techempower.input.cs", 41, 14)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Techempower.input.cs", 42, 14)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Techempower.input.cs", 40, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Techempower.input.cs", 41, 14)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Techempower.input.cs", 42, 14)]
         internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Text
@@ -19,7 +19,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Techempower.input.cs", 43, 14)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Techempower.input.cs", 43, 14)]
         internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters
@@ -33,7 +33,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Techempower.input.cs", 93, 19)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Techempower.input.cs", 93, 19)]
         internal static global::System.Threading.Tasks.Task<global::World> QueryFirstOrDefaultAsync2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, HasParameters, SingleRow, Text, BindResultsByName, KnownParameters

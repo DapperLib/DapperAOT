@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TypeHandlerPriorArt.input.cs", 45, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TypeHandlerPriorArt.input.cs", 45, 24)]
         internal static global::System.Collections.Generic.IEnumerable<global::Foo.MyType> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, Buffered, StoredProcedure, BindResultsByName
@@ -19,7 +19,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TypeHandlerPriorArt.input.cs", 48, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TypeHandlerPriorArt.input.cs", 48, 24)]
         internal static global::System.Collections.Generic.IEnumerable<int> Query1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, HasParameters, Buffered, StoredProcedure, KnownParameters
@@ -35,7 +35,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TypeHandlerPriorArt.input.cs", 51, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TypeHandlerPriorArt.input.cs", 51, 24)]
         internal static global::System.Collections.Generic.IEnumerable<int> Query2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, HasParameters, Buffered, Text, KnownParameters

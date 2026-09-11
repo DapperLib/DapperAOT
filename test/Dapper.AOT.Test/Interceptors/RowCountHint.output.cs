@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\RowCountHint.input.cs", 11, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/RowCountHint.input.cs", 11, 24)]
         internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, Buffered, StoredProcedure, BindResultsByName
@@ -19,7 +19,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\RowCountHint.input.cs", 12, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/RowCountHint.input.cs", 12, 24)]
         internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName, KnownParameters
@@ -35,7 +35,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\RowCountHint.input.cs", 13, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/RowCountHint.input.cs", 13, 24)]
         internal static global::System.Collections.Generic.IEnumerable<global::Foo.Customer> Query2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, HasParameters, Buffered, StoredProcedure, BindResultsByName, KnownParameters

@@ -5,8 +5,8 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TopLevelStatements.input.cs", 20, 33)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TopLevelStatements.input.cs", 33, 37)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TopLevelStatements.input.cs", 20, 33)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TopLevelStatements.input.cs", 33, 37)]
         internal static global::System.Threading.Tasks.Task<global::SomeThing> QuerySingleAsync0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName

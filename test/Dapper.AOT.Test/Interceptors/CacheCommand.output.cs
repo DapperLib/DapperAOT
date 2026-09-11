@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\CacheCommand.input.cs", 15, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/CacheCommand.input.cs", 15, 24)]
         internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, CacheCommand, KnownParameters
@@ -19,7 +19,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\CacheCommand.input.cs", 16, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/CacheCommand.input.cs", 16, 24)]
         internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, CacheCommand, KnownParameters
@@ -33,7 +33,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\CacheCommand.input.cs", 19, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/CacheCommand.input.cs", 19, 24)]
         internal static int Execute2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, CacheCommand, KnownParameters
@@ -47,7 +47,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\CacheCommand.input.cs", 22, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/CacheCommand.input.cs", 22, 24)]
         internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters
