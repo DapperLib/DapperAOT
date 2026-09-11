@@ -14,6 +14,12 @@ Dispositions:
   not inspected                 outside the generator's name filter, so never
                                 examined - correct for helpers that need no
                                 interception, and worth checking nothing real is here
+  unsupported: CommandDefinition
+                                the operation is supported, but not in this
+                                spelling: the SQL lives inside the struct, where
+                                build-time inspection cannot reach it. Reported by
+                                the generator as DAP057 (a warning when the project
+                                publishes native AOT, info otherwise)
   skipped silently              dropped with nothing reported - the consumer gets
                                 vanilla Dapper under JIT and a runtime failure under
                                 native AOT, with no build-time signal. Every row here
@@ -86,7 +92,42 @@ Dispositions:
   ReplaceLiterals(IDbCommand)
   SetTypeName(string)
 
-## skipped silently (22)
+## skipped silently (1)
+
+  GetRowParser<1>(Type?, int, int, bool)
+
+## unsupported API (diagnosed) (28)
+
+  ExecuteReader(CommandDefinition)
+  ExecuteReader(CommandDefinition, CommandBehavior)
+  ExecuteReader(string, object?, IDbTransaction?, int?, CommandType?)
+  ExecuteReaderAsync(CommandDefinition)
+  ExecuteReaderAsync(CommandDefinition, CommandBehavior)
+  ExecuteReaderAsync(string, object?, IDbTransaction?, int?, CommandType?)
+  Query<3>(string, Func<TFirst, TSecond, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  Query<4>(string, Func<TFirst, TSecond, TThird, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  Query<5>(string, Func<TFirst, TSecond, TThird, TFourth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  Query<6>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  Query<7>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  Query<8>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  QueryAsync<3>(CommandDefinition, Func<TFirst, TSecond, TReturn>, string)
+  QueryAsync<3>(string, Func<TFirst, TSecond, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  QueryAsync<4>(CommandDefinition, Func<TFirst, TSecond, TThird, TReturn>, string)
+  QueryAsync<4>(string, Func<TFirst, TSecond, TThird, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  QueryAsync<5>(CommandDefinition, Func<TFirst, TSecond, TThird, TFourth, TReturn>, string)
+  QueryAsync<5>(string, Func<TFirst, TSecond, TThird, TFourth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  QueryAsync<6>(CommandDefinition, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>, string)
+  QueryAsync<6>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  QueryAsync<7>(CommandDefinition, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>, string)
+  QueryAsync<7>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  QueryAsync<8>(CommandDefinition, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>, string)
+  QueryAsync<8>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
+  QueryMultiple(CommandDefinition)
+  QueryMultiple(string, object?, IDbTransaction?, int?, CommandType?)
+  QueryMultipleAsync(CommandDefinition)
+  QueryMultipleAsync(string, object?, IDbTransaction?, int?, CommandType?)
+
+## unsupported: CommandDefinition (21)
 
   Execute(CommandDefinition)
   ExecuteAsync(CommandDefinition)
@@ -94,7 +135,6 @@ Dispositions:
   ExecuteScalar<1>(CommandDefinition)
   ExecuteScalarAsync(CommandDefinition)
   ExecuteScalarAsync<1>(CommandDefinition)
-  GetRowParser<1>(Type?, int, int, bool)
   Query<1>(CommandDefinition)
   QueryAsync(CommandDefinition)
   QueryAsync<1>(CommandDefinition)
@@ -110,37 +150,3 @@ Dispositions:
   QuerySingleOrDefault<1>(CommandDefinition)
   QuerySingleOrDefaultAsync(CommandDefinition)
   QuerySingleOrDefaultAsync<1>(CommandDefinition)
-
-## unsupported API (diagnosed) (16)
-
-  ExecuteReader(string, object?, IDbTransaction?, int?, CommandType?)
-  ExecuteReaderAsync(string, object?, IDbTransaction?, int?, CommandType?)
-  Query<3>(string, Func<TFirst, TSecond, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  Query<4>(string, Func<TFirst, TSecond, TThird, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  Query<5>(string, Func<TFirst, TSecond, TThird, TFourth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  Query<6>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  Query<7>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  Query<8>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  QueryAsync<3>(string, Func<TFirst, TSecond, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  QueryAsync<4>(string, Func<TFirst, TSecond, TThird, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  QueryAsync<5>(string, Func<TFirst, TSecond, TThird, TFourth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  QueryAsync<6>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  QueryAsync<7>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  QueryAsync<8>(string, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>, object?, IDbTransaction?, bool, string, int?, CommandType?)
-  QueryMultiple(string, object?, IDbTransaction?, int?, CommandType?)
-  QueryMultipleAsync(string, object?, IDbTransaction?, int?, CommandType?)
-
-## unsupported API (undiagnosed) (12)
-
-  ExecuteReader(CommandDefinition)
-  ExecuteReader(CommandDefinition, CommandBehavior)
-  ExecuteReaderAsync(CommandDefinition)
-  ExecuteReaderAsync(CommandDefinition, CommandBehavior)
-  QueryAsync<3>(CommandDefinition, Func<TFirst, TSecond, TReturn>, string)
-  QueryAsync<4>(CommandDefinition, Func<TFirst, TSecond, TThird, TReturn>, string)
-  QueryAsync<5>(CommandDefinition, Func<TFirst, TSecond, TThird, TFourth, TReturn>, string)
-  QueryAsync<6>(CommandDefinition, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>, string)
-  QueryAsync<7>(CommandDefinition, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>, string)
-  QueryAsync<8>(CommandDefinition, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>, string)
-  QueryMultiple(CommandDefinition)
-  QueryMultipleAsync(CommandDefinition)

@@ -309,7 +309,11 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 OnDapperAotHit(); // all good for AOT
                 if (flags.HasAny(OperationFlags.NotAotSupported))
                 {
-                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnsupportedMethod, location, invoke.GetSignature()));
+                    // left on vanilla Dapper: a missed optimization under JIT, a latent
+                    // publish-time crash under native AOT - so it reports at both severities
+                    ctx.ReportDiagnostic(Diagnostic.Create(Diagnostics.UnsupportedMethod, location,
+                        ctx.Options.TargetsNativeAot() ? DiagnosticSeverity.Warning : DiagnosticSeverity.Info,
+                        additionalLocations: null, properties: null, invoke.GetSignature()));
                 }
             }
             else if (!aotAttribExists && !flags.HasAny(OperationFlags.NotAotSupported))

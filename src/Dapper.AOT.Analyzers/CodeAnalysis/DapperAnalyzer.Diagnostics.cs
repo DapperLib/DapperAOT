@@ -25,6 +25,8 @@ partial class DapperAnalyzer
         DapperAotTupleParameter = LibraryInfo("DAP014", "Tuple-type parameter", "Tuple-type parameters are not currently supported"),
         UntypedParameter = LibraryInfo("DAP015", "Untyped parameter", "The parameter type could not be resolved"),
         GenericTypeParameter = LibraryInfo("DAP016", "Generic type parameter", "Generic type parameters ({0}) are not currently supported"),
+        CommandDefinitionNotSupported = LibraryInfo("DAP057", "CommandDefinition overload is not supported",
+            "'{0}' passes its SQL inside a CommandDefinition, which Dapper.AOT cannot read at build time; use the overload that takes the SQL directly. This call-site is left on vanilla Dapper, which will not work under native AOT"),
         TypeBasedApiNotSupported = LibraryWarning("DAP056", "Type-based API is not supported",
             "'{0}' chooses the row type from a Type at execution time, which Dapper.AOT cannot generate for; use the generic overload so the type is known at build time, and the call-site is left on vanilla Dapper (which will not work under native AOT)"),
         DuplicateTypeHandler = LibraryWarning("DAP055", "Duplicate type-handler",

@@ -85,6 +85,12 @@ internal readonly struct GenerateState
     public readonly InterceptorEnvironment Environment;
     public readonly GeneratorContext GeneratorContext = new();
 
+    /// <summary>
+    /// Is the consuming project publishing native AOT? Some refusals are a missed optimization
+    /// there and a latent crash here, and report at different severities accordingly.
+    /// </summary>
+    public bool TargetsNativeAot => Environment.TargetsNativeAot;
+
     internal void ReportDiagnostic(Diagnostic diagnostic)
     {
         if (proxy is not null)

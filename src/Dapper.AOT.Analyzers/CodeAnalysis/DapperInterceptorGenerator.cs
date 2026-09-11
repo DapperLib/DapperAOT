@@ -61,7 +61,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         var nodes = context.SyntaxProvider.CreateSyntaxProvider(PreFilter, Parse)
                     .Where(x => x is not null)
                     .Select((x, _) => x!);
-        var env = context.CompilationProvider.Select(static (c, _) => CreateEnvironment(c));
+        var env = context.CompilationProvider.Combine(context.AnalyzerConfigOptionsProvider)
+                    .Select(static (pair, _) => CreateEnvironment(pair.Left, pair.Right.TargetsNativeAot()));
         var combined = env.Combine(nodes.Collect());
         context.RegisterImplementationSourceOutput(combined, Generate);
     }
@@ -169,19 +170,29 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             }
             if (flags.HasAny(OperationFlags.NotAotSupported))
             {
-                // not our API (yet); count it, so the scorecard stays honest. DAP001 comes
-                // from the analyzer - but only where the analyzer can see the call at all
+                // not our API (yet); count it, so the scorecard stays honest. DAP001 comes from
+                // the analyzer where it can see the call; where it cannot - the CommandDefinition
+                // overloads - the generator reports the same id, so both spellings behave alike
+                var visible = IsVisibleToAnalyzer(op.TargetMethod);
                 return new SkippedSourceState(new LocationSnapshot(ie.GetLocation()), flags,
-                    diagnosed: IsVisibleToAnalyzer(op.TargetMethod));
+                    diagnosed: true,
+                    reason: visible ? SkipReason.None : SkipReason.UnsupportedInvisibleApi,
+                    methodName: visible ? "" : op.TargetMethod.Name);
             }
 
             var location = DapperAnalyzer.SharedParseArgsAndFlags(ctx, op, ref flags, out var sql, out var argExpression, reportDiagnostic: null, out var resultType, exitFirstFailure: true);
             if (flags.HasAny(OperationFlags.DoNotGenerate))
             {
                 // the analyzer's identical pass told us to leave it alone - and will have said
-                // why, *if* the shape of this overload is one the analyzer inspects at all
+                // why, *if* the shape of this overload is one the analyzer inspects at all.
+                // Where it is not, the operation itself is supported and only this *spelling*
+                // is not, so say exactly that rather than dropping the call-site in silence
+                if (IsVisibleToAnalyzer(op.TargetMethod))
+                {
+                    return new SkippedSourceState(new LocationSnapshot(location), flags, diagnosed: true);
+                }
                 return new SkippedSourceState(new LocationSnapshot(location), flags,
-                    diagnosed: IsVisibleToAnalyzer(op.TargetMethod));
+                    diagnosed: true, SkipReason.CommandDefinition, op.TargetMethod.Name);
             }
 
 
@@ -271,7 +282,7 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
     }
 
 
-    internal static InterceptorEnvironment CreateEnvironment(Compilation compilation)
+    internal static InterceptorEnvironment CreateEnvironment(Compilation compilation, bool targetsNativeAot = false)
     {
         var dbCommandTypes = IdentifyDbCommandTypes(compilation, out var needsCommandPrep);
         EquatableArray<SpecialDbCommandType> special = default;
@@ -300,7 +311,8 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
             baseFactoryCanConstruct: canConstruct,
             specialCommandTypes: special,
             systemObjectPlan: ParamPlan.Create(compilation.GetSpecialType(SpecialType.System_Object))!,
-            typeHandlers: GetTypeHandlers(compilation));
+            typeHandlers: GetTypeHandlers(compilation),
+            targetsNativeAot: targetsNativeAot);
     }
 
     /// <summary>
@@ -513,6 +525,29 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
                 ctx.ReportDiagnostic(Diagnostic.Create(DapperAnalyzer.Diagnostics.TypeBasedApiNotSupported,
                     skip.Location.AsLocation(), skip.MethodName));
                 refusedWithDiagnostics++;
+                continue;
+            }
+            if (skip.Reason == SkipReason.CommandDefinition)
+            {
+                // the operation is supported; only this *spelling* is not, because the SQL is
+                // inside the struct. Info when the consumer is not publishing native AOT (a
+                // missed optimization), warning when they are (a latent crash at publish)
+                ctx.ReportDiagnostic(Diagnostic.Create(DapperAnalyzer.Diagnostics.CommandDefinitionNotSupported,
+                    skip.Location.AsLocation(),
+                    ctx.TargetsNativeAot ? DiagnosticSeverity.Warning : DiagnosticSeverity.Info,
+                    additionalLocations: null, properties: null, skip.MethodName));
+                refusedWithDiagnostics++;
+                continue;
+            }
+            if (skip.Reason == SkipReason.UnsupportedInvisibleApi)
+            {
+                // DAP001, from here rather than the analyzer, which cannot see this overload -
+                // so both spellings of an unsupported API report the same thing
+                ctx.ReportDiagnostic(Diagnostic.Create(DapperAnalyzer.Diagnostics.UnsupportedMethod,
+                    skip.Location.AsLocation(),
+                    ctx.TargetsNativeAot ? DiagnosticSeverity.Warning : DiagnosticSeverity.Info,
+                    additionalLocations: null, properties: null, skip.MethodName));
+                unsupported++;
                 continue;
             }
             if (skip.Flags.HasAny(OperationFlags.NotAotSupported)) unsupported++;
@@ -1946,6 +1981,17 @@ public sealed partial class DapperInterceptorGenerator : InterceptorGeneratorBas
         /// the one thing compile-time generation cannot follow. Declared non-goal, 2026-08-26.
         /// </summary>
         TypeBasedApi = 1,
+        /// <summary>
+        /// An overload carrying its SQL inside a <c>CommandDefinition</c>, for an operation we
+        /// otherwise support. The analyzer never sees these (no <c>sql</c> string parameter), so
+        /// the generator is what speaks - otherwise the drop is completely silent.
+        /// </summary>
+        CommandDefinition = 2,
+        /// <summary>
+        /// An API we do not support at all, on an overload the analyzer cannot see - so the
+        /// DAP001 its visible siblings get has to come from here instead.
+        /// </summary>
+        UnsupportedInvisibleApi = 3,
     }
 
     internal sealed class SkippedSourceState : SourceState
