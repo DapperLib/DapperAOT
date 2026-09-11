@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\NonConstant.input.cs", 17, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/NonConstant.input.cs", 17, 20)]
         internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, KnownParameters
@@ -18,7 +18,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\NonConstant.input.cs", 19, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/NonConstant.input.cs", 19, 20)]
         internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, KnownParameters

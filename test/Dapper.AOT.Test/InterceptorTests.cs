@@ -72,8 +72,7 @@ public class InterceptorTests : GeneratorTestBase
         var buildOutput = sb.ToString();
         try // automatically overwrite test output, for git tracking
         {
-            if (GetOriginCodeLocation() is string originFile
-                && Path.GetDirectoryName(originFile) is string originFolder)
+            if (ProjectFolder is string originFolder)
             {
                 outputCodePath = Path.Combine(originFolder, outputCodePath);
                 outputBuildPath = Path.ChangeExtension(outputCodePath, "txt");

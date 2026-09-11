@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 11, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 11, 24)]
         internal static global::System.Collections.Generic.IEnumerable<int> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, Buffered, StoredProcedure
@@ -19,7 +19,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 12, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 12, 24)]
         internal static global::System.Collections.Generic.IEnumerable<int?> Query1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, Buffered, StoredProcedure
@@ -33,7 +33,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 13, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 13, 24)]
         internal static global::System.Collections.Generic.IEnumerable<string> Query2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, Buffered, StoredProcedure
@@ -47,7 +47,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 14, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 14, 24)]
         internal static int QueryFirst3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne
@@ -60,7 +60,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 15, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 15, 24)]
         internal static int? QueryFirst4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne
@@ -73,7 +73,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 16, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 16, 24)]
         internal static string QueryFirst5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, StoredProcedure, AtLeastOne
@@ -86,7 +86,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 17, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 17, 24)]
         internal static int QueryFirstOrDefault6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, StoredProcedure
@@ -99,7 +99,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 18, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 18, 24)]
         internal static int? QueryFirstOrDefault7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, StoredProcedure
@@ -112,7 +112,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 19, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 19, 24)]
         internal static string? QueryFirstOrDefault8(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, StoredProcedure
@@ -125,7 +125,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 21, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 21, 30)]
         internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<int>> QueryAsync9(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, Buffered, StoredProcedure
@@ -139,7 +139,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 22, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 22, 30)]
         internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<int?>> QueryAsync10(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, Buffered, StoredProcedure
@@ -153,7 +153,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 23, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 23, 30)]
         internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<string>> QueryAsync11(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, Buffered, StoredProcedure
@@ -167,7 +167,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 25, 47)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 25, 47)]
         internal static global::System.Collections.Generic.IAsyncEnumerable<int> QueryUnbufferedAsync12(this global::System.Data.Common.DbConnection cnn, string sql, object? param, global::System.Data.Common.DbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, Unbuffered, StoredProcedure
@@ -180,7 +180,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 26, 47)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 26, 47)]
         internal static global::System.Collections.Generic.IAsyncEnumerable<int?> QueryUnbufferedAsync13(this global::System.Data.Common.DbConnection cnn, string sql, object? param, global::System.Data.Common.DbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, Unbuffered, StoredProcedure
@@ -193,7 +193,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 27, 47)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 27, 47)]
         internal static global::System.Collections.Generic.IAsyncEnumerable<string> QueryUnbufferedAsync14(this global::System.Data.Common.DbConnection cnn, string sql, object? param, global::System.Data.Common.DbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, Unbuffered, StoredProcedure
@@ -206,7 +206,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 29, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 29, 30)]
         internal static global::System.Threading.Tasks.Task<int> QueryFirstAsync15(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, StoredProcedure, AtLeastOne
@@ -219,7 +219,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 30, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 30, 30)]
         internal static global::System.Threading.Tasks.Task<int?> QueryFirstAsync16(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, StoredProcedure, AtLeastOne
@@ -232,7 +232,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 31, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 31, 30)]
         internal static global::System.Threading.Tasks.Task<string> QueryFirstAsync17(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, StoredProcedure, AtLeastOne
@@ -245,7 +245,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 32, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 32, 30)]
         internal static global::System.Threading.Tasks.Task<int> QueryFirstOrDefaultAsync18(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, StoredProcedure
@@ -258,7 +258,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 33, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 33, 30)]
         internal static global::System.Threading.Tasks.Task<int?> QueryFirstOrDefaultAsync19(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, StoredProcedure
@@ -271,7 +271,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\QueryPrimitive.input.cs", 34, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/QueryPrimitive.input.cs", 34, 30)]
         internal static global::System.Threading.Tasks.Task<string?> QueryFirstOrDefaultAsync20(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, SingleRow, StoredProcedure

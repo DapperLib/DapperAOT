@@ -1,7 +1,7 @@
 # Bulk Copy
 
 A common scenario with databases is "bulk copy"; in the case of SQL Server, this is exposed via
-[`SqlBulkCopy.WriteToServer`](https://learn.microsoft.com/dotnet/api/system.data.sqlclient.sqlbulkcopy.writetoserver),
+[`SqlBulkCopy.WriteToServer`](https://learn.microsoft.com/dotnet/api/microsoft.data.sqlclient.sqlbulkcopy.writetoserver),
 which allows a data feed to be pumped into a table very efficiently and rapidly.
 
 The problem is: that data feed needs to be a `DataTable`, a `DbDataReader`, or similar; but your
@@ -35,7 +35,7 @@ using var table = new SqlBulkCopy(connection)
     DestinationTableName = "Customers",
     ColumnMappings =
     {
-        { nameof(Customer.CustomerNumber), nameof(Customer.CustomerNumber) }
+        { nameof(Customer.CustomerNumber), nameof(Customer.CustomerNumber) },
         { nameof(Customer.Name), nameof(Customer.Name) }
     }
 };
@@ -50,6 +50,6 @@ we've specified the column mappings manually, although you can often omit this. 
 restricted the `DbDataReader` to only expose the `Name` and `CustomerNumber` members.
 
 This all works using generated AOT-compatible code, and does not require any additional
-libaries other than `Dapper.AOT`.
+libraries other than `Dapper.AOT`.
 
 

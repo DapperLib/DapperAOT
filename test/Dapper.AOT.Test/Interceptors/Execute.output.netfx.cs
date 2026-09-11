@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 13, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Execute.input.cs", 13, 24)]
         internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, StoredProcedure, KnownParameters
@@ -19,7 +19,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 14, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Execute.input.cs", 14, 24)]
         internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, StoredProcedure
@@ -31,7 +31,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 15, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Execute.input.cs", 15, 24)]
         internal static int Execute2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Text
@@ -43,7 +43,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 17, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Execute.input.cs", 17, 30)]
         internal static global::System.Threading.Tasks.Task<int> ExecuteAsync3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, HasParameters, StoredProcedure, KnownParameters
@@ -57,7 +57,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 18, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Execute.input.cs", 18, 30)]
         internal static global::System.Threading.Tasks.Task<int> ExecuteAsync4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, StoredProcedure
@@ -69,7 +69,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Execute.input.cs", 19, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Execute.input.cs", 19, 30)]
         internal static global::System.Threading.Tasks.Task<int> ExecuteAsync5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, Text

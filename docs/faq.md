@@ -11,11 +11,26 @@ the case of Dapper, this means we can replace the `QuerySingleOrDefault<Customer
 has a compatible signature and behaves as we expect, but: using code generated entirely at build time. Making existing code compatible with AOT is
 one of the main goals of "interceptors", so: we're not doing anything unexpected here.
 
+## I set the interceptors property, but I still get CS9137
+
+You've probably set the name the *other* SDK wants. The opt-in property was renamed as interceptors settled down:
+`InterceptorsPreviewNamespaces` (.NET 8 SDK) became `InterceptorsNamespaces` (later SDKs), and neither SDK understands
+the other's name - so a project that sets only one of them breaks whenever it moves between SDKs. Set both; they don't
+conflict:
+
+``` xml
+<InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>
+<InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
+```
+
+The CS9137 message always names the property *your* SDK wants, so when in doubt: believe the error, not the docs.
+
 ## Does it still need Dapper itself?
 
 Your *project* still needs to reference Dapper, so we can see what your code is trying to do. In many cases, enabling Dapper.AOT will *completely replace* the Dapper
-code, and you won't even need the Dapper library at runtime (although there are some scenarios in which it will remain - for example, if you're using the `QueryMultiple`
-API, the returned `GridReader` is *defined* inside Dapper, so it will be retained).
+code, and you won't even need the Dapper library at runtime. It will remain wherever a call-site *isn't* intercepted, though - and any call-site we don't intercept is
+left running vanilla Dapper, which means it works under JIT but is not AOT-safe. `QueryMultiple` is the current example: the `GridReader` it returns is *defined* inside
+Dapper and cannot be constructed from outside it, so those calls are refused (and reported, via [DAP001](https://aot.dapperlib.dev/rules/DAP001)) rather than generated.
 
 ## Does it perform as well as Dapper?
 
@@ -33,6 +48,16 @@ Not yet - not by a long way:
 
 In these cases, we just leave the original Dapper code alone (and maybe offer guidance).
 
+Two things worth knowing if you're weighing this up:
+
+- *where* the line currently falls is tracked mechanically, not by hand:
+  [`ApiSurface.expected.txt`](https://github.com/DapperLib/DapperAOT/blob/main/test/Dapper.AOT.Test/ApiSurface.expected.txt)
+  classifies every public Dapper overload and is checked on every build, so it can't quietly age. The
+  [parity notes](https://github.com/DapperLib/DapperAOT/blob/main/notes/parity.md) cover the behavioural side;
+- "not supported" doesn't always mean "you get told". Some overloads are still dropped *silently* today, which is fine
+  under JIT and a runtime failure under native AOT - closing that gap is ongoing work, and it's why
+  **testing your code under an actual AOT publish matters**.
+
 ## Any new features?
 
 Yes! A few examples (there are more):
@@ -46,6 +71,14 @@ using this feature if it sees you using a tuple-type)
 
 Yes; in Visual Studio, expand your project, Dependencies, Analyzers, Dapper.AOT.Analyzers, and look for the generated `.cs` files at the bottom. For other IDEs: refer
 to their documentation around "generators".
+
+If you'd rather just have the files on disk - which works from any editor, and from the command line - add:
+
+``` xml
+<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+```
+
+and build; the generated code appears under `obj/<configuration>/<target-framework>/generated/`.
 
 ## Is this C# only? Does it work with VB? F#?
 

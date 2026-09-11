@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TypeHandlerRegistration.input.cs", 20, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TypeHandlerRegistration.input.cs", 20, 24)]
         internal static global::System.Collections.Generic.IEnumerable<global::Appointment> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
@@ -21,7 +21,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TypeHandlerRegistration.input.cs", 25, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TypeHandlerRegistration.input.cs", 25, 24)]
         internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters
@@ -35,7 +35,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TypeHandlerRegistration.input.cs", 29, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TypeHandlerRegistration.input.cs", 29, 24)]
         internal static global::System.Collections.Generic.IEnumerable<global::Invoice> Query2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
@@ -51,7 +51,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TypeHandlerRegistration.input.cs", 33, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TypeHandlerRegistration.input.cs", 33, 24)]
         internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters

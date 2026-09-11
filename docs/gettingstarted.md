@@ -51,13 +51,14 @@ public class Product
     // etc
 ```
 
-This is using vanilla `Dapper`, and we want to enable `Dapper.AOT`. To do that, the first thing we need is the .NET 8 build SDK (or later). We *do not* need to target .NET 8 - we can still target
+This is using vanilla `Dapper`, and we want to enable `Dapper.AOT`. To do that, the first thing we need is the .NET 8 build SDK (or later); the examples here use .NET 10. We *do not* need to *target* .NET 10 - we can still target
 any framework (including .NET Framework, .NET Standard, .NET Core, or modern .NET), but the magic requires new build features. You can check what build SDK version you are using at the console:
 
 ``` txt
 > dotnet --info
 .NET SDK:
- Version:           8.0.100
+ Version:           10.0.302
+ Commit:            35b593bebf
  (snip lots more here)
 ```
 
@@ -82,12 +83,11 @@ This installs `Dapper.AOT`. To check this, if we build, we see:
 
 ``` txt
 > dotnet build
-MSBuild version 17.8.3+195e7f5a3 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
 C:\Code\DapperAOT\test\UsageLinker\Product.cs(11,99): warning DAP005: 2 candidate Dapper methods detected, but none have Dapper.AOT enabled (https://aot.dapperlib.d
 ev/rules/DAP005) [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
-  UsageLinker -> C:\Code\DapperAOT\test\UsageLinker\bin\Debug\net8.0\win-x64\UsageLinker.dll
+  UsageLinker -> C:\Code\DapperAOT\test\UsageLinker\bin\Debug\net10.0\win-x64\UsageLinker.dll
 ```
 
 We don't want to surprise people by changing how their code works *just* by installing an additional package, so AOT isn't enabled by default. As [described in the link](https://aot.dapperlib.dev/rules/DAP005),
@@ -105,12 +105,11 @@ Now if we build, we get a new error:
 
 ``` txt
 > dotnet build
-MSBuild version 17.8.3+195e7f5a3 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
-C:\Code\DapperAOT\test\UsageLinker\Dapper.AOT.Analyzers\Dapper.CodeAnalysis.DapperInterceptorGenerator\UsageLinker.generated.cs(6,10): error CS9137: The 'interceptors' experimental feature is not enabled in this namespace. Add '
+C:\Code\DapperAOT\test\UsageLinker\obj\Debug\net10.0\Dapper.AOT.Analyzers\Dapper.CodeAnalysis.DapperInterceptorGenerator\UsageLinker.generated.cs(6,10): error CS9137: The 'interceptors' feature is not enabled in this namespace. Add '
 <InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>' to your project. [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
-C:\Code\DapperAOT\test\UsageLinker\Dapper.AOT.Analyzers\Dapper.CodeAnalysis.DapperInterceptorGenerator\UsageLinker.generated.cs(20,10): error CS9137: The 'interceptors' experimental feature is not enabled in this namespace. Add
+C:\Code\DapperAOT\test\UsageLinker\obj\Debug\net10.0\Dapper.AOT.Analyzers\Dapper.CodeAnalysis.DapperInterceptorGenerator\UsageLinker.generated.cs(20,10): error CS9137: The 'interceptors' feature is not enabled in this namespace. Add
 '<InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>' to your project. [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
 ```
 
@@ -120,18 +119,26 @@ we do this by tweaking our project file:
 ``` xml
 <PropertyGroup>
     <!-- ... etc ... -->
+    <!-- later SDKs -->
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>
+    <!-- .NET 8 SDK -->
+    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
 </PropertyGroup>
 ```
 
-This grants permission for tools to generating "interceptors" in the `Dapper.AOT` namespace. If we build... silence:
+The property was renamed as interceptors settled down: the .NET 8 SDK understands only `InterceptorsPreviewNamespaces`
+(and reports the feature as *experimental*), later SDKs understand only `InterceptorsNamespaces`. Neither knows the
+other name, so if you only ever build on one of them, you only need that one line - but setting both is harmless, works
+on every SDK we support, and is what this repo's own sample projects do. The CS9137 message always names the property
+*your* SDK wants.
+
+This grants permission for tools to generate "interceptors" in the `Dapper.AOT` namespace. If we build... silence:
 
 ``` txt
 > dotnet build
-MSBuild version 17.8.3+195e7f5a3 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
-  UsageLinker -> C:\Code\DapperAOT\test\UsageLinker\bin\Debug\net8.0\win-x64\UsageLinker.dll
+  UsageLinker -> C:\Code\DapperAOT\test\UsageLinker\bin\Debug\net10.0\win-x64\UsageLinker.dll
 
 Build succeeded.
     0 Warning(s)
@@ -140,6 +147,28 @@ Build succeeded.
 
 That's.. underwhelming, but: [a lot is going on behind the scenes](/generatedcode). The fact that you didn't need to change your code is intentional. Your data-access code is now
 working with build-time code generation, and should work with AOT deployment.
+
+## Publishing ahead-of-time
+
+Nothing so far *required* native AOT - build-time generation is worth having on its own, and everything above works
+just as well on a regular JIT deployment. But if native AOT is where you're heading, that is now a project-file
+switch away:
+
+``` xml
+<PropertyGroup>
+    <!-- ... etc ... -->
+    <PublishAot>true</PublishAot>
+</PropertyGroup>
+```
+
+``` txt
+> dotnet publish -r win-x64
+```
+
+This is the configuration our own [`UsageLinker`](https://github.com/DapperLib/DapperAOT/tree/main/test/UsageLinker) test
+project uses, and it is the point of the exercise: the reason the reflection and ref-emit had to go is that the
+trimmer and the ahead-of-time compiler can only keep code they can *see*. Do check that your ADO.NET provider is
+also happy with native AOT - that part isn't ours to promise.
 
 ## SQL Analysis
 
@@ -155,7 +184,6 @@ and build:
 
 ``` txt
 > dotnet build
-MSBuild version 17.8.3+195e7f5a3 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
 C:\Code\DapperAOT\test\UsageLinker\Product.cs(16,17): warning DAP219: SELECT columns should be specified explicitly (https://aot.dapperlib.dev/rules/DAP219) [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
@@ -177,8 +205,19 @@ SQL analysis is available in both `Dapper.AOT` and `Dapper.Advisor`, and works f
 like `Query<Foo>` should work, but the *non-generic* API passing `typeof(Foo)` *is not* supported. The underlying implementation is completely separate to `Dapper` (and *usually*
 your code doesn't even need `Dapper` once compiled); there may be subtle differences in how some things behave.
 
-In particular, any Dapper configuration (including `SqlMapper.Settings`, `ITypeHandler`, etc) are *not used*; in many cases
-similar configuration is available via new `Dapper.AOT` markers. Please ask if you get stuck!
+In particular, Dapper configuration that is applied *at runtime* (`SqlMapper.Settings`, `SqlMapper.AddTypeHandler`, etc) is *not used*: the generator
+makes its decisions during build, so it cannot see a call that happens at startup. Where the same capability exists in `Dapper.AOT`, it is spelled
+declaratively instead, so that the build can check it. Type handlers are the main one:
+
+``` csharp
+[module: TypeHandler(typeof(LocalDate), typeof(LocalDateHandler))]
+```
+
+A handler written for `Dapper.AOT` implements `IDbValueHandler<T>` (usually by inheriting `DbValueHandler<T>`), but an existing handler written
+against vanilla Dapper (`SqlMapper.TypeHandler<T>` / `SqlMapper.ITypeHandler`) can be named as-is - generated code adapts it. If you register a
+handler the old way, [DAP053](https://aot.dapperlib.dev/rules/DAP053) tells you so rather than letting it silently do nothing.
+
+Please ask if you get stuck!
 
 **PLEASE TEST YOUR CODE CAREFULLY**
 

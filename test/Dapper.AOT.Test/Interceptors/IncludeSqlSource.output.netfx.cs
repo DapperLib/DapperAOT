@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\IncludeSqlSource.input.cs", 10, 12)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/IncludeSqlSource.input.cs", 10, 12)]
         internal static int Execute0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Text, IncludeLocation
@@ -13,7 +13,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, "-- Interceptors\\IncludeSqlSource.input.cs#10\r\nprint GETDATE();", global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).Execute(param);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, "-- Interceptors/IncludeSqlSource.input.cs#10\r\nprint GETDATE();", global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).Execute(param);
 
         }
 

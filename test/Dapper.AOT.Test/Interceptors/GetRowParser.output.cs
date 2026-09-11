@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\GetRowParser.input.cs", 12, 29)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/GetRowParser.input.cs", 12, 29)]
         internal static global::System.Func<global::System.Data.Common.DbDataReader, global::HazNameId> GetRowParser0(this global::System.Data.Common.DbDataReader reader, global::System.Type? concreteType, int startIndex, int length, bool returnNullIfFirstMissing)
         {
             // TypedResult, GetRowParser
@@ -16,7 +16,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\GetRowParser.input.cs", 32, 29)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/GetRowParser.input.cs", 32, 29)]
         internal static global::System.Func<global::System.Data.Common.DbDataReader, dynamic> GetRowParser1(this global::System.Data.Common.DbDataReader reader, global::System.Type? concreteType, int startIndex, int length, bool returnNullIfFirstMissing)
         {
             // TypedResult, GetRowParser

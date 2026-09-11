@@ -33,12 +33,24 @@ And the lesson from round 13, which cost a whole measurement: **check the build 
 the presence of output** — `--no-build` over a failed build happily runs stale binaries.
 
 **Regenerating interceptor goldens.** `InterceptorTests` writes `.output.cs` back to source
-automatically via `[CallerFilePath]` — which does not work here, because the build is
-deterministic and that path is `C:\_\test\...`. The test then reports "Could not find a part of
-the path" and the golden is never written. Turning off `DeterministicSourcePaths` breaks the
-checked-in `SqliteUsage.snapshot.cs` instead. What works: a throwaway test class in the test
-project that calls `Execute<DapperInterceptorGenerator>` and writes the result to an absolute
-path, run once per TFM (`-f net8.0`, `-f net48`) and then deleted.
+automatically, and this now works: just run the suite for the TFM you care about and review the
+diff. It used to locate the source folder via `[CallerFilePath]`, which is `/_/test/...` under
+`DeterministicSourcePaths` — so the write silently failed with "Could not find a part of the
+path" and the golden was never written. `GeneratorTestBase.ProjectFolder` now walks up from the
+test binaries to find the project file instead, which keeps determinism (and therefore the
+checked-in `SqliteUsage.snapshot.cs`, whose `InterceptsLocation` is the `/_/` path) intact.
+
+One gotcha survives: the *expected* side is read from the copy in `bin`, so after a golden
+changes you need a **build** before the next run agrees with it — `--no-build` will keep
+comparing against the stale copy.
+
+**The goldens are OS-neutral.** Tests find their inputs with `Directory.GetFiles`, and that path
+is baked into the emitted `[InterceptsLocation(...)]`, so the checked-in goldens used to carry
+whatever separator the machine that wrote them used — every interceptor golden failed on Linux
+(49 of them) and nobody noticed, because they were only ever written on Windows.
+`RoslynTestHelpers.CreateCompilation` now normalizes the path to `/` before it reaches the
+compilation, which matches what `GeneratorTestBase` was already doing for the `.output.txt`
+diagnostics side.
 
 Build: `dotnet build tests/Dapper.Tests/Dapper.Tests.csproj -f net10.0` (net481 and net8.0
 legs not yet measured).

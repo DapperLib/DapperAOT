@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\InheritedMembers.input.cs", 11, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/InheritedMembers.input.cs", 11, 30)]
         internal static global::Entity1 QueryFirst0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, HasParameters, SingleRow, StoredProcedure, AtLeastOne, BindResultsByName, KnownParameters
@@ -20,7 +20,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\InheritedMembers.input.cs", 12, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/InheritedMembers.input.cs", 12, 20)]
         internal static int Execute1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters

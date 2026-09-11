@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Cancellation.input.cs", 12, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Cancellation.input.cs", 12, 30)]
         internal static global::System.Threading.Tasks.Task<global::System.Collections.Generic.IEnumerable<global::Foo.MyType>> QueryAsync0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Async, TypedResult, HasParameters, Buffered, Text, BindResultsByName, KnownParameters
@@ -20,7 +20,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\Cancellation.input.cs", 13, 30)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/Cancellation.input.cs", 13, 30)]
         internal static global::System.Threading.Tasks.Task<int> ExecuteAsync1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, HasParameters, Text, KnownParameters

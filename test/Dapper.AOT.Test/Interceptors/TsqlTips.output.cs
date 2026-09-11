@@ -5,19 +5,19 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 9, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 10, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 12, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 14, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 16, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 17, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 19, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 79, 24)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 82, 24)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 83, 24)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 86, 24)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 89, 24)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 96, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 9, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 10, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 12, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 14, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 16, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 17, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 19, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 79, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 82, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 83, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 86, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 89, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 96, 24)]
         internal static global::System.Collections.Generic.IEnumerable<dynamic> Query0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, Buffered, Text, BindResultsByName
@@ -30,14 +30,14 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 22, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 25, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 28, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 31, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 34, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 36, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 40, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 43, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 22, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 25, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 28, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 31, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 34, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 36, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 40, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 43, 20)]
         internal static dynamic QueryFirst1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, SingleRow, Text, AtLeastOne, BindResultsByName
@@ -49,15 +49,15 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 23, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 26, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 29, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 32, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 35, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 37, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 64, 24)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 67, 24)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 70, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 23, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 26, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 29, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 32, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 35, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 37, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 64, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 67, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 70, 24)]
         internal static dynamic QuerySingle2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName
@@ -69,11 +69,11 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 53, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 55, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 57, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 59, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 61, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 53, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 55, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 57, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 59, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 61, 20)]
         internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, HasParameters, Text, KnownParameters
@@ -87,7 +87,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 73, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 73, 24)]
         internal static dynamic QuerySingle4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName, KnownParameters
@@ -101,7 +101,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 76, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 76, 24)]
         internal static dynamic QuerySingle5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, HasParameters, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName, KnownParameters
@@ -114,7 +114,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 103, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 103, 24)]
         internal static global::Foo.Customer QueryFirst6(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, Text, AtLeastOne, BindResultsByName
@@ -127,7 +127,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 105, 24)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 105, 24)]
         internal static int QueryFirst7(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, Text, AtLeastOne
@@ -140,16 +140,16 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 123, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 133, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 146, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 147, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 149, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 152, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 153, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 155, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 168, 15)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 173, 17)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 123, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 133, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 146, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 147, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 149, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 152, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 153, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 155, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 168, 15)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 173, 17)]
         internal static int Execute8(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Text
@@ -161,11 +161,11 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 157, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 158, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 159, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 161, 20)]
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\TsqlTips.input.cs", 163, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 157, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 158, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 159, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 161, 20)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/TsqlTips.input.cs", 163, 20)]
         internal static global::Foo.Customer QuerySingle9(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, SingleRow, Text, AtLeastOne, AtMostOne, BindResultsByName

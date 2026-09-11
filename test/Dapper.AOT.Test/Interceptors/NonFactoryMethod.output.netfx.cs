@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\NonFactoryMethod.input.cs", 14, 99)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/NonFactoryMethod.input.cs", 14, 99)]
         internal static dynamic QueryFirst0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, HasParameters, SingleRow, Text, AtLeastOne, BindResultsByName, KnownParameters
@@ -19,7 +19,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\NonFactoryMethod.input.cs", 17, 92)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/NonFactoryMethod.input.cs", 17, 92)]
         internal static global::UsageLinker.Product QueryFirst1(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Query, TypedResult, HasParameters, SingleRow, Text, AtLeastOne, BindResultsByName, KnownParameters

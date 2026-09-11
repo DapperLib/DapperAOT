@@ -5,7 +5,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 {
     file static class DapperGeneratedInterceptors
     {
-        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors\\DbValueUsage.input.cs", 22, 26)]
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/DbValueUsage.input.cs", 22, 26)]
         internal static global::System.Threading.Tasks.Task<int> ExecuteAsync0(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
         {
             // Execute, Async, HasParameters, Text, KnownParameters
