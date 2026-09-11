@@ -109,9 +109,9 @@ MSBuild version 17.8.3+195e7f5a3 for .NET
   Determining projects to restore...
   All projects are up-to-date for restore.
 C:\Code\DapperAOT\test\UsageLinker\Dapper.AOT.Analyzers\Dapper.CodeAnalysis.DapperInterceptorGenerator\UsageLinker.generated.cs(6,10): error CS9137: The 'interceptors' experimental feature is not enabled in this namespace. Add '
-<InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>' to your project. [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
+<InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>' to your project. [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
 C:\Code\DapperAOT\test\UsageLinker\Dapper.AOT.Analyzers\Dapper.CodeAnalysis.DapperInterceptorGenerator\UsageLinker.generated.cs(20,10): error CS9137: The 'interceptors' experimental feature is not enabled in this namespace. Add
-'<InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>' to your project. [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
+'<InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>' to your project. [C:\Code\DapperAOT\test\UsageLinker\UsageLinker.csproj]
 ```
 
 These messages are coming from the build SDK (not `Dapper.AOT`). The compiler folks *also* don't like surprises, so you need to *opt in* to the "interceptors" feature that `Dapper.AOT` is using. As the message says,
@@ -120,7 +120,7 @@ we do this by tweaking our project file:
 ``` xml
 <PropertyGroup>
     <!-- ... etc ... -->
-    <InterceptorsPreviewNamespaces>$(InterceptorsPreviewNamespaces);Dapper.AOT</InterceptorsPreviewNamespaces>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Dapper.AOT</InterceptorsNamespaces>
 </PropertyGroup>
 ```
 
