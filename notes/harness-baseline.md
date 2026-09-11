@@ -265,7 +265,9 @@ Parked items unchanged: modern interceptor syntax (soft-target rule), announced 
 (DAP015 x30 object-typed), multi-map / GridReader / ExecuteReader API gaps, the "has no
 meaning" APIs warning. When a Dapper release ships #2225/#2228: bump both Dapper and
 Dapper.StrongName, add the DAP052 positive twin and defer-emit golden (the down-level
-verifier is already pinned to 2.1.72 and survives the bump).
+verifier is already pinned to 2.1.72 and survives the bump). Note the 2026-09-11 bump to
+2.1.79 was *not* that release - #2225/#2228 landed after 2.1.79 shipped, so those items
+are still waiting.
 
 ## Round 11: dynamic-record fidelity (PR #200) - 672/793
 
