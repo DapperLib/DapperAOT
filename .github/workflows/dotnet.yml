@@ -40,9 +40,6 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore Build.csproj
 
-      - name: Purge
-        run: del src/Dapper.*/bin/Release/Dapper.*.nupkg
-
       - name: Build
         run: dotnet build Build.csproj --no-restore -c Release
 
@@ -56,13 +53,3 @@ jobs:
       # compared at test time - so without this, a netfx golden can be wrong and CI stays green
       - name: Test .NET Framework 4.8
         run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net48 --filter FullyQualifiedName!~Integration
-
-      - name: Pack
-        if: ${{ success() && !github.base_ref }}
-        run: dotnet pack src/Dapper.AOT/Dapper.AOT.csproj --no-build --verbosity normal -c Release
-
-      - name: Push to MyGet
-        if: ${{ success() && !github.base_ref }}
-        run: dotnet nuget push src/Dapper.*/bin/Release/Dapper.*.nupkg --source https://www.myget.org/F/dapper/api/v2/package --api-key "$env:MYGETAPIKEY"
-        env:
-          MYGETAPIKEY: ${{ secrets.MYGETAPIKEY }}

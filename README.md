@@ -1,3 +1,7 @@
+[![Build](https://github.com/DapperLib/DapperAOT/actions/workflows/dotnet.yml/badge.svg)](https://github.com/DapperLib/DapperAOT/actions/workflows/dotnet.yml)
+[![Dapper.AOT](https://img.shields.io/nuget/v/Dapper.AOT?label=Dapper.AOT)](https://www.nuget.org/packages/Dapper.AOT)
+[![Dapper.Advisor](https://img.shields.io/nuget/v/Dapper.Advisor?label=Dapper.Advisor)](https://www.nuget.org/packages/Dapper.Advisor)
+
 Let's face it: ADO.NET is a complicated API, and writing "good" ADO.NET code by hand is time consuming and error-prone. But a lot of times you also don't want
 the ceremony of an ORM like EF or LLBLGenPro - you just want to execute SQL!
 
