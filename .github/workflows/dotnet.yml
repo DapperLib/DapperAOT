@@ -44,6 +44,11 @@ jobs:
       - name: Test .NET 10
         run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net10.0 --filter FullyQualifiedName!~Integration
 
+      # the job already builds net48, but the *.output.netfx.* interceptor goldens are only
+      # compared at test time - so without this, a netfx golden can be wrong and CI stays green
+      - name: Test .NET Framework 4.8
+        run: dotnet test Build.csproj --no-build --verbosity normal -c Release -f net48 --filter FullyQualifiedName!~Integration
+
       - name: Pack
         if: ${{ success() && !github.base_ref }}
         run: dotnet pack src/Dapper.AOT/Dapper.AOT.csproj --no-build --verbosity normal -c Release
