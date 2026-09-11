@@ -4,7 +4,7 @@
 *where the work currently is* - which branch, which PR, what lands next, and in what order.
 Keep it current: it is the cheapest thing to update and the most expensive thing to lose.
 
-Last updated 2026-08-25.
+Last updated 2026-09-11.
 
 ## Where things stand
 
@@ -12,54 +12,61 @@ Phases 1 and 2 of [plan.md](plan.md) are done and merged. Phase 3 (close the gap
 per round, each verified by a DB-backed run) is in progress; see
 [harness-baseline.md](harness-baseline.md) for the round log and the current numbers.
 
-Clean-main baseline: **677 passed / 793** on the Dapper suite, **533 of 725** call-sites
-intercepted.
+Last measured baseline: **677 passed / 793** on the Dapper suite, **533 of 725** call-sites
+intercepted. **That number is from 2026-08-21 and has not been re-taken since** - see
+"The harness does not exist on this machine" below, which is currently the gate on everything
+in phase 3.
 
 ## In flight
 
-| PR | branch | what | state |
-| --- | --- | --- | --- |
-| #206 | `typehandlers` | runtime `AddTypeHandler` registrations honored, behind `[module: UseRuntimeTypeHandlers]` (default off) | draft, rebased on main, tests green |
-| #207 | `typehandler-registration-note` | the note explaining why the shipped `[TypeHandler<,>]` never worked, and the agreed route | draft/open, notes only |
-| #208 | `typehandler-attributes` | the declarative replacement: `[TypeHandler(typeof(V), typeof(H))]`, `IDbValueHandler<T>`, the vanilla-handler shim, obsoletes | **ready for review**, complete |
+**Nothing of ours.** The type-handler arc is closed out and merged; there is no open PR from
+this workstream, and no branch waiting to be pushed.
 
-**Landing order (revised 2026-08-25): #207 whenever, then #208, then #206.**
+Landed since the last revision of this page:
 
-The original plan was "#206 first", on the grounds that it was finished and restores the corpus
-number. That was wrong for a concrete reason: **#206's `docs/rules/DAP053.md` prescribes
-`[module: TypeHandler(typeof(V), typeof(H))]`**, which only exists in #208. Merging #206 alone
-ships a diagnostic whose documented fix does not compile. So either #208 goes first, or #206's
-rule doc is softened to stop naming an API that is not there yet.
+| PR | what |
+| --- | --- |
+| #208 | declarative type handlers: `[TypeHandler(typeof(V), typeof(H))]`, `IDbValueHandler<T>`, the vanilla-handler shim |
+| #209 | the never-implemented `[TypeHandler<,>]` pair obsoleted as a warning, not an error |
+| #210, #213 | parity notes: the type-handler decision, and statuses now *cite* the generated surface report rather than re-asserting it |
+| #211 | DAP000 separates refused-with-diagnostics from skipped-silently |
+| #214 | `Type`-based APIs become an explicit non-goal (DAP056) |
+| #215, #216 | docs refreshed for .NET 10; interceptor goldens made OS-neutral, and golden write-back fixed |
 
-The rule still worth keeping from the original reasoning: *an attribute lands with the behavior
-it gates* - `[UseRuntimeTypeHandlers]` belongs to #206, not #208, because shipping it where it
-would do nothing is the exact sin these PRs exist to fix.
+Open PRs are all external and all await a decision only Marc can give: **#167** (SplitOn - the
+prior art for multi-map), **#153** (`CommandDefinition` overloads - speaks directly to the mute
+overloads below), **#151** (record primary constructor), **#84** (npgsql-rewrite, 2023).
 
-**#206 is also discardable**, and that is a live option rather than a formality. Given the
-position that runtime config need not be mirrored, the only things it buys are a migration path
-for existing JIT users and the corpus 705-vs-677. Closing it and declaring handlers in the Dapper
-suite instead is coherent: it costs a suite edit and removes a whole opt-in surface from the
-public API. #208 alone is a complete story; #206 alone is not.
+## The type-handler position, settled
 
-**Diagnostic ids**, allocated so the two can land in either order: **DAP053** = #206
-(`[UseRuntimeTypeHandlers]` + `PublishAot`); **DAP054** = #208 (runtime registration with no
-declarative counterpart); **DAP055** = #208 (registration naming an unusable handler). Next
-free: DAP056.
+Marc's call, 2026-08-23, unchanged: **keep vanilla's *call* API; we are not obliged to mirror
+its *config* API.** Static, build-time registration is the supported path.
 
-## The position these PRs encode
+**#206 was closed on 2026-08-25**, and that sharpened the position from "runtime registration is
+an opt-in migration mode" to **not supported at all** - not on principle, but because even gated
+it could not be made free for the people not using it. The reasoning, so it is not re-derived:
 
-Marc's call, 2026-08-23: **keep vanilla's *call* API; we are not obliged to mirror its *config*
-API.** Static, build-time registration is the supported path; runtime registration is a
-migration mode, opt-in, and documented as not AOT-publishable.
+- the opt-in stopped it *emitting* anything for consumers who did not ask, but the read-side
+  check still lived in `RowFactory.GetValue<T>` - the type-flexible arm of every mapped member,
+  ~130 call sites across the interceptor goldens, taken whenever a column type does not exactly
+  match the member type. That path gained a `DBNull` type test it never had, a `typeof(T)`
+  materialisation and a static delegate probe, and stopped being a single-expression method that
+  inlines into generated code. Everyone paid for a feature almost nobody would enable;
+- the fix considered and **rejected**: push the check behind the opt-in at *emission* time (as
+  the write side already did), by emitting `GetValueViaTypeHandler<T>` only for opted-in
+  compilations and giving whole-type handlers their own row factory. That works, and would have
+  made the residue one static-field test per query - but it buys a second read path to maintain
+  in the runtime library, for a mode that is explicitly temporary and cannot be published under
+  native AOT anyway.
 
-The reasoning, so it does not have to be re-derived:
+The standing reasons, which predate #206 and outlive it:
 
 - runtime registration reaches `SqlMapper.TypeHandlerCache<T>` - a generic instantiated over a
   runtime-chosen type - which ILC cannot resolve and nothing warns about at publish. Issue #165
   is that crash on a deployed app;
 - it keeps the world open, so nothing reachable from the registry can be trimmed;
-- every runtime knob respected is a permanent per-operation cost (the enum gate in #206 is the
-  worked example);
+- every runtime knob respected is a permanent per-operation cost - the enum gate in #206 was the
+  worked example on the write side, and the `GetValue<T>` residue was the one that killed it;
 - generated code baked its decision at compile time, so a later registration is either ignored
   or forces a per-operation check. There is no third option;
 - only the static form can be checked at build.
@@ -69,35 +76,61 @@ throws `NotSupportedException` for the whole call when an assembly or type carri
 attribute, poisoning unrelated reflection. Same wall protobuf-net hit, same resolution. Probed
 directly; do not re-open this.
 
-## What #208 still needs
+The rule worth keeping, should this come up again: *an attribute lands with the behavior it
+gates* - never ship an attribute into a PR where it would do nothing.
 
-Nothing blocking - it is ready for review. Closed since the first draft:
+**Diagnostic ids as shipped**: **DAP053** = runtime registration with no declarative counterpart;
+**DAP054** = registration naming a handler generated code cannot use; **DAP055** = duplicate
+registration for one type; **DAP056** = `Type`-based API (non-goal). Next free: **DAP057**.
 
-- DAP055 now reports a registration naming something generated code cannot use (was a silent
-  skip, which was the failure mode the PR exists to kill);
-- `Tokenize` is wired: the handler's per-column token travels in the row factory's `state`
-  channel - one int array per query, filled by a second pass over the token span, indexed
-  positionally in `Read`. `TypeHandlerProtocolTests` pins the contract from outside the
-  generator;
-- member-scoped `[TypeHandler(typeof(H))]` was **removed** rather than implemented: the
-  attribute was advertising a form nothing reads, which is the same no-op sin. Widening
-  `AttributeUsage` and adding a constructor are both non-breaking, so it stays a future option.
+Still future work, not gaps: member-scoped `[TypeHandler(typeof(H))]` (removed from #208 rather
+than half-implemented; widening `AttributeUsage` and adding a constructor are both non-breaking,
+so it stays a future option), enum auto-handlers, and `[TypeMap]`/settings equivalents - per the
+declarative-config direction in [typehandler-registration.md](typehandler-registration.md).
 
-Still future work, not gaps in this PR: enum auto-handlers and `[TypeMap]`/settings equivalents,
-per the declarative-config direction in [typehandlers-design.md](typehandlers-design.md).
+## The harness does not exist on this machine
+
+Phase 3's definition of done is *DB-backed tests green*, and the instrument for that is the
+`aot-harness` branch of the sibling **Dapper** checkout - deliberately local-only, never pushed.
+It lived on the Windows box. On this machine there is **no such branch** (`../Dapper` is clean
+`main`), **no `DapperAotEnable.cs`**, and **no SQL Server running**. The repack recipe in
+[harness-baseline.md](harness-baseline.md) is also Windows-shaped (it names
+`C:\Code\NugetPackageCache`) and needs Linux equivalents.
+
+So: **no phase-3 round can be closed, and the 677/793 cannot even be re-measured, until this is
+rebuilt.** It is the first thing to do if the next session is a feature session rather than a
+tidying one.
+
+## What is next, in the order parity.md argues for
+
+0. **say something at the 34 mute overloads** - 22 skipped silently + 12 unsupported-undiagnosed.
+   Still the cheapest safety win on the list: it turns a runtime AOT failure into a build warning
+   without supporting anything new, and #214 just proved the pattern end to end;
+1. **multi-map** (`Query<T1..T7,TReturn>` + `splitOn`) - large; external #167 is the prior art;
+2. **`QueryMultiple` / `GridReader`** - large, and needs a Dapper-side extension point first;
+3. **corpus adoption of `[TypeHandler]`** - a harness edit, and the thing that closes the
+   677-vs-705 gap #206 used to cover: the Dapper suite registers its handlers at runtime, so with
+   #206 gone those tests bind without handlers. Declaring them via `[module: TypeHandler(...)]` is
+   the fix, in the same spirit as the round-6 DTO restructure. Not all of it converts - see
+   parity.md on instance-registering tests;
+4. **literal injection `{=name}`** (generator half; the analyzer half shipped as #191);
+5. **the coercion tail** - highest silent-wrongness risk.
 
 ## Adjacent things not to lose
 
+- **net48 is unverified since #216 and #214.** Both changed interceptor goldens, and that leg
+  cannot run on Linux. One Windows run settles it; until then, the `.output.netfx.*` files went
+  in on reasoning rather than on a green run.
 - **The in-repo `type-handler` branch** (last commit literally "incomplete", 2024-11, off a
   Dec-2023 main) carries the richest handler protocol written so far - `Tokenize` /
   `Parse(reader, ordinal, token)` matching `RowFactory`, plus `EnumTypeHandler<T>` and
   `[EnumString]`. The generator half predates phase 2 and would be rewritten; the library half
-  is the asset. Harvest before #208 settles.
-- **External PRs #117 and #162** are the prior art for the static tier and have been open for
-  months awaiting a decision that only Marc can give. #162 is the more complete; its
-  generic-attribute spelling is superseded, its instance registry and interceptor goldens are
-  not. Triage write-ups exist outside this repo.
-- **Dapper #2225 and #2228 are merged but unreleased** (latest release is 2.1.79, from May).
-  DapperAOT pins 2.1.72. When a release ships: bump Dapper and Dapper.StrongName, add the DAP052
-  positive twin and the defer-emit golden, and take the `TestUnexpectedDataMessage` parity that
-  was deferred to that bump.
+  is the asset. This was filed as "harvest before #208 settles" - **#208 has now settled**, so
+  the harvest is due, or the branch is a deliberate write-off.
+- **External PRs #117 and #162** were the prior art for the static tier; **both are now closed**,
+  superseded by #208. Their instance registry and interceptor goldens were the parts worth
+  keeping - triage write-ups exist outside this repo.
+- **Dapper #2225 and #2228 are merged but unreleased** (latest release is still 2.1.79, from
+  May). DapperAOT pins 2.1.72. When a release ships: bump Dapper and Dapper.StrongName, add the
+  DAP052 positive twin and the defer-emit golden, and take the `TestUnexpectedDataMessage`
+  parity that was deferred to that bump.

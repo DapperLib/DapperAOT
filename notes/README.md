@@ -31,7 +31,7 @@ build time. See [type-vs-generic.md](type-vs-generic.md).
 | [test-suite-audit.md](test-suite-audit.md) | the Dapper test files as acceptance corpus, and what blocks each |
 | [harness-baseline.md](harness-baseline.md) | real numbers from the suite with AOT enabled (Dapper repo, `aot-harness` branch) |
 | [typehandler-registration.md](typehandler-registration.md) | type handlers: why the shipped attribute never worked, and the agreed replacement |
-| [typehandlers-design.md](typehandlers-design.md) | type handlers: runtime dispatch (opt-in) and the declarative config direction |
+| [typehandler-registration.md](typehandler-registration.md) | type handlers: why the shipped attribute never worked, and the declarative route taken instead |
 | [dynamicparameters-design.md](dynamicparameters-design.md) | phase 3 item 1: delegate to the bag's own vanilla protocol; needs a small Dapper-side API |
 | [provider-specialization.md](provider-specialization.md) | a performance direction: emit against the concrete provider the consumer already references, rather than the agnostic ADO.NET surface |
 | [generator-audit.md](generator-audit.md) | **fix-first gate**: the capture model snapshots Roslyn symbols/nodes — retention + cache defeat |
