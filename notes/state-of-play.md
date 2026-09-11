@@ -12,6 +12,9 @@ Phases 1 and 2 of [plan.md](plan.md) are done and merged. Phase 3 (close the gap
 per round, each verified by a DB-backed run) is in progress; see
 [harness-baseline.md](harness-baseline.md) for the round log and the current numbers.
 
+**1.1.0 shipped 2026-09-11** - the first release since 1.0.52 (May), and the first to publish via
+release.yml rather than by hand. See "Releasing" below for the procedure and its two traps.
+
 Last measured baseline (**round 15, 2026-09-11**, Linux rig): **729 passed / 800** on the Dapper
 suite with **432 of 736** call-sites handled; the vanilla control on the same box is 770/800.
 All 41 divergences are known gaps, ×2 providers - no new failure class.
@@ -108,6 +111,35 @@ pushed**. Two things to know before trusting a number from it:
 - **absolute call-site counts are rig-specific.** The old rig's 533/725 cannot be reproduced here
   and the round-12 generator does not reproduce it either, so the difference is configuration
   that no longer exists. Compare within a rig.
+
+## Releasing (learned the hard way, 2026-09-11 cutting 1.1.0)
+
+The procedure that works:
+
+1. read the version off a **green main run**'s step summary ("Report computed version" in
+   dotnet.yml). A PR run reports the `refs/pull/N/merge` number, which is *not* what will ship -
+   the step says which it is;
+2. create a GitHub Release tagged with exactly that, **unprefixed** (`1.1.0`, not `v1.1.0`);
+   `publicReleaseRefSpec` accepts both since the `v?` fix, and every tag this repo has ever cut
+   is unprefixed;
+3. release.yml verifies tag == computed version and refuses to publish on a mismatch.
+
+Two things that cost time, so they are written down:
+
+- **`NUGET_USER` must be the policy *creator*, not the policy *owner*.** Trusted Publishing
+  policies are created from your own nuget.org account with an owner dropdown; choosing the
+  `Dapper` org there is what scopes the policy to org-owned packages, but the token exchange
+  looks up policies *created by* the username you pass. Passing `Dapper` gives
+  `HTTP 401 ... No matching trust policy owned by user`;
+- `versionHeightOffset` is a **fixed shift, not a pin**. Every commit that lands on main before
+  the tag moves the computed patch, so re-check `nbgv get-version` on main and decrement the
+  offset if the target has drifted. Simulate a squash-merge (`git merge --squash` onto a temp
+  branch off main) rather than reasoning about it - branch-local numbers are misleading, since
+  the repo squash-merges.
+
+Not a real concern, having checked: the per-version "uploaded by" on the Versions tab is visible
+only to owners. Anonymously the package page shows **Owners** only, and both packages already
+list `Dapper` and `marc.gravell`, so which identity pushes changes nothing a consumer sees.
 
 ## What is next, in the order parity.md argues for
 

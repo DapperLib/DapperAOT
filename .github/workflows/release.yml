@@ -99,6 +99,17 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
+      # push each file by full path rather than passing a glob: this job runs on Windows, where
+      # pwsh does not expand wildcards in arguments, so `dotnet nuget push nupkgs/*.nupkg` arrives
+      # literally and fails with "File does not exist". (The upstream this was modelled on runs on
+      # Linux, where bash expands it first.) --skip-duplicate so a partial push is safely re-runnable
       - name: Push to nuget.org
         if: github.event_name == 'release'
-        run: dotnet nuget push nupkgs/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: |
+          $packages = Get-ChildItem nupkgs/*.nupkg
+          if (-not $packages) { throw "no packages to push" }
+          foreach ($p in $packages) {
+            Write-Output "Pushing $($p.Name)"
+            dotnet nuget push $p.FullName --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { throw "push failed for $($p.Name)" }
+          }
