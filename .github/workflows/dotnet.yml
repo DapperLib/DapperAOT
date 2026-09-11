@@ -29,6 +29,14 @@ jobs:
         with:
           setAllVars: true
 
+      # deliberately before restore/build, so the version is legible even when a later step
+      # fails. Cutting a release means tagging with exactly what this prints
+      - name: Report computed version
+        run: |
+          $version = nbgv get-version --variable NuGetPackageVersion
+          "### Computed package version: ``$version``" >> $env:GITHUB_STEP_SUMMARY
+          Write-Output "Computed package version: $version"
+
       - name: Restore dependencies
         run: dotnet restore Build.csproj
 
