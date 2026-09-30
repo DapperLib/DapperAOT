@@ -479,6 +479,11 @@ internal static class Inspection
         if (parameterType.IsArray())
         {
             elementType = parameterType.GetContainingTypeSymbol();
+            if (elementType?.SpecialType == SpecialType.System_Byte)
+            {
+                elementType = null;
+                return false;
+            }
             if (getCastType) castType = elementType.GetTypeDisplayName() + "[]";
             return true;
         }
