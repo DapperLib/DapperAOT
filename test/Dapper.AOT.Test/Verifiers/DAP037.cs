@@ -8,6 +8,24 @@ namespace Dapper.AOT.Test.Verifiers;
 public class DAP037 : Verifier<DapperAnalyzer>
 {
     [Fact]
+    public Task EnumResults() => CSVerifyAsync("""
+        using Dapper;
+        using System.Data.Common;
+
+        [DapperAot]
+        class SomeCode
+        {
+            public void Foo(DbConnection conn)
+            {
+                _ = conn.Query<Status>("select 1 as Value");
+                _ = conn.Query<Status?>("select 1 as Value");
+            }
+        }
+
+        enum Status { Pending, Complete }
+        """, DefaultConfig, []);
+
+    [Fact]
     public Task UserTypeNoSettableMembersFound() => CSVerifyAsync(""""
         using Dapper;
         using System.Collections.Generic;

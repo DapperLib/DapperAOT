@@ -1310,8 +1310,8 @@ internal static class Inspection
     /// </summary>
     public static bool IsSpecialCaseAllowedResultType(ITypeSymbol? type)
     {
-        // byte[] or sbyte[] are basically blobs
-        if (type is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte or SpecialType.System_SByte })
+        // Enums are scalar values; byte[] and sbyte[] are blobs.
+        if (type is { TypeKind: TypeKind.Enum } or IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte or SpecialType.System_SByte })
         {
             return true;
         }
