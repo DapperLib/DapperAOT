@@ -10,7 +10,18 @@ to TSQL / SQL Server). There are multiple ways of letting the tools know more (i
 2. if Dapper.AOT is installed and `[SqlSyntax(...)]` is in scope, it will use the variant specified
 3. if a `dapper.sqlsyntax = ...` entry is specified in an [analyzer configuration file](https://learn.microsoft.com/dotnet/fundamentals/code-analysis/configuration-files) (typically a [Global AnalyzerConfig](https://learn.microsoft.com/dotnet/fundamentals/code-analysis/configuration-files#global-analyzerconfig))
    with a known value, it will be used
-4. if a `<Dapper_SqlSyntax>...</Dapper_SqlSyntax>` property is specified in the project file (inside a `<PropertyGroup>`) with a known value, it will be used
+4. if a `<Dapper_SqlSyntax>...</Dapper_SqlSyntax>` property is specified in the project file (inside a `<PropertyGroup>`) with a known value and exposed to the compiler, it will be used:
+
+   ``` xml
+   <PropertyGroup>
+       <Dapper_SqlSyntax>SqlServer</Dapper_SqlSyntax>
+   </PropertyGroup>
+   <ItemGroup>
+       <CompilerVisibleProperty Include="Dapper_SqlSyntax" />
+   </ItemGroup>
+   ```
+
+   `CompilerVisibleProperty` is required so the analyzer can read the MSBuild property; setting the property alone does not make it visible.
 5. otherwise no SQL variant is applied
 
 For options 3 & 4, The "known values" are the names from the [`SqlSyntax`](https://github.com/DapperLib/DapperAOT/blob/main/src/Dapper.AOT/SqlSyntax.cs) enumeration, evaluated case-insensitively.
