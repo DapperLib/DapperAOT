@@ -16,7 +16,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(param is not null);
 
             return global::Dapper.DapperAotExtensions.AsEnumerableAsync(
-                global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).QueryBufferedAsync((global::System.Threading.CancellationToken)param!, RowFactory0.Instance));
+                global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory0.Instance).QueryBufferedAsync((global::System.Threading.CancellationToken)param!, RowFactory0.Instance));
 
         }
 
@@ -30,7 +30,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
             global::System.Diagnostics.Debug.Assert(param is not null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory1.Instance).ExecuteAsync(param);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, CommandFactory1.Instance).ExecuteAsync(param);
 
         }
 

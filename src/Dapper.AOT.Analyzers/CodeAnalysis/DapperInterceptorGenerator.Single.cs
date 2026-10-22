@@ -52,7 +52,8 @@ public sealed partial class DapperInterceptorGenerator
         {
             sb.Append("global::System.Data.CommandType.").Append(commandTypeMode.ToString());
         }
-        sb.Append(", ").Append(Forward(methodParameters, "commandTimeout")).Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "").Append(", ");
+        // an omitted or null timeout is -1, which leaves the provider default in place; an explicit 0 is still "no limit"
+        sb.Append(", ").Append(HasParam(methodParameters, "commandTimeout") ? "commandTimeout ?? -1" : "-1").Append(", ");
         if (flags.HasAny(OperationFlags.HasParameters))
         {
             var index = factories.GetIndex(parameterType!, map, cache, additionalCommandState, out var subIndex);

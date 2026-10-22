@@ -36,7 +36,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, global::Dapper.RowFactory.Inbuilt.Dynamic);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, global::Dapper.RowFactory.Inbuilt.Dynamic);
 
         }
 

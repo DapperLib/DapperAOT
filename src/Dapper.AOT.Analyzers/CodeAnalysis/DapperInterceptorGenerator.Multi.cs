@@ -87,9 +87,9 @@ public sealed partial class DapperInterceptorGenerator
             }
 
             // timeout
+            // an omitted or null timeout is -1, which leaves the provider default in place
             sb.Append(", ")
-              .Append(Forward(methodParameters, "commandTimeout"))
-              .Append(HasParam(methodParameters, "commandTimeout") ? ".GetValueOrDefault()" : "")
+              .Append(HasParam(methodParameters, "commandTimeout") ? "commandTimeout ?? -1" : "-1")
               .Append(", ");
 
             // commandFactory

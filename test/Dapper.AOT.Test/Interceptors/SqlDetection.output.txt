@@ -4,5 +4,5 @@ Hidden DAP000  L1 C1
 Dapper.AOT handled 7 of 7 enabled call-sites (0 unsupported API, 0 refused with diagnostics, 0 skipped silently) using 5 interceptors, 2 commands and 0 readers
 Output code has 1 diagnostics from 'Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs':
 
-Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L72 C194
+Warning CS8620 Dapper.AOT.Analyzers/Dapper.CodeAnalysis.DapperInterceptorGenerator/Test.generated.cs L72 C180
 Argument of type 'object?[]' cannot be used for parameter 'values' of type 'object[]' in 'int Command<object>.Execute(object[] values, int batchSize = -1)' due to differences in the nullability of reference types.

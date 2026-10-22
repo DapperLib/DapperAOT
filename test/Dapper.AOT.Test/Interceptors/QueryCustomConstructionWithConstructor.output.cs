@@ -15,7 +15,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory0.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory0.Instance);
 
         }
 
@@ -29,7 +29,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory1.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory1.Instance);
 
         }
 
@@ -43,7 +43,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory2.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory2.Instance);
 
         }
 
@@ -57,7 +57,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory3.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory3.Instance);
 
         }
 
@@ -71,7 +71,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory4.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory4.Instance);
 
         }
 
@@ -85,7 +85,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory5.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory5.Instance);
 
         }
 
@@ -99,7 +99,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory6.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory6.Instance);
 
         }
 
@@ -113,7 +113,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory7.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory7.Instance);
 
         }
 
@@ -127,7 +127,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory8.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory8.Instance);
 
         }
 
@@ -141,7 +141,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory9.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory9.Instance);
 
         }
 
@@ -155,7 +155,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory10.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory10.Instance);
 
         }
 
@@ -169,7 +169,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(buffered is true);
             global::System.Diagnostics.Debug.Assert(param is null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, RowFactory11.Instance);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.StoredProcedure, commandTimeout ?? -1, DefaultCommandFactory).QueryBuffered(param, RowFactory11.Instance);
 
         }
 

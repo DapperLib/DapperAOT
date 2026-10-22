@@ -14,7 +14,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
             global::System.Diagnostics.Debug.Assert(param is not null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, default, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).Execute(param);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, default, commandTimeout ?? -1, CommandFactory0.Instance).Execute(param);
 
         }
 
@@ -27,7 +27,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
             global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
             global::System.Diagnostics.Debug.Assert(param is not null);
 
-            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, default, commandTimeout.GetValueOrDefault(), CommandFactory0.Instance).Execute((object?[])param!);
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, default, commandTimeout ?? -1, CommandFactory0.Instance).Execute((object?[])param!);
 
         }
 
