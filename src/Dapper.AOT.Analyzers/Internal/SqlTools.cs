@@ -18,6 +18,10 @@ internal static class SqlTools
 
     internal static readonly Regex LiteralTokens = new(@"(?<![\p{L}\p{N}_])\{=([\p{L}\p{N}_]+)\}", SharedRegexOptions);
 
+    // "in @x": T-SQL requires "(" after IN, so this is only ever Dapper list-expansion syntax
+    // (Dapper expands "in@x" too: its own list regex needs no space before the parameter)
+    internal static readonly Regex InListParameter = new(@"(?<![\p{L}\p{N}_@$#])(IN\s*)@([\p{L}_][\p{L}\p{N}_]*)(?![\p{L}\p{N}_])([ \t]{0,2})", SharedRegexOptions);
+
     public static ImmutableHashSet<string> GetUniqueParameters(string? sql, bool includeLiteralTokens = false)
         => ImmutableHashSet.Create(StringComparer.InvariantCultureIgnoreCase, GetParameters(sql, includeLiteralTokens));
 

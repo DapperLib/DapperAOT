@@ -460,6 +460,9 @@ internal static class Inspection
 
     public static bool IsPrimitiveType(ITypeSymbol? parameterType) => parameterType.IsPrimitiveType();
 
+    internal static bool IsByteArray(ITypeSymbol? type)
+        => type is IArrayTypeSymbol { IsSZArray: true, ElementType.SpecialType: SpecialType.System_Byte };
+
     public static bool IsCollectionType(ITypeSymbol? parameterType, out ITypeSymbol? elementType)
         => IsCollectionType(parameterType, out elementType, out _, false);
     public static bool IsCollectionType(ITypeSymbol? parameterType, out ITypeSymbol? elementType,
@@ -1157,8 +1160,9 @@ internal static class Inspection
                             (flags & (ElementMember.ElementMemberFlags.IsSettable | ElementMember.ElementMemberFlags.IsInitOnly)) == 0) continue;
                     }
 
-                    // see Dapper's TryStringSplit logic
-                    if (IsCollectionType(memberType, out var innerType) && innerType is not null)
+                    // see Dapper's TryStringSplit logic; Dapper's type map binds byte[] as
+                    // DbType.Binary before it looks for IEnumerable, so a blob never expands
+                    if (!IsByteArray(memberType) && IsCollectionType(memberType, out var innerType) && innerType is not null)
                     {
                         flags |= ElementMember.ElementMemberFlags.IsExpandable;
                     }

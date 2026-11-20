@@ -199,6 +199,12 @@ internal readonly struct ParamMember : IEquatable<ParamMember>
             return new(false, false, false, "", "", default, false, false, false, false, false, null, null, false, null, null, "", "", false);
         }
         var dbType = member.GetDbType(out _);
+        if (dbType is null && Inspection.IsByteArray(member.CodeType))
+        {
+            // as Dapper's type map: without a type, a null blob is sent as nvarchar, which a
+            // varbinary column refuses
+            dbType = DbType.Binary;
+        }
         var size = member.TryGetValue<int>("Size");
         bool useSetValueWithDefaultSize = false;
         if (dbType is not null && size is null)

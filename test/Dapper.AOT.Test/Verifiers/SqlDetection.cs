@@ -109,6 +109,52 @@ public class SqlDetection : Verifier<DapperAnalyzer>
             .WithLocation(1)
             .WithArguments(46010, "Incorrect syntax near '333'.")]);
 
+    // named arguments are evaluated in source order, which need not be parameter order
+    [Fact]
+    public Task CSViaParamNamedOutOfOrder() => CSVerifyAsync("""
+        using System.Data.Common;
+        using Dapper;
+
+        [DapperAot(true)]
+        class SomeCode
+        {
+            static void Foo(object args, string sql) {}
+            public void Usage(DbConnection conn)
+            {
+                Foo(sql: "{|#0:|}111 invalid", args: null);
+                conn.Execute(param: null, sql: "{|#1:|}222 invalid");
+            }
+        }
+        """, DefaultConfig,
+        [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
+            .WithLocation(0)
+            .WithArguments(46010, "Incorrect syntax near '111'."),
+        Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
+            .WithLocation(1)
+            .WithArguments(46010, "Incorrect syntax near '222'.")]);
+
+    [Fact]
+    public Task VBViaParamNamedOutOfOrder() => VBVerifyAsync("""
+        Imports System.Data.Common
+        Imports Dapper
+
+        <DapperAot(True)>
+        Class SomeCode
+            Shared Sub Foo(args As Object, sql As String)
+            End Sub
+            Public Sub Usage(conn As DbConnection)
+                Foo(sql:="{|#0:|}111 invalid", args:=Nothing)
+                conn.Execute(param:=Nothing, sql:="{|#1:|}222 invalid")
+            End Sub
+        End Class
+        """, DefaultConfig,
+        [Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
+            .WithLocation(0)
+            .WithArguments(46010, "Incorrect syntax near '111'."),
+        Diagnostic(DapperAnalyzer.Diagnostics.ParseError)
+            .WithLocation(1)
+            .WithArguments(46010, "Incorrect syntax near '222'.")]);
+
     [Fact]
     public Task VBViaDapper() => VBVerifyAsync("""
         Imports Dapper
