@@ -37,7 +37,7 @@ internal class TSqlProcessor
         _visitor = log is null ? new VariableTrackingVisitor(flags, this) : new LoggingVariableTrackingVisitor(flags, this, log);
     }
 
-    static string ReplaceDapperSyntaxWithValidSql(string sql, ImmutableArray<SqlParameter> members)
+    static string ReplaceDapperSyntaxWithValidSql(string sql, ImmutableArray<SqlParameter> members, bool unknownParameters)
     {
         if (SqlTools.LiteralTokens.IsMatch(sql))
         {
@@ -70,7 +70,66 @@ internal class TSqlProcessor
             }
         }
 
+        if (unknownParameters && SqlTools.InListParameter.IsMatch(sql))
+        {
+            // arguments exist but are not in view (SQL passed through a "sql" parameter, say),
+            // so nothing says whether @x is a list; give it the benefit of the doubt - but not
+            // inside a string literal or comment, where "in@x" can appear and nothing pays for
+            // the brackets
+            var inert = GetLiteralAndCommentSpans(sql);
+            sql = SqlTools.InListParameter.Replace(sql, match => IsInside(inert, match.Index) ? match.Value : ExpandInList(match));
+        }
+
         return sql;
+    }
+
+    private static List<(int Start, int End)> GetLiteralAndCommentSpans(string sql)
+    {
+        var spans = new List<(int Start, int End)>();
+        using var reader = new StringReader(sql);
+        var tokens = new TSql160Parser(true, SqlEngineType.All).GetTokenStream(reader, out _);
+        if (tokens is not null)
+        {
+            foreach (var token in tokens)
+            {
+                switch (token.TokenType)
+                {
+                    case TSqlTokenType.AsciiStringLiteral:
+                    case TSqlTokenType.UnicodeStringLiteral:
+                    case TSqlTokenType.SingleLineComment:
+                    case TSqlTokenType.MultilineComment:
+                    case TSqlTokenType.QuotedIdentifier:
+                        spans.Add((token.Offset, token.Offset + token.Text.Length));
+                        break;
+                }
+            }
+        }
+        return spans;
+    }
+
+    private static bool IsInside(List<(int Start, int End)> spans, int index)
+    {
+        foreach (var span in spans)
+        {
+            if (index >= span.Start && index < span.End) return true;
+        }
+        return false;
+    }
+
+    // "in @x " => "in(@x)": the two brackets are paid for with spaces or tabs beside @x, where
+    // there are any, so the SQL after it keeps its offset and an error there is reported in
+    // place; line breaks are never spent, as verbatim and VB strings map locations by line and column
+    private static string ExpandInList(Match match)
+    {
+        var prefix = match.Groups[1].Value; // "in" and any whitespace
+        var trailing = match.Groups[3].Value; // up to two spaces or tabs after @x
+        var owed = 2;
+        if (prefix[prefix.Length - 1] is ' ' or '\t')
+        {
+            prefix = prefix.Substring(0, prefix.Length - 1);
+            owed--;
+        }
+        return prefix + "(@" + match.Groups[2].Value + ")" + trailing.Substring(Math.Min(owed, trailing.Length));
     }
 
     public virtual bool Execute(string sql, ImmutableArray<SqlParameter> members = default)
@@ -81,7 +140,7 @@ internal class TSqlProcessor
         }
         Reset();
         _visitor.AddParameters(members);
-        var fixedSql = ReplaceDapperSyntaxWithValidSql(sql, members);
+        var fixedSql = ReplaceDapperSyntaxWithValidSql(sql, members, _visitor.UnknownParameters);
         if (fixedSql != sql)
         {
             Flags |= SqlParseOutputFlags.SqlAdjustedForDapperSyntax;
@@ -469,6 +528,7 @@ internal class TSqlProcessor
         public bool SingleRow => (_flags & SqlParseInputFlags.SingleRow) != 0;
         public bool AtMostOne => (_flags & SqlParseInputFlags.AtMostOne) != 0;
         public bool KnownParameters => (_flags & SqlParseInputFlags.KnownParameters) != 0;
+        public bool UnknownParameters => (_flags & (SqlParseInputFlags.UnknownParameters | SqlParseInputFlags.KnownParameters)) == SqlParseInputFlags.UnknownParameters;
 
         private bool TryGetVariable(string name, out Variable variable)
             => _variables.TryGetValue(name, out variable) || SlowTryGetVariable(name, out variable);

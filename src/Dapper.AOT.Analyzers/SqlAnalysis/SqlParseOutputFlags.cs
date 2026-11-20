@@ -31,4 +31,5 @@ internal enum SqlParseInputFlags
     SingleColumn = 1 << 7, // actively expect *exactly* one column in any query
     KnownParameters = 1 << 8, // we understand the parameters
     DebugMode = 1 << 9,
+    UnknownParameters = 1 << 10, // parameters may be supplied, but we cannot see their shape
 }

@@ -176,22 +176,26 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                 {
                     case OperationKind.Invocation when ctx.Operation is IInvocationOperation invoke:
                         DetectRuntimeTypeHandlerRegistration(ctx, invoke);
-                        int index = 0;
-                        foreach (var p in invoke.TargetMethod.Parameters)
+                        // arguments are in evaluation order, so named arguments can put them out of
+                        // parameter order: match each one to its parameter, never by position
+                        foreach (var arg in invoke.Arguments)
                         {
-                            if (p.Type.SpecialType == SpecialType.System_String && (
-                                p.Name == "sql" || GetDapperAttribute(p, Types.SqlAttribute) is not null))
+                            if (arg.Parameter is not { Type.SpecialType: SpecialType.System_String } p) continue;
+                            bool isMarkedSql = GetDapperAttribute(p, Types.SqlAttribute) is not null;
+                            if (!isMarkedSql && p.Name != "sql") continue;
+
+                            if (Inspection.IsDapperMethod(invoke, out var dapperFlags))
                             {
-                                if (Inspection.IsDapperMethod(invoke, out var dapperFlags))
-                                {
-                                    ValidateDapperMethod(ctx, invoke.Arguments[index], dapperFlags);
-                                }
-                                else
-                                {
-                                    ValidateParameterUsage(ctx, invoke.Arguments[index]);
-                                }
+                                ValidateDapperMethod(ctx, arg, dapperFlags);
                             }
-                            index++;
+                            else
+                            {
+                                // a helper of this compilation, or one marked [Sql], may pass the SQL to Dapper with
+                                // arguments we cannot see; a library's own "sql" parameter (EF Core's FromSqlRaw, say)
+                                // runs the SQL as written
+                                ValidateParameterUsage(ctx, arg,
+                                    mayExpandLists: isMarkedSql || invoke.TargetMethod.OriginalDefinition.Locations.Any(static loc => loc.IsInSource));
+                            }
                         }
                         break;
                     case OperationKind.SimpleAssignment when ctx.Operation is ISimpleAssignmentOperation assignment
@@ -226,7 +230,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
                             var sqlParam = ctor.Parameters.FirstOrDefault();
                             if (sqlParam is not null && sqlParam.Type.SpecialType == SpecialType.System_String && sqlParam.Name == "cmdText")
                             {
-                                ValidateParameterUsage(ctx, objectCreationOperation.Arguments.First(), sqlUsage: objectCreationOperation);
+                                ValidateParameterUsage(ctx, objectCreationOperation.Arguments.First(), mayExpandLists: false, sqlUsage: objectCreationOperation);
                             }
                         }
 
@@ -402,6 +406,7 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             if ((flags & OperationFlags.SingleRow) != 0) modeFlags |= SqlParseInputFlags.SingleRow;
             if ((flags & OperationFlags.AtMostOne) != 0) modeFlags |= SqlParseInputFlags.AtMostOne;
             if ((flags & OperationFlags.KnownParameters) != 0) modeFlags |= SqlParseInputFlags.KnownParameters;
+            else if ((flags & OperationFlags.HasParameters) != 0) modeFlags |= SqlParseInputFlags.UnknownParameters;
             if ((flags & OperationFlags.Scalar) != 0)
             {
                 modeFlags |= SqlParseInputFlags.ExpectQuery | SqlParseInputFlags.SingleRow | SqlParseInputFlags.SingleQuery | SqlParseInputFlags.SingleColumn;
@@ -459,16 +464,17 @@ public sealed partial class DapperAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        private void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource, IOperation? sqlUsage = null)
+        private void ValidateParameterUsage(in OperationAnalysisContext ctx, IOperation sqlSource, bool mayExpandLists, IOperation? sqlUsage = null)
         {
             // TODO: check other parameters for special markers like command type?
-            var flags = SqlParseInputFlags.None;
+            var flags = mayExpandLists ? SqlParseInputFlags.UnknownParameters : SqlParseInputFlags.None;
             ValidateSql(ctx, sqlSource, flags, SqlParameters.None, sqlUsageOperation: sqlUsage);
         }
 
         private void ValidatePropertyUsage(in OperationAnalysisContext ctx, IOperation sqlSource, bool isCommand)
         {
-            var flags = SqlParseInputFlags.None;
+            // a command's own text runs as written; a [Sql] property may be handed to Dapper later
+            var flags = isCommand ? SqlParseInputFlags.None : SqlParseInputFlags.UnknownParameters;
             if (isCommand)
             {
                 // TODO: check other parameters for special markers like command type?

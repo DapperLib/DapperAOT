@@ -53,6 +53,48 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ListExpansion.input.cs", 19, 24)]
+        internal static int Execute3(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        {
+            // Execute, HasParameters, Text, KnownParameters
+            // takes parameter: <anonymous type: byte[] photo, int id>
+            // parameter map: id photo
+            global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+            global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+            global::System.Diagnostics.Debug.Assert(param is not null);
+
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory3.Instance).Execute(param);
+
+        }
+
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ListExpansion.input.cs", 20, 24)]
+        internal static int Execute4(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        {
+            // Execute, HasParameters, Text, KnownParameters
+            // takes parameter: global::Foo.WithPhoto[]
+            // parameter map: id photo
+            global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+            global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+            global::System.Diagnostics.Debug.Assert(param is not null);
+
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory4.Instance).Execute((global::Foo.WithPhoto[])param!);
+
+        }
+
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/ListExpansion.input.cs", 21, 24)]
+        internal static int Execute5(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, int? commandTimeout, global::System.Data.CommandType? commandType)
+        {
+            // Execute, HasParameters, Text, KnownParameters
+            // takes parameter: global::Foo.WithHash
+            // parameter map: hash id
+            global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+            global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+            global::System.Diagnostics.Debug.Assert(param is not null);
+
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), CommandFactory5.Instance).Execute((global::Foo.WithHash)param!);
+
+        }
+
         private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
         {
             public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
@@ -141,6 +183,119 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 var ps = cmd.Parameters;
 
             }
+
+        }
+
+        private sealed class CommandFactory3 : CommonCommandFactory<object?> // <anonymous type: byte[] photo, int id>
+        {
+            internal static readonly CommandFactory3 Instance = new();
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, object? args)
+            {
+                var typed = Cast(args, static () => new { photo = default(byte[])!, id = default(int) }); // expected shape
+                var ps = cmd.Parameters;
+                global::System.Data.Common.DbParameter p;
+                p = cmd.CreateParameter();
+                p.ParameterName = "photo";
+                p.DbType = global::System.Data.DbType.Binary;
+                p.Size = -1;
+                p.Direction = global::System.Data.ParameterDirection.Input;
+                p.Value = AsValue(typed.photo);
+                ps.Add(p);
+
+                p = cmd.CreateParameter();
+                p.ParameterName = "id";
+                p.DbType = global::System.Data.DbType.Int32;
+                p.Direction = global::System.Data.ParameterDirection.Input;
+                p.Value = AsValue(typed.id);
+                ps.Add(p);
+
+            }
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, object? args)
+            {
+                var typed = Cast(args, static () => new { photo = default(byte[])!, id = default(int) }); // expected shape
+                var ps = cmd.Parameters;
+                ps[0].Value = AsValue(typed.photo);
+                ps[1].Value = AsValue(typed.id);
+
+            }
+            public override bool CanPrepare => true;
+
+        }
+
+        private sealed class CommandFactory4 : CommonCommandFactory<global::Foo.WithPhoto>
+        {
+            internal static readonly CommandFactory4 Instance = new();
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.WithPhoto args)
+            {
+                var ps = cmd.Parameters;
+                global::System.Data.Common.DbParameter p;
+                p = cmd.CreateParameter();
+                p.ParameterName = "photo";
+                p.DbType = global::System.Data.DbType.Binary;
+                p.Size = -1;
+                p.Direction = global::System.Data.ParameterDirection.Input;
+                p.Value = AsValue(args.photo);
+                ps.Add(p);
+
+                p = cmd.CreateParameter();
+                p.ParameterName = "id";
+                p.DbType = global::System.Data.DbType.Int32;
+                p.Direction = global::System.Data.ParameterDirection.Input;
+                p.Value = AsValue(args.id);
+                ps.Add(p);
+
+            }
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.WithPhoto args)
+            {
+                var ps = cmd.Parameters;
+                ps[0].Value = AsValue(args.photo);
+                ps[1].Value = AsValue(args.id);
+
+            }
+            public override bool CanPrepare => true;
+
+        }
+
+        private sealed class CommandFactory5 : CommonCommandFactory<global::Foo.WithHash>
+        {
+            internal static readonly CommandFactory5 Instance = new();
+            public override void AddParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.WithHash args)
+            {
+                var ps = cmd.Parameters;
+                global::System.Data.Common.DbParameter p;
+                p = cmd.CreateParameter();
+                p.ParameterName = "id";
+                p.DbType = global::System.Data.DbType.Int32;
+                p.Direction = global::System.Data.ParameterDirection.Input;
+                p.Value = AsValue(args.id);
+                ps.Add(p);
+
+                p = cmd.CreateParameter();
+                p.ParameterName = "hash";
+                p.DbType = global::System.Data.DbType.Binary;
+                p.Size = 32;
+                p.Direction = global::System.Data.ParameterDirection.Output;
+                p.Value = global::System.DBNull.Value;
+                ps.Add(p);
+
+            }
+            public override void UpdateParameters(in global::Dapper.UnifiedCommand cmd, global::Foo.WithHash args)
+            {
+                var ps = cmd.Parameters;
+                ps[0].Value = AsValue(args.id);
+                ps[1].Value = global::System.DBNull.Value;
+
+            }
+            public override bool RequirePostProcess => true;
+
+            public override void PostProcess(in global::Dapper.UnifiedCommand cmd, global::Foo.WithHash args, int rowCount)
+            {
+                var ps = cmd.Parameters;
+                args.hash = Parse<byte[]>(ps[1].Value);
+                base.PostProcess(in cmd, args, rowCount);
+
+            }
+            public override bool CanPrepare => true;
 
         }
 
