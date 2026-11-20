@@ -47,4 +47,34 @@ public class DAP231 : Verifier<DapperAnalyzer>
         SELECT -MAX(SomeColumn), COUNT(1) + 32 FROM MyTable
         """, SqlParseInputFlags.SingleRow);
 
+    [Fact]
+    public Task DoNotReportForWrappedAggregate() => SqlVerifyAsync("""
+        SELECT ISNULL(SUM(SomeColumn), 0) FROM MyTable
+        """, SqlParseInputFlags.SingleRow);
+
+    [Fact]
+    public Task DoNotReportForNewerAggregate() => SqlVerifyAsync("""
+        SELECT MEDIAN(SomeColumn) FROM MyTable
+        """, SqlParseInputFlags.SingleRow);
+
+    [Fact]
+    public Task DoNotReportForUserFunctionOverAggregate() => SqlVerifyAsync("""
+        SELECT dbo.FormatMoney(SUM(SomeColumn)) FROM MyTable
+        """, SqlParseInputFlags.SingleRow);
+
+    [Fact] // dbo.Median is a user function, not the MEDIAN aggregate
+    public Task ReportForUserFunctionNamedLikeAggregate() => SqlVerifyAsync("""
+        {|#0:SELECT dbo.Median(SomeColumn) FROM MyTable|}
+        """, SqlParseInputFlags.SingleRow, Diagnostic(Diagnostics.SelectSingleRowWithoutWhere).WithLocation(0));
+
+    [Fact] // a windowed aggregate returns one row per source row
+    public Task ReportForWindowedAggregate() => SqlVerifyAsync("""
+        {|#0:SELECT COUNT(1) OVER () FROM MyTable|}
+        """, SqlParseInputFlags.SingleRow, Diagnostic(Diagnostics.SelectSingleRowWithoutWhere).WithLocation(0));
+
+    [Fact] // the subquery runs once per row of MyTable
+    public Task ReportForSubqueryColumn() => SqlVerifyAsync("""
+        {|#0:SELECT (SELECT COUNT(1) FROM OtherTable) FROM MyTable|}
+        """, SqlParseInputFlags.SingleRow, Diagnostic(Diagnostics.SelectSingleRowWithoutWhere).WithLocation(0));
+
 }

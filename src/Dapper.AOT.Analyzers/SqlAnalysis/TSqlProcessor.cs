@@ -788,11 +788,11 @@ internal class TSqlProcessor
             _demandAliases.IgnoreNode = ignore;
             base.ExplicitVisit(node); // dive
             _demandAliases.IgnoreNode = oldIgnore; // restore
-
-            static bool IsSpecialDateFunction(string name)
-                => name.StartsWith("DATE", StringComparison.OrdinalIgnoreCase)
-                && IsAnyCaseInsensitive(name, DateTokenFunctions);
         }
+
+        static bool IsSpecialDateFunction(string name)
+            => name.StartsWith("DATE", StringComparison.OrdinalIgnoreCase)
+            && IsAnyCaseInsensitive(name, DateTokenFunctions);
 
         static bool IsAnyCaseInsensitive(string value, string[] options)
         {
@@ -883,7 +883,7 @@ internal class TSqlProcessor
                                     parser.OnSelectDuplicateColumnName(scalar, name!);
                                 }
                             }
-                            aggregate |= IsAggregate(scalar.Expression);
+                            aggregate |= IsAggregate(scalar.Expression, spec.FromClause);
                             reads++;
                             break;
                         case SelectSetVariable:
@@ -893,7 +893,8 @@ internal class TSqlProcessor
                     index++;
                 }
 
-                if (aggregate == (AggregateFlags.HaveAggregate | AggregateFlags.HaveNonAggregate))
+                if (aggregate == (AggregateFlags.HaveAggregate | AggregateFlags.HaveNonAggregate)
+                    && !IsGrouped(spec.GroupByClause)) // with GROUP BY, the server checks each column is grouped
                 {
                     parser.OnSelectAggregateAndNonAggregate(spec);
                 }
@@ -949,41 +950,207 @@ internal class TSqlProcessor
             Uncertain = 1 << 2,
         }
 
-        private AggregateFlags IsAggregate(ScalarExpression expression)
-        {
-            // any use of an aggregate function contributes HaveAggregate
-            // - there could be unary/binary operations on that aggregate function
-            // - column references etc inside an aggregate expression,
-            //   otherwise they contribute HaveNonAggregate
-            switch (expression)
-            {
-                case Literal:
-                    return AggregateFlags.None;
-                case UnaryExpression ue:
-                    return IsAggregate(ue.Expression);
-                case BinaryExpression be:
-                    return IsAggregate(be.FirstExpression)
-                        | IsAggregate(be.SecondExpression);
-                case FunctionCall func when IsAggregateFunction(func.FunctionName.Value):
-                    return AggregateFlags.HaveAggregate; // don't need to look inside
-                case ScalarSubquery sq:
-                    throw new NotSupportedException();
-                case IdentityFunctionCall:
-                case PrimaryExpression:
-                    return AggregateFlags.HaveNonAggregate;
-                default:
-                    return AggregateFlags.Uncertain;
-            }
+        private AggregateScanner? _aggregateScanner;
 
-            static bool IsAggregateFunction(string name)
-                => IsAnyCaseInsensitive(name, AggregateFunctions);
+        // any use of an aggregate function contributes HaveAggregate, and any column
+        // reference outside one contributes HaveNonAggregate, at any depth:
+        // ISNULL(SUM(x), 0) is an aggregate, ISNULL(x, 0) is not
+        private AggregateFlags IsAggregate(ScalarExpression expression, FromClause? from)
+            => expression is PrimaryExpression or UnaryExpression or BinaryExpression or IdentityFunctionCall
+                ? (_aggregateScanner ??= new(CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase))
+                    .Scan(expression, from)
+                : AggregateFlags.Uncertain;
+
+        // built-in aggregates are never schema-qualified, so dbo.Product(x) is a user function
+        static bool IsBuiltInAggregate(FunctionCall node)
+            => node.CallTarget is null && AggregateFunctions.Contains(node.FunctionName.Value);
+
+        static bool IsGrouped(GroupByClause? groupBy)
+            => groupBy is not null && AnyGrouping(groupBy.GroupingSpecifications);
+
+        // GROUP BY () and GROUPING SETS (()) group nothing
+        static bool AnyGrouping(IList<GroupingSpecification> groupings)
+        {
+            foreach (var grouping in groupings)
+            {
+                if (grouping switch
+                {
+                    GrandTotalGroupingSpecification => false,
+                    GroupingSetsGroupingSpecification sets => AnyGrouping(sets.Sets),
+                    _ => true,
+                }) return true;
+            }
+            return false;
         }
 
-        static readonly string[] AggregateFunctions = [
-            "APPROX_COUNT_DISTINCT", "AVG","CHECKSUM_AGG", "COUNT", "COUNT_BIG",
-            "GROUPING", "GROUPING_ID", "MAX", "MIN", "STDEV",
+        // a qualifier such as the t in t.Location.STAsText(): the second-last part of a call target
+        static string? CallTargetQualifier(FunctionCall node)
+            => node.CallTarget is MultiPartIdentifierCallTarget { MultiPartIdentifier.Identifiers: { Count: >= 2 } ids }
+                ? ids[ids.Count - 2].Value : null;
+
+        private sealed class AggregateScanner(StringComparer comparer) : TSqlFragmentVisitor
+        {
+            private AggregateFlags _flags;
+            private ScalarExpression? _notAColumn;
+            private FromClause? _from;
+            private HashSet<string>? _tables;
+
+            private HashSet<string> Tables => _tables ??= _from is null ? [] : TableNameCollector.Collect(_from, comparer);
+
+            public AggregateFlags Scan(ScalarExpression expression, FromClause? from)
+            {
+                _flags = AggregateFlags.None;
+                _notAColumn = null;
+                if (!ReferenceEquals(from, _from))
+                {
+                    _from = from;
+                    _tables = null;
+                }
+                expression.Accept(this);
+                return _flags;
+            }
+
+            public override void ExplicitVisit(FunctionCall node)
+            {
+                var name = node.FunctionName.Value;
+                bool isAggregate = IsBuiltInAggregate(node);
+                if (isAggregate && node.OverClause is null)
+                {
+                    _flags |= AggregateFlags.HaveAggregate; // don't need to look inside
+                    return;
+                }
+                if (CallTargetQualifier(node) is { } qualifier && Tables.Contains(qualifier))
+                {
+                    _flags |= AggregateFlags.HaveNonAggregate; // a method on a column, t.Location.STAsText()
+                    return;
+                }
+                // any other function, including a windowed aggregate (evaluated per row), a user function
+                // (dbo.Fn, which could also be a CLR aggregate; we can't tell) and a method on an expression:
+                // only what is inside counts. Location.STAsText() looks like dbo.Fn(), so it counts as neither
+                var oldNotAColumn = _notAColumn;
+                _notAColumn = node.Parameters.Count == 0 || node.CallTarget is not null ? null
+                    : IsSpecialDateFunction(name) ? node.Parameters[0] // DATEADD(day, ...) parses "day" as a column
+                    : isAggregate && node.Parameters[0] is ColumnReferenceExpression { ColumnType: ColumnType.Wildcard }
+                        ? node.Parameters[0] // the * in COUNT(*) OVER () is not a column
+                    : null;
+                base.ExplicitVisit(node);
+                _notAColumn = oldNotAColumn;
+            }
+
+            public override void ExplicitVisit(ColumnReferenceExpression node)
+            {
+                if (node != _notAColumn)
+                {
+                    _flags |= AggregateFlags.HaveNonAggregate;
+                }
+            }
+
+            public override void ExplicitVisit(IdentityFunctionCall node)
+                => _flags |= AggregateFlags.HaveNonAggregate;
+
+            // a subquery's own columns belong to its query; only a qualified reference to a table
+            // of this query (o.Id) counts. An unqualified one could be either, and we can't tell
+            public override void ExplicitVisit(ScalarSubquery node)
+            {
+                if (OuterReferenceFinder.Find(node, Tables, comparer))
+                {
+                    _flags |= AggregateFlags.HaveNonAggregate;
+                }
+            }
+        }
+
+        // the names a query's columns can be qualified with: each table's alias, or its name when it has none
+        private sealed class TableNameCollector : TSqlFragmentVisitor
+        {
+            private readonly HashSet<string> _names;
+
+            private TableNameCollector(StringComparer comparer) => _names = new(comparer);
+
+            public static HashSet<string> Collect(FromClause from, StringComparer comparer)
+            {
+                var collector = new TableNameCollector(comparer);
+                from.Accept(collector);
+                return collector._names;
+            }
+
+            public override void Visit(TableReferenceWithAlias node) => AddAlias(node);
+
+            public override void Visit(NamedTableReference node)
+            {
+                if (node.Alias is null) _names.Add(node.SchemaObject.BaseIdentifier.Value);
+            }
+
+            // the tables inside a derived table, a PIVOT/UNPIVOT or a subquery are not in this query's scope
+            public override void ExplicitVisit(QueryDerivedTable node) => AddAlias(node);
+            public override void ExplicitVisit(PivotedTableReference node) => AddAlias(node);
+            public override void ExplicitVisit(UnpivotedTableReference node) => AddAlias(node);
+            public override void ExplicitVisit(ScalarSubquery node) { }
+
+            private void AddAlias(TableReferenceWithAlias node)
+            {
+                if (node.Alias is not null) _names.Add(node.Alias.Value);
+            }
+        }
+
+        private sealed class OuterReferenceFinder(HashSet<string> outer, StringComparer comparer) : TSqlFragmentVisitor
+        {
+            private readonly List<HashSet<string>> _scopes = [];
+            private bool _found;
+
+            public static bool Find(ScalarSubquery subquery, HashSet<string> outer, StringComparer comparer)
+            {
+                if (outer.Count == 0) return false;
+                var finder = new OuterReferenceFinder(outer, comparer);
+                subquery.QueryExpression.Accept(finder);
+                return finder._found;
+            }
+
+            public override void ExplicitVisit(QuerySpecification node)
+            {
+                if (_found) return;
+                _scopes.Add(node.FromClause is null ? [] : TableNameCollector.Collect(node.FromClause, comparer));
+                base.ExplicitVisit(node);
+                _scopes.RemoveAt(_scopes.Count - 1);
+            }
+
+            public override void ExplicitVisit(FunctionCall node)
+            {
+                // SUM(o.Total) on outer columns only is an aggregate of the outer query; leave aggregates alone
+                if (node.OverClause is null && IsBuiltInAggregate(node)) return;
+                if (CallTargetQualifier(node) is { } qualifier) Check(qualifier); // o.Location.STAsText()
+                base.ExplicitVisit(node);
+            }
+
+            public override void ExplicitVisit(ColumnReferenceExpression node)
+            {
+                if (node.MultiPartIdentifier?.Identifiers is { Count: >= 2 } ids)
+                {
+                    Check(ids[ids.Count - 2].Value);
+                }
+            }
+
+            private void Check(string table)
+            {
+                if (_found) return;
+                foreach (var scope in _scopes)
+                {
+                    if (scope.Contains(table)) return; // a subquery table with this name hides the outer one
+                }
+                _found = outer.Contains(table);
+            }
+        }
+
+        // the list at https://learn.microsoft.com/sql/t-sql/functions/aggregate-functions-transact-sql,
+        // plus the JSON aggregates, which are documented on their own pages
+        static readonly HashSet<string> AggregateFunctions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "ANY_VALUE", "APPROX_COUNT_DISTINCT", "APPROX_MEDIAN", "APPROX_PERCENTILE_CONT", "APPROX_PERCENTILE_DISC",
+            "APPROX_QUANTILE", "AVG", "CHECKSUM_AGG", "COUNT", "COUNT_BIG",
+            "GROUPING", "GROUPING_ID", "MAX", "MEDIAN", "MIN",
+            "PERCENTILE_CONT", "PERCENTILE_DISC", "PRODUCT", "QUANTILE", "STDEV",
             "STDEVP", "STRING_AGG", "SUM", "VAR", "VARP",
-            ];
+            "JSON_ARRAYAGG", "JSON_OBJECTAGG",
+        };
 
         private bool EnforceTop(ScalarExpression expr)
         {
