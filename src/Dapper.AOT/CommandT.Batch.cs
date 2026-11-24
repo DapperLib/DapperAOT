@@ -211,6 +211,17 @@ partial struct Command<TArgs>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool UseBatch(int batchSize) => batchSize != 0 && connection is { CanCreateBatch: true };
 
+    private DbBatch CreateBatch()
+    {
+        var batch = connection.CreateBatch();
+        batch.Transaction = transaction;
+        if (timeout >= 0)
+        {
+            batch.Timeout = timeout;
+        }
+        return batch;
+    }
+
     private DbBatchCommand AddCommand(ref UnifiedCommand state, TArgs args)
     {
         var cmd = state.UnsafeCreateNewCommand();
@@ -219,33 +230,47 @@ partial struct Command<TArgs>
         return cmd;
     }
 
-    private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize) // TODO: sub-batching
+    private int ExecuteMultiBatch(ReadOnlySpan<TArgs> source, int batchSize)
     {
         Debug.Assert(source.Length > 1);
-        UnifiedCommand batch = default;
         bool closeConnection = false;
         try
         {
-            foreach (var arg in source)
-            {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
-                AddCommand(ref batch, arg);
-            }
-            if (!batch.HasBatch) return 0;
-
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
                 closeConnection = true;
             }
 
-            var result = batch.AssertBatch.ExecuteNonQuery();
-
-            if (commandFactory.RequirePostProcess)
+            int total = 0, offset = 0;
+            while (offset < source.Length)
             {
-                batch.PostProcess(source, commandFactory);
+                int count = batchSize > 0 ? Math.Min(batchSize, source.Length - offset) : source.Length - offset;
+                ReadOnlySpan<TArgs> chunk = source.Slice(offset, count);
+                offset += count;
+
+                UnifiedCommand batch = default;
+                try
+                {
+                    foreach (var arg in chunk)
+                    {
+                        if (!batch.HasBatch) batch = new(CreateBatch());
+                        AddCommand(ref batch, arg);
+                    }
+
+                    total += batch.AssertBatch.ExecuteNonQuery();
+
+                    if (commandFactory.RequirePostProcess)
+                    {
+                        batch.PostProcess(chunk, commandFactory);
+                    }
+                }
+                finally
+                {
+                    batch.Cleanup();
+                }
             }
-            return result;
+            return total;
         }
         finally
         {
@@ -253,12 +278,18 @@ partial struct Command<TArgs>
             {
                 connection.Close();
             }
-            batch.Cleanup();
         }
     }
 
-    private int ExecuteMultiBatch(IEnumerable<TArgs> source, int batchSize) // TODO: sub-batching
+    private int ExecuteMultiBatch(IEnumerable<TArgs> source, int batchSize)
     {
+        if (batchSize > 0)
+        {
+            // sub-batching needs random access; materialize and use the span path
+            var list = (source as List<TArgs>) ?? source.ToList();
+            return list.Count == 0 ? 0 : ExecuteMultiBatch(CollectionsMarshal.AsSpan(list), batchSize);
+        }
+
         if (commandFactory.RequirePostProcess)
         {
             // try to ensure it is repeatable
@@ -271,7 +302,7 @@ partial struct Command<TArgs>
         {
             foreach (var arg in source)
             {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
+                if (!batch.HasBatch) batch = new(CreateBatch());
                 AddCommand(ref batch, arg);
             }
             if (!batch.HasBatch) return 0;
@@ -591,32 +622,38 @@ partial struct Command<TArgs>
     }
 
 #if NET6_0_OR_GREATER
-    private async Task<int> ExecuteMultiBatchAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken) // TODO: sub-batching
+    private async Task<int> ExecuteMultiBatchAsync(TArgs[] source, int offset, int count, int batchSize, CancellationToken cancellationToken)
     {
         Debug.Assert(source.Length > 1);
-        UnifiedCommand batch = default;
         var end = offset + count;
-        try
+        int total = 0;
+        while (offset < end)
         {
-            for (int i = offset ; i < end; i++)
-            {
-                if (!batch.HasBatch) batch = new(connection.CreateBatch());
-                AddCommand(ref batch, source[i]);
-            }
-            if (!batch.HasBatch) return 0;
+            int chunkSize = batchSize > 0 ? Math.Min(batchSize, end - offset) : end - offset;
 
-            var result = await batch.AssertBatch.ExecuteNonQueryAsync(cancellationToken);
-
-            if (commandFactory.RequirePostProcess)
+            UnifiedCommand batch = default;
+            try
             {
-                batch.PostProcess(new ReadOnlySpan<TArgs>(source, offset, count), commandFactory);
+                for (int i = offset; i < offset + chunkSize; i++)
+                {
+                    if (!batch.HasBatch) batch = new(CreateBatch());
+                    AddCommand(ref batch, source[i]);
+                }
+
+                total += await batch.AssertBatch.ExecuteNonQueryAsync(cancellationToken);
+
+                if (commandFactory.RequirePostProcess)
+                {
+                    batch.PostProcess(new ReadOnlySpan<TArgs>(source, offset, chunkSize), commandFactory);
+                }
             }
-            return result;
+            finally
+            {
+                batch.Cleanup();
+            }
+            offset += chunkSize;
         }
-        finally
-        {
-            batch.Cleanup();
-        }
+        return total;
     }
 #endif
 }
