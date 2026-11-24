@@ -50,6 +50,20 @@ public abstract class Verifier(ITestOutputHelper? log)
         return ExecuteAsync(test, source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot);
     }
 
+    internal Task CSVerifyFixAsync<TAnalyzer, TCodeFix>(string source, string fixedSource,
+        Func<Solution, ProjectId, Solution>[] transforms,
+        DiagnosticResult[] expected, SqlSyntax sqlSyntax, bool refDapperAot = true)
+        where TAnalyzer : DiagnosticAnalyzer, new()
+        where TCodeFix : CodeFixProvider, new()
+    {
+        // DapperAotNotEnabled is reported from a compilation-end action, which the test
+        // framework classifies as non-local
+        var test = new CSharpCodeFixTest<TAnalyzer, TCodeFix, DefaultVerifier>();
+        test.CodeFixTestBehaviors = CodeFixTestBehaviors.SkipLocalDiagnosticCheck;
+        test.FixedCode = fixedSource;
+        return ExecuteAsync(test, source, transforms, expected, sqlSyntax, SqlParseInputFlags.None, refDapperAot);
+    }
+
     internal Task VBVerifyAsync<TAnalyzer>(string source,
     Func<Solution, ProjectId, Solution>[] transforms,
     DiagnosticResult[] expected, SqlSyntax sqlSyntax, bool refDapperAot)
@@ -229,6 +243,12 @@ public class Verifier<TAnalyzer>(ITestOutputHelper? log = null) : Verifier(log) 
         DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer, SqlParseInputFlags sqlParseInputFlags = SqlParseInputFlags.None, bool refDapperAot = true)
         where TCodeFix : CodeFixProvider, new()
         => CSVerifyAsync<TAnalyzer, TCodeFix>(source, transforms, expected, sqlSyntax, sqlParseInputFlags, refDapperAot);
+
+    internal Task CSVerifyFixAsync<TCodeFix>(string source, string fixedSource,
+        Func<Solution, ProjectId, Solution>[] transforms,
+        DiagnosticResult[] expected, SqlSyntax sqlSyntax = SqlSyntax.SqlServer, bool refDapperAot = true)
+        where TCodeFix : CodeFixProvider, new()
+        => base.CSVerifyFixAsync<TAnalyzer, TCodeFix>(source, fixedSource, transforms, expected, sqlSyntax, refDapperAot);
 
     internal Task VBVerifyAsync(string source,
     Func<Solution, ProjectId, Solution>[] transforms,
