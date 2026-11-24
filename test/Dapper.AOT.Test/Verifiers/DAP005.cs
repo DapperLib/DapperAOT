@@ -23,6 +23,54 @@ public class DAP005 : Verifier<DapperAnalyzer>
         """, DefaultConfig, [Diagnostic(Diagnostics.DapperAotNotEnabled).WithLocation(0).WithLocation(1).WithArguments(2)]);
 
     [Fact]
+    public Task CodeFixAddsModuleAttribute() => CSVerifyFixAsync<DapperCodeFixes>("""
+        using Dapper;
+        using System.Data.Common;
+
+        class SomeCode
+        {
+            public void Foo(DbConnection conn)
+            {
+                conn.{|#0:Execute|}("somesql");
+            }
+        }
+        """, """
+        using Dapper;
+        using System.Data.Common;
+
+        [module: global::Dapper.DapperAot]
+
+        class SomeCode
+        {
+            public void Foo(DbConnection conn)
+            {
+                conn.Execute("somesql");
+            }
+        }
+        """, DefaultConfig, [Diagnostic(Diagnostics.DapperAotNotEnabled).WithLocation(0).WithArguments(1)]);
+
+    [Fact]
+    public Task CodeFixAddsModuleAttributeNoUsings() => CSVerifyFixAsync<DapperCodeFixes>("""
+        class SomeCode
+        {
+            public void Foo(System.Data.Common.DbConnection conn)
+            {
+                Dapper.SqlMapper.{|#0:Execute|}(conn, "somesql");
+            }
+        }
+        """, """
+        [module: global::Dapper.DapperAot]
+
+        class SomeCode
+        {
+            public void Foo(System.Data.Common.DbConnection conn)
+            {
+                Dapper.SqlMapper.Execute(conn, "somesql");
+            }
+        }
+        """, DefaultConfig, [Diagnostic(Diagnostics.DapperAotNotEnabled).WithLocation(0).WithArguments(1)]);
+
+    [Fact]
     public Task ShouldNotFlagWhenNotUsedAndNoAttrib() => CSVerifyAsync("""
         using Dapper;
         using System.Data.Common;
