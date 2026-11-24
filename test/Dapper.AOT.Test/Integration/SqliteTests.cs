@@ -1,6 +1,7 @@
 #if !NETFRAMEWORK
 using SqliteConnection = Microsoft.Data.Sqlite.SqliteConnection;
 using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace Dapper.AOT.Test.Integration
@@ -23,12 +24,33 @@ namespace Dapper.AOT.Test.Integration
         public void InsertAndSelect()
         {
             // use the generated output from SqliteUsage.Output.cs
+            var expected = new List<SomeEnum>();
+            foreach (SomeEnum e in Enum.GetValues(typeof(SomeEnum)))
+            {
+                SqliteUsage.Insert(connection, e.ToString(), e);
+                expected.Add(e);
+            }
+
+            var rows = SqliteUsage.GetAll(connection);
+            Assert.Equal(expected.Count, rows.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], rows[i].Value);
+                Assert.Equal(expected[i].ToString(), rows[i].Name);
+            }
+        }
+
+        [Fact]
+        public void SelectEnumValues()
+        {
+            // enum as a single-value result, via the generated row factory
             foreach (SomeEnum e in Enum.GetValues(typeof(SomeEnum)))
             {
                 SqliteUsage.Insert(connection, e.ToString(), e);
             }
 
-            var rows = SqliteUsage.GetAll(connection);
+            var values = SqliteUsage.GetValues(connection);
+            Assert.Equal(new[] { SomeEnum.A, SomeEnum.B, SomeEnum.C }, values);
         }
     }
 }

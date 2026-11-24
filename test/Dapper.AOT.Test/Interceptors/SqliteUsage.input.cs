@@ -12,6 +12,10 @@ static class SqliteUsage
 
     public static List<TypeWithSomeEnum> GetAll(DbConnection connection)
         => connection.Query<TypeWithSomeEnum>("SELECT Id, Name, Value FROM Foo").AsList();
+
+    // https://github.com/DapperLib/DapperAOT/issues/228 - enum as a single-value result
+    public static List<SomeEnum> GetValues(DbConnection connection)
+        => connection.Query<SomeEnum>("SELECT Value FROM Foo ORDER BY Id").AsList();
 }
 
 public class TypeWithSomeEnum

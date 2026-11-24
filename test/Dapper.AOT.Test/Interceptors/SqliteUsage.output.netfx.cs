@@ -33,6 +33,20 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
         }
 
+        [global::System.Runtime.CompilerServices.InterceptsLocationAttribute("Interceptors/SqliteUsage.input.cs", 18, 23)]
+        internal static global::System.Collections.Generic.IEnumerable<global::Dapper.AOT.Test.Integration.SomeEnum> Query2(this global::System.Data.IDbConnection cnn, string sql, object? param, global::System.Data.IDbTransaction? transaction, bool buffered, int? commandTimeout, global::System.Data.CommandType? commandType)
+        {
+            // Query, TypedResult, Buffered, Text
+            // returns data: global::Dapper.AOT.Test.Integration.SomeEnum
+            global::System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(sql));
+            global::System.Diagnostics.Debug.Assert((commandType ?? global::Dapper.DapperAotExtensions.GetCommandType(sql)) == global::System.Data.CommandType.Text);
+            global::System.Diagnostics.Debug.Assert(buffered is true);
+            global::System.Diagnostics.Debug.Assert(param is null);
+
+            return global::Dapper.DapperAotExtensions.Command(cnn, transaction, sql, global::System.Data.CommandType.Text, commandTimeout.GetValueOrDefault(), DefaultCommandFactory).QueryBuffered(param, global::Dapper.RowFactory.Inbuilt.Value<global::Dapper.AOT.Test.Integration.SomeEnum>());
+
+        }
+
         private class CommonCommandFactory<T> : global::Dapper.CommandFactory<T>
         {
             public override global::System.Data.Common.DbCommand GetCommand(global::System.Data.Common.DbConnection connection, string sql, global::System.Data.CommandType commandType, T args)
@@ -135,6 +149,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
 
                 p = cmd.CreateParameter();
                 p.ParameterName = "value";
+                p.DbType = global::System.Data.DbType.Int32;
                 p.Direction = global::System.Data.ParameterDirection.Input;
                 p.Value = AsValue(typed.value);
                 ps.Add(p);
@@ -148,6 +163,7 @@ namespace Dapper.AOT // interceptors must be in a known namespace
                 ps[1].Value = AsValue(typed.value);
 
             }
+            public override bool CanPrepare => true;
 
         }
 

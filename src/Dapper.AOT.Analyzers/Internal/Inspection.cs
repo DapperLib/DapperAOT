@@ -1388,6 +1388,13 @@ internal static class Inspection
             readerMethod = null;
             return DbType.String;
         }
+        if (type is INamedTypeSymbol { TypeKind: TypeKind.Enum } enumType)
+        {
+            // enums are handled flexibly via their underlying type (see CommandUtils.As);
+            // there is no DbDataReader.GetEnum, so no reader method is advertised
+            readerMethod = null;
+            return IdentifyDbType(enumType.EnumUnderlyingType, out _);
+        }
         readerMethod = null;
         return null;
     }
