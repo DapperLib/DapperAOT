@@ -84,4 +84,37 @@ public class DAP037 : Verifier<DapperAnalyzer>
             Diagnostic(Diagnostics.UserTypeNoSettableMembersFound).WithLocation(2).WithArguments(""),
     ]);
 
+    [Fact]
+    public Task EnumResultTypesDoNotWarn() => CSVerifyAsync("""
+        using Dapper;
+        using System.Data.Common;
+
+        [DapperAot]
+        class SomeCode
+        {
+            public void Foo(DbConnection conn)
+            {
+                const string sql = "select 1 as Value";
+
+                // enums are handled via their underlying type; none of these should report DAP037
+                _ = conn.Query<SomeEnum>(sql);
+                _ = conn.Query<SomeEnum?>(sql);
+                _ = conn.QueryFirstOrDefault<SomeEnum>(sql);
+                _ = conn.ExecuteScalar<SomeEnum>(sql);
+                _ = conn.QuerySingle<LongBackedEnum>(sql);
+
+                // a user type with an enum member is still fine
+                _ = conn.Query<HasEnumMember>(sql);
+            }
+        }
+
+        enum SomeEnum { A, B, C }
+        enum LongBackedEnum : long { A, B, C }
+
+        class HasEnumMember
+        {
+            public SomeEnum Value { get; set; }
+        }
+        """, DefaultConfig, []);
+
 }
