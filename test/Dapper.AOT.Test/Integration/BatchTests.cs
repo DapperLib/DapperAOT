@@ -128,6 +128,32 @@ public class BatchTests : IDisposable
         Assert.Equal(count < 0 ? 0 : count, Batch.Execute((IEnumerable<string>)data));
     }
 
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(2)]
+    [InlineData(10)]
+    public void BatchUsage_InTransaction_RollsBack(int batchSize)
+    {
+        var name = Guid.NewGuid().ToString();
+        string[] data = Enumerable.Repeat(name, 5).ToArray();
+        using (var transaction = connection.BeginTransaction())
+        {
+            var batch = transaction.Command<string>("insert " + SqlClientFixture.AotIntegrationBatchTests + "(Name) values (@name)", handler: CustomHandler.Instance);
+            Assert.Equal(5, batch.Execute(data, batchSize: batchSize));
+            Assert.Equal(5, transaction.Command<string>("select count(*) from " + SqlClientFixture.AotIntegrationBatchTests + " where Name = @name", handler: CustomHandler.Instance).ExecuteScalar<int>(name));
+            transaction.Rollback();
+        }
+        Assert.Equal(0, connection.Command<string>("select count(*) from " + SqlClientFixture.AotIntegrationBatchTests + " where Name = @name", handler: CustomHandler.Instance).ExecuteScalar<int>(name));
+    }
+
+    [Fact]
+    public void BatchUsage_AppliesTimeout()
+    {
+        // a generous timeout must be accepted and applied to the underlying batch
+        var batch = connection.Command<string>("insert " + SqlClientFixture.AotIntegrationBatchTests + "(Name) values (@name)", timeout: 120, handler: CustomHandler.Instance);
+        Assert.Equal(3, batch.Execute(new[] { "a", "b", "c" }, batchSize: 2));
+    }
+
     internal class CustomHandler : CommandFactory<string>
     {
         public static readonly CustomHandler Instance = new();
@@ -151,4 +177,3 @@ public class BatchTests : IDisposable
         public override bool CanPrepare => true;
     }
 }
-
